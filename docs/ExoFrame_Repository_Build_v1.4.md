@@ -69,6 +69,67 @@ git remote add origin git@github.com:<org>/exoframe.git
 git push -u origin main
 ```
 
+#### B. Create required Deno config files and folder tree (must-do for Deno)
+
+Before running any `deno task` commands, you must have a `deno.json` (or `deno.jsonc`) file in your project root. You should also create a minimal `exo.config.toml` and the required folder structure. See the Implementation Plan for full details, but the following is the minimal working set:
+
+1. Create `deno.json` (minimal example):
+```bash
+cat > deno.json <<'EOF'
+{
+	"tasks": {
+		"cache": "deno cache src/main.ts"
+	},
+	"importMap": "import_map.json"
+}
+EOF
+```
+
+2. Create `import_map.json` (optional, but referenced above):
+```bash
+cat > import_map.json <<'EOF'
+{
+	"imports": {}
+}
+EOF
+```
+
+3. Create a minimal `exo.config.toml` (edit as needed):
+```bash
+cat > exo.config.toml <<'EOF'
+[system]
+version = "1.0.0"
+log_level = "info"
+
+[paths]
+knowledge = "./Knowledge"
+blueprints = "./Blueprints"
+system = "./System"
+EOF
+```
+
+4. Create the required folder tree:
+```bash
+mkdir -p src scripts System Blueprints/Agents Blueprints/Flows Inbox/Requests Inbox/Plans Knowledge/Context Knowledge/Reports Knowledge/Portals Portals
+```
+
+5. (Optional) Add a minimal `src/main.ts` to allow `deno task cache` to succeed:
+```bash
+mkdir -p src
+cat > src/main.ts <<'EOF'
+console.log("ExoFrame Daemon Active");
+EOF
+```
+
+You can now safely run:
+```bash
+deno task cache
+```
+
+For full configuration, see:
+- Implementation Plan: `ExoFrame_Implementation_Plan_v1.4.md` — section **Bootstrap: Developer Workspace Setup**
+- Technical Spec: `ExoFrame_Technical_Spec_v1.4.md` — section **3. Directory Structure**
+
 #### C. Recommended repository settings (first-run)
 - Enable branch protection for `main` (require PR reviews, require status checks). You can configure this in the GitHub UI under Settings → Branches, or via `gh api` calls.
 - Add a basic `CODEOWNERS` for review ownership (optional).

@@ -1,0 +1,6 @@
+{
+	"tasks": {
+		"cache": "deno cache src/main.ts"
+	},
+	"importMap": "import_map.json"
+}
