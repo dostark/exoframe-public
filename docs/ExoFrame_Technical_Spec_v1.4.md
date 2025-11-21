@@ -76,6 +76,7 @@ The File System is the Single Source of Truth. Every path shown above is provisi
 ├── /Knowledge/README.md        <-- Obsidian usage guide
 ├── /Portals                    <-- VIRTUAL OVERLAY (Symlinks)
 │   └── <Alias> -> /home/user/Dev/Project_X
+Note: the tree above describes the *deployed workspace* layout used at runtime. The *development repository* (the Git checkout developers work in) contains the same folders plus development-only artifacts such as `tests/`, `.github/`, `docs/`, and the full `src/` codebase. Do not treat your deployed workspace as a development checkout — deploy workspaces are intended for runtime and user data (Knowledge, System/journal.db) and are created from the development repo via the provided deploy script.
 ```
 
 ---

@@ -915,11 +915,12 @@ cd ~/ExoFrame
 # Install dependencies (Deno caches on first run)
 deno task cache
 
-# Setup database and directories
-deno run --allow-read --allow-write scripts/setup_db.ts || deno run --allow-all scripts/setup.ts
+# Setup database and directories using the documented task (caches deps and initializes DB).
+deno task cache
+deno task setup
 
-# Create initial config (copy template and edit)
-cp exo.config.sample.toml exo.config.toml
+# Create or copy initial config (copy template and edit)
+cp exo.config.sample.toml exo.config.toml || true
 nano exo.config.toml
 
 # Initialize git branch for work
@@ -938,13 +939,13 @@ deno run --watch --allow-read --allow-write --allow-run src/main.ts
 # Point Obsidian to the Knowledge folder
 # In Obsidian: "Open folder as vault" -> ~/ExoFrame/Knowledge
 
-# Create initial README in Knowledge
+# Initialize Knowledge vault (no README required — use Obsidian to open the folder)
 mkdir -p ~/ExoFrame/Knowledge
-cat > ~/ExoFrame/Knowledge/README.md <<'EOF'
-# ExoFrame Knowledge Vault
 
-This vault contains context, reports and portal cards for local development.
-EOF
+# Verify the Activity Journal (SQLite) was created and has the expected schema
+sqlite3 ~/ExoFrame/System/journal.db ".tables"
+sqlite3 ~/ExoFrame/System/journal.db ".schema"
+sqlite3 ~/ExoFrame/System/journal.db "SELECT COUNT(*) FROM activity;"
 ```
 
 ### 2. Windows + WSL2 (Ubuntu inside WSL)
@@ -989,6 +990,44 @@ echo "# Test Request" > ~/ExoFrame/Inbox/Requests/test.md
 
 ### 6. Next steps (automation)
 - Create `scripts/bootstrap_ubuntu.sh` and `scripts/bootstrap_wsl.sh` in repo and add basic CI verification that the scripts run in a clean container.
+
+
+**Clarification — Development repo vs Deployed workspace**
+
+  This Implementation Plan documents work for the *ExoFrame development repository* — the source repository containing `src/`, tests, CI, and developer tooling. The *deployed workspace* (where end-users run the ExoFrame daemon and keep their Knowledge vault) is a distinct runtime instance that can be created from the development repository.
+
+  Recommended workflow:
+  - Developers edit code and push to the development repo (`/path/to/exoframe-repo`).
+  - From the development repo you produce a *deployed workspace* using `./scripts/deploy_workspace.sh /target/path` (see `docs/ExoFrame_Repository_Build_v1.4.md` for details).
+  - The deployed workspace is intended for running the daemon, storing `System/journal.db`, and housing user content (`/Knowledge`). It should not be used as a primary development checkout (no tests, no CI config required there).
+
+  Planned automation (Phase 1 deliverable):
+  - Add `scripts/deploy_workspace.sh` (lightweight) to create a runtime workspace from the repo and run `deno task setup`.
+  - Document the difference clearly in this Implementation Plan and Repository-Build doc so contributors and users follow the proper paths.
+  - Provide `scripts/scaffold.sh` to idempotently create runtime folder layout and copy templates.
+
+Produce a deployed workspace for an end-user (runtime)
+
+```bash
+# Option A: full deploy (runs deno tasks automatically)
+./scripts/deploy_workspace.sh /home/alice/ExoFrame
+
+# Option B: deploy but skip running deno tasks (safe for CI/offline)
+./scripts/deploy_workspace.sh --no-run /home/alice/ExoFrame
+
+# Option C: only scaffold the target layout and copy templates
+./scripts/scaffold.sh /home/alice/ExoFrame
+
+# After scaffold (manual initialization)
+cd /home/alice/ExoFrame
+deno task cache
+deno task setup
+deno task start
+```
+
+Notes:
+- The deployed workspace is a runtime instance and should not be treated as a development checkout. It contains only runtime artifacts (configs, minimal src, scripts) and user data (Knowledge, System/journal.db).
+- Keep migration SQL and schema under `migrations/` or `sql/` in the development repo rather than committing `.db` files.
 
 ---
 *End of Implementation Plan v1.4*

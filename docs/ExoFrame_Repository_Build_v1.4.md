@@ -8,31 +8,54 @@
 If you (the project creator) are starting ExoFrame development from scratch and there is no repository yet, follow these optional bootstrap steps to create a local repository and publish it to GitHub. The commands below use the GitHub CLI (`gh`) where possible for automation; you can also create the repository via the GitHub web UI.
 
 #### A. Prepare local project (common)
-1. Create project folder and basic files
+# Create project folder and basic files
 
 ```bash
 # Create project folder
 mkdir -p ~/ExoFrame && cd ~/ExoFrame
 
-# Create initial files
-cat > README.md <<'EOF'
-# ExoFrame
-
-ExoFrame - local-first agent orchestration (Implementation Plan v1.4)
-EOF
-
+# Create initial files (scaffold only — database and runtime setup handled by tasks below)
 cat > .gitignore <<'EOF'
-/.cache
+/cache
 /node_modules
 /dist
+/.vscode
+# runtime/user data
+/System/*.db
+/System/*.sqlite
+/Knowledge/
+/Inbox/
+/Portals/
 *.log
-*.db
+deno.lock
 EOF
 
 # Optionally add license
 cat > LICENSE <<'EOF'
 MIT License
 EOF
+
+# Create minimal Deno config and import map so tasks run predictably
+cat > deno.json <<'EOF'
+{
+	"imports": {
+		"sqlite/": "https://deno.land/x/sqlite@v3.6.0/",
+		"std/": "https://deno.land/std@0.201.0/"
+	},
+	"tasks": {
+		"cache": "deno cache scripts/setup_db.ts",
+		"setup": "deno run --allow-read --allow-write --allow-run scripts/setup_db.ts"
+	}
+}
+EOF
+
+cat > import_map.json <<'EOF'
+{
+	"imports": {
+	}
+}
+EOF
+
 ```
 
 2. Initialize git and make initial commit
@@ -68,6 +91,8 @@ If you prefer the web UI, create a new repository at https://github.com/new, the
 git remote add origin git@github.com:<org>/exoframe.git
 git push -u origin main
 ```
+
+**Note:** The above steps create the *development repository* for ExoFrame (the source code, tests, and developer tooling). A deployed *user workspace* is a separate directory where end-users run the daemon and store their Knowledge vault. See the "Deploying a user workspace" section below for how to bootstrap a runtime workspace from this repository.
 
 #### B. Create required Deno config files and folder tree (must-do for Deno)
 
@@ -110,10 +135,11 @@ EOF
 
 4. Create the required folder tree:
 ```bash
-mkdir -p src scripts System Blueprints/Agents Blueprints/Flows Inbox/Requests Inbox/Plans Knowledge/Context Knowledge/Reports Knowledge/Portals Portals
+mkdir -p src scripts templates tests fixtures System Blueprints/Agents Blueprints/Flows
+touch tests/.gitkeep fixtures/.gitkeep Blueprints/Agents/.gitkeep Blueprints/Flows/.gitkeep
 ```
 
-5. (Optional) Add a minimal `src/main.ts` to allow `deno task cache` to succeed:
+5. Add a minimal `src/main.ts` to allow `deno task cache` to succeed and provide a simple daemon entrypoint:
 ```bash
 mkdir -p src
 cat > src/main.ts <<'EOF'
@@ -121,14 +147,96 @@ console.log("ExoFrame Daemon Active");
 EOF
 ```
 
-You can now safely run:
+You can now safely run the setup task which will cache remote modules and initialize the Activity Journal (database):
+
 ```bash
 deno task cache
+deno task setup
+```
+
+Verify the created database and schema (requires `sqlite3` CLI):
+
+```bash
+# List tables
+sqlite3 System/journal.db ".tables"
+
+# Show full schema
+sqlite3 System/journal.db ".schema"
+
+# Count activity rows
+sqlite3 System/journal.db "SELECT COUNT(*) FROM activity;"
 ```
 
 For full configuration, see:
 - Implementation Plan: `ExoFrame_Implementation_Plan_v1.4.md` — section **Bootstrap: Developer Workspace Setup**
 - Technical Spec: `ExoFrame_Technical_Spec_v1.4.md` — section **3. Directory Structure**
+
+---
+
+## Deploying a user workspace from the development repo
+
+After you create the development repository (the codebase contributors work in), you can produce a separate *deployed workspace* for end-users. The deployed workspace contains runtime configuration, the Knowledge vault, and the Activity Journal — it is not the same as the development repository and can live anywhere on disk or another host.
+
+From the development repo root run the included script to create a user workspace (default: `~/ExoFrame`):
+
+```bash
+# From repo root
+./scripts/deploy_workspace.sh /path/to/target-workspace
+
+# Example (create a workspace in your home dir)
+./scripts/deploy_workspace.sh ~/ExoFrame
+```
+
+What the deploy script does (summary):
+- Creates the standard runtime folders (`System`, `Knowledge`, `Inbox`, `Portals`).
+- Copies runtime artifacts (`deno.json`, `import_map.json`, `scripts/setup_db.ts`, minimal `src/`) into the target workspace.
+- Runs `deno task cache` and attempts `deno task setup` in the target workspace (best-effort).
+
+After deploy, users should inspect the copied `exo.config.sample.toml`, copy to `exo.config.toml` and adjust paths as needed, then run:
+
+```bash
+cd /path/to/target-workspace
+deno task cache
+deno task setup
+deno task start
+```
+
+The development repository continues to be the authoritative source for code and tests; the deployed workspace is the runtime instance where the daemon and Knowledge vault live.
+
+Keep the development repository focused on source + tests + docs. Do not commit runtime state (see `.gitignore` recommendations below).
+
+2) Producing a *deployed workspace* (for users)
+
+```bash
+# fast deploy (runs deno tasks automatically)
+./scripts/deploy_workspace.sh /home/alice/ExoFrame
+
+# deploy but skip automatic execution of deno tasks (safer in constrained envs)
+./scripts/deploy_workspace.sh --no-run /home/alice/ExoFrame
+
+# alternative: only scaffold the target layout and copy templates
+./scripts/scaffold.sh /home/alice/ExoFrame
+
+# once scaffolded, initialize runtime manually
+cd /home/alice/ExoFrame
+deno task cache
+deno task setup
+deno task start
+```
+
+`.gitignore` recommendations (do not commit user data):
+
+```gitignore
+# runtime data
+/System/*.db
+/Knowledge/
+/Inbox/
+/Portals/
+
+# deno cache / logs
+/deno-dir
+*.log
+```
 
 #### C. Recommended repository settings (first-run)
 - Enable branch protection for `main` (require PR reviews, require status checks). You can configure this in the GitHub UI under Settings → Branches, or via `gh api` calls.
