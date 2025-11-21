@@ -1,0 +1,91 @@
+#!/usr/bin/env -S deno run --allow-read --allow-write
+// Minimal DB setup script for ExoFrame
+// Creates System/journal.db with required tables and pragmas.
+
+import { DB } from "sqlite/mod.ts";
+import { ensureDir } from "std/fs/mod.ts";
+import { join } from "std/path/mod.ts";
+
+const ROOT = Deno.cwd();
+const SYSTEM_DIR = join(ROOT, "System");
+const DB_PATH = join(SYSTEM_DIR, "journal.db");
+
+async function main() {
+  await ensureDir(SYSTEM_DIR);
+  const sql = `
+PRAGMA journal_mode = WAL;
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS activity (
+  id TEXT PRIMARY KEY,
+  trace_id TEXT NOT NULL,
+  actor TEXT NOT NULL,
+  action_type TEXT NOT NULL,
+  target TEXT,
+  payload TEXT NOT NULL,
+  timestamp DATETIME DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_activity_trace ON activity(trace_id);
+CREATE INDEX IF NOT EXISTS idx_activity_time ON activity(timestamp);
+CREATE INDEX IF NOT EXISTS idx_activity_actor ON activity(actor);
+
+CREATE TABLE IF NOT EXISTS leases (
+  file_path TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL,
+  acquired_at DATETIME DEFAULT (datetime('now')),
+  heartbeat_at DATETIME DEFAULT (datetime('now')),
+  expires_at DATETIME NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_leases_expires ON leases(expires_at);
+
+CREATE TABLE IF NOT EXISTS schema_version (
+  version INTEGER PRIMARY KEY,
+  applied_at DATETIME DEFAULT (datetime('now'))
+);
+
+INSERT INTO schema_version (version)
+  SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM schema_version);
+`;
+
+  // Try wasm-backed sqlite first; if it fails (older Deno runtime), fall back to sqlite3 CLI.
+  try {
+    const db = new DB(DB_PATH);
+    try {
+      db.execute(sql);
+      console.log("✅ Database initialized at:", DB_PATH);
+    } finally {
+      db.close();
+    }
+  } catch (err) {
+    console.warn("sqlite wasm failed, attempting fallback using system sqlite3 binary:", String(err));
+    await fallbackUsingSqliteCli(DB_PATH, sql);
+  }
+}
+
+if (import.meta.main) {
+  main();
+}
+
+async function fallbackUsingSqliteCli(dbPath: string, sql: string) {
+  try {
+    // Check sqlite3 exists (use Deno.Command output)
+    const whichResult = await new Deno.Command("which", { args: ["sqlite3"] }).output();
+    if (whichResult.code !== 0) {
+      throw new Error("sqlite3 CLI not found in PATH; please install sqlite3 or upgrade Deno.");
+    }
+
+    // Write SQL to a temp file and execute `.read <file>` with sqlite3 CLI
+    const tmpSqlPath = join(SYSTEM_DIR, "init_schema.sql");
+    await Deno.writeTextFile(tmpSqlPath, sql);
+    const result = await new Deno.Command("sqlite3", { args: [dbPath, `.read ${tmpSqlPath}`] }).output();
+    await Deno.remove(tmpSqlPath).catch(() => {});
+    if (result.code !== 0) {
+      const msg = new TextDecoder().decode(result.stderr);
+      throw new Error(msg || `sqlite3 exited with code ${result.code}`);
+    }
+    console.log("✅ Database initialized (sqlite3 CLI) at:", dbPath);
+  } catch (e) {
+    console.error("❌ Fallback failed:", String(e));
+    throw e;
+  }
+}

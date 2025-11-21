@@ -1,6 +1,10 @@
 {
-	"tasks": {
-		"cache": "deno cache src/main.ts"
+	"imports": {
+		"sqlite/": "https://deno.land/x/sqlite@v3.6.0/",
+		"std/": "https://deno.land/std@0.201.0/"
 	},
-	"importMap": "import_map.json"
+	"tasks": {
+		"cache": "deno cache scripts/setup_db.ts",
+		"setup": "deno run --allow-read --allow-write --allow-run scripts/setup_db.ts"
+	}
 }

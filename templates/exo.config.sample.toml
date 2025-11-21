@@ -1,0 +1,8 @@
+[system]
+version = "1.0.0"
+log_level = "info"
+
+[paths]
+knowledge = "./Knowledge"
+blueprints = "./Blueprints"
+system = "./System"

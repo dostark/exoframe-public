@@ -1,5 +1,12 @@
-/.cache
+/cache
 /node_modules
 /dist
+/.vscode
+# runtime/user data
+/System/*.db
+/System/*.sqlite
+/Knowledge/
+/Inbox/
+/Portals/
 *.log
-*.db
+deno.lock
