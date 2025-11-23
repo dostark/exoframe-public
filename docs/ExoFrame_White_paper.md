@@ -1,8 +1,8 @@
 # ExoFrame: The Sovereign Neuro-Symbolic Operating System
 ### White Paper - Developer Tool Edition
 
-**Date:** November 20, 2025
-**Version:** 1.4.0 (Deno Edition)
+**Date:** November 23, 2025
+**Version:** 1.5.0 (Deno Edition)
 **Status:** Development Specification
 **Target Audience:** Solo Developers, Technical Power Users, System Architects
 
@@ -123,7 +123,7 @@ deno run \
 
 **If agent code attempts:**
 - `Deno.readFile("/etc/passwd")` → PermissionDenied
-- `fetch("https://evil.com")` → PermissionDenied  
+- `fetch("https://evil.com")` → PermissionDenied
 - `Deno.readFile("../../.ssh/id_rsa")` → PermissionDenied (path canonicalization)
 
 This **reduces attack surface** significantly vs Node.js/Bun where any dependency can access anything.

@@ -1,8 +1,8 @@
 
 # ExoFrame Repository Build v1.4
 
-**Version:** 1.4.0  
-**Release Date:** 2025-11-21  
+**Version:** 1.5.0
+**Release Date:** 2025-11-23
 
 ### Create repository from scratch (no GitHub repo yet)
 If you (the project creator) are starting ExoFrame development from scratch and there is no repository yet, follow these optional bootstrap steps to create a local repository and publish it to GitHub. The commands below use the GitHub CLI (`gh`) where possible for automation; you can also create the repository via the GitHub web UI.
@@ -38,23 +38,53 @@ EOF
 # Create minimal Deno config and import map so tasks run predictably
 cat > deno.json <<'EOF'
 {
-	"imports": {
-		"sqlite/": "https://deno.land/x/sqlite@v3.6.0/",
-		"std/": "https://deno.land/std@0.201.0/"
-	},
-	"tasks": {
-		"cache": "deno cache scripts/setup_db.ts",
-		"setup": "deno run --allow-read --allow-write --allow-run scripts/setup_db.ts"
-	}
+  "tasks": {
+    "start": "deno run --allow-read=. --allow-write=. --allow-net=api.anthropic.com,api.openai.com,localhost:11434 --allow-env=EXO_,HOME,USER --allow-run=git src/main.ts",
+    "dev": "deno run --watch --allow-all src/main.ts",
+    "stop": "deno run --allow-run=pkill scripts/stop.ts",
+    "status": "deno run --allow-run=ps scripts/status.ts",
+    "setup": "deno run --allow-all scripts/setup.ts",
+    "cli": "deno run --allow-all src/cli.ts",
+    "test": "deno test --allow-all tests/",
+    "test:watch": "deno test --watch --allow-all tests/",
+    "bench": "deno bench --allow-all tests/benchmarks/",
+    "coverage": "deno test --coverage=cov_profile && deno coverage cov_profile",
+    "lint": "deno lint src/ tests/",
+    "fmt": "deno fmt src/ tests/",
+    "fmt:check": "deno fmt --check src/ tests/",
+    "cache": "deno cache src/main.ts",
+    "compile": "deno compile --allow-all --output exoframe src/main.ts"
+  },
+  "imports": {
+    "@std/fs": "jsr:@std/fs@^0.221.0",
+    "@std/path": "jsr:@std/path@^0.221.0",
+    "@std/yaml": "jsr:@std/yaml@^0.221.0",
+    "@std/toml": "jsr:@std/toml@^0.221.0",
+    "@db/sqlite": "jsr:@db/sqlite@^0.11.0",
+    "zod": "https://deno.land/x/zod@v3.22.4/mod.ts"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"],
+      "exclude": ["no-explicit-any"]
+    }
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": false
+  },
+  "compilerOptions": {
+    "strict": true,
+    "allowJs": false,
+    "checkJs": false
+  }
 }
 EOF
 
-cat > import_map.json <<'EOF'
-{
-	"imports": {
-	}
-}
-EOF
+
 
 ```
 
@@ -102,21 +132,56 @@ Before running any `deno task` commands, you must have a `deno.json` (or `deno.j
 ```bash
 cat > deno.json <<'EOF'
 {
-	"tasks": {
-		"cache": "deno cache src/main.ts"
-	},
-	"importMap": "import_map.json"
+  "tasks": {
+    "start": "deno run --allow-read=. --allow-write=. --allow-net=api.anthropic.com,api.openai.com,localhost:11434 --allow-env=EXO_,HOME,USER --allow-run=git src/main.ts",
+    "dev": "deno run --watch --allow-all src/main.ts",
+    "stop": "deno run --allow-run=pkill scripts/stop.ts",
+    "status": "deno run --allow-run=ps scripts/status.ts",
+    "setup": "deno run --allow-all scripts/setup.ts",
+    "cli": "deno run --allow-all src/cli.ts",
+    "test": "deno test --allow-all tests/",
+    "test:watch": "deno test --watch --allow-all tests/",
+    "bench": "deno bench --allow-all tests/benchmarks/",
+    "coverage": "deno test --coverage=cov_profile && deno coverage cov_profile",
+    "lint": "deno lint src/ tests/",
+    "fmt": "deno fmt src/ tests/",
+    "fmt:check": "deno fmt --check src/ tests/",
+    "cache": "deno cache src/main.ts",
+    "compile": "deno compile --allow-all --output exoframe src/main.ts"
+  },
+  "imports": {
+    "@std/fs": "jsr:@std/fs@^0.221.0",
+    "@std/path": "jsr:@std/path@^0.221.0",
+    "@std/yaml": "jsr:@std/yaml@^0.221.0",
+    "@std/toml": "jsr:@std/toml@^0.221.0",
+    "@db/sqlite": "jsr:@db/sqlite@^0.11.0",
+    "zod": "https://deno.land/x/zod@v3.22.4/mod.ts"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"],
+      "exclude": ["no-explicit-any"]
+    }
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": false
+  },
+  "compilerOptions": {
+    "strict": true,
+    "allowJs": false,
+    "checkJs": false
+  }
 }
 EOF
 ```
 
 2. Create `import_map.json` (optional, but referenced above):
 ```bash
-cat > import_map.json <<'EOF'
-{
-	"imports": {}
-}
-EOF
+
 ```
 
 3. Create a minimal `exo.config.toml` (edit as needed):
@@ -173,70 +238,9 @@ For full configuration, see:
 
 ---
 
-## Deploying a user workspace from the development repo
+## Deploying a user workspace
 
-After you create the development repository (the codebase contributors work in), you can produce a separate *deployed workspace* for end-users. The deployed workspace contains runtime configuration, the Knowledge vault, and the Activity Journal — it is not the same as the development repository and can live anywhere on disk or another host.
-
-From the development repo root run the included script to create a user workspace (default: `~/ExoFrame`):
-
-```bash
-# From repo root
-./scripts/deploy_workspace.sh /path/to/target-workspace
-
-# Example (create a workspace in your home dir)
-./scripts/deploy_workspace.sh ~/ExoFrame
-```
-
-What the deploy script does (summary):
-- Creates the standard runtime folders (`System`, `Knowledge`, `Inbox`, `Portals`).
-- Copies runtime artifacts (`deno.json`, `import_map.json`, `scripts/setup_db.ts`, minimal `src/`) into the target workspace.
-- Runs `deno task cache` and attempts `deno task setup` in the target workspace (best-effort).
-
-After deploy, users should inspect the copied `exo.config.sample.toml`, copy to `exo.config.toml` and adjust paths as needed, then run:
-
-```bash
-cd /path/to/target-workspace
-deno task cache
-deno task setup
-deno task start
-```
-
-The development repository continues to be the authoritative source for code and tests; the deployed workspace is the runtime instance where the daemon and Knowledge vault live.
-
-Keep the development repository focused on source + tests + docs. Do not commit runtime state (see `.gitignore` recommendations below).
-
-2) Producing a *deployed workspace* (for users)
-
-```bash
-# fast deploy (runs deno tasks automatically)
-./scripts/deploy_workspace.sh /home/alice/ExoFrame
-
-# deploy but skip automatic execution of deno tasks (safer in constrained envs)
-./scripts/deploy_workspace.sh --no-run /home/alice/ExoFrame
-
-# alternative: only scaffold the target layout and copy templates
-./scripts/scaffold.sh /home/alice/ExoFrame
-
-# once scaffolded, initialize runtime manually
-cd /home/alice/ExoFrame
-deno task cache
-deno task setup
-deno task start
-```
-
-`.gitignore` recommendations (do not commit user data):
-
-```gitignore
-# runtime data
-/System/*.db
-/Knowledge/
-/Inbox/
-/Portals/
-
-# deno cache / logs
-/deno-dir
-*.log
-```
+See [ExoFrame User Guide](./ExoFrame_User_Guide.md) for instructions on how to deploy and manage a user workspace.
 
 #### C. Recommended repository settings (first-run)
 - Enable branch protection for `main` (require PR reviews, require status checks). You can configure this in the GitHub UI under Settings → Branches, or via `gh api` calls.

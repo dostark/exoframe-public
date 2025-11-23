@@ -1,9 +1,9 @@
 # ExoFrame Implementation Plan
 
-**Version:** 1.5.0  
-**Release Date:** 2025-11-20  
-**Philosophy:** Walking Skeleton (End-to-End first, features second).  
-**Runtime:** Deno.  
+**Version:** 1.5.0
+**Release Date:** 2025-11-20
+**Philosophy:** Walking Skeleton (End-to-End first, features second).
+**Runtime:** Deno.
 **Target:** Honest MVP (Personal Developer Tool supporting both local sovereign agents and federated third-party agents).
 
 ### Change Log
@@ -202,52 +202,52 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 *   **Logic:**
     1.  Debounce events (200ms).
 
-    2.  **Patch:** 
+    2.  **Patch:**
 
     ```typescript
     async function readFileWhenStable(path: string): Promise<string> {
     const maxAttempts = 5;
     const backoffMs = [50, 100, 200, 500, 1000];
-    
+
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         try {
         // Get initial size
         const stat1 = await Deno.stat(path);
-        
+
         // Wait for stability
         await new Promise(resolve => setTimeout(resolve, backoffMs[attempt]));
-        
+
         // Check if size changed
         const stat2 = await Deno.stat(path);
-        
+
         if (stat1.size === stat2.size && stat2.size > 0) {
             // File appears stable, try to read
             const content = await Deno.readTextFile(path);
-            
+
             // Validate it's not empty or corrupted
             if (content.trim().length > 0) {
             return content;
             }
         }
-        
+
         // File still changing, retry
         continue;
-        
+
         } catch (error) {
         if (error instanceof Deno.errors.NotFound) {
             // File deleted between stat and read
             throw new Error(`File disappeared: ${path}`);
         }
-        
+
         if (attempt === maxAttempts - 1) {
             throw error;
         }
-        
+
         // Retry on other errors
         continue;
         }
     }
-    
+
     throw new Error(`File never stabilized: ${path}`);
     }
     ```
@@ -316,8 +316,8 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 
 *   **Logic:**
     1.  Resolve links to `/Knowledge/Context`.
-    2.  **Partial implementation:** 
-    
+    2.  **Partial implementation:**
+
     ```typescript
     // src/services/context.ts
 
@@ -329,22 +329,22 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 
     class ContextLoader {
         private tokenCounter: (text: string) => number;
-        
+
         constructor() {
             // Simple approximation: 1 token ≈ 4 characters
             this.tokenCounter = (text) => Math.ceil(text.length / 4);
         }
-    
+
         async loadWithLimit(
-            filePaths: string[], 
+            filePaths: string[],
             config: ContextConfig
         ): Promise<{ content: string; warnings: string[] }> {
-            
+
             const limit = config.maxTokens * config.safetyMargin;
             const warnings: string[] = [];
             let totalTokens = 0;
             const chunks: string[] = [];
-            
+
             // Sort by size (smallest first to maximize coverage)
             const files = await Promise.all(
                 filePaths.map(async (path) => ({
@@ -353,9 +353,9 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
                     size: (await Deno.stat(path)).size
                 }))
             );
-            
+
             files.sort((a, b) => a.size - b.size);
-            
+
             for (const file of files) {
                 const tokens = this.tokenCounter(file.content);
 
@@ -382,13 +382,13 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
                     );
                 }
             }
-            
+
             // Inject warnings into system prompt if any
             if (warnings.length > 0) {
                 const warningBlock = `\n[System Warning: Context truncated. Budget=${limit} tokens]\n${warnings.join('\n')}\n`;
                 chunks.unshift(warningBlock);
             }
-            
+
             return {
                 content: chunks.join('\n'),
                 warnings
@@ -435,7 +435,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 
 class GitService {
   constructor(private workingDir: string) {}
-  
+
   private async exec(args: string[]): Promise<string> {
     const command = new Deno.Command("git", {
       args,
@@ -443,17 +443,17 @@ class GitService {
       stdout: "piped",
       stderr: "piped",
     });
-    
+
     const { code, stdout, stderr } = await command.output();
-    
+
     if (code !== 0) {
       const error = new TextDecoder().decode(stderr);
       throw new Error(`Git command failed: git ${args.join(' ')}\n${error}`);
     }
-    
+
     return new TextDecoder().decode(stdout).trim();
   }
-  
+
   async isRepo(): Promise<boolean> {
     try {
       await this.exec(["rev-parse", "--git-dir"]);
@@ -462,14 +462,14 @@ class GitService {
       return false;
     }
   }
-  
+
   async initIfNeeded(): Promise<void> {
     if (!(await this.isRepo())) {
       await this.exec(["init"]);
       await this.exec(["commit", "--allow-empty", "-m", "Initial commit"]);
     }
   }
-  
+
   async ensureIdentity(): Promise<void> {
     try {
       await this.exec(["config", "user.email"]);
@@ -479,12 +479,12 @@ class GitService {
       await this.exec(["config", "user.name", "ExoFrame Agent"]);
     }
   }
-  
+
   async createBranch(baseName: string, traceId: string): Promise<string> {
     await this.ensureIdentity();
-    
+
     const branchName = `feat/${baseName}-${traceId.slice(0, 8)}`;
-    
+
     try {
       await this.exec(["checkout", "-b", branchName]);
       return branchName;
@@ -495,24 +495,24 @@ class GitService {
       return uniqueName;
     }
   }
-  
+
   async commit(message: string, traceId: string): Promise<void> {
     await this.ensureIdentity();
-    
+
     // Check if there are changes to commit
     const status = await this.exec(["status", "--porcelain"]);
     if (status.trim().length === 0) {
       throw new Error("No changes to commit");
     }
-    
+
     // Stage all changes
     await this.exec(["add", "-A"]);
-    
+
     // Commit with trace ID footer
     const fullMessage = `${message}\n\n[ExoTrace: ${traceId}]`;
     await this.exec(["commit", "-m", fullMessage]);
   }
-  
+
   async hasUncommittedChanges(): Promise<boolean> {
     const status = await this.exec(["status", "--porcelain"]);
     return status.trim().length > 0;
@@ -576,7 +576,7 @@ class GitService {
     ## /Knowledge/Dashboard.md
 
     \`\`\`dataview
-    TABLE 
+    TABLE
     status as Status,
     date(created) as Created,
     agent as Agent,
@@ -695,13 +695,13 @@ Settings → Files & Links:
 // tests/security_test.ts
 Deno.test("Path canonicalization prevents escapes", async () => {
   const security = new SecurityService();
-  
+
   const maliciousPath = "/ExoFrame/Portals/MyApp/../../../etc/passwd";
   const allowed = await security.isPathSafe(
     maliciousPath,
     "/ExoFrame/Portals/MyApp"
   );
-  
+
   assertEquals(allowed, false);
 });
 ```
@@ -714,22 +714,22 @@ Deno.test("Path canonicalization prevents escapes", async () => {
 // tests/mocks/llm_provider.ts
 class MockLLMProvider implements IModelProvider {
   private responses: Map<string, string>;
-  
+
   constructor() {
     // Load pre-recorded responses
     const json = Deno.readTextFileSync("tests/fixtures/llm_responses/default.json");
     this.responses = new Map(JSON.parse(json));
   }
-  
+
   async complete(prompt: string, config: ModelConfig): Promise<string> {
     // Hash prompt to find matching response
     const key = hashPrompt(prompt);
     const response = this.responses.get(key);
-    
+
     if (!response) {
       throw new Error(`No mock response for prompt hash: ${key}`);
     }
-    
+
     return response;
   }
 }
@@ -749,34 +749,34 @@ Deno.test("Complete workflow: Request to Report", async () => {
   const testEnv = await setupTestEnvironment();
   const mockLLM = new MockLLMProvider();
   const engine = new Engine(testEnv.config, mockLLM);
-  
+
   // 1. Create request file
   await testEnv.writeFile("/Inbox/Requests/test-task.md", requestContent);
-  
+
   // 2. Wait for engine to process
   await engine.processOnce();
-  
+
   // 3. Verify plan was created
   const plan = await testEnv.readFile("/Inbox/Plans/test-task.md");
   assertStringIncludes(plan, "## Proposed Plan");
-  
+
   // 4. Approve by moving to Active
   await testEnv.moveFile(
     "/Inbox/Plans/test-task.md",
     "/System/Active/test-task.md"
   );
-  
+
   // 5. Wait for execution
   await engine.processOnce();
-  
+
   // 6. Verify report created
   const reports = await testEnv.listFiles("/Knowledge/Reports");
   assertEquals(reports.length, 1);
-  
+
   // 7. Verify git branch created
   const branches = await testEnv.gitBranches();
   assert(branches.some(b => b.includes("feat/test-task")));
-  
+
   await testEnv.cleanup();
 });
 ```
@@ -796,10 +796,10 @@ Deno.test("Agent cannot read outside allowed paths", async () => {
     stdout: "piped",
     stderr: "piped",
   });
-  
+
   const { code, stderr } = await command.output();
   const error = new TextDecoder().decode(stderr);
-  
+
   // Should fail with PermissionDenied
   assertNotEquals(code, 0);
   assertStringIncludes(error, "PermissionDenied");
@@ -815,7 +815,7 @@ Deno.bench("Cold start time", async () => {
   const command = new Deno.Command("deno", {
     args: ["run", "--allow-all", "src/main.ts", "--version"],
   });
-  
+
   await command.output();
 });
 
@@ -823,12 +823,12 @@ Deno.bench("Cold start time", async () => {
 Deno.bench("File watcher latency", async () => {
   const watcher = new FileWatcher("/tmp/test");
   let triggered = false;
-  
+
   watcher.on("change", () => { triggered = true; });
-  
+
   // Trigger file change
   await Deno.writeTextFile("/tmp/test/file.md", "content");
-  
+
   // Wait for event
   while (!triggered) {
     await new Promise(r => setTimeout(r, 10));
@@ -851,16 +851,16 @@ jobs:
       - uses: denoland/setup-deno@v1
         with:
           deno-version: v2.x
-      
+
       - name: Run tests
         run: deno test --allow-all
-      
+
       - name: Run benchmarks
         run: deno bench --allow-all
-      
+
       - name: Check coverage
         run: deno test --coverage=cov_profile
-      
+
       - name: Generate coverage report
         run: deno coverage cov_profile --lcov > coverage.lcov
 ```
