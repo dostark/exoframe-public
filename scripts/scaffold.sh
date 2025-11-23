@@ -4,7 +4,7 @@
 # Usage: ./scripts/scaffold.sh [TARGET_DIR]
 
 set -euo pipefail
-ROOT_DIR=$(dirname "$0")/..
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET=${1:-$PWD}
 
 echo "Scaffolding runtime workspace at: $TARGET"

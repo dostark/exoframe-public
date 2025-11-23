@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-run
 // Minimal DB setup script for ExoFrame
 // Creates System/journal.db with required tables and pragmas.
 

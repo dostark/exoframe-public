@@ -7,7 +7,7 @@
 set -euo pipefail
 NORUN=0
 DEST=""
-REPO_ROOT=$(dirname "$0")/..
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Simple flag parsing: --no-run optionally skips running deno tasks
 while [[ $# -gt 0 ]]; do
@@ -30,12 +30,12 @@ echo "Deploying ExoFrame workspace to: $DEST"
 # Ensure target exists
 mkdir -p "$DEST"
 
-# Delegate actual folder scaffolding and template copy to scaffold.sh
-if [ -x "$REPO_ROOT/scripts/scaffold.sh" ]; then
+# Delegate actual folder scaffolding and template copy to scaffold.sh (run with bash so exec bit is not required)
+if [ -f "$REPO_ROOT/scripts/scaffold.sh" ]; then
   echo "Running scaffold to prepare runtime folders and templates..."
-  "$REPO_ROOT/scripts/scaffold.sh" "$DEST"
+  bash "$REPO_ROOT/scripts/scaffold.sh" "$DEST"
 else
-  echo "Warning: scaffold script not found or not executable; falling back to minimal layout"
+  echo "Warning: scaffold script not found; falling back to minimal layout"
   mkdir -p "$DEST/System" "$DEST/Knowledge" "$DEST/Inbox/Requests" "$DEST/Inbox/Plans" "$DEST/Knowledge/Context" "$DEST/Knowledge/Reports" "$DEST/Portals"
 fi
 
