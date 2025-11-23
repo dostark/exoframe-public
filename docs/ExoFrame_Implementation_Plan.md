@@ -1,8 +1,11 @@
 # ExoFrame Implementation Plan
 
-**Version:** 1.5.0 **Release Date:** 2025-11-20 **Philosophy:** Walking Skeleton (End-to-End first, features second).
-**Runtime:** Deno. **Target:** Honest MVP (Personal Developer Tool supporting both local sovereign agents and federated
-third-party agents).
+- **Version:** 1.5.0
+- **Release Date:** 2025-11-23
+- **Philosophy:** Walking Skeleton (End-to-End first, features second).
+- **Runtime:** Deno.
+- **Target:** Honest MVP (Personal Developer Tool supporting both local sovereign agents and federated third-party
+  agents).
 
 ### Change Log
 

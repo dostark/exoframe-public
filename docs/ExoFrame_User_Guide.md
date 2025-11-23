@@ -1,6 +1,7 @@
 # ExoFrame User Guide
 
-**Version:** 1.5.0 **Date:** 2025-11-23
+- **Version:** 1.5.0
+- **Date:** 2025-11-23
 
 ## 1. Introduction
 

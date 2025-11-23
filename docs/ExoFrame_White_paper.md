@@ -2,8 +2,10 @@
 
 ### White Paper - Developer Tool Edition
 
-**Date:** November 23, 2025 **Version:** 1.5.0 (Deno Edition) **Status:** Development Specification **Target Audience:**
-Solo Developers, Technical Power Users, System Architects
+- **Date:** November 23, 2025
+- **Version:** 1.5.0
+- **Status:** Development Specification
+- **Target Audience:** Solo Developers, Technical Power Users, System Architects
 
 ---
 
