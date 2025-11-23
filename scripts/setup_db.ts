@@ -67,25 +67,38 @@ if (import.meta.main) {
 }
 
 async function fallbackUsingSqliteCli(dbPath: string, sql: string) {
+  let tmpSqlPath = "";
   try {
-    // Check sqlite3 exists (use Deno.Command output)
-    const whichResult = await new Deno.Command("which", { args: ["sqlite3"] }).output();
-    if (whichResult.code !== 0) {
-      throw new Error("sqlite3 CLI not found in PATH; please install sqlite3 or upgrade Deno.");
+    // Prefer testing the actual binary rather than relying on `which`.
+    const ver = await new Deno.Command("sqlite3", { args: ["--version"] }).output();
+    if (ver.code !== 0) {
+      const err = new TextDecoder().decode(ver.stderr || new Uint8Array());
+      throw new Error("sqlite3 CLI not found or not runnable: " + err);
     }
 
-    // Write SQL to a temp file and execute `.read <file>` with sqlite3 CLI
-    const tmpSqlPath = join(SYSTEM_DIR, "init_schema.sql");
+    // Write SQL to a temp file and execute via sqlite3 in batch mode using -init
+    tmpSqlPath = join(SYSTEM_DIR, `init_schema_${Date.now()}.sql`);
     await Deno.writeTextFile(tmpSqlPath, sql);
-    const result = await new Deno.Command("sqlite3", { args: [dbPath, `.read ${tmpSqlPath}`] }).output();
-    await Deno.remove(tmpSqlPath).catch(() => {});
+
+    const cmd = new Deno.Command("sqlite3", {
+      args: ["-batch", "-init", tmpSqlPath, dbPath],
+      stdout: "piped",
+      stderr: "piped",
+    });
+    const result = await cmd.output();
+
     if (result.code !== 0) {
-      const msg = new TextDecoder().decode(result.stderr);
+      const msg = new TextDecoder().decode(result.stderr || new Uint8Array());
       throw new Error(msg || `sqlite3 exited with code ${result.code}`);
     }
+
     console.log("✅ Database initialized (sqlite3 CLI) at:", dbPath);
   } catch (e) {
     console.error("❌ Fallback failed:", String(e));
     throw e;
+  } finally {
+    if (tmpSqlPath) {
+      await Deno.remove(tmpSqlPath).catch(() => {});
+    }
   }
 }
