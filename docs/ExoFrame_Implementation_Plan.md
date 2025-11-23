@@ -1,6 +1,6 @@
-# ExoFrame Implementation Plan v1.4
+# ExoFrame Implementation Plan
 
-**Version:** 1.4.0  
+**Version:** 1.5.0  
 **Release Date:** 2025-11-20  
 **Philosophy:** Walking Skeleton (End-to-End first, features second).  
 **Runtime:** Deno.  
@@ -30,17 +30,17 @@
 
 ## Execution Governance
 
-| Phase | Owner | Timebox | Entry Criteria | Exit Criteria |
-| --- | --- | --- | --- | --- |
-| Phase 1 | Runtime Lead | 1 week | Repo initialized, change log approved | Daemon boots, storage scaffolds exist |
-| Phase 2 | Platform Lead | 1 week | Phase 1 exit + watcher harness | Watcher + parser tests pass |
-| Phase 3 | Intelligence Lead | 2 weeks | Validated config + mock LLM | Request → Plan loop verified |
-| Phase 4 | Tooling Lead | 1 week | Stable agent runtime | Git + tool registry exercised |
-| Phase 5 | UX Lead | 1 week | CLI scaffold merged | CLI + dashboard smoke tests |
-| Phase 6 | Knowledge Lead | 2 days | Knowledge tree exists | Obsidian vault validated |
-| Phase 7 | QA Lead | Ongoing | All prior phases code-complete | 80% of test plan automated |
+| Phase | Timebox | Entry Criteria | Exit Criteria |
+| --- | --- | --- | --- |
+| Phase 1 | 1 week | Repo initialized, change log approved | Daemon boots, storage scaffolds exist |
+| Phase 2 | 1 week | Phase 1 exit + watcher harness | Watcher + parser tests pass |
+| Phase 3 | 2 weeks | Validated config + mock LLM | Request → Plan loop verified |
+| Phase 4 | 1 week | Stable agent runtime | Git + tool registry exercised |
+| Phase 5 | 1 week | CLI scaffold merged | CLI + dashboard smoke tests |
+| Phase 6 | 2 days | Knowledge tree exists | Obsidian vault validated |
+| Phase 7 | Ongoing | All prior phases code-complete | 80% of test plan automated |
 
-Each step lists **Owner**, **Dependencies**, **Rollback/Contingency**, and updated success metrics.
+Each step lists **Dependencies**, **Rollback/Contingency**, and updated success metrics.
 
 ---
 
@@ -48,7 +48,7 @@ Each step lists **Owner**, **Dependencies**, **Rollback/Contingency**, and updat
 **Goal:** A running Deno daemon that can write to the database, read configuration, and establish the physical storage structure.
 
 ### Step 1.1: Project Scaffold & Deno Configuration
-*   **Owner:** Runtime Lead — **Dependencies:** none — **Rollback:** delete generated config files.
+*   **Dependencies:** none — **Rollback:** delete generated config files.
 *   **Action:** Initialize repository. Create `deno.json` with strict tasks (e.g., `deno task start`) and record a deterministic `deno.lock` file.
 *   **Justification:** Establishes the Deno security sandbox immediately. We want to fail early if permissions are too tight.
 *   **Success Criteria:**
@@ -130,7 +130,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 
 
 ### Step 1.2: The Activity Journal (SQLite)
-*   **Owner:** Runtime Lead — **Dependencies:** Step 1.1 — **Rollback:** drop `journal.db`, run `deno task migrate down`.
+*   **Dependencies:** Step 1.1 — **Rollback:** drop `journal.db`, run `deno task migrate down`.
 *   **Action:** Implement Database Service using `jsr:@db/sqlite`. Create migration scripts for `activity` and `leases` tables and codify WAL/foreign key pragmas in `scripts/setup_db.ts`.
 *   **Justification:** Every future step relies on logging. The "Brain's Memory" must be active before the Brain itself.
 *   **Success Criteria:**
@@ -173,7 +173,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
     ```
 
 ### Step 1.3: Configuration Loader (TOML + Zod)
-*   **Owner:** Runtime Lead — **Dependencies:** Step 1.2 — **Rollback:** revert config schema, restore previous TOML.
+*   **Dependencies:** Step 1.2 — **Rollback:** revert config schema, restore previous TOML.
 *   **Action:** Create `ConfigService`. Define Zod schemas for `exo.config.toml`. Include config checksum in Activity Journal for auditability.
 *   **Justification:** Hardcoding paths is technical debt. We need a single source of truth for system physics.
 *   **Success Criteria:**
@@ -181,7 +181,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
     *   System throws a readable error if `exo.config.toml` is malformed or missing keys.
 
 ### Step 1.4: The Knowledge Vault Scaffold
-*   **Owner:** Knowledge Lead — **Dependencies:** Step 1.3 — **Rollback:** remove created folders/files (idempotent).
+*   **Dependencies:** Step 1.3 — **Rollback:** remove created folders/files (idempotent).
 *   **Action:** Create rigid directory structure for the Obsidian Vault:
     *   `/Knowledge/Context` (Read-Only memory)
     *   `/Knowledge/Reports` (Write-Only memory)
@@ -197,7 +197,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 **Goal:** The system reacts to file changes securely and reliably.
 
 ### Step 2.1: The File Watcher (Stable Read)
-*   **Owner:** Platform Lead — **Dependencies:** Phase 1 exit — **Rollback:** disable watcher service flag, fall back to manual trigger script.
+*   **Dependencies:** Phase 1 exit — **Rollback:** disable watcher service flag, fall back to manual trigger script.
 *   **Action:** Implement `Deno.watchFs` service monitoring `/Inbox/Requests`.
 *   **Logic:**
     1.  Debounce events (200ms).
@@ -303,7 +303,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
     *   System can read Request, send to LLM, and receive text response.
 
 ### Step 3.3: The Context Injector (Token Safe)
-*   **Owner:** Intelligence Lead — **Dependencies:** Steps 3.1–3.2 — **Rollback:** disable loader and manually attach context bundle.
+*   **Dependencies:** Steps 3.1–3.2 — **Rollback:** disable loader and manually attach context bundle.
 *   **Action:** Implement `ContextLoader` service with configurable truncation, per-file cap overrides, and logging of skipped/truncated files into Activity Journal. Loader must detect whether the target agent is **local-first** (runs entirely on the user’s machine) or **third-party API**. Local agents operate without enforced token ceilings; third-party agents respect provider limits.
 *   **Token Counting:** Use character-based approximation (1 token ≈ 4 chars) when provider limits apply.
 *   **Strategy:** Load smallest files first to maximize coverage (default). Provide fallback strategies `drop-largest`, `drop-oldest`, `truncate-each`, and handle "no file fits" by truncating each file to the configured per-file cap.
@@ -521,7 +521,7 @@ class GitService {
 ```
 
 ### Step 4.3: The Execution Loop (Resilient)
-*   **Owner:** Tooling Lead — **Dependencies:** Steps 4.1–4.2 — **Rollback:** pause queue processing through config and replay from last clean snapshot.
+*   **Dependencies:** Steps 4.1–4.2 — **Rollback:** pause queue processing through config and replay from last clean snapshot.
 *   **Action:** Implement logic for `/System/Active`.
 *   **Logic:** Wrap execution in `try/catch`.
     *   *Success:* Call Mission Reporter, move Request to `/Inbox/Archive`.
@@ -531,7 +531,7 @@ class GitService {
     *   Force a tool failure. Verify "Failure Report" appears in Obsidian.
 
 ### Step 4.4: The Mission Reporter (Episodic Memory)
-*   **Owner:** Knowledge Lead — **Dependencies:** Step 4.3 — **Rollback:** rerun reporter for trace or regenerate from Activity Journal.
+*   **Dependencies:** Step 4.3 — **Rollback:** rerun reporter for trace or regenerate from Activity Journal.
 *   **Action:** On active task completion, write `YYYY-MM-DD_TraceID.md` to `/Knowledge/Reports`.
 *   **Content:** Summary of changes, files modified, self-reflection on errors.
 *   **Success Criteria:**
@@ -544,7 +544,7 @@ class GitService {
 **Goal:** Human usability and system stability.
 
 ### Step 5.1: CLI (exoctl)
-*   **Owner:** UX Lead — **Dependencies:** Phase 4 exit — **Rollback:** hide commands behind `EXOCLI_EXPERIMENTAL`.
+*   **Dependencies:** Phase 4 exit — **Rollback:** hide commands behind `EXOCLI_EXPERIMENTAL`.
 *   **Action:** Create `cli.ts` implementing `mount`, `status`, `log`.
 *   **Justification:** Manual SQLite queries are painful.
 *   **Success Criteria:**
@@ -552,20 +552,20 @@ class GitService {
     *   `exoctl portal add` creates symlink and context card.
 
 ### Step 5.2: Heartbeat & Leases
-*   **Owner:** Platform Lead — **Dependencies:** Step 1.2 — **Rollback:** disable loop, run manual `lease clean`.
+*   **Dependencies:** Step 1.2 — **Rollback:** disable loop, run manual `lease clean`.
 *   **Action:** Implement background loop updating `leases` table.
 *   **Justification:** Prevents deadlocks if Agent crashes.
 *   **Success Criteria:**
     *   Simulate crash; verify lock expires after 60s and file becomes writable.
 
 ### Step 5.3: The Dry Run (Integration Test)
-*   **Owner:** QA Lead — **Dependencies:** Phases 1–4 — **Rollback:** keep script in `/scripts/experimental`.
+*   **Dependencies:** Phases 1–4 — **Rollback:** keep script in `/scripts/experimental`.
 *   **Action:** Create script running "Scenario A" (Software House of One) with Mock LLM.
 *   **Success Criteria:**
     *   Script runs end-to-end without manual intervention.
 
 ### Step 5.4: The Obsidian Dashboard
-*   **Owner:** Knowledge Lead — **Dependencies:** Step 5.1 — **Rollback:** provide plain Markdown summary.
+*   **Dependencies:** Step 5.1 — **Rollback:** provide plain Markdown summary.
 *   **Action:** Create `/Knowledge/Dashboard.md` with Dataview queries.
 *   **Justification:** Users live in Obsidian, not the terminal.
 *   **Success Criteria:**
@@ -621,7 +621,7 @@ class GitService {
 
 ## Phase 6: Obsidian Setup
 
-> **Platform note:** Owners must document OS-specific instructions (Windows symlink prerequisites, macOS sandbox prompts, Linux desktop watchers) before marking each sub-step complete.
+> **Platform note:** Maintainers must document OS-specific instructions (Windows symlink prerequisites, macOS sandbox prompts, Linux desktop watchers) before marking each sub-step complete.
 
 ### 6.1: Install Required Plugins
 
