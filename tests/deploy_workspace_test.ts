@@ -1,5 +1,5 @@
 import { assert } from "https://deno.land/std@0.201.0/testing/asserts.ts";
-import { join, dirname, fromFileUrl } from "https://deno.land/std@0.201.0/path/mod.ts";
+import { dirname, fromFileUrl, join } from "https://deno.land/std@0.201.0/path/mod.ts";
 
 const __dirname = dirname(fromFileUrl(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");

@@ -1,7 +1,6 @@
 {
-	"imports": {
-		"sqlite/": "https://deno.land/x/sqlite@v3.6.0/",
-		"std/": "https://deno.land/std@0.201.0/"
-	}
-
+  "imports": {
+    "sqlite/": "https://deno.land/x/sqlite@v3.6.0/",
+    "std/": "https://deno.land/std@0.201.0/"
+  }
 }

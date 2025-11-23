@@ -1,14 +1,16 @@
 # ExoFrame User Guide
 
-**Version:** 1.5.0
-**Date:** 2025-11-23
+**Version:** 1.5.0 **Date:** 2025-11-23
 
 ## 1. Introduction
-This guide explains how to deploy and use an ExoFrame workspace. Unlike the development repository (where the code lives), a **User Workspace** is where your actual agents, knowledge, and portals reside.
+
+This guide explains how to deploy and use an ExoFrame workspace. Unlike the development repository (where the code
+lives), a **User Workspace** is where your actual agents, knowledge, and portals reside.
 
 ## 2. Installation & Deployment
 
 ### 2.1 Standard Deployment
+
 From the repository root run the included script to create a user workspace (default: `~/ExoFrame`):
 
 ```bash
@@ -20,12 +22,16 @@ From the repository root run the included script to create a user workspace (def
 ```
 
 **What the deploy script does:**
+
 - Creates the standard runtime folders (`System`, `Knowledge`, `Inbox`, `Portals`).
-- Copies runtime artifacts (`deno.json`, `import_map.json`, `scripts/setup_db.ts`, minimal `src/`) into the target workspace.
+- Copies runtime artifacts (`deno.json`, `import_map.json`, `scripts/setup_db.ts`, minimal `src/`) into the target
+  workspace.
 - Runs `deno task cache` and attempts `deno task setup` in the target workspace.
 
 ### 2.2 Post-Deployment Setup
-After deploy, you should inspect the copied `exo.config.sample.toml`, copy it to `exo.config.toml` and adjust paths as needed, then run:
+
+After deploy, you should inspect the copied `exo.config.sample.toml`, copy it to `exo.config.toml` and adjust paths as
+needed, then run:
 
 ```bash
 cd /path/to/target-workspace
@@ -56,6 +62,7 @@ deno task start
 ## 3. Workspace Overview
 
 ### 3.1 Directory Structure
+
 - **Inbox/**: Drop requests here.
 - **Knowledge/**: Your Obsidian vault.
 - **System/**: Database and logs (do not touch manually).
@@ -66,6 +73,7 @@ deno task start
 ### 4.1 Installation
 
 CLI is automatically available via deno tasks:
+
 ```bash
 # Use via task runner
 deno task cli <command>
@@ -80,6 +88,7 @@ exoctl <command>
 ### 4.2 Commands
 
 **Daemon Management**
+
 ```bash
 deno task start              # Start daemon (detached)
 deno task stop               # Stop gracefully (sends SIGTERM)
@@ -88,6 +97,7 @@ deno task status             # Check if running, show uptime and stats
 ```
 
 **Portal Management**
+
 ```bash
 deno task cli portal add <path> <alias>
   # Creates symlink, generates context card
@@ -107,6 +117,7 @@ deno task cli portal refresh <alias>
 ```
 
 **Activity Log**
+
 ```bash
 deno task cli log tail
   # Live stream (like tail -f)
@@ -126,6 +137,7 @@ deno task cli log export --format json > logs.json
 ```
 
 **Lease Management**
+
 ```bash
 deno task cli lease list
   # Show active file leases
@@ -143,6 +155,7 @@ deno task cli lease clean
 ```
 
 **Diagnostics**
+
 ```bash
 deno task cli doctor
   # System health check (see section 12.6)
@@ -157,8 +170,8 @@ deno task cli version
 
 ### 4.3 Output Formatting
 
-All CLI commands output human-readable text by default.
-Add `--json` flag for machine-readable output:
+All CLI commands output human-readable text by default. Add `--json` flag for machine-readable output:
+
 ```bash
 deno task cli portal list --json
 # {"portals": [{"alias": "MyApp", "path": "/home/user/Dev/MyApp", ...}]}
@@ -193,12 +206,14 @@ deno task start
 ### 5.1 Backup
 
 **Before Backup:**
+
 ```bash
 # Stop daemon to ensure database consistency
 deno task stop
 ```
 
 **Backup Command:**
+
 ```bash
 # Backup ExoFrame directory
 tar -czf exoframe-backup-$(date +%Y%m%d).tar.gz \
@@ -211,11 +226,13 @@ tar -tzf exoframe-backup-*.tar.gz | head
 ```
 
 **What to backup separately:**
+
 - Portals are symlinks, not actual code
 - Actual project code lives in `~/Dev/*` (backup separately)
 - OS keyring secrets (handled by OS backup tools)
 
 ### 5.2 Restore
+
 ```bash
 # Extract backup
 tar -xzf exoframe-backup-20251120.tar.gz -C ~/
@@ -232,6 +249,7 @@ deno task start
 ```
 
 ### 5.3 Upgrade ExoFrame
+
 ```bash
 # 1. Stop daemon
 deno task stop
@@ -262,6 +280,7 @@ deno task status
 ### 5.4 Troubleshooting
 
 **Agent Stuck / Unresponsive:**
+
 ```bash
 # Check active leases
 deno task cli lease list
@@ -278,6 +297,7 @@ deno task start
 ```
 
 **Database Corruption:**
+
 ```bash
 # Check integrity
 sqlite3 ~/ExoFrame/System/journal.db "PRAGMA integrity_check;"
@@ -291,6 +311,7 @@ deno task setup --db-only
 ```
 
 **Permission Errors:**
+
 ```bash
 # Check current Deno permissions
 cat deno.json
@@ -304,6 +325,7 @@ nano ~/ExoFrame/exo.config.toml
 ```
 
 ### 5.5 Uninstall
+
 ```bash
 # 1. Stop daemon
 deno task stop
@@ -324,6 +346,7 @@ rm ~/.deno/bin/exoctl
 ```
 
 ### 5.6 Health Check
+
 ```bash
 # Run built-in diagnostics
 deno task cli doctor
@@ -339,4 +362,5 @@ deno task cli doctor
 ```
 
 ---
-*End of User Guide*
+
+_End of User Guide_

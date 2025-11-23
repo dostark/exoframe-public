@@ -57,7 +57,10 @@ INSERT INTO schema_version (version)
       db.close();
     }
   } catch (err) {
-    console.warn("sqlite wasm failed, attempting fallback using system sqlite3 binary:", String(err));
+    console.warn(
+      "sqlite wasm failed, attempting fallback using system sqlite3 binary:",
+      String(err),
+    );
     await fallbackUsingSqliteCli(DB_PATH, sql);
   }
 }

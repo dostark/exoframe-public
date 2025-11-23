@@ -1,10 +1,50 @@
 {
-	"imports": {
-		"sqlite/": "https://deno.land/x/sqlite@v3.6.0/",
-		"std/": "https://deno.land/std@0.201.0/"
-	},
-	"tasks": {
-		"cache": "deno cache scripts/setup_db.ts",
-		"setup": "deno run --allow-read --allow-write --allow-run scripts/setup_db.ts"
-	}
+  "name": "@dostark/exoframe",
+  "version": "0.1.0",
+  "lock": true,
+  "exports": "./src/main.ts",
+  "tasks": {
+    "start": "deno run --allow-read=. --allow-write=. --allow-net=api.anthropic.com,api.openai.com,localhost:11434 --allow-env=EXO_,HOME,USER --allow-run=git src/main.ts",
+    "dev": "deno run --watch --allow-all src/main.ts",
+    "stop": "deno run --allow-run=pkill scripts/stop.ts",
+    "status": "deno run --allow-run=ps scripts/status.ts",
+    "setup": "deno run --allow-all scripts/setup.ts",
+    "cli": "deno run --allow-all src/cli.ts",
+    "test": "deno test --allow-all tests/",
+    "test:watch": "deno test --watch --allow-all tests/",
+    "bench": "deno bench --allow-all tests/benchmarks/",
+    "coverage": "deno test --coverage=cov_profile && deno coverage cov_profile",
+    "lint": "deno lint src/ tests/",
+    "fmt": "deno fmt src/ tests/",
+    "fmt:check": "deno fmt --check src/ tests/",
+    "cache": "deno cache src/main.ts",
+    "compile": "deno compile --allow-all --output exoframe src/main.ts"
+  },
+  "imports": {
+    "@std/fs": "jsr:@std/fs@^0.221.0",
+    "@std/path": "jsr:@std/path@^0.221.0",
+    "@std/yaml": "jsr:@std/yaml@^0.221.0",
+    "@std/toml": "jsr:@std/toml@^0.221.0",
+    "@db/sqlite": "jsr:@db/sqlite@^0.11.0",
+    "zod": "https://deno.land/x/zod@v3.22.4/mod.ts"
+  },
+  "exclude": ["cov_profile", "exoframe", "dist"],
+  "lint": {
+    "rules": {
+      "tags": ["recommended"],
+      "exclude": ["no-explicit-any"]
+    }
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 120,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": false
+  },
+  "compilerOptions": {
+    "strict": true,
+    "allowJs": false,
+    "checkJs": false
+  }
 }
