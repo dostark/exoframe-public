@@ -104,6 +104,31 @@ Each step lists **Owner**, **Dependencies**, **Rollback/Contingency**, and updat
 }
 ```
 
+### Running tests (developer guide)
+
+Use Deno's test runner to execute unit and integration tests. Tests may spawn subprocesses (`deno`, `bash`, `sqlite3`) and inspect the deployed workspace, so grant the required permissions when running locally or in CI.
+
+- Recommended (run all tests locally with explicit permissions):
+
+```bash
+# from the repository root
+deno test --allow-run --allow-read --allow-write
+```
+
+- Preferred via task (if `deno.json` includes a `test` task):
+
+```bash
+deno task test
+```
+
+- Notes:
+  - `--allow-run` is required so tests can invoke `deno`/`bash`/`sqlite3` when exercising scripts like `scripts/setup_db.ts` and `scripts/deploy_workspace.sh`.
+  - `--allow-read` / `--allow-write` allow tests to create temporary workspaces and inspect generated files (e.g., `System/journal.db`).
+  - On CI, prefer adding only the minimum permissions required and run tests inside an isolated container (Ubuntu) with `sqlite3` installed for full schema checks. If `sqlite3` is missing, some tests will fall back to lighter checks (file existence / non-zero size).
+
+Add a `deno.json` `test` task for convenience so contributors can run `deno task test` without remembering flags.
+
+
 ### Step 1.2: The Activity Journal (SQLite)
 *   **Owner:** Runtime Lead — **Dependencies:** Step 1.1 — **Rollback:** drop `journal.db`, run `deno task migrate down`.
 *   **Action:** Implement Database Service using `jsr:@db/sqlite`. Create migration scripts for `activity` and `leases` tables and codify WAL/foreign key pragmas in `scripts/setup_db.ts`.
@@ -998,7 +1023,7 @@ echo "# Test Request" > ~/ExoFrame/Inbox/Requests/test.md
 
   Recommended workflow:
   - Developers edit code and push to the development repo (`/path/to/exoframe-repo`).
-  - From the development repo you produce a *deployed workspace* using `./scripts/deploy_workspace.sh /target/path` (see `docs/ExoFrame_Repository_Build_v1.4.md` for details).
+  - From the development repo you produce a *deployed workspace* using `./scripts/deploy_workspace.sh /target/path` (see `docs/ExoFrame_Repository_Build.md` for details).
   - The deployed workspace is intended for running the daemon, storing `System/journal.db`, and housing user content (`/Knowledge`). It should not be used as a primary development checkout (no tests, no CI config required there).
 
   Planned automation (Phase 1 deliverable):
@@ -1030,4 +1055,4 @@ Notes:
 - Keep migration SQL and schema under `migrations/` or `sql/` in the development repo rather than committing `.db` files.
 
 ---
-*End of Implementation Plan v1.4*
+*End of Implementation Plan*

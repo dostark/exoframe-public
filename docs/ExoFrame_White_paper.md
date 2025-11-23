@@ -226,5 +226,5 @@ It transforms the computer from a passive storage device into an active, cogniti
 **Planned Reporting:** Once automation is live, benchmark summaries will be exported to `Knowledge/Reports/benchmarks.md` with per-commit trends.
 
 ---
-*End of White Paper v1.4*
+*End of White Paper*
 

@@ -168,8 +168,8 @@ sqlite3 System/journal.db "SELECT COUNT(*) FROM activity;"
 ```
 
 For full configuration, see:
-- Implementation Plan: `ExoFrame_Implementation_Plan_v1.4.md` — section **Bootstrap: Developer Workspace Setup**
-- Technical Spec: `ExoFrame_Technical_Spec_v1.4.md` — section **3. Directory Structure**
+- Implementation Plan: `ExoFrame_Implementation_Plan.md` — section **Bootstrap: Developer Workspace Setup**
+- Technical Spec: `ExoFrame_Technical_Spec.md` — section **3. Directory Structure**
 
 ---
 
@@ -266,8 +266,8 @@ gh api --method POST /repos/<org>/exoframe/branches/main/protection -f required_
 
 This document covers *only* the minimal actions required to create the repository and push it to a remote. For full developer workspace bootstrap (installing Deno, initializing the Activity Journal, scaffolding the Knowledge vault, running tests, and starting the daemon), see the Implementation Plan and Technical Specification:
 
-- Implementation Plan: `ExoFrame_Implementation_Plan_v1.4.md` — see section **Bootstrap: Developer Workspace Setup**
-- Technical Spec: `ExoFrame_Technical_Spec_v1.4.md` — see section **11.4 Bootstrap (Reference Implementation)**
+- Implementation Plan: `ExoFrame_Implementation_Plan.md` — see section **Bootstrap: Developer Workspace Setup**
+- Technical Spec: `ExoFrame_Technical_Spec.md` — see section **11.4 Bootstrap (Reference Implementation)**
 
 Minimal next steps after repository creation (creator-only, do these once):
 
@@ -293,4 +293,4 @@ If you want, add a reference to this repository-build doc in the repo root (e.g.
 
 ---
 
-*End of Repository Build v1.4*
+*End of Repository Build*

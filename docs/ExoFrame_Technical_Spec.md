@@ -2,7 +2,7 @@
 
 **Version:** 1.4.0
 **Status:** Engineering Specification
-**Reference:** [ExoFrame White Paper v1.4](./ExoFrame_White_Paper_v1.4.md)
+**Reference:** [ExoFrame White Paper](./ExoFrame_White_Paper.md)
 **Philosophy:** Local-First, Type-Safe, Secure-by-Design
 
 
@@ -32,7 +32,7 @@ ExoFrame deliberately supports **three agent execution modes**:
 2. **Federated / Third-Party Agents** — call out to remote APIs (e.g., Claude, GPT). They inherit provider-specific token ceilings, rate limits, and privacy constraints that the engine enforces via the Context Loader and Capability pipeline.
 3. **Hybrid Agents** — orchestrations that mix local + federated sub-agents inside a single trace. Hybrid mode must log every cross-boundary handoff and only share context slices that the blueprint explicitly authorizes.
 
-**Security Upgrade:** v1.4 completes the migration from Bun/Node to **Deno**, leveraging its capability-based security model and codifying permission governance across CLI, daemon, and agents.
+**Security Upgrade:** Migrated from Bun/Node to **Deno**, leveraging its capability-based security model and codifying permission governance across CLI, daemon, and agents.
 
 ---
 
@@ -517,5 +517,5 @@ deno task cli doctor
 ```
 
 ---
-*End of Technical Specification v1.4*
+*End of Technical Specification*
 
