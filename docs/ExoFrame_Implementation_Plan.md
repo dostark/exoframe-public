@@ -442,11 +442,41 @@ Create a modern login page with:
 
 ### Step 2.3: The Path Security & Portal Resolver
 
-- **Action:** Implement `resolvePath(target)` and `isPathSafe(target)` using `Deno.realPath`.
-- **Justification:** Security Critical. Prevents "Jailbreak" where agents write to `/etc/passwd`.
+- **Dependencies:** Step 1.3 (Config) — **Rollback:** Disable security checks (dangerous, dev-only).
+- **Action:** Implement a `PathResolver` service that maps "Portal Aliases" (e.g., `@MyApp`) to physical paths and enforces strict security boundaries.
+- **Justification:** Security Critical. Prevents "Jailbreak" attempts where agents try to read/write sensitive system files (e.g., `/etc/passwd`, `~/.ssh`) or access projects they aren't authorized for.
+
+**The Problem:**
+Agents operate on file paths provided in requests. Without validation:
+1. Agents could use `../../` to escape their sandbox.
+2. Agents could access files outside the designated "Portals".
+3. Hardcoded absolute paths make requests non-portable between users.
+
+**The Solution:**
+Create a `PathResolver` class that uses the configuration's `blueprints` (and future `portals`) to resolve and validate paths.
+
+```typescript
+// Example Usage
+const resolver = new PathResolver(config);
+const safePath = resolver.resolve("@Blueprints/basic-agent.md");
+// -> "/home/user/ExoFrame/Blueprints/basic-agent.md"
+
+const unsafePath = resolver.resolve("@Blueprints/../../secret.txt");
+// -> Throws SecurityError
+```
+
+**Implementation Checklist:**
+1. Create `src/services/path_resolver.ts`.
+2. Implement `resolve(alias: string, relativePath: string): string`.
+3. Implement `validatePath(path: string, allowedRoots: string[]): string`.
+4. Ensure `Deno.realPath` (or equivalent) is used to resolve symlinks and `..` segments *before* checking against allowed roots.
+
 - **Success Criteria:**
-  - `isPathSafe("../../../secret.txt")` returns `false`.
-  - `isPathSafe("/ExoFrame/Portals/App/src")` returns `true`.
+  - Test 1: Resolve valid alias path → Returns absolute system path.
+  - Test 2: Path traversal attempt (`@Portal/../../secret`) → Throws `SecurityError`.
+  - Test 3: Accessing file outside allowed roots → Throws `SecurityError`.
+  - Test 4: Unknown alias (`@Unknown/file.txt`) → Throws error.
+  - Test 5: Root path itself is valid (`@Portal/`) → Returns portal root path.
 
 ### Step 2.4: The Context Card Generator
 
