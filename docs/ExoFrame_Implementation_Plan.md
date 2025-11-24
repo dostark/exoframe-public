@@ -320,11 +320,117 @@ async function readFileWhenStable(path: string): Promise<string> {
 
 ### Step 2.2: The Zod Frontmatter Parser
 
-- **Action:** Implement parser to read Markdown, extract YAML frontmatter, and validate against `RequestSchema`.
-- **Justification:** Agents cannot act on unstructured garbage. Inputs must be typed.
+- **Dependencies:** Step 2.1 (File Watcher) — **Rollback:** accept any markdown file, skip validation.
+- **Action:** Implement a parser to extract and validate YAML frontmatter from request markdown files using Zod schemas.
+
+**The Problem:**
+Request files (`.md` files in `/Inbox/Requests`) contain structured metadata in YAML frontmatter, but arrive as plain text:
+1. Frontmatter may be malformed (invalid YAML syntax)
+2. Required fields may be missing (`trace_id`, `status`, `agent_id`)
+3. Field types may be wrong (string instead of number, etc.)
+4. If we process invalid requests, agents fail with cryptic errors
+
+**The Solution (Three-Stage Parsing):**
+
+**Stage 1: Extract Frontmatter**
+Split markdown into frontmatter (between `---` delimiters) and body content.
+
+```typescript
+interface ParsedMarkdown {
+  frontmatter: Record<string, unknown>;
+  body: string;
+}
+
+function extractFrontmatter(markdown: string): ParsedMarkdown {
+  const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+  const match = markdown.match(frontmatterRegex);
+
+  if (!match) {
+    throw new Error("No frontmatter found");
+  }
+
+  const yamlContent = match[1];
+  const body = match[2];
+
+  // Parse YAML to object
+  const frontmatter = parseYaml(yamlContent);
+
+  return { frontmatter, body };
+}
+```
+
+**Stage 2: Define Zod Schema**
+Create a strict schema for request frontmatter:
+
+```typescript
+import { z } from "zod";
+
+export const RequestSchema = z.object({
+  trace_id: z.string().uuid(),
+  agent_id: z.string().min(1),
+  status: z.enum(["pending", "in_progress", "completed", "failed"]),
+  priority: z.number().int().min(0).max(10).default(5),
+  created_at: z.string().datetime().optional(),
+  tags: z.array(z.string()).default([]),
+});
+
+export type Request = z.infer<typeof RequestSchema>;
+```
+
+**Stage 3: Validate with Zod**
+Parse frontmatter object against schema:
+
+```typescript
+function parseRequest(markdown: string): { request: Request; body: string } {
+  const { frontmatter, body } = extractFrontmatter(markdown);
+
+  const result = RequestSchema.safeParse(frontmatter);
+
+  if (!result.success) {
+    // Log validation errors
+    console.error("Invalid request frontmatter:");
+    for (const issue of result.error.issues) {
+      console.error(`  - ${issue.path.join(".")}: ${issue.message}`);
+    }
+    throw new Error("Request validation failed");
+  }
+
+  return { request: result.data, body };
+}
+```
+
+**Implementation Checklist:**
+1. Create `src/parsers/markdown.ts` with frontmatter extraction
+2. Create `src/schemas/request.ts` with `RequestSchema`
+3. Create `FrontmatterParser` service that combines extraction + validation
+4. Log validation errors to Activity Journal with `action_type: "request.validation_failed"`
+5. Return typed `Request` object + body content
+
+**Example Request File:**
+```markdown
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+agent_id: "coder-agent"
+status: "pending"
+priority: 8
+tags: ["feature", "ui"]
+---
+
+# Implement Login Page
+
+Create a modern login page with:
+- Email/password fields
+- "Remember me" checkbox
+- "Forgot password" link
+```
+
+- **Justification:** Type-safe request handling prevents runtime errors. Early validation catches malformed requests before they reach the agent runtime.
 - **Success Criteria:**
-  - Valid file returns a TypeScript object.
-  - File missing `trace_id` or `status` throws validation error to DB log.
+  - Test 1: Valid frontmatter + Zod validation → Returns typed `Request` object
+  - Test 2: Missing required field (`trace_id`) → Throws validation error with specific field name
+  - Test 3: Invalid enum value (`status: "banana"`) → Throws error listing valid options
+  - Test 4: Extra fields in frontmatter → Ignored (Zod strips unknown keys by default)
+  - Test 5: No frontmatter delimiters → Throws "No frontmatter found" error
 
 ### Step 2.3: The Path Security & Portal Resolver
 
