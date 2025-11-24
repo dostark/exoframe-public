@@ -1,4 +1,4 @@
-import { assertEquals, assertExists } from "jsr:@std/assert";
+import { assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
 import { ConfigService } from "../src/config/service.ts";
 import { ConfigSchema } from "../src/config/schema.ts";
 
