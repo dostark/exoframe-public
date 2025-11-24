@@ -184,8 +184,8 @@ EOF
 4. Create the required folder tree:
 
 ```bash
-mkdir -p src scripts templates tests fixtures System Blueprints/Agents Blueprints/Flows
-touch tests/.gitkeep fixtures/.gitkeep Blueprints/Agents/.gitkeep Blueprints/Flows/.gitkeep
+mkdir -p src scripts templates tests migrations System Blueprints/Agents Blueprints/Flows
+touch tests/.gitkeep migrations/.gitkeep Blueprints/Agents/.gitkeep Blueprints/Flows/.gitkeep
 ```
 
 5. Add a minimal `src/main.ts` to allow `deno task cache` to succeed and provide a simple daemon entrypoint:

@@ -9,6 +9,7 @@
     "stop": "deno run --allow-run=pkill scripts/stop.ts",
     "status": "deno run --allow-run=ps scripts/status.ts",
     "setup": "deno run --allow-all scripts/setup_db.ts",
+    "migrate": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/migrate_db.ts",
     "cli": "deno run --allow-all src/cli.ts",
     "test": "deno test --allow-all tests/",
     "test:watch": "deno test --watch --allow-all tests/",
