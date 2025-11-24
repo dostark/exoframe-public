@@ -65,13 +65,15 @@ Deno.test("OllamaProvider sends correct JSON payload to /api/generate", async ()
     capturedBody = JSON.parse(init?.body as string);
 
     // Return a valid Ollama response
-    return Promise.resolve(new Response(
-      JSON.stringify({
-        response: "Test response from Ollama",
-        done: true,
-      }),
-      { status: 200, headers: { "Content-Type": "application/json" } },
-    ));
+    return Promise.resolve(
+      new Response(
+        JSON.stringify({
+          response: "Test response from Ollama",
+          done: true,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
   }) as typeof fetch;
 
   try {

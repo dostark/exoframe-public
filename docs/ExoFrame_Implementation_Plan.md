@@ -443,17 +443,19 @@ Create a modern login page with:
 ### Step 2.3: The Path Security & Portal Resolver
 
 - **Dependencies:** Step 1.3 (Config) — **Rollback:** Disable security checks (dangerous, dev-only).
-- **Action:** Implement a `PathResolver` service that maps "Portal Aliases" (e.g., `@MyApp`) to physical paths and enforces strict security boundaries.
-- **Justification:** Security Critical. Prevents "Jailbreak" attempts where agents try to read/write sensitive system files (e.g., `/etc/passwd`, `~/.ssh`) or access projects they aren't authorized for.
+- **Action:** Implement a `PathResolver` service that maps "Portal Aliases" (e.g., `@MyApp`) to physical paths and
+  enforces strict security boundaries.
+- **Justification:** Security Critical. Prevents "Jailbreak" attempts where agents try to read/write sensitive system
+  files (e.g., `/etc/passwd`, `~/.ssh`) or access projects they aren't authorized for.
 
-**The Problem:**
-Agents operate on file paths provided in requests. Without validation:
+**The Problem:** Agents operate on file paths provided in requests. Without validation:
+
 1. Agents could use `../../` to escape their sandbox.
 2. Agents could access files outside the designated "Portals".
 3. Hardcoded absolute paths make requests non-portable between users.
 
-**The Solution:**
-Create a `PathResolver` class that uses the configuration's `blueprints` (and future `portals`) to resolve and validate paths.
+**The Solution:** Create a `PathResolver` class that uses the configuration's `blueprints` (and future `portals`) to
+resolve and validate paths.
 
 ```typescript
 // Example Usage
@@ -466,10 +468,12 @@ const unsafePath = resolver.resolve("@Blueprints/../../secret.txt");
 ```
 
 **Implementation Checklist:**
+
 1. Create `src/services/path_resolver.ts`.
 2. Implement `resolve(alias: string, relativePath: string): string`.
 3. Implement `validatePath(path: string, allowedRoots: string[]): string`.
-4. Ensure `Deno.realPath` (or equivalent) is used to resolve symlinks and `..` segments *before* checking against allowed roots.
+4. Ensure `Deno.realPath` (or equivalent) is used to resolve symlinks and `..` segments _before_ checking against
+   allowed roots.
 
 - **Success Criteria:**
   - Test 1: Resolve valid alias path → Returns absolute system path.
@@ -482,14 +486,14 @@ const unsafePath = resolver.resolve("@Blueprints/../../secret.txt");
 
 - **Dependencies:** Step 1.3 (Config).
 - **Action:** Implement `ContextCardGenerator` service.
-- **Justification:** Links "Code" (Portal) to "Memory" (Obsidian). Agents read this card to understand the project context.
+- **Justification:** Links "Code" (Portal) to "Memory" (Obsidian). Agents read this card to understand the project
+  context.
 
-**The Problem:**
-When a user mounts a portal, agents need a "Context Card" in the Knowledge Graph to understand what that portal is (tech stack, purpose, user notes). This card must be persistent and user-editable.
+**The Problem:** When a user mounts a portal, agents need a "Context Card" in the Knowledge Graph to understand what
+that portal is (tech stack, purpose, user notes). This card must be persistent and user-editable.
 
-**The Solution:**
-Create a `ContextCardGenerator` that generates or updates markdown files in `Knowledge/Portals/`.
-It must be "smart" enough to preserve user-written notes when updating metadata.
+**The Solution:** Create a `ContextCardGenerator` that generates or updates markdown files in `Knowledge/Portals/`. It
+must be "smart" enough to preserve user-written notes when updating metadata.
 
 ```typescript
 // Example Usage
@@ -497,11 +501,12 @@ const generator = new ContextCardGenerator(config);
 await generator.generate({
   alias: "MyApp",
   path: "/home/user/code/myapp",
-  techStack: ["TypeScript", "Deno"]
+  techStack: ["TypeScript", "Deno"],
 });
 ```
 
 **Implementation Checklist:**
+
 1. Create `src/services/context_card_generator.ts`.
 2. Implement `generate(info: PortalInfo): Promise<void>`.
 3. Use regex or string manipulation to split "Metadata" from "User Notes" to ensure preservation.
@@ -509,8 +514,8 @@ await generator.generate({
 - **Success Criteria:**
   - Test 1: Generate new card → Creates file with Header, Path, Tech Stack, and empty Notes section.
   - Test 2: Update existing card → Updates Path/Stack but **preserves** existing user notes.
-  - Test 3: Handle special characters in alias → Sanitizes filename (e.g., "My App" -> "My_App.md" or keeps as is if valid).
-
+  - Test 3: Handle special characters in alias → Sanitizes filename (e.g., "My App" -> "My_App.md" or keeps as is if
+    valid).
 
 ---
 
@@ -530,13 +535,11 @@ await generator.generate({
 - **Action:** Create `IModelProvider` interface and implement `MockProvider` and `OllamaProvider`.
 - **Justification:** Decouples the agent runtime from specific LLM providers, allowing easy switching and testing.
 
-**The Problem:**
-The system needs to talk to various LLMs (Ollama, OpenAI, Anthropic). Hardcoding API calls makes testing difficult and vendor lock-in easy.
+**The Problem:** The system needs to talk to various LLMs (Ollama, OpenAI, Anthropic). Hardcoding API calls makes
+testing difficult and vendor lock-in easy.
 
-**The Solution:**
-Define a standard `IModelProvider` interface.
-Implement a `MockProvider` for unit tests (returns predictable strings).
-Implement an `OllamaProvider` for local inference.
+**The Solution:** Define a standard `IModelProvider` interface. Implement a `MockProvider` for unit tests (returns
+predictable strings). Implement an `OllamaProvider` for local inference.
 
 ```typescript
 export interface IModelProvider {
@@ -546,6 +549,7 @@ export interface IModelProvider {
 ```
 
 **Implementation Checklist:**
+
 1. Create `src/ai/providers.ts` defining `IModelProvider`.
 2. Implement `MockProvider` class.
 3. Implement `OllamaProvider` class using `fetch` to talk to localhost:11434.
@@ -1159,7 +1163,8 @@ jobs:
 
 > **Moved to separate document:** [ExoFrame Developer Setup](./ExoFrame_Developer_Setup.md)
 
-Please refer to the setup guide for instructions on how to bootstrap a local development workspace on Ubuntu or Windows (WSL2).
+Please refer to the setup guide for instructions on how to bootstrap a local development workspace on Ubuntu or Windows
+(WSL2).
 
 ---
 
