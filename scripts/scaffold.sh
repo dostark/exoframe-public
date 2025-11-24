@@ -48,6 +48,11 @@ if [ -f "$ROOT_DIR/templates/README.template.md" ] && [ ! -f "$TARGET/README.md"
   echo "Copied README template"
 fi
 
+if [ -f "$ROOT_DIR/templates/Knowledge_README.md" ] && [ ! -f "$TARGET/Knowledge/README.md" ]; then
+  cp "$ROOT_DIR/templates/Knowledge_README.md" "$TARGET/Knowledge/README.md"
+  echo "Copied Knowledge/README.md"
+fi
+
 echo "Scaffold complete. You can now run in the target workspace:"
 echo "  deno task cache"
 echo "  deno task setup"
