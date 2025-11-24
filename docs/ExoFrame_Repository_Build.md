@@ -13,6 +13,12 @@ optional bootstrap steps to create a local repository and publish it to GitHub. 
 
 # Create project folder and basic files
 
+> [!NOTE]
+> **VS Code Users:** You must install the
+> [Deno extension](https://marketplace.visualstudio.com/items?itemName=denoland.vscode-deno) (ID:
+> `denoland.vscode-deno`) and enable it in the workspace (`"deno.enable": true`) to avoid linting errors like "Cannot
+> find name 'Deno'".
+
 ```bash
 # Create project folder
 mkdir -p ~/ExoFrame && cd ~/ExoFrame
