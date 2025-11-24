@@ -51,6 +51,24 @@ Deno.test("ConfigSchema applies defaults for missing agents section", () => {
   assertEquals(result.agents.timeout_sec, 60);
 });
 
+Deno.test("ConfigSchema applies defaults for missing watcher section", () => {
+  const configWithoutWatcher = {
+    system: {
+      version: "1.0.0",
+      log_level: "info",
+    },
+    paths: {
+      knowledge: "./Knowledge",
+      blueprints: "./Blueprints",
+      system: "./System",
+    },
+  };
+
+  const result = ConfigSchema.parse(configWithoutWatcher);
+  assertEquals(result.watcher.debounce_ms, 200);
+  assertEquals(result.watcher.stability_check, true);
+});
+
 Deno.test("ConfigService computes checksum", () => {
   const service = new ConfigService("exo.config.toml");
   const checksum = service.getChecksum();

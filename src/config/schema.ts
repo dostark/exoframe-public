@@ -12,6 +12,10 @@ export const ConfigSchema = z.object({
     system: z.string().default("System"),
     blueprints: z.string().default("Blueprints"),
   }),
+  watcher: z.object({
+    debounce_ms: z.number().min(50).max(5000).default(200),
+    stability_check: z.boolean().default(true),
+  }).default({}),
   agents: z.object({
     default_model: z.string().default("gpt-4o"),
     timeout_sec: z.number().default(60),

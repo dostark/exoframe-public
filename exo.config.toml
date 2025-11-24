@@ -1,14 +1,17 @@
 # ExoFrame Configuration
 
 [system]
-# Root directory for the ExoFrame instance
-# root = "."
+version = "1.0.0"
 log_level = "info"
 
 [paths]
-inbox = "Inbox"
-knowledge = "Knowledge"
-system = "System"
+knowledge = "./Knowledge"
+blueprints = "./Blueprints"
+system = "./System"
+
+[watcher]
+debounce_ms = 200
+stability_check = true
 
 [agents]
 default_model = "gpt-4o"

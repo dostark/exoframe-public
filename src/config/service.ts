@@ -52,6 +52,10 @@ log_level = "info"
 knowledge = "./Knowledge"
 blueprints = "./Blueprints"
 system = "./System"
+
+[watcher]
+debounce_ms = 200
+stability_check = true
 `;
     Deno.writeTextFileSync(this.configPath, defaultConfig.trim());
     console.log(`✅ Created default configuration at ${this.configPath}`);

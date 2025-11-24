@@ -6,3 +6,11 @@ log_level = "info"
 knowledge = "./Knowledge"
 blueprints = "./Blueprints"
 system = "./System"
+
+[watcher]
+# Time to wait (in milliseconds) after the last file event before processing
+# Increase this if using network drives or cloud storage (e.g., 500-1000ms)
+debounce_ms = 200
+# Enable stability verification (file size check after debounce)
+# Can be disabled for local-only setups to reduce latency
+stability_check = true

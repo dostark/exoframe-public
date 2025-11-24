@@ -237,7 +237,10 @@ When a user saves a file (especially large files), the OS doesn't write it atomi
 **The Solution (Two-Stage Protection):**
 
 **Stage 1: Event Debouncing**
-Wait 200ms after the *last* file system event before attempting to read. This prevents processing the same file multiple times due to rapid-fire events.
+Wait for a configurable delay (default: 200ms, set via `watcher.debounce_ms` in `exo.config.toml`) after the *last* file system event before attempting to read. This prevents processing the same file multiple times due to rapid-fire events.
+
+> [!NOTE]
+> **Configurability:** The 200ms default is a balance between responsiveness and reliability. Increase to 500-1000ms if using network drives or cloud storage. The stability verification (Stage 2) acts as a safety net if debouncing alone is insufficient.
 
 ```typescript
 // Simplified debounce logic
