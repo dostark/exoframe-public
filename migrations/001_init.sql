@@ -1,6 +1,6 @@
 -- up
-PRAGMA journal_mode = WAL;
-PRAGMA foreign_keys = ON;
+-- Note: PRAGMA statements must be run BEFORE the transaction begins
+-- The migrate script should handle PRAGMAs separately
 
 CREATE TABLE IF NOT EXISTS activity (
   id TEXT PRIMARY KEY,

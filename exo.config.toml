@@ -1,0 +1,15 @@
+# ExoFrame Configuration
+
+[system]
+# Root directory for the ExoFrame instance
+# root = "."
+log_level = "info"
+
+[paths]
+inbox = "Inbox"
+knowledge = "Knowledge"
+system = "System"
+
+[agents]
+default_model = "gpt-4o"
+timeout_sec = 60

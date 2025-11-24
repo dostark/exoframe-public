@@ -25,6 +25,34 @@ Deno.test("setup_db.ts initializes journal.db with expected tables", async () =>
   try {
     const scriptPath = join(REPO_ROOT, "scripts", "setup_db.ts");
 
+    // Copy necessary files to temp workspace so `deno task migrate` works
+    await Deno.copyFile(
+      join(REPO_ROOT, "deno.json"),
+      join(tmp, "deno.json"),
+    );
+
+    // Copy scripts directory
+    await Deno.mkdir(join(tmp, "scripts"), { recursive: true });
+    await Deno.copyFile(
+      join(REPO_ROOT, "scripts", "setup_db.ts"),
+      join(tmp, "scripts", "setup_db.ts"),
+    );
+    await Deno.copyFile(
+      join(REPO_ROOT, "scripts", "migrate_db.ts"),
+      join(tmp, "scripts", "migrate_db.ts"),
+    );
+
+    // Copy migrations directory
+    await Deno.mkdir(join(tmp, "migrations"), { recursive: true });
+    for await (const entry of Deno.readDir(join(REPO_ROOT, "migrations"))) {
+      if (entry.isFile) {
+        await Deno.copyFile(
+          join(REPO_ROOT, "migrations", entry.name),
+          join(tmp, "migrations", entry.name),
+        );
+      }
+    }
+
     // Run the script using deno with required permissions
     const cmd = new Deno.Command("deno", {
       args: [
@@ -32,6 +60,8 @@ Deno.test("setup_db.ts initializes journal.db with expected tables", async () =>
         "--allow-read",
         "--allow-write",
         "--allow-run",
+        "--allow-env",
+        "--allow-ffi",
         scriptPath,
       ],
       cwd: tmp,
@@ -82,7 +112,7 @@ Deno.test("setup_db.ts initializes journal.db with expected tables", async () =>
       // Expect core tables to be present
       assert(rows.includes("activity"));
       assert(rows.includes("leases"));
-      assert(rows.includes("schema_version"));
+      assert(rows.includes("schema_migrations"));
 
       const activityCols = await tableColumns(dbPath, "activity");
       assert(activityCols.includes("id"));
@@ -95,7 +125,7 @@ Deno.test("setup_db.ts initializes journal.db with expected tables", async () =>
       assert(leasesCols.includes("agent_id"));
       assert(leasesCols.includes("expires_at"));
 
-      const schemaCols = await tableColumns(dbPath, "schema_version");
+      const schemaCols = await tableColumns(dbPath, "schema_migrations");
       assert(schemaCols.includes("version"));
 
       // Verify indexes exist

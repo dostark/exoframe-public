@@ -20,7 +20,10 @@ async function main() {
   const db = new Database(DB_PATH);
 
   try {
-    // Ensure migrations table exists
+    // Ensure migrations table exists and set PRAGMAs (must be outside transaction)
+    db.exec("PRAGMA journal_mode = WAL");
+    db.exec("PRAGMA foreign_keys = ON");
+
     db.exec(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
