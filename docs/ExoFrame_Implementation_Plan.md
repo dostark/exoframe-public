@@ -226,65 +226,94 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 ### Step 2.1: The File Watcher (Stable Read)
 
 - **Dependencies:** Phase 1 exit — **Rollback:** disable watcher service flag, fall back to manual trigger script.
-- **Action:** Implement `Deno.watchFs` service monitoring `/Inbox/Requests`.
-- **Logic:**
-  1. Debounce events (200ms).
+- **Action:** Implement a robust file watcher using `Deno.watchFs` to monitor `/Inbox/Requests` for new request files.
 
-  2. **Patch:**
+**The Problem:**
+When a user saves a file (especially large files), the OS doesn't write it atomically. Instead:
+1. The file system emits multiple events (create, modify, modify, modify...)
+2. The file may be partially written for several seconds
+3. If we read too early, we get incomplete or corrupted data
 
-  ```typescript
-  async function readFileWhenStable(path: string): Promise<string> {
-    const maxAttempts = 5;
-    const backoffMs = [50, 100, 200, 500, 1000];
+**The Solution (Two-Stage Protection):**
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      try {
-        // Get initial size
-        const stat1 = await Deno.stat(path);
+**Stage 1: Event Debouncing**
+Wait 200ms after the *last* file system event before attempting to read. This prevents processing the same file multiple times due to rapid-fire events.
 
-        // Wait for stability
-        await new Promise((resolve) => setTimeout(resolve, backoffMs[attempt]));
+```typescript
+// Simplified debounce logic
+let timeoutId: number | null = null;
 
-        // Check if size changed
-        const stat2 = await Deno.stat(path);
+for await (const event of Deno.watchFs("/Inbox/Requests")) {
+  if (timeoutId) clearTimeout(timeoutId);
 
-        if (stat1.size === stat2.size && stat2.size > 0) {
-          // File appears stable, try to read
-          const content = await Deno.readTextFile(path);
+  timeoutId = setTimeout(() => {
+    processFile(event.paths[0]); // Now process after events settle
+  }, 200);
+}
+```
 
-          // Validate it's not empty or corrupted
-          if (content.trim().length > 0) {
-            return content;
-          }
+**Stage 2: Stability Verification**
+Even after debouncing, the file might still be growing (e.g., large uploads). Use exponential backoff to wait until the file size stops changing:
+
+```typescript
+async function readFileWhenStable(path: string): Promise<string> {
+  const maxAttempts = 5;
+  const backoffMs = [50, 100, 200, 500, 1000];
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      // Get initial size
+      const stat1 = await Deno.stat(path);
+
+      // Wait for stability
+      await new Promise((resolve) => setTimeout(resolve, backoffMs[attempt]));
+
+      // Check if size changed
+      const stat2 = await Deno.stat(path);
+
+      if (stat1.size === stat2.size && stat2.size > 0) {
+        // File appears stable, try to read
+        const content = await Deno.readTextFile(path);
+
+        // Validate it's not empty or corrupted
+        if (content.trim().length > 0) {
+          return content;
         }
-
-        // File still changing, retry
-        continue;
-      } catch (error) {
-        if (error instanceof Deno.errors.NotFound) {
-          // File deleted between stat and read
-          throw new Error(`File disappeared: ${path}`);
-        }
-
-        if (attempt === maxAttempts - 1) {
-          throw error;
-        }
-
-        // Retry on other errors
-        continue;
       }
+
+      // File still changing, retry with longer wait
+      continue;
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        // File deleted between stat and read
+        throw new Error(`File disappeared: ${path}`);
+      }
+
+      if (attempt === maxAttempts - 1) {
+        throw error;
+      }
+
+      // Retry on other errors
+      continue;
     }
-
-    throw new Error(`File never stabilized: ${path}`);
   }
-  ```
 
-  3. Only dispatch when file is readable and stable.
-  4. Emit telemetry (`watcher.file_unstable`) when retries are exhausted. Include guidance for alerting Ops channel.
+  throw new Error(`File never stabilized: ${path}`);
+}
+```
 
-- **Justification:** Prevents crashing on partial writes when users save large files.
+**Implementation Checklist:**
+1. Set up `Deno.watchFs` on `/Inbox/Requests`
+2. Implement debounce timer (200ms)
+3. Implement `readFileWhenStable` with exponential backoff
+4. Log telemetry event `watcher.file_unstable` when retries are exhausted
+5. Only dispatch to the request processor when content is valid
+
+- **Justification:** Prevents crashing or processing corrupted data when users save large files or when editors create temporary files during save operations.
 - **Success Criteria:**
-  - Script writes a large file (10MB) slowly. Watcher waits until finish before triggering.
+  - Test 1: Rapidly touch a file 10 times in 1 second → Watcher only processes it once
+  - Test 2: Write a 10MB file in 500ms chunks (simulating slow network upload) → Watcher waits until the final chunk arrives before processing
+  - Test 3: Delete a file immediately after creating it → Watcher handles `NotFound` error gracefully
 
 ### Step 2.2: The Zod Frontmatter Parser
 
