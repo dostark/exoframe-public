@@ -8,7 +8,7 @@
     "dev": "deno run --watch --allow-all src/main.ts",
     "stop": "deno run --allow-run=pkill scripts/stop.ts",
     "status": "deno run --allow-run=ps scripts/status.ts",
-    "setup": "deno run --allow-all scripts/setup.ts",
+    "setup": "deno run --allow-all scripts/setup_db.ts",
     "cli": "deno run --allow-all src/cli.ts",
     "test": "deno test --allow-all tests/",
     "test:watch": "deno test --watch --allow-all tests/",
@@ -44,7 +44,6 @@
   },
   "compilerOptions": {
     "strict": true,
-    "allowJs": false,
     "checkJs": false
   }
 }

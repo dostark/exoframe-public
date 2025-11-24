@@ -2,9 +2,9 @@
 // Minimal DB setup script for ExoFrame
 // Creates System/journal.db with required tables and pragmas.
 
-import { DB } from "sqlite/mod.ts";
-import { ensureDir } from "std/fs/mod.ts";
-import { join } from "std/path/mod.ts";
+import { Database } from "@db/sqlite";
+import { ensureDir } from "@std/fs";
+import { join } from "@std/path";
 
 const ROOT = Deno.cwd();
 const SYSTEM_DIR = join(ROOT, "System");
@@ -49,9 +49,9 @@ INSERT INTO schema_version (version)
 
   // Try wasm-backed sqlite first; if it fails (older Deno runtime), fall back to sqlite3 CLI.
   try {
-    const db = new DB(DB_PATH);
+    const db = new Database(DB_PATH);
     try {
-      db.execute(sql);
+      db.exec(sql);
       console.log("✅ Database initialized at:", DB_PATH);
     } finally {
       db.close();
