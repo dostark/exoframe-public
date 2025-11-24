@@ -480,12 +480,37 @@ const unsafePath = resolver.resolve("@Blueprints/../../secret.txt");
 
 ### Step 2.4: The Context Card Generator
 
-- **Action:** Enhance `mount` command. When mounting/creating a Portal, auto-generate `/Knowledge/Portals/<Alias>.md`.
-- **Content:** `target_path`, detected `tech_stack`, blank section for user notes.
-- **Justification:** Links "Code" (Portal) to "Memory" (Obsidian). Agents read this card to understand the project.
+- **Dependencies:** Step 1.3 (Config).
+- **Action:** Implement `ContextCardGenerator` service.
+- **Justification:** Links "Code" (Portal) to "Memory" (Obsidian). Agents read this card to understand the project context.
+
+**The Problem:**
+When a user mounts a portal, agents need a "Context Card" in the Knowledge Graph to understand what that portal is (tech stack, purpose, user notes). This card must be persistent and user-editable.
+
+**The Solution:**
+Create a `ContextCardGenerator` that generates or updates markdown files in `Knowledge/Portals/`.
+It must be "smart" enough to preserve user-written notes when updating metadata.
+
+```typescript
+// Example Usage
+const generator = new ContextCardGenerator(config);
+await generator.generate({
+  alias: "MyApp",
+  path: "/home/user/code/myapp",
+  techStack: ["TypeScript", "Deno"]
+});
+```
+
+**Implementation Checklist:**
+1. Create `src/services/context_card_generator.ts`.
+2. Implement `generate(info: PortalInfo): Promise<void>`.
+3. Use regex or string manipulation to split "Metadata" from "User Notes" to ensure preservation.
+
 - **Success Criteria:**
-  - Running `mount` creates a markdown file.
-  - User edits to the markdown file are preserved across restarts.
+  - Test 1: Generate new card → Creates file with Header, Path, Tech Stack, and empty Notes section.
+  - Test 2: Update existing card → Updates Path/Stack but **preserves** existing user notes.
+  - Test 3: Handle special characters in alias → Sanitizes filename (e.g., "My App" -> "My_App.md" or keeps as is if valid).
+
 
 ---
 
@@ -501,12 +526,36 @@ const unsafePath = resolver.resolve("@Blueprints/../../secret.txt");
 
 ### Step 3.1: The Model Adapter (Mocked & Real)
 
-- **Action:** Create `IModelProvider` interface. Implement `OllamaProvider`, `FederatedLLMProvider` (Claude/GPT), and a
-  `HybridOrchestrator` that can chain both in one trace.
-- **Justification:** Switch between "Free/Fast" (Ollama) and "Smart/Costly" (Claude) easily without code changes.
+- **Dependencies:** Step 1.3 (Config).
+- **Action:** Create `IModelProvider` interface and implement `MockProvider` and `OllamaProvider`.
+- **Justification:** Decouples the agent runtime from specific LLM providers, allowing easy switching and testing.
+
+**The Problem:**
+The system needs to talk to various LLMs (Ollama, OpenAI, Anthropic). Hardcoding API calls makes testing difficult and vendor lock-in easy.
+
+**The Solution:**
+Define a standard `IModelProvider` interface.
+Implement a `MockProvider` for unit tests (returns predictable strings).
+Implement an `OllamaProvider` for local inference.
+
+```typescript
+export interface IModelProvider {
+  id: string;
+  generate(prompt: string, options?: ModelOptions): Promise<string>;
+}
+```
+
+**Implementation Checklist:**
+1. Create `src/ai/providers.ts` defining `IModelProvider`.
+2. Implement `MockProvider` class.
+3. Implement `OllamaProvider` class using `fetch` to talk to localhost:11434.
+4. Create `ModelFactory` to instantiate providers based on config.
+
 - **Success Criteria:**
-  - Unit test sends "Hello" to provider and gets string response.
-  - Credentials retrieved securely from env/keyring.
+  - Test 1: `MockProvider` returns configured response.
+  - Test 2: `OllamaProvider` sends correct JSON payload to `/api/generate`.
+  - Test 3: `ModelFactory` returns correct provider based on config string ("mock" vs "ollama").
+  - Test 4: Provider handles connection errors gracefully (throws typed error).
 
 ### Step 3.2: The Agent Runtime (Stateless Execution)
 
@@ -1108,209 +1157,9 @@ jobs:
 
 ## Bootstrap: Developer Workspace Setup
 
-Provide step-by-step instructions to bootstrap a local development workspace for ExoFrame. Two platforms are supported
-in this plan: **Ubuntu (pure)** and **Windows with WSL2**. The goal is a reproducible, minimal environment that allows
-contributors to run the daemon, tests and benchmarks locally.
+> **Moved to separate document:** [ExoFrame Developer Setup](./ExoFrame_Developer_Setup.md)
 
-### Goals
-
-- Install required tools (Git, Deno, SQLite, Obsidian, optional: VS Code)
-- Create a local repository and initial configuration
-- Initialize the Activity Journal and Knowledge vault
-- Run the daemon in development mode and execute the test suite
-
-### 0. Preflight (common)
-
-- Ensure you have at least 8GB RAM and 20GB free disk space.
-- Create a user account for development with normal privileges.
-- Recommended editor: VS Code or Obsidian for the Knowledge vault.
-
-### 1. Ubuntu (tested baseline)
-
-1. Update packages and install dependencies
-
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y git curl wget build-essential libsecret-1-dev sqlite3
-```
-
-2. Install Deno (recommended installer)
-
-```bash
-curl -fsSL https://deno.land/install.sh | sh
-export DENO_INSTALL="$HOME/.deno"
-export PATH="$DENO_INSTALL/bin:$PATH"
-deno --version
-```
-
-3. Install Obsidian (optional GUI)
-
-Download from Obsidian site or install via Snap:
-
-```bash
-sudo snap install obsidian --classic
-```
-
-4. Install VS Code (optional)
-
-```bash
-wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
-sudo install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/
-sudo sh -c 'echo "deb [arch=amd64] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'
-sudo apt update
-sudo apt install -y code
-rm microsoft.gpg
-```
-
-5. Clone repo and bootstrap
-
-```bash
-# Clone into ~/ExoFrame (recommended)
-git clone https://github.com/<org>/<repo>.git ~/ExoFrame
-cd ~/ExoFrame
-
-# Install dependencies (Deno caches on first run)
-deno task cache
-
-# Setup database and directories using the documented task (caches deps and initializes DB).
-deno task cache
-deno task setup
-
-# Create or copy initial config (copy template and edit)
-cp exo.config.sample.toml exo.config.toml || true
-nano exo.config.toml
-
-# Initialize git branch for work
-git checkout -b feat/setup-workspace
-
-# Run tests (use allow flags appropriate for tests)
-deno test --allow-read --allow-write --allow-run
-
-# Start daemon in dev mode
-deno run --watch --allow-read --allow-write --allow-run src/main.ts
-```
-
-6. Initialize Obsidian vault
-
-```bash
-# Point Obsidian to the Knowledge folder
-# In Obsidian: "Open folder as vault" -> ~/ExoFrame/Knowledge
-
-# Initialize Knowledge vault (no README required — use Obsidian to open the folder)
-mkdir -p ~/ExoFrame/Knowledge
-
-# Verify the Activity Journal (SQLite) was created and has the expected schema
-sqlite3 ~/ExoFrame/System/journal.db ".tables"
-sqlite3 ~/ExoFrame/System/journal.db ".schema"
-sqlite3 ~/ExoFrame/System/journal.db "SELECT COUNT(*) FROM activity;"
-```
-
-### 2. Windows + WSL2 (Ubuntu inside WSL)
-
-Prerequisite on Windows host:
-
-- Enable WSL2 and install a Linux distro (Ubuntu) from Microsoft Store. See Microsoft docs if WSL not enabled.
-- Optional: Install Windows Terminal for a better shell experience.
-
-1. Open WSL2 shell (Ubuntu) and follow the same Ubuntu steps above.
-
-Notes specific to WSL2:
-
-- Ensure Git on Windows and Git inside WSL are consistent. Use the WSL-side git for repository work inside `~/ExoFrame`.
-- For Obsidian UI on Windows: point Obsidian to the WSL mount (e.g.,
-  `\\wsl$\\Ubuntu-22.04\\home\\<user>\\ExoFrame\\Knowledge`) or use the Windows-side Obsidian and open vault via the WSL
-  path.
-
-2. Symlink behavior
-
-- WSL supports Unix symlinks inside the distro. When creating Portals that point to Windows paths, prefer using
-  WSL-mounted paths or ensure permissions allow access.
-
-3. Windows-side utilities (optional convenience)
-
-- Install Obsidian on Windows and open the WSL vault via `\\wsl$` share.
-- If you expect to run UI workflows from Windows, install the Windows Git client and ensure `core.autocrlf` matches your
-  team policy.
-
-### 3. Post-bootstrap checks (both platforms)
-
-- Verify Deno version: `deno --version` (should match project `deno.json` expectations)
-- Verify git config: `git config --list` (ensure `user.name` and `user.email` set)
-- Verify DB exists: `ls -la System/*.db` or run `sqlite3 System/activity.db 'SELECT count(*) FROM activity;'`
-- Run smoke test: `deno test --allow-read --allow-write` and confirm core tests pass.
-- Create a test portal and verify watcher triggers:
-
-```bash
-exoctl portal add ~/Dev/MyProject MyProject
-echo "# Test Request" > ~/ExoFrame/Inbox/Requests/test.md
-# Observe daemon logs / Obsidian Dashboard
-```
-
-### 4. Automation & recommended improvements
-
-- Provide automated installer scripts for each platform: `scripts/bootstrap_ubuntu.sh` and `scripts/bootstrap_wsl.sh` to
-  replicate these steps.
-- Consider a declarative setup using Ansible (Ubuntu) and Winget/PowerShell (Windows) for reproducible developer
-  environments.
-
-### 5. Security & permission notes
-
-- On Ubuntu, ensure `libsecret` is installed for keyring support: `sudo apt install -y libsecret-1-0 libsecret-1-dev`.
-- On WSL, GUI keyrings are not available by default; prefer environment-based secrets or Windows credential manager with
-  secure bridging.
-- Keep API keys out of the repository; use `exoctl secret set <name>` to store them in the OS keyring.
-
-### 6. Next steps (automation)
-
-- Create `scripts/bootstrap_ubuntu.sh` and `scripts/bootstrap_wsl.sh` in repo and add basic CI verification that the
-  scripts run in a clean container.
-
-**Clarification — Development repo vs Deployed workspace**
-
-This Implementation Plan documents work for the _ExoFrame development repository_ — the source repository containing
-`src/`, tests, CI, and developer tooling. The _deployed workspace_ (where end-users run the ExoFrame daemon and keep
-their Knowledge vault) is a distinct runtime instance that can be created from the development repository.
-
-Recommended workflow:
-
-- Developers edit code and push to the development repo (`/path/to/exoframe-repo`).
-- From the development repo you produce a _deployed workspace_ using `./scripts/deploy_workspace.sh /target/path` (see
-  `docs/ExoFrame_Repository_Build.md` for details).
-- The deployed workspace is intended for running the daemon, storing `System/journal.db`, and housing user content
-  (`/Knowledge`). It should not be used as a primary development checkout (no tests, no CI config required there).
-
-Planned automation (Phase 1 deliverable):
-
-- Add `scripts/deploy_workspace.sh` (lightweight) to create a runtime workspace from the repo and run `deno task setup`.
-- Document the difference clearly in this Implementation Plan and Repository-Build doc so contributors and users follow
-  the proper paths.
-- Provide `scripts/scaffold.sh` to idempotently create runtime folder layout and copy templates.
-
-Produce a deployed workspace for an end-user (runtime)
-
-```bash
-# Option A: full deploy (runs deno tasks automatically)
-./scripts/deploy_workspace.sh /home/alice/ExoFrame
-
-# Option B: deploy but skip running deno tasks (safe for CI/offline)
-./scripts/deploy_workspace.sh --no-run /home/alice/ExoFrame
-
-# Option C: only scaffold the target layout and copy templates
-./scripts/scaffold.sh /home/alice/ExoFrame
-
-# After scaffold (manual initialization)
-cd /home/alice/ExoFrame
-deno task cache
-deno task setup
-deno task start
-```
-
-Notes:
-
-- The deployed workspace is a runtime instance and should not be treated as a development checkout. It contains only
-  runtime artifacts (configs, minimal src, scripts) and user data (Knowledge, System/journal.db).
-- Keep migration SQL and schema under `migrations/` or `sql/` in the development repo rather than committing `.db`
-  files.
+Please refer to the setup guide for instructions on how to bootstrap a local development workspace on Ubuntu or Windows (WSL2).
 
 ---
 
