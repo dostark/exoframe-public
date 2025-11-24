@@ -153,6 +153,7 @@ export class FileWatcher {
     const maxAttempts = 5;
     const backoffMs = [50, 100, 200, 500, 1000];
 
+    // Stage 1: Wait for file size to stabilize (metadata only, no content reading)
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         // Get initial size
@@ -165,13 +166,16 @@ export class FileWatcher {
         const stat2 = await Deno.stat(path);
 
         if (stat1.size === stat2.size && stat2.size > 0) {
-          // File appears stable, try to read
+          // File size is stable! Now read content once
           const content = await Deno.readTextFile(path);
 
-          // Validate it's not empty or corrupted
+          // Validate it's not empty
           if (content.trim().length > 0) {
             return content;
           }
+
+          // Empty file, treat as unstable
+          throw new Error(`File is empty: ${path}`);
         }
 
         // File still changing, retry with longer wait
