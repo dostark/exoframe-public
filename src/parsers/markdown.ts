@@ -74,10 +74,11 @@ export class FrontmatterParser {
     try {
       const activityId = crypto.randomUUID();
       const traceId = crypto.randomUUID();
+      const timestamp = new Date().toISOString();
 
       this.db.exec(
-        `INSERT INTO activity (id, trace_id, actor, action_type, target, payload)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO activity (id, trace_id, actor, action_type, target, payload, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           activityId,
           traceId,
@@ -85,6 +86,7 @@ export class FrontmatterParser {
           actionType,
           payload.file_path as string || null,
           JSON.stringify(payload),
+          timestamp,
         ],
       );
     } catch (error) {

@@ -76,10 +76,11 @@ export class ContextCardGenerator {
     try {
       const activityId = crypto.randomUUID();
       const traceId = crypto.randomUUID(); // New trace for this action
+      const timestamp = new Date().toISOString();
 
       this.db.exec(
-        `INSERT INTO activity (id, trace_id, actor, action_type, target, payload)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO activity (id, trace_id, actor, action_type, target, payload, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           activityId,
           traceId,
@@ -87,6 +88,7 @@ export class ContextCardGenerator {
           actionType,
           payload.alias as string,
           JSON.stringify(payload),
+          timestamp,
         ],
       );
     } catch (error) {

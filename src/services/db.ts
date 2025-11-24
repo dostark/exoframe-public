@@ -34,9 +34,11 @@ export class DatabaseService {
       const activityId = crypto.randomUUID();
       const finalTraceId = traceId || crypto.randomUUID();
 
+      const timestamp = new Date().toISOString();
+
       this.db.exec(
-        `INSERT INTO activity (id, trace_id, actor, action_type, target, payload)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO activity (id, trace_id, actor, action_type, target, payload, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           activityId,
           finalTraceId,
@@ -44,6 +46,7 @@ export class DatabaseService {
           actionType,
           target,
           JSON.stringify(payload),
+          timestamp,
         ],
       );
     } catch (error) {
