@@ -1,8 +1,8 @@
 import { assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
-import { Database } from "@db/sqlite";
 import { FileWatcher } from "../src/services/watcher.ts";
 import type { Config } from "../src/config/schema.ts";
+import { initTestDb } from "./helpers/db.ts";
 
 /**
  * Integration test: File watcher events are logged to the Activity Journal
@@ -19,19 +19,8 @@ Deno.test("Watcher logs file events to Activity Journal", async () => {
     await Deno.mkdir(inboxPath, { recursive: true });
     await Deno.mkdir(systemPath, { recursive: true });
 
-    // Setup: Initialize database with activity table
-    const db = new Database(dbPath);
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS activity (
-        id TEXT PRIMARY KEY,
-        trace_id TEXT NOT NULL,
-        actor TEXT NOT NULL,
-        action_type TEXT NOT NULL,
-        target TEXT,
-        payload TEXT NOT NULL,
-        timestamp DATETIME DEFAULT (datetime('now'))
-      );
-    `);
+    // Setup: Initialize in‑memory database with activity table
+    const db = initTestDb();
 
     // Setup: Create mock config
     const config: Config = {

@@ -1,7 +1,7 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@^1.0.0";
 import { RequestSchema } from "../src/schemas/request.ts";
 import { FrontmatterParser } from "../src/parsers/markdown.ts";
-import { Database } from "@db/sqlite";
+import { initTestDb } from "./helpers/db.ts";
 
 /**
  * Tests for Step 2.2: The Zod Frontmatter Parser
@@ -182,23 +182,6 @@ status: "pending"
   assertEquals(result.body.trim(), "");
   assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
 });
-
-// Helper to create an in‑memory DB with activity table
-function initTestDb(): Database {
-  const db = new Database(":memory:");
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS activity (
-      id TEXT PRIMARY KEY,
-      trace_id TEXT NOT NULL,
-      actor TEXT NOT NULL,
-      action_type TEXT NOT NULL,
-      target TEXT,
-      payload TEXT NOT NULL,
-      timestamp DATETIME DEFAULT (datetime('now'))
-    );
-  `);
-  return db;
-}
 
 Deno.test("FrontmatterParser logs successful validation", () => {
   const db = initTestDb();
