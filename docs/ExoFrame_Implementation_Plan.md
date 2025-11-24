@@ -228,19 +228,22 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 - **Dependencies:** Phase 1 exit — **Rollback:** disable watcher service flag, fall back to manual trigger script.
 - **Action:** Implement a robust file watcher using `Deno.watchFs` to monitor `/Inbox/Requests` for new request files.
 
-**The Problem:**
-When a user saves a file (especially large files), the OS doesn't write it atomically. Instead:
+**The Problem:** When a user saves a file (especially large files), the OS doesn't write it atomically. Instead:
+
 1. The file system emits multiple events (create, modify, modify, modify...)
 2. The file may be partially written for several seconds
 3. If we read too early, we get incomplete or corrupted data
 
 **The Solution (Two-Stage Protection):**
 
-**Stage 1: Event Debouncing**
-Wait for a configurable delay (default: 200ms, set via `watcher.debounce_ms` in `exo.config.toml`) after the *last* file system event before attempting to read. This prevents processing the same file multiple times due to rapid-fire events.
+**Stage 1: Event Debouncing** Wait for a configurable delay (default: 200ms, set via `watcher.debounce_ms` in
+`exo.config.toml`) after the _last_ file system event before attempting to read. This prevents processing the same file
+multiple times due to rapid-fire events.
 
 > [!NOTE]
-> **Configurability:** The 200ms default is a balance between responsiveness and reliability. Increase to 500-1000ms if using network drives or cloud storage. The stability verification (Stage 2) acts as a safety net if debouncing alone is insufficient.
+> **Configurability:** The 200ms default is a balance between responsiveness and reliability. Increase to 500-1000ms if
+> using network drives or cloud storage. The stability verification (Stage 2) acts as a safety net if debouncing alone
+> is insufficient.
 
 ```typescript
 // Simplified debounce logic
@@ -255,8 +258,8 @@ for await (const event of Deno.watchFs("/Inbox/Requests")) {
 }
 ```
 
-**Stage 2: Stability Verification**
-Even after debouncing, the file might still be growing (e.g., large uploads). Use exponential backoff to wait until the file size stops changing:
+**Stage 2: Stability Verification** Even after debouncing, the file might still be growing (e.g., large uploads). Use
+exponential backoff to wait until the file size stops changing:
 
 ```typescript
 async function readFileWhenStable(path: string): Promise<string> {
@@ -306,16 +309,19 @@ async function readFileWhenStable(path: string): Promise<string> {
 ```
 
 **Implementation Checklist:**
+
 1. Set up `Deno.watchFs` on `/Inbox/Requests`
 2. Implement debounce timer (200ms)
 3. Implement `readFileWhenStable` with exponential backoff
 4. Log telemetry event `watcher.file_unstable` when retries are exhausted
 5. Only dispatch to the request processor when content is valid
 
-- **Justification:** Prevents crashing or processing corrupted data when users save large files or when editors create temporary files during save operations.
+- **Justification:** Prevents crashing or processing corrupted data when users save large files or when editors create
+  temporary files during save operations.
 - **Success Criteria:**
   - Test 1: Rapidly touch a file 10 times in 1 second → Watcher only processes it once
-  - Test 2: Write a 10MB file in 500ms chunks (simulating slow network upload) → Watcher waits until the final chunk arrives before processing
+  - Test 2: Write a 10MB file in 500ms chunks (simulating slow network upload) → Watcher waits until the final chunk
+    arrives before processing
   - Test 3: Delete a file immediately after creating it → Watcher handles `NotFound` error gracefully
 
 ### Step 2.2: The Zod Frontmatter Parser
@@ -323,8 +329,9 @@ async function readFileWhenStable(path: string): Promise<string> {
 - **Dependencies:** Step 2.1 (File Watcher) — **Rollback:** accept any markdown file, skip validation.
 - **Action:** Implement a parser to extract and validate YAML frontmatter from request markdown files using Zod schemas.
 
-**The Problem:**
-Request files (`.md` files in `/Inbox/Requests`) contain structured metadata in YAML frontmatter, but arrive as plain text:
+**The Problem:** Request files (`.md` files in `/Inbox/Requests`) contain structured metadata in YAML frontmatter, but
+arrive as plain text:
+
 1. Frontmatter may be malformed (invalid YAML syntax)
 2. Required fields may be missing (`trace_id`, `status`, `agent_id`)
 3. Field types may be wrong (string instead of number, etc.)
@@ -332,8 +339,7 @@ Request files (`.md` files in `/Inbox/Requests`) contain structured metadata in 
 
 **The Solution (Three-Stage Parsing):**
 
-**Stage 1: Extract Frontmatter**
-Split markdown into frontmatter (between `---` delimiters) and body content.
+**Stage 1: Extract Frontmatter** Split markdown into frontmatter (between `---` delimiters) and body content.
 
 ```typescript
 interface ParsedMarkdown {
@@ -359,8 +365,7 @@ function extractFrontmatter(markdown: string): ParsedMarkdown {
 }
 ```
 
-**Stage 2: Define Zod Schema**
-Create a strict schema for request frontmatter:
+**Stage 2: Define Zod Schema** Create a strict schema for request frontmatter:
 
 ```typescript
 import { z } from "zod";
@@ -377,8 +382,7 @@ export const RequestSchema = z.object({
 export type Request = z.infer<typeof RequestSchema>;
 ```
 
-**Stage 3: Validate with Zod**
-Parse frontmatter object against schema:
+**Stage 3: Validate with Zod** Parse frontmatter object against schema:
 
 ```typescript
 function parseRequest(markdown: string): { request: Request; body: string } {
@@ -400,6 +404,7 @@ function parseRequest(markdown: string): { request: Request; body: string } {
 ```
 
 **Implementation Checklist:**
+
 1. Create `src/parsers/markdown.ts` with frontmatter extraction
 2. Create `src/schemas/request.ts` with `RequestSchema`
 3. Create `FrontmatterParser` service that combines extraction + validation
@@ -407,6 +412,7 @@ function parseRequest(markdown: string): { request: Request; body: string } {
 5. Return typed `Request` object + body content
 
 **Example Request File:**
+
 ```markdown
 ---
 trace_id: "550e8400-e29b-41d4-a716-446655440000"
@@ -419,12 +425,14 @@ tags: ["feature", "ui"]
 # Implement Login Page
 
 Create a modern login page with:
+
 - Email/password fields
 - "Remember me" checkbox
 - "Forgot password" link
 ```
 
-- **Justification:** Type-safe request handling prevents runtime errors. Early validation catches malformed requests before they reach the agent runtime.
+- **Justification:** Type-safe request handling prevents runtime errors. Early validation catches malformed requests
+  before they reach the agent runtime.
 - **Success Criteria:**
   - Test 1: Valid frontmatter + Zod validation → Returns typed `Request` object
   - Test 2: Missing required field (`trace_id`) → Throws validation error with specific field name
