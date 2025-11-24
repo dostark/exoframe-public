@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { PathResolver } from "../src/services/path_resolver.ts";
-import type { Config } from "../src/config/schema.ts";
+import { createMockConfig } from "./helpers/config.ts";
 
 /**
  * Tests for Step 2.3: Path Security & Portal Resolver
@@ -22,12 +22,7 @@ Deno.test("PathResolver: resolves valid alias path", async () => {
     const testFile = join(blueprintsDir, "agent.md");
     await Deno.writeTextFile(testFile, "content");
 
-    const config: Config = {
-      system: { root: tempDir, log_level: "info", version: "1.0.0" },
-      paths: { inbox: "Inbox", knowledge: "Knowledge", system: "System", blueprints: "Blueprints" },
-      watcher: { debounce_ms: 200, stability_check: true },
-      agents: { default_model: "gpt-4o", timeout_sec: 60 },
-    };
+    const config = createMockConfig(tempDir);
 
     const resolver = new PathResolver(config);
     const resolved = await resolver.resolve("@Blueprints/agent.md");
@@ -46,12 +41,7 @@ Deno.test("PathResolver: throws on path traversal attempt", async () => {
     const secretFile = join(tempDir, "secret.txt");
     await Deno.writeTextFile(secretFile, "secret");
 
-    const config: Config = {
-      system: { root: tempDir, log_level: "info", version: "1.0.0" },
-      paths: { inbox: "Inbox", knowledge: "Knowledge", system: "System", blueprints: "Blueprints" },
-      watcher: { debounce_ms: 200, stability_check: true },
-      agents: { default_model: "gpt-4o", timeout_sec: 60 },
-    };
+    const config = createMockConfig(tempDir);
 
     const resolver = new PathResolver(config);
 
@@ -83,12 +73,7 @@ Deno.test("PathResolver: throws on accessing file outside allowed roots", async 
     // If symlinks are not supported on the OS, this test might need adjustment
     // This test covers the case where a symlink within an allowed root points outside.
 
-    const config: Config = {
-      system: { root: tempDir, log_level: "info", version: "1.0.0" },
-      paths: { inbox: "Inbox", knowledge: "Knowledge", system: "System", blueprints: "Blueprints" },
-      watcher: { debounce_ms: 200, stability_check: true },
-      agents: { default_model: "gpt-4o", timeout_sec: 60 },
-    };
+    const config = createMockConfig(tempDir);
 
     const resolver = new PathResolver(config);
 
@@ -108,12 +93,7 @@ Deno.test("PathResolver: throws on accessing file outside allowed roots", async 
 Deno.test("PathResolver: throws on unknown alias", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-unknown-" });
   try {
-    const config: Config = {
-      system: { root: tempDir, log_level: "info", version: "1.0.0" },
-      paths: { inbox: "Inbox", knowledge: "Knowledge", system: "System", blueprints: "Blueprints" },
-      watcher: { debounce_ms: 200, stability_check: true },
-      agents: { default_model: "gpt-4o", timeout_sec: 60 },
-    };
+    const config = createMockConfig(tempDir);
 
     const resolver = new PathResolver(config);
 
@@ -135,12 +115,7 @@ Deno.test("PathResolver: root path itself is valid", async () => {
     const blueprintsDir = join(tempDir, "Blueprints");
     await Deno.mkdir(blueprintsDir);
 
-    const config: Config = {
-      system: { root: tempDir, log_level: "info", version: "1.0.0" },
-      paths: { inbox: "Inbox", knowledge: "Knowledge", system: "System", blueprints: "Blueprints" },
-      watcher: { debounce_ms: 200, stability_check: true },
-      agents: { default_model: "gpt-4o", timeout_sec: 60 },
-    };
+    const config = createMockConfig(tempDir);
 
     const resolver = new PathResolver(config);
     const resolved = await resolver.resolve("@Blueprints/");

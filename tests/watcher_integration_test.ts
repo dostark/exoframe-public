@@ -1,8 +1,8 @@
 import { assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { FileWatcher } from "../src/services/watcher.ts";
-import type { Config } from "../src/config/schema.ts";
 import { initTestDb } from "./helpers/db.ts";
+import { createMockConfig } from "./helpers/config.ts";
 
 /**
  * Integration test: File watcher events are logged to the Activity Journal
@@ -14,7 +14,6 @@ Deno.test("Watcher logs file events to Activity Journal", async () => {
     // Setup: Create temporary workspace structure
     const inboxPath = join(tempDir, "Inbox", "Requests");
     const systemPath = join(tempDir, "System");
-    const dbPath = join(systemPath, "journal.db");
 
     await Deno.mkdir(inboxPath, { recursive: true });
     await Deno.mkdir(systemPath, { recursive: true });
@@ -23,27 +22,9 @@ Deno.test("Watcher logs file events to Activity Journal", async () => {
     const db = initTestDb();
 
     // Setup: Create mock config
-    const config: Config = {
-      system: {
-        root: tempDir,
-        log_level: "info",
-        version: "1.0.0",
-      },
-      paths: {
-        inbox: "Inbox",
-        knowledge: "Knowledge",
-        system: "System",
-        blueprints: "Blueprints",
-      },
-      watcher: {
-        debounce_ms: 100, // Shorter for testing
-        stability_check: true,
-      },
-      agents: {
-        default_model: "gpt-4o",
-        timeout_sec: 60,
-      },
-    };
+    const config = createMockConfig(tempDir, {
+      watcher: { debounce_ms: 100, stability_check: true },
+    });
 
     // Track events received
     const eventsReceived: string[] = [];
