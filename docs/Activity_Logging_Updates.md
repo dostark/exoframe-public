@@ -1,6 +1,7 @@
 # Activity Logging Updates - Implementation Summary
 
-This document summarizes the changes made to implement `agent_id` tracking and decorator-based activity logging across the ExoFrame codebase.
+This document summarizes the changes made to implement `agent_id` tracking and decorator-based activity logging across
+the ExoFrame codebase.
 
 ## Changes Made
 
@@ -111,30 +112,35 @@ class DatabaseService {
 ### 3. Service Layer Updates
 
 #### PlanWriter Service
+
 **File:** `src/services/plan_writer.ts`
 
 - Added `agentId?: string` to `RequestMetadata` interface
 - Updated `logPlanCreation()` to pass `agentId` to database
 
 #### ContextLoader Service
+
 **File:** `src/services/context_loader.ts`
 
 - Added `agentId?: string` to `ContextConfig` interface
 - Updated both `logContextLoaded()` and `logFileLoadError()` to pass `agentId`
 
 #### ContextCardGenerator Service
+
 **File:** `src/services/context_card_generator.ts`
 
 - Updated direct SQL INSERT to include `agent_id` column (set to NULL)
 - Changed actor from "context_card_generator" to "system"
 
 #### FrontmatterParser
+
 **File:** `src/parsers/markdown.ts`
 
 - Updated direct SQL INSERT to include `agent_id` column (set to NULL)
 - Changed actor from "frontmatter_parser" to "system"
 
 #### Main Daemon
+
 **File:** `src/main.ts`
 
 - Updated `logActivity()` call to include `agentId` parameter (NULL for system events)
@@ -160,10 +166,10 @@ export class ExecutionLoop {
   private agentId: string;
   private db: DatabaseService;
 
-  @LogActivity('execution.started', { 
-    entityType: 'task',
-    actor: 'system',
-    captureArgs: true 
+  @LogActivity("execution.started", {
+    entityType: "task",
+    actor: "system",
+    captureArgs: true,
   })
   async acquireLease(filePath: string): Promise<Lease> {
     // Automatically logged on entry and exit
@@ -171,9 +177,9 @@ export class ExecutionLoop {
     return lease;
   }
 
-  @LogActivity('execution.tool_executed', { 
-    entityType: 'tool',
-    actor: 'agent' 
+  @LogActivity("execution.tool_executed", {
+    entityType: "tool",
+    actor: "agent",
   })
   async executeTool(toolName: string, params: any): Promise<any> {
     // Each tool execution is logged with agent_id
@@ -196,7 +202,8 @@ export class ExecutionLoop {
 }
 ```
 
-**Note:** These options are marked as deprecated in favor of Stage 3 decorators, but remain functional. Future work: migrate to modern decorator syntax when stable.
+**Note:** These options are marked as deprecated in favor of Stage 3 decorators, but remain functional. Future work:
+migrate to modern decorator syntax when stable.
 
 ## Activity Table Structure
 
@@ -213,6 +220,7 @@ export class ExecutionLoop {
 ## Query Examples
 
 **Get all activity for a specific agent:**
+
 ```sql
 SELECT action_type, target, timestamp
 FROM activity
@@ -221,6 +229,7 @@ ORDER BY timestamp DESC;
 ```
 
 **Calculate agent success rate:**
+
 ```sql
 SELECT 
   agent_id,
@@ -231,6 +240,7 @@ GROUP BY agent_id;
 ```
 
 **Trace complete workflow (request → plan → execution):**
+
 ```sql
 SELECT 
   timestamp,
@@ -262,6 +272,7 @@ The migration is idempotent and will add the `agent_id` column if it doesn't exi
 ### For New Installations
 
 Simply run:
+
 ```bash
 deno task setup
 ```
@@ -284,9 +295,11 @@ deno test --allow-all tests/setup_db_test.ts
 
 ## Next Steps
 
-1. **Implement Decorator Usage:** Update existing services (AgentRunner, ToolRegistry, GitService) to use `@LogActivity` decorator
+1. **Implement Decorator Usage:** Update existing services (AgentRunner, ToolRegistry, GitService) to use `@LogActivity`
+   decorator
 2. **Add Agent ID to Blueprints:** Extend Blueprint interface to include agent identifier
-3. **Human Action Logging:** Create CLI commands or file watcher hooks to log human review actions (approve/reject/revise)
+3. **Human Action Logging:** Create CLI commands or file watcher hooks to log human review actions
+   (approve/reject/revise)
 4. **Analytics Dashboard:** Build Obsidian dashboard with Dataview queries showing agent performance metrics
 
 ## Documentation Updates
@@ -297,7 +310,8 @@ deno test --allow-all tests/setup_db_test.ts
 
 ## Breaking Changes
 
-**None.** The `agent_id` parameter is optional and defaults to NULL, maintaining backward compatibility with existing code.
+**None.** The `agent_id` parameter is optional and defaults to NULL, maintaining backward compatibility with existing
+code.
 
 ## Performance Impact
 
