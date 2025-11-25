@@ -133,7 +133,353 @@ interface IExoRuntime {
 
 ---
 
-## 5. Storage Architecture
+## 5. Human Action Tracker
+
+### 5.1. Purpose
+
+The `HumanActionTracker` service provides a safe, validated interface for human interactions with plans through CLI commands and Obsidian UI integration. It enforces proper validation, prevents file corruption, and ensures all actions are logged to the Activity Journal.
+
+### 5.2. User Interface Options
+
+**Option 1: CLI Commands (Primary)**
+
+```bash
+# Approve a plan
+exoctl plan approve implement-auth
+
+# Reject a plan with reason
+exoctl plan reject implement-auth --reason "Approach too risky"
+
+# Request revisions with comments
+exoctl plan revise implement-auth --comment "Add error handling" --comment "Include tests"
+
+# List pending plans
+exoctl plan list --status=review
+```
+
+**Option 2: Obsidian Command Palette Integration**
+
+- ExoFrame provides an Obsidian plugin that adds commands to the Command Palette
+- Commands appear when viewing plan files: "ExoFrame: Approve Plan", "ExoFrame: Reject Plan", etc.
+- Plugin communicates with daemon via Unix socket or HTTP API
+
+**Option 3: Plan File Action Buttons**
+
+- Plans include clickable dataview buttons in Obsidian
+- Buttons execute CLI commands via Obsidian's shell integration
+- Example: `[Approve](exoctl://plan/approve/implement-auth)` becomes clickable link
+
+### 5.3. Tracked Actions
+
+| Human Action        | CLI Command                               | Activity Log Entry                         |
+| :------------------ | :---------------------------------------- | :----------------------------------------- |
+| **Approve Plan**    | `exoctl plan approve <id>`                | `plan.approved` (actor: 'human')           |
+| **Reject Plan**     | `exoctl plan reject <id> --reason "..."`  | `plan.rejected` (actor: 'human')           |
+| **Request Changes** | `exoctl plan revise <id> --comment "..."` | `plan.revision_requested` (actor: 'human') |
+| **View Plan**       | `exoctl plan show <id>`                   | No log (read-only)                         |
+| **List Plans**      | `exoctl plan list`                        | No log (read-only)                         |
+
+### 5.4. Implementation Strategy
+
+**CLI Command Handler:**
+
+```typescript
+// src/cli/plan_commands.ts
+
+export class PlanCommands {
+  constructor(
+    private config: Config,
+    private db: DatabaseService,
+  ) {}
+
+  async approve(planId: string): Promise<void> {
+    // 1. Validate plan exists in /Inbox/Plans
+    const planPath = join(this.config.system.root, "Inbox", "Plans", `${planId}_plan.md`);
+    if (!await exists(planPath)) {
+      throw new Error(`Plan not found: ${planId}`);
+    }
+
+    // 2. Parse and validate frontmatter
+    const plan = await this.parsePlan(planPath);
+    if (plan.status !== "review") {
+      throw new Error(`Plan cannot be approved (status: ${plan.status})`);
+    }
+
+    // 3. Move to /System/Active (atomic operation)
+    const activePath = join(this.config.system.root, "System", "Active", `${planId}.md`);
+    await Deno.rename(planPath, activePath);
+
+    // 4. Log approval action
+    this.db.logActivity(
+      "human",
+      "plan.approved",
+      planId,
+      {
+        approved_by: await this.getUserIdentity(),
+        approved_at: new Date().toISOString(),
+      },
+      plan.trace_id,
+      null,
+    );
+
+    console.log(`✓ Plan '${planId}' approved and moved to /System/Active`);
+  }
+
+  async reject(planId: string, reason: string): Promise<void> {
+    // 1. Validate and parse plan
+    const planPath = join(this.config.system.root, "Inbox", "Plans", `${planId}_plan.md`);
+    const plan = await this.parsePlan(planPath);
+
+    // 2. Update frontmatter with rejection details
+    const updatedContent = await this.addRejectionMetadata(
+      await Deno.readTextFile(planPath),
+      reason,
+    );
+
+    // 3. Move to /Inbox/Rejected
+    const rejectedPath = join(this.config.system.root, "Inbox", "Rejected", `${planId}_rejected.md`);
+    await Deno.writeTextFile(rejectedPath, updatedContent);
+    await Deno.remove(planPath);
+
+    // 4. Log rejection
+    this.db.logActivity(
+      "human",
+      "plan.rejected",
+      planId,
+      {
+        rejected_by: await this.getUserIdentity(),
+        rejection_reason: reason,
+        rejected_at: new Date().toISOString(),
+      },
+      plan.trace_id,
+      null,
+    );
+
+    console.log(`✗ Plan '${planId}' rejected: ${reason}`);
+  }
+
+  async revise(planId: string, comments: string[]): Promise<void> {
+    // 1. Validate and parse plan
+    const planPath = join(this.config.system.root, "Inbox", "Plans", `${planId}_plan.md`);
+    const plan = await this.parsePlan(planPath);
+
+    // 2. Append review comments section
+    const updatedContent = await this.addReviewComments(
+      await Deno.readTextFile(planPath),
+      comments,
+    );
+
+    // 3. Update frontmatter status
+    const finalContent = updatedContent.replace(
+      /status: "review"/,
+      'status: "needs_revision"',
+    );
+
+    await Deno.writeTextFile(planPath, finalContent);
+
+    // 4. Log revision request
+    this.db.logActivity(
+      "human",
+      "plan.revision_requested",
+      planId,
+      {
+        reviewed_by: await this.getUserIdentity(),
+        comment_count: comments.length,
+        reviewed_at: new Date().toISOString(),
+      },
+      plan.trace_id,
+      null,
+    );
+
+    console.log(`⚠ Revision requested for '${planId}' (${comments.length} comments)`);
+  }
+}
+```
+
+**CLI Interface:**
+
+```typescript
+// src/cli/exoctl.ts
+
+import { Command } from "@cliffy/command";
+
+const planCommand = new Command()
+  .name("plan")
+  .description("Manage agent plans")
+  .command(
+    "approve <plan-id>",
+    "Approve a plan and move it to /System/Active for execution",
+  )
+  .action(async (options, planId: string) => {
+    const commands = new PlanCommands(config, db);
+    await commands.approve(planId);
+  })
+  .command(
+    "reject <plan-id>",
+    "Reject a plan and move it to /Inbox/Rejected",
+  )
+  .option("-r, --reason <reason:string>", "Rejection reason (required)", { required: true })
+  .action(async ({ reason }, planId: string) => {
+    const commands = new PlanCommands(config, db);
+    await commands.reject(planId, reason);
+  })
+  .command(
+    "revise <plan-id>",
+    "Request revisions to a plan",
+  )
+  .option("-c, --comment <comment:string>", "Add review comment (can be used multiple times)", {
+    collect: true,
+    required: true,
+  })
+  .action(async ({ comment }, planId: string) => {
+    const commands = new PlanCommands(config, db);
+    await commands.revise(planId, comment);
+  })
+  .command(
+    "list",
+    "List all plans",
+  )
+  .option("-s, --status <status:string>", "Filter by status (review, needs_revision, active)")
+  .action(async ({ status }) => {
+    const commands = new PlanCommands(config, db);
+    await commands.list(status);
+  })
+  .command(
+    "show <plan-id>",
+    "Display plan details",
+  )
+  .action(async (options, planId: string) => {
+    const commands = new PlanCommands(config, db);
+    await commands.show(planId);
+  });
+```
+
+**Action Validation:**
+
+1. **Plan Approval:**
+   - ✓ Plan file exists in `/Inbox/Plans`
+   - ✓ Frontmatter has `status: "review"`
+   - ✓ Required fields present (trace_id, request_id)
+   - ✓ Target path in `/System/Active` is available
+   - ✓ Atomic file operation (rename)
+
+2. **Plan Rejection:**
+   - ✓ Reason is required and non-empty
+   - ✓ Frontmatter updated with rejection metadata
+   - ✓ File moved to `/Inbox/Rejected` with `_rejected.md` suffix
+
+3. **Revision Request:**
+   - ✓ At least one comment required
+   - ✓ Comments formatted properly in markdown
+   - ✓ Frontmatter status updated to `needs_revision`
+   - ✓ Original file preserved (edit in place)
+
+### 5.5. Activity Journal Schema
+
+```sql
+-- Human action log example
+INSERT INTO activity (
+  id, trace_id, actor, agent_id, action_type, target, payload, timestamp
+) VALUES (
+  'uuid-generated',
+  '550e8400-e29b-41d4-a716-446655440000',
+  'human',
+  NULL,  -- agent_id is NULL for human actions
+  'plan.approved',
+  'implement-auth',
+  '{"approved_by": "user@example.com", "approved_at": "2024-11-25T15:30:00Z", "via": "cli"}',
+  '2024-11-25T15:30:00Z'
+);
+```
+
+### 5.6. User Identification
+
+CLI commands automatically capture user identity:
+
+- Primary: Read git config (`git config user.email`)
+- Fallback: OS username (`Deno.env.get("USER")`)
+- Stored in `payload.approved_by`, `payload.rejected_by`, or `payload.reviewed_by`
+- Multi-user support built-in (each user's actions tagged with their identity)
+
+### 5.7. Obsidian Plugin Integration
+
+**Plugin Architecture:**
+
+```typescript
+// obsidian-plugin/main.ts (separate repo)
+
+import { Notice, Plugin } from "obsidian";
+
+export default class ExoFramePlugin extends Plugin {
+  async onload() {
+    // Add command: Approve Plan
+    this.addCommand({
+      id: "approve-plan",
+      name: "Approve Plan",
+      checkCallback: (checking: boolean) => {
+        const file = this.app.workspace.getActiveFile();
+        if (file?.path.includes("/Inbox/Plans/")) {
+          if (!checking) {
+            this.approvePlan(file.basename);
+          }
+          return true;
+        }
+        return false;
+      },
+    });
+
+    // Add command: Reject Plan
+    this.addCommand({
+      id: "reject-plan",
+      name: "Reject Plan",
+      checkCallback: (checking: boolean) => {
+        const file = this.app.workspace.getActiveFile();
+        if (file?.path.includes("/Inbox/Plans/")) {
+          if (!checking) {
+            this.rejectPlan(file.basename);
+          }
+          return true;
+        }
+        return false;
+      },
+    });
+  }
+
+  async approvePlan(planId: string) {
+    const result = await this.executeCommand(`exoctl plan approve ${planId}`);
+    new Notice(result.success ? "✓ Plan approved" : `✗ Error: ${result.error}`);
+  }
+
+  async rejectPlan(planId: string) {
+    const reason = await this.promptForReason();
+    if (!reason) return;
+
+    const result = await this.executeCommand(`exoctl plan reject ${planId} --reason "${reason}"`);
+    new Notice(result.success ? "✗ Plan rejected" : `✗ Error: ${result.error}`);
+  }
+
+  private async executeCommand(cmd: string): Promise<{ success: boolean; error?: string }> {
+    // Option 1: Execute CLI via child process (requires Obsidian permissions)
+    // Option 2: Call daemon HTTP API directly
+    // Option 3: Write to Unix socket
+  }
+}
+```
+
+**Benefits of CLI/UI Approach:**
+
+- ✓ **Validation:** CLI checks plan status, file existence, required fields
+- ✓ **Atomic Operations:** File moves are transactional (no partial states)
+- ✓ **Error Handling:** Clear error messages guide users
+- ✓ **User Identity:** Automatic capture of who performed action
+- ✓ **Activity Logging:** Guaranteed log entry (no detection heuristics)
+- ✓ **Type Safety:** CLI validates arguments before execution
+- ✓ **Auditability:** All actions go through single code path
+- ✓ **Obsidian Integration:** Plugin provides GUI for common actions
+
+---
+
+## 6. Storage Architecture
 
 ### Tier 1: The Activity Journal (SQLite)
 

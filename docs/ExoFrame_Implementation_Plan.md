@@ -1117,7 +1117,7 @@ Created login handler, JWT tokens, and user session management.
 - Commit message includes trace_id footer for audit
 - All git operations logged to Activity Journal
 
-### Step 4.3: The Execution Loop (Resilient)
+### Step 4.3: The Execution Loop (Resilient) ✅
 
 - **Dependencies:** Steps 4.1–4.2 (Tool Registry, Git Integration) — **Rollback:** pause queue processing through config
   and replay from last clean snapshot.
@@ -1298,16 +1298,965 @@ PermissionDenied: write access to /etc/passwd is not allowed at PathResolver.val
 3. System will retry execution
 ```
 
+---
+
+### Step 4.4: Plan Review CLI Commands
+
+- **Dependencies:** Steps 2.1 (Database Service), 4.3 (Execution Loop) — **Rollback:** users manually move files (error-prone)
+- **Action:** Implement CLI commands (`exoctl plan approve/reject/revise`) that provide validated, logged interface for human plan reviews.
+- **Requirement:** All human review actions must be validated, atomic, and logged to Activity Journal for complete audit trail.
+- **Justification:** Manual file operations are error-prone (wrong directories, malformed frontmatter, incomplete moves). CLI commands enforce validation, provide clear feedback, and guarantee activity logging.
+
+**The Problem:** The Execution Loop (Step 4.3) expects plans in `/System/Active`, but relying on users to manually move files is problematic:
+
+- ❌ Users might move files to wrong directory
+- ❌ Frontmatter status not updated correctly
+- ❌ No validation of plan state before approval
+- ❌ Actions not logged (breaks audit trail)
+- ❌ File moves might fail partially (non-atomic)
+- ❌ No user identification captured
+
+**The Solution:** Provide CLI commands that handle plan reviews properly:
+
+**The Solution:** Implement CLI commands in `exoctl` that:
+
+1. **Validate** plan state before executing action:
+   - Plan exists in expected location
+   - Frontmatter has correct status
+   - Required fields (trace_id, request_id) present
+   - Target location is available
+
+2. **Execute** file operations atomically:
+   - `exoctl plan approve <id>` - Move to `/System/Active`, update frontmatter
+   - `exoctl plan reject <id> --reason "..."` - Move to `/Inbox/Rejected`, add rejection metadata
+   - `exoctl plan revise <id> --comment "..."` - Add review comments, set status to `needs_revision`
+
+3. **Log** actions to Activity Journal with:
+   - `actor: 'human'` (distinguishes from agent/system actions)
+   - `agent_id: NULL` (not performed by any agent)
+   - `trace_id` from plan frontmatter
+   - User identity (from git config or OS username)
+   - Action-specific metadata (reason, comment count, etc.)
+
+4. **Provide feedback** to user:
+   - Success messages with next steps
+   - Clear error messages with resolution hints
+   - List pending plans awaiting review
+
+**Implementation:**
+
+```typescript
+// src/cli/plan_commands.ts
+
+import { join } from "@std/path";
+import { parse as parseYaml } from "@std/yaml";
+import type { Config } from "../config/schema.ts";
+import type { DatabaseService } from "../services/db.ts";
+
+export interface PlanCommandsConfig {
+  config: Config;
+  db: DatabaseService;
+}
+
+interface PlanFrontmatter {
+  trace_id: string;
+  request_id: string;
+  status: string;
+  [key: string]: unknown;
+}
+
+export class PlanCommands {
+  private config: Config;
+  private db: DatabaseService;
+
+  constructor(options: PlanCommandsConfig) {
+    this.config = options.config;
+    this.db = options.db;
+  }
+
+  /**
+   * Approve a plan - move to /System/Active for execution
+   */
+  async approve(planId: string): Promise<void> {
+    // 1. Validate plan exists
+    const planPath = join(
+      this.config.system.root,
+      "Inbox",
+      "Plans",
+      `${planId}_plan.md`,
+    );
+
+    let planStat;
+    try {
+      planStat = await Deno.stat(planPath);
+    } catch {
+      throw new Error(
+        `Plan '${planId}' not found in /Inbox/Plans\nRun 'exoctl plan list' to see available plans`,
+      );
+    }
+
+    if (!planStat.isFile) {
+      throw new Error(`${planPath} is not a file`);
+    }
+
+    // 2. Parse and validate frontmatter
+    const content = await Deno.readTextFile(planPath);
+    const plan = this.parsePlanFrontmatter(content, planPath);
+
+    if (plan.status !== "review") {
+      throw new Error(
+        `Plan cannot be approved (current status: ${plan.status})\nOnly plans with status='review' can be approved`,
+      );
+    }
+
+    // 3. Check target path is available
+    const activePath = join(
+      this.config.system.root,
+      "System",
+      "Active",
+      `${planId}.md`,
+    );
+
+    try {
+      await Deno.stat(activePath);
+      throw new Error(
+        `Target path already exists: ${activePath}\nAnother plan may be executing with this ID`,
+      );
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) {
+        throw error;
+      }
+    }
+
+    // 4. Ensure Active directory exists
+    await Deno.mkdir(join(this.config.system.root, "System", "Active"), {
+      recursive: true,
+    });
+
+    // 5. Atomic move operation
+    await Deno.rename(planPath, activePath);
+
+    // 6. Log approval action
+    const userIdentity = await this.getUserIdentity();
+    this.db.logActivity(
+      "human",
+      "plan.approved",
+      planId,
+      {
+        approved_by: userIdentity,
+        approved_at: new Date().toISOString(),
+        via: "cli",
+      },
+      plan.trace_id,
+      null, // agent_id is null for human actions
+    );
+
+    console.log(`✓ Plan '${planId}' approved by ${userIdentity}`);
+    console.log(`  Moved to: /System/Active/${planId}.md`);
+    console.log(`  Trace ID: ${plan.trace_id}`);
+    console.log(`\nNext: ExecutionLoop will process this plan automatically`);
+  }
+
+  /**
+   * Reject a plan - move to /Inbox/Rejected with reason
+   */
+  async reject(planId: string, reason: string): Promise<void> {
+    if (!reason || reason.trim().length === 0) {
+      throw new Error('Rejection reason is required\nUse: exoctl plan reject <id> --reason "your reason"');
+    }
+
+    // 1. Validate and parse plan
+    const planPath = join(
+      this.config.system.root,
+      "Inbox",
+      "Plans",
+      `${planId}_plan.md`,
+    );
+
+    try {
+      await Deno.stat(planPath);
+    } catch {
+      throw new Error(`Plan '${planId}' not found in /Inbox/Plans`);
+    }
+
+    const content = await Deno.readTextFile(planPath);
+    const plan = this.parsePlanFrontmatter(content, planPath);
+
+    // 2. Update frontmatter with rejection metadata
+    const userIdentity = await this.getUserIdentity();
+    const updatedContent = this.addRejectionMetadata(content, reason, userIdentity);
+
+    // 3. Ensure Rejected directory exists
+    const rejectedDir = join(this.config.system.root, "Inbox", "Rejected");
+    await Deno.mkdir(rejectedDir, { recursive: true });
+
+    // 4. Write updated content to Rejected directory
+    const rejectedPath = join(rejectedDir, `${planId}_rejected.md`);
+    await Deno.writeTextFile(rejectedPath, updatedContent);
+
+    // 5. Remove original plan
+    await Deno.remove(planPath);
+
+    // 6. Log rejection
+    this.db.logActivity(
+      "human",
+      "plan.rejected",
+      planId,
+      {
+        rejected_by: userIdentity,
+        rejection_reason: reason,
+        rejected_at: new Date().toISOString(),
+        via: "cli",
+      },
+      plan.trace_id,
+      null,
+    );
+
+    console.log(`✗ Plan '${planId}' rejected by ${userIdentity}`);
+    console.log(`  Reason: ${reason}`);
+    console.log(`  Moved to: /Inbox/Rejected/${planId}_rejected.md`);
+    console.log(`  Trace ID: ${plan.trace_id}`);
+  }
+
+  /**
+   * Request revisions - add review comments to plan
+   */
+  async revise(planId: string, comments: string[]): Promise<void> {
+    if (!comments || comments.length === 0) {
+      throw new Error(
+        'At least one comment is required\nUse: exoctl plan revise <id> --comment "your comment"',
+      );
+    }
+
+    // 1. Validate and parse plan
+    const planPath = join(
+      this.config.system.root,
+      "Inbox",
+      "Plans",
+      `${planId}_plan.md`,
+    );
+
+    try {
+      await Deno.stat(planPath);
+    } catch {
+      throw new Error(`Plan '${planId}' not found in /Inbox/Plans`);
+    }
+
+    const content = await Deno.readTextFile(planPath);
+    const plan = this.parsePlanFrontmatter(content, planPath);
+
+    // 2. Add review comments section
+    const userIdentity = await this.getUserIdentity();
+    const updatedContent = this.addReviewComments(content, comments, userIdentity);
+
+    // 3. Update frontmatter status to needs_revision
+    const finalContent = this.updateFrontmatterStatus(
+      updatedContent,
+      "needs_revision",
+      userIdentity,
+    );
+
+    // 4. Write updated plan
+    await Deno.writeTextFile(planPath, finalContent);
+
+    // 5. Log revision request
+    this.db.logActivity(
+      "human",
+      "plan.revision_requested",
+      planId,
+      {
+        reviewed_by: userIdentity,
+        comment_count: comments.length,
+        reviewed_at: new Date().toISOString(),
+        via: "cli",
+      },
+      plan.trace_id,
+      null,
+    );
+
+    console.log(`⚠ Revision requested for '${planId}' by ${userIdentity}`);
+    console.log(`  Comments added: ${comments.length}`);
+    comments.forEach((c, i) => console.log(`    ${i + 1}. ${c}`));
+    console.log(`  Trace ID: ${plan.trace_id}`);
+    console.log(`\nNext: Agent will review comments and update the plan`);
+  }
+
+  /**
+   * List plans with optional status filter
+   */
+  async list(statusFilter?: string): Promise<void> {
+    const plansDir = join(this.config.system.root, "Inbox", "Plans");
+
+    try {
+      await Deno.stat(plansDir);
+    } catch {
+      console.log("No plans directory found");
+      return;
+    }
+
+    const plans: Array<{ id: string; status: string; trace_id: string }> = [];
+
+    for await (const entry of Deno.readDir(plansDir)) {
+      if (!entry.isFile || !entry.name.endsWith("_plan.md")) continue;
+
+      const planPath = join(plansDir, entry.name);
+      const content = await Deno.readTextFile(planPath);
+
+      try {
+        const frontmatter = this.parsePlanFrontmatter(content, planPath);
+        const planId = entry.name.replace("_plan.md", "");
+
+        if (!statusFilter || frontmatter.status === statusFilter) {
+          plans.push({
+            id: planId,
+            status: frontmatter.status,
+            trace_id: frontmatter.trace_id,
+          });
+        }
+      } catch {
+        // Skip invalid plans
+        continue;
+      }
+    }
+
+    if (plans.length === 0) {
+      console.log(statusFilter ? `No plans found with status: ${statusFilter}` : "No plans found in /Inbox/Plans");
+      return;
+    }
+
+    console.log(`\nFound ${plans.length} plan(s):\n`);
+    plans.forEach((p) => {
+      const statusIcon = p.status === "review" ? "📋" : p.status === "needs_revision" ? "⚠️" : "📄";
+      console.log(`${statusIcon} ${p.id}`);
+      console.log(`   Status: ${p.status}`);
+      console.log(`   Trace: ${p.trace_id.substring(0, 8)}...`);
+      console.log();
+    });
+  }
+
+  /**
+   * Show plan details
+   */
+  async show(planId: string): Promise<void> {
+    const planPath = join(
+      this.config.system.root,
+      "Inbox",
+      "Plans",
+      `${planId}_plan.md`,
+    );
+
+    try {
+      await Deno.stat(planPath);
+    } catch {
+      throw new Error(`Plan '${planId}' not found in /Inbox/Plans`);
+    }
+
+    const content = await Deno.readTextFile(planPath);
+    const plan = this.parsePlanFrontmatter(content, planPath);
+
+    console.log(`\nPlan: ${planId}`);
+    console.log(`Status: ${plan.status}`);
+    console.log(`Trace ID: ${plan.trace_id}`);
+    console.log(`Request ID: ${plan.request_id}`);
+    console.log(`\n--- Plan Content ---\n`);
+    console.log(content);
+  }
+
+  /**
+   * Parse plan frontmatter and validate required fields
+   */
+  private parsePlanFrontmatter(content: string, filePath: string): PlanFrontmatter {
+    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!match) {
+      throw new Error(`Invalid plan format: missing frontmatter in ${filePath}`);
+    }
+
+    const frontmatter = parseYaml(match[1]) as PlanFrontmatter;
+
+    if (!frontmatter.trace_id) {
+      throw new Error(`Invalid plan: missing trace_id in ${filePath}`);
+    }
+    if (!frontmatter.request_id) {
+      throw new Error(`Invalid plan: missing request_id in ${filePath}`);
+    }
+    if (!frontmatter.status) {
+      throw new Error(`Invalid plan: missing status in ${filePath}`);
+    }
+
+    return frontmatter;
+  }
+
+  /**
+   * Get user identity from git config or OS username
+   */
+  private async getUserIdentity(): Promise<string> {
+    // Try git config first
+    try {
+      const gitCmd = new Deno.Command("git", {
+        args: ["config", "user.email"],
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const { stdout, success } = await gitCmd.output();
+
+      if (success) {
+        const email = new TextDecoder().decode(stdout).trim();
+        if (email) return email;
+      }
+    } catch {
+      // Git not available or no email configured
+    }
+
+    // Fallback to OS username
+    return Deno.env.get("USER") || Deno.env.get("USERNAME") || "unknown";
+  }
+
+  /**
+   * Add rejection metadata to plan frontmatter
+   */
+  private addRejectionMetadata(
+    content: string,
+    reason: string,
+    rejectedBy: string,
+  ): string {
+    const frontmatterEnd = content.indexOf("---", 3) + 3;
+    const frontmatter = content.substring(0, frontmatterEnd);
+    const body = content.substring(frontmatterEnd);
+
+    const updatedFrontmatter = frontmatter.replace(
+      /status: ".*?"/,
+      'status: "rejected"',
+    );
+
+    const rejectionMetadata = `rejected_by: "${rejectedBy}"\nrejected_at: "${
+      new Date().toISOString()
+    }"\nrejection_reason: "${reason}"\n`;
+
+    return updatedFrontmatter.replace(
+      /---$/,
+      `${rejectionMetadata}---`,
+    ) + body;
+  }
+
+  /**
+   * Add review comments section to plan
+   */
+  private addReviewComments(
+    content: string,
+    comments: string[],
+    reviewedBy: string,
+  ): string {
+    const reviewSection = [
+      "\n\n## Review Comments\n",
+      `**Reviewed by:** ${reviewedBy}  `,
+      `**Reviewed at:** ${new Date().toISOString()}\n`,
+      ...comments.map((c) => `- ⚠️ ${c}`),
+      "",
+    ].join("\n");
+
+    // Check if review section already exists
+    if (content.includes("## Review Comments")) {
+      // Append to existing section
+      return content.replace(
+        /## Review Comments\n/,
+        `## Review Comments\n\n### Previous Reviews\n(See above)\n\n### Latest Review (${new Date().toISOString()})\n`,
+      ) + reviewSection;
+    }
+
+    return content + reviewSection;
+  }
+
+  /**
+   * Update plan frontmatter status
+   */
+  private updateFrontmatterStatus(
+    content: string,
+    newStatus: string,
+    reviewedBy: string,
+  ): string {
+    let updated = content.replace(/status: ".*?"/, `status: "${newStatus}"`);
+
+    // Add reviewed_by and reviewed_at if not present
+    const frontmatterMatch = updated.match(/^---\n([\s\S]*?)\n---/);
+    if (frontmatterMatch) {
+      const fm = frontmatterMatch[1];
+      if (!fm.includes("reviewed_by:")) {
+        updated = updated.replace(
+          /---$/m,
+          `reviewed_by: "${reviewedBy}"\nreviewed_at: "${new Date().toISOString()}"\n---`,
+        );
+      }
+    }
+
+    return updated;
+  }
+}
+```
+
+**CLI Interface (exoctl):**
+
+```typescript
+// src/cli/exoctl.ts
+
+import { Command } from "@cliffy/command";
+import { PlanCommands } from "./plan_commands.ts";
+import { loadConfig } from "../config/service.ts";
+import { DatabaseService } from "../services/db.ts";
+
+const config = await loadConfig();
+const db = DatabaseService.getInstance();
+
+const planCommand = new Command()
+  .name("plan")
+  .description("Manage agent plans - approve, reject, or request revisions")
+  .command(
+    "approve <plan-id:string>",
+    "Approve a plan and move it to /System/Active for execution",
+  )
+  .action(async (_options, planId: string) => {
+    const commands = new PlanCommands({ config, db });
+    try {
+      await commands.approve(planId);
+    } catch (error) {
+      console.error(`Error: ${error.message}`);
+      Deno.exit(1);
+    }
+  })
+  .command(
+    "reject <plan-id:string>",
+    "Reject a plan and move it to /Inbox/Rejected",
+  )
+  .option("-r, --reason <reason:string>", "Rejection reason (required)", {
+    required: true,
+  })
+  .action(async ({ reason }, planId: string) => {
+    const commands = new PlanCommands({ config, db });
+    try {
+      await commands.reject(planId, reason);
+    } catch (error) {
+      console.error(`Error: ${error.message}`);
+      Deno.exit(1);
+    }
+  })
+  .command(
+    "revise <plan-id:string>",
+    "Request revisions to a plan by adding review comments",
+  )
+  .option(
+    "-c, --comment <comment:string>",
+    "Add review comment (can be used multiple times)",
+    {
+      collect: true,
+      required: true,
+    },
+  )
+  .action(async ({ comment }, planId: string) => {
+    const commands = new PlanCommands({ config, db });
+    try {
+      await commands.revise(planId, comment);
+    } catch (error) {
+      console.error(`Error: ${error.message}`);
+      Deno.exit(1);
+    }
+  })
+  .command("list", "List all plans in /Inbox/Plans")
+  .option(
+    "-s, --status <status:string>",
+    "Filter by status (review, needs_revision)",
+  )
+  .action(async ({ status }) => {
+    const commands = new PlanCommands({ config, db });
+    try {
+      await commands.list(status);
+    } catch (error) {
+      console.error(`Error: ${error.message}`);
+      Deno.exit(1);
+    }
+  })
+  .command("show <plan-id:string>", "Display plan details and content")
+  .action(async (_options, planId: string) => {
+    const commands = new PlanCommands({ config, db });
+    try {
+      await commands.show(planId);
+    } catch (error) {
+      console.error(`Error: ${error.message}`);
+      Deno.exit(1);
+    }
+  });
+
+await new Command()
+  .name("exoctl")
+  .version("1.0.0")
+  .description("ExoFrame CLI - Control your agent swarm")
+  .command("plan", planCommand)
+  .parse(Deno.args);
+```
+
+}
+
+/**
+
+- Handle file creation (potential approval/rejection)
+  */
+  private async handleFileCreation(path: string): Promise<void> {
+  if (path.includes("/System/Active/")) {
+  await this.detectPlanApproval(path);
+  } else if (path.includes("/Inbox/Rejected/")) {
+  await this.detectPlanRejection(path);
+  }
+
+  this.fileStates.set(path, {
+  path,
+  lastEvent: "create",
+  timestamp: Date.now(),
+  });
+
+}
+
+/**
+
+- Handle file modification (potential revision request)
+  */
+  private async handleFileModification(path: string): Promise<void> {
+  if (path.includes("/Inbox/Plans/") && path.endsWith(".md")) {
+  await this.detectRevisionRequest(path);
+  }
+
+  this.fileStates.set(path, {
+  path,
+  lastEvent: "modify",
+  timestamp: Date.now(),
+  });
+
+}
+
+/**
+
+- Handle file removal (track for approval/rejection detection)
+  */
+  private async handleFileRemoval(path: string): Promise<void> {
+  this.fileStates.set(path, {
+  path,
+  lastEvent: "remove",
+  timestamp: Date.now(),
+  });
+  }
+
+/**
+
+- Detect plan approval (file moved to /System/Active)
+  */
+  private async detectPlanApproval(activePath: string): Promise<void> {
+  try {
+  const content = await Deno.readTextFile(activePath);
+  const traceId = this.extractTraceId(content);
+
+  if (!traceId) return;
+
+  const filename = activePath.split("/").pop()!;
+  const plansPath = join(
+  this.config.system.root,
+  "Inbox",
+  "Plans",
+  filename.replace(".md", "_plan.md"),
+  );
+
+  // Check if this file was recently removed from Plans directory
+  const planState = this.fileStates.get(plansPath);
+  const timeSinceRemoval = planState ? Date.now() - planState.timestamp : Infinity;
+
+  // If file was removed from Plans within last 2 seconds, it's an approval
+  if (planState?.lastEvent === "remove" && timeSinceRemoval < 2000) {
+  this.db.logActivity(
+  "human",
+  "plan.approved",
+  filename.replace(".md", ""),
+  {
+  moved_from: plansPath,
+  moved_to: activePath,
+  approved_at: new Date().toISOString(),
+  },
+  traceId,
+  null, // agent_id is null for human actions
+  );
+
+  console.log(`[HumanActionTracker] Logged plan.approved for ${filename}`);
+  }
+  } catch (error) {
+  console.error("[HumanActionTracker] Failed to detect approval:", error);
+  }
+  }
+
+/**
+
+- Detect plan rejection (file moved to /Inbox/Rejected)
+  */
+  private async detectPlanRejection(rejectedPath: string): Promise<void> {
+  try {
+  const content = await Deno.readTextFile(rejectedPath);
+  const traceId = this.extractTraceId(content);
+  const reason = this.extractRejectionReason(content);
+
+  if (!traceId) return;
+
+  const filename = rejectedPath.split("/").pop()!;
+
+  this.db.logActivity(
+  "human",
+  "plan.rejected",
+  filename.replace("_rejected.md", "").replace(".md", ""),
+  {
+  moved_to: rejectedPath,
+  rejection_reason: reason || "No reason provided",
+  rejected_at: new Date().toISOString(),
+  },
+  traceId,
+  null,
+  );
+
+  console.log(`[HumanActionTracker] Logged plan.rejected for ${filename}`);
+  } catch (error) {
+  console.error("[HumanActionTracker] Failed to detect rejection:", error);
+  }
+  }
+
+/**
+
+- Detect revision request (plan modified with review comments)
+  */
+  private async detectRevisionRequest(planPath: string): Promise<void> {
+  try {
+  const content = await Deno.readTextFile(planPath);
+
+  // Check if file contains review comments section
+  if (!content.includes("## Review Comments")) return;
+
+  const traceId = this.extractTraceId(content);
+  if (!traceId) return;
+
+  const filename = planPath.split("/").pop()!;
+  const commentCount = this.countReviewComments(content);
+
+  this.db.logActivity(
+  "human",
+  "plan.revision_requested",
+  filename.replace("_plan.md", "").replace(".md", ""),
+  {
+  plan_path: planPath,
+  comment_count: commentCount,
+  reviewed_at: new Date().toISOString(),
+  },
+  traceId,
+  null,
+  );
+
+  console.log(
+  `[HumanActionTracker] Logged plan.revision_requested for ${filename}`,
+  );
+  } catch (error) {
+  console.error("[HumanActionTracker] Failed to detect revision request:", error);
+  }
+  }
+
+/**
+
+- Extract trace_id from plan frontmatter
+  _/
+  private extractTraceId(content: string): string | null {
+  const match = content.match(/^---\n([\s\S]_?)\n---/);
+  if (!match) return null;
+
+  try {
+  const frontmatter = parseYaml(match[1]) as any;
+  return frontmatter.trace_id || null;
+  } catch {
+  return null;
+  }
+
+}
+
+/**
+
+- Extract rejection reason from frontmatter
+  _/
+  private extractRejectionReason(content: string): string | null {
+  const match = content.match(/^---\n([\s\S]_?)\n---/);
+  if (!match) return null;
+
+  try {
+  const frontmatter = parseYaml(match[1]) as any;
+  return frontmatter.rejection_reason || null;
+  } catch {
+  return null;
+  }
+
+}
+
+/**
+
+- Count review comment items in content
+  */
+  private countReviewComments(content: string): number {
+  const commentsSection = content.split("## Review Comments")[1];
+  if (!commentsSection) return 0;
+
+  // Count lines starting with - ❌, - ⚠️, - ✅, - 💡
+
+**Usage Examples:**
+
+```bash
+# List all pending plans
+$ exoctl plan list
+Found 2 plan(s):
+
+📋 implement-auth
+   Status: review
+   Trace: 550e8400...
+
+⚠️ add-logging
+   Status: needs_revision
+   Trace: 770e8400...
+
+# Approve a plan
+$ exoctl plan approve implement-auth
+✓ Plan 'implement-auth' approved by user@example.com
+  Moved to: /System/Active/implement-auth.md
+  Trace ID: 550e8400-e29b-41d4-a716-446655440000
+
+Next: ExecutionLoop will process this plan automatically
+
+# Reject a plan with reason
+$ exoctl plan reject risky-feature --reason "Approach too risky, use incremental rollout"
+✗ Plan 'risky-feature' rejected by user@example.com
+  Reason: Approach too risky, use incremental rollout
+  Moved to: /Inbox/Rejected/risky-feature_rejected.md
+  Trace ID: 660e8400-e29b-41d4-a716-446655440001
+
+# Request revisions with multiple comments
+$ exoctl plan revise add-tests \
+    --comment "Need integration tests, not just unit tests" \
+    --comment "Add error handling for edge cases" \
+    --comment "Include performance benchmarks"
+⚠ Revision requested for 'add-tests' by user@example.com
+  Comments added: 3
+    1. Need integration tests, not just unit tests
+    2. Add error handling for edge cases
+    3. Include performance benchmarks
+  Trace ID: 880e8400-e29b-41d4-a716-446655440003
+
+Next: Agent will review comments and update the plan
+
+# Show plan details
+$ exoctl plan show implement-auth
+
+Plan: implement-auth
+Status: review
+Trace ID: 550e8400-e29b-41d4-a716-446655440000
+Request ID: implement-auth
+
+--- Plan Content ---
+...
+```
+
+**Activity Logging Examples:**
+
+```typescript
+// Plan Approved (via CLI)
+db.logActivity(
+  "human",
+  "plan.approved",
+  "implement-auth",
+  {
+    approved_by: "user@example.com",
+    approved_at: "2024-11-25T15:30:00Z",
+    via: "cli",
+  },
+  "550e8400-e29b-41d4-a716-446655440000",
+  null,
+);
+
+// Plan Rejected (via CLI)
+db.logActivity(
+  "human",
+  "plan.rejected",
+  "risky-change",
+  {
+    rejected_by: "user@example.com",
+    rejection_reason: "Approach is too risky, use incremental strategy instead",
+    rejected_at: "2024-11-25T15:35:00Z",
+    via: "cli",
+  },
+  "660e8400-e29b-41d4-a716-446655440001",
+  null,
+);
+
+// Revision Requested (via CLI)
+db.logActivity(
+  "human",
+  "plan.revision_requested",
+  "add-logging",
+  {
+    reviewed_by: "user@example.com",
+    comment_count: 3,
+    reviewed_at: "2024-11-25T16:00:00Z",
+    via: "cli",
+  },
+  "770e8400-e29b-41d4-a716-446655440002",
+  null,
+);
+```
+
+**Query Examples:**
+
+```sql
+-- Get all human actions for a trace
+SELECT action_type, payload, timestamp
+FROM activity
+WHERE trace_id = '550e8400-e29b-41d4-a716-446655440000'
+  AND actor = 'human'
+ORDER BY timestamp;
+
+-- Find plans awaiting human review (no approval/rejection logged)
+SELECT 
+  a1.target as plan_id,
+  a1.timestamp as created_at
+FROM activity a1
+WHERE a1.action_type = 'plan.created'
+  AND NOT EXISTS (
+    SELECT 1 FROM activity a2
+    WHERE a2.trace_id = a1.trace_id
+      AND a2.action_type IN ('plan.approved', 'plan.rejected')
+  )
+ORDER BY a1.timestamp DESC;
+
+-- Calculate approval/rejection rate by user
+SELECT 
+  payload->>'approved_by' as user,
+  COUNT(*) FILTER (WHERE action_type = 'plan.approved') as approved,
+  COUNT(*) FILTER (WHERE action_type = 'plan.rejected') as rejected,
+  COUNT(*) FILTER (WHERE action_type = 'plan.revision_requested') as revisions
+FROM activity
+WHERE actor = 'human'
+GROUP BY payload->>'approved_by';
+```
+
 **Success Criteria:**
 
-- Force tool failure (path traversal) → Failure Report created in /Knowledge/Reports
-- Failure Report includes full error trace and context
-- Original plan moved back to /Inbox/Requests with status: error
-- Git branch cleaned up (changes not committed)
-- All operations logged to Activity Journal
-- Lease released even if execution fails
+1. ✅ CLI validates plan exists before approving/rejecting/revising
+2. ✅ CLI checks plan status (only 'review' plans can be approved)
+3. ✅ Atomic file operations prevent partial state
+4. ✅ Clear error messages with resolution hints
+5. ✅ User identity captured automatically (git config or OS username)
+6. ✅ All actions logged with `actor: 'human'`, `agent_id: NULL`, `via: 'cli'`
+7. ✅ Frontmatter updated correctly (status, rejection_reason, reviewed_by, etc.)
+8. ✅ Review comments properly formatted in markdown
+9. ✅ Success messages include next steps
+10. ✅ `exoctl plan list` shows pending plans with status
+11. ✅ Activity queries can track approval/rejection rates by user
 
-### Step 4.4: The Mission Reporter (Episodic Memory)
+---
+
+### Step 4.5: The Mission Reporter (Episodic Memory)
 
 - **Dependencies:** Step 4.3 (Execution Loop) — **Rollback:** rerun reporter for trace or regenerate from Activity
   Journal.
