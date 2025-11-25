@@ -567,18 +567,18 @@ export interface IModelProvider {
 - **Action:** Implement `AgentRunner` service.
 - **Justification:** Core logic combining "Who I am" (Blueprint) with "What I need to do" (Request).
 
-**The Problem:**
-We have a request (User intent) and a Blueprint (Agent persona), but nothing to combine them and execute the prompt against the LLM.
+**The Problem:** We have a request (User intent) and a Blueprint (Agent persona), but nothing to combine them and
+execute the prompt against the LLM.
 
-**The Solution:**
-Create an `AgentRunner` class that:
-1.  Takes a `Blueprint` (System Prompt) and `ParsedRequest` (User Prompt).
-2.  Constructs the final prompt.
-3.  Delegates execution to the injected `IModelProvider`.
-4.  **Parses the response** to extract reasoning and content.
+**The Solution:** Create an `AgentRunner` class that:
 
-**Response Specification:**
-Agents must be instructed (via System Prompt) to structure their response as follows:
+1. Takes a `Blueprint` (System Prompt) and `ParsedRequest` (User Prompt).
+2. Constructs the final prompt.
+3. Delegates execution to the injected `IModelProvider`.
+4. **Parses the response** to extract reasoning and content.
+
+**Response Specification:** Agents must be instructed (via System Prompt) to structure their response as follows:
+
 ```xml
 <thought>
 Internal reasoning regarding the request, plan formulation, and safety checks.
@@ -597,11 +597,12 @@ console.log(result.content); // "Here is the plan..."
 ```
 
 **Implementation Checklist:**
-1.  Define `Blueprint` interface (initially just `systemPrompt`).
-2.  Define `AgentExecutionResult` interface (`{ thought: string; content: string; raw: string }`).
-3.  Create `src/services/agent_runner.ts`.
-4.  Implement `run(blueprint: Blueprint, request: ParsedRequest): Promise<AgentExecutionResult>`.
-5.  Implement regex parsing to extract `<thought>` and `<content>`.
+
+1. Define `Blueprint` interface (initially just `systemPrompt`).
+2. Define `AgentExecutionResult` interface (`{ thought: string; content: string; raw: string }`).
+3. Create `src/services/agent_runner.ts`.
+4. Implement `run(blueprint: Blueprint, request: ParsedRequest): Promise<AgentExecutionResult>`.
+5. Implement regex parsing to extract `<thought>` and `<content>`.
 
 - **Success Criteria:**
   - Test 1: `AgentRunner` combines System Prompt and User Request correctly.
@@ -615,102 +616,309 @@ console.log(result.content); // "Here is the plan..."
 - **Dependencies:** Steps 3.1–3.2 — **Rollback:** disable loader and manually attach context bundle.
 - **Action:** Implement `ContextLoader` service with configurable truncation, per-file cap overrides, and logging of
   skipped/truncated files into Activity Journal. Loader must detect whether the target agent is **local-first** (runs
-  entirely on the user’s machine) or **third-party API**. Local agents operate without enforced token ceilings;
+  entirely on the user's machine) or **third-party API**. Local agents operate without enforced token ceilings;
   third-party agents respect provider limits.
-- **Token Counting:** Use character-based approximation (1 token ≈ 4 chars) when provider limits apply.
-- **Strategy:** Load smallest files first to maximize coverage (default). Provide fallback strategies `drop-largest`,
-  `drop-oldest`, `truncate-each`, and handle "no file fits" by truncating each file to the configured per-file cap.
-- **Warning:** Inject `[System Warning]` block if truncation occurs, including the token budget and files impacted.
-  Local agents skip this warning unless manually capped.
-- **Success Criteria:**
-  - Link 10 massive files (total 500k tokens)
-  - Verify only first N files loaded up to 80% of context limit
-  - Verify warning appears in agent's prompt
-  - Verify agent receives warning and can reference it
 
-- **Logic:**
-  1. Resolve links to `/Knowledge/Context`.
-  2. **Partial implementation:**
+**The Problem:** Agents need context (code files, documentation, previous reports) to make informed decisions, but LLMs
+have token limits. If we blindly inject all context:
 
-  ```typescript
-  // src/services/context.ts
+1. We exceed the model's context window and the request fails
+2. We waste tokens on irrelevant files
+3. We can't prioritize important context over less important context
+4. Users don't know what was truncated or why
 
-  interface ContextConfig {
-    maxTokens: number; // From model config (e.g., 200k for Claude)
-    safetyMargin: number; // Percentage (0.8 = use 80% max)
-    truncationStrategy: "drop-largest" | "drop-oldest" | "truncate-each";
+**The Solution:** Create a `ContextLoader` that intelligently loads context files within token budgets, using
+configurable strategies to prioritize and truncate context.
+
+#### Core Interfaces
+
+```typescript
+// src/services/context_loader.ts
+
+/**
+ * Configuration for context loading behavior
+ */
+export interface ContextConfig {
+  /** Maximum tokens allowed (from model config, e.g., 200k for Claude) */
+  maxTokens: number;
+
+  /** Safety margin as percentage (0.8 = use 80% of max to leave room for response) */
+  safetyMargin: number;
+
+  /** Strategy for handling context that exceeds limits */
+  truncationStrategy: "smallest-first" | "drop-largest" | "drop-oldest" | "truncate-each";
+
+  /** Optional: per-file token cap (prevents single huge file from dominating) */
+  perFileTokenCap?: number;
+
+  /** Whether this is a local-first agent (no enforced limits) */
+  isLocalAgent: boolean;
+}
+
+/**
+ * Metadata about a context file
+ */
+export interface ContextFile {
+  /** Absolute path to file */
+  path: string;
+
+  /** File content */
+  content: string;
+
+  /** File size in bytes */
+  sizeBytes: number;
+
+  /** Estimated token count */
+  tokenCount: number;
+
+  /** File modification time (for drop-oldest strategy) */
+  modifiedAt: Date;
+
+  /** Optional priority override (higher = more important) */
+  priority?: number;
+}
+
+/**
+ * Result of context loading operation
+ */
+export interface ContextLoadResult {
+  /** Combined content ready to inject into prompt */
+  content: string;
+
+  /** Warning messages about truncation/skipping */
+  warnings: string[];
+
+  /** Total tokens used */
+  totalTokens: number;
+
+  /** Files that were included */
+  includedFiles: string[];
+
+  /** Files that were skipped */
+  skippedFiles: string[];
+
+  /** Files that were truncated */
+  truncatedFiles: string[];
+}
+```
+
+#### Token Counting
+
+- **Strategy:** Use character-based approximation (1 token ≈ 4 chars) when provider limits apply.
+- **Rationale:** Accurate token counting requires model-specific tokenizers (expensive to load and run). The 4:1 ratio
+  is a safe approximation used by OpenAI and Anthropic.
+- **Override:** For critical production use, consider integrating actual tokenizers like `tiktoken` (GPT) or
+  `claude-tokenizer`.
+
+```typescript
+class ContextLoader {
+  private tokenCounter: (text: string) => number;
+
+  constructor(private config: ContextConfig) {
+    // Simple approximation: 1 token ≈ 4 characters
+    this.tokenCounter = (text) => Math.ceil(text.length / 4);
   }
+}
+```
 
-  class ContextLoader {
-    private tokenCounter: (text: string) => number;
+#### Truncation Strategies
 
-    constructor() {
-      // Simple approximation: 1 token ≈ 4 characters
-      this.tokenCounter = (text) => Math.ceil(text.length / 4);
-    }
+**1. `smallest-first` (Default)**
 
-    async loadWithLimit(
-      filePaths: string[],
-      config: ContextConfig,
-    ): Promise<{ content: string; warnings: string[] }> {
-      const limit = config.maxTokens * config.safetyMargin;
-      const warnings: string[] = [];
-      let totalTokens = 0;
-      const chunks: string[] = [];
+- Load smallest files first to maximize coverage
+- Best for: Getting breadth across many files
+- Example: Loading 10 small config files + 2 medium source files vs. 1 huge legacy file
 
-      // Sort by size (smallest first to maximize coverage)
-      const files = await Promise.all(
-        filePaths.map(async (path) => ({
-          path,
-          content: await Deno.readTextFile(path),
-          size: (await Deno.stat(path)).size,
-        })),
-      );
+**2. `drop-largest`**
 
-      files.sort((a, b) => a.size - b.size);
+- Skip files that don't fit, starting with largest
+- Best for: Ensuring all critical small files are included
+- Example: Skip 100KB README but include all 5KB source files
 
-      for (const file of files) {
-        const tokens = this.tokenCounter(file.content);
+**3. `drop-oldest`**
 
-        if (tokens > limit) {
-          if (config.truncationStrategy === "truncate-each") {
-            const allowedTokens = Math.max(limit - totalTokens, 0);
-            const allowedChars = allowedTokens * 4;
-            const truncated = file.content.slice(0, allowedChars);
-            chunks.push(`\n## Context: ${file.path} (truncated)\n\n${truncated}\n`);
-            warnings.push(`Truncated ${file.path} to ${allowedTokens} tokens`);
-            totalTokens = limit;
-            break;
-          }
-          warnings.push(
-            `Skipped ${file.path} (${tokens} tokens, no strategy could include it)`,
-          );
-          continue;
-        }
+- Skip files by modification time (oldest first)
+- Best for: Prioritizing recent changes
+- Example: Skip year-old docs in favor of this week's code changes
 
-        if (totalTokens + tokens <= limit) {
-          chunks.push(`\n## Context: ${file.path}\n\n${file.content}\n`);
-          totalTokens += tokens;
-        } else {
-          warnings.push(
-            `Skipped ${file.path} (${tokens} tokens, would exceed limit)`,
-          );
-        }
-      }
+**4. `truncate-each`**
 
-      // Inject warnings into system prompt if any
-      if (warnings.length > 0) {
-        const warningBlock = `\n[System Warning: Context truncated. Budget=${limit} tokens]\n${warnings.join("\n")}\n`;
-        chunks.unshift(warningBlock);
-      }
+- Truncate individual files to fit within remaining budget
+- Best for: Ensuring every file gets at least some representation
+- Example: Include first 500 tokens of each of 20 files
 
-      return {
-        content: chunks.join("\n"),
-        warnings,
-      };
-    }
-  }
-  ```
+#### Implementation Checklist
+
+1. **Create `src/services/context_loader.ts`**
+2. **Implement `ContextLoader` class** with:
+   - `loadWithLimit(filePaths: string[]): Promise<ContextLoadResult>`
+   - `estimateTokens(text: string): number`
+   - `applyStrategy(files: ContextFile[]): ContextFile[]`
+   - `formatContext(files: ContextFile[]): string`
+3. **Handle per-file caps:** If a single file exceeds `perFileTokenCap`, truncate it before applying global strategy
+4. **Generate warnings:** Track which files were skipped/truncated and why
+5. **Detect agent type:** Check config to determine if enforcing limits (local vs. API agents)
+6. **Log to Activity Journal:** Record context loading events with token counts and warnings
+
+#### Error Handling
+
+**Missing Files:**
+
+- Log warning but continue loading other files
+- Include placeholder in warnings
+- Don't fail entire context load
+
+**Permission Errors:**
+
+- Catch `PermissionDenied` errors
+- Log to Activity Journal
+- Skip file and continue
+
+**Malformed Paths:**
+
+- Validate paths before attempting to read
+- Use `PathResolver` from Step 2.3 for security
+
+#### Success Criteria
+
+**Test 1: Token Limit Enforcement**
+
+```typescript
+// Test: Link 10 massive files (total 500k tokens), budget 100k tokens
+const files = [
+  "/context/file1.txt", // 50k tokens
+  "/context/file2.txt", // 50k tokens
+  // ... 8 more files
+];
+
+const loader = new ContextLoader({
+  maxTokens: 100000,
+  safetyMargin: 0.8, // Use 80k
+  truncationStrategy: "smallest-first",
+  isLocalAgent: false,
+});
+
+const result = await loader.loadWithLimit(files);
+
+// Assertions:
+assertEquals(result.totalTokens <= 80000, true); // Respects safety margin
+assertEquals(result.warnings.length > 0, true); // Generated warnings
+assertEquals(result.skippedFiles.length > 0, true); // Some files skipped
+```
+
+**Test 2: Warning Block Generation**
+
+```typescript
+// Verify warning appears in agent's prompt
+assertStringIncludes(result.content, "[System Warning: Context Truncated]");
+assertStringIncludes(result.content, "Token Budget: 80000");
+assertStringIncludes(result.content, "Skipped");
+```
+
+**Test 3: Agent Receives Warning**
+
+```typescript
+// Verify agent can reference the warning
+const runner = new AgentRunner(mockProvider);
+const blueprint = { systemPrompt: "You are a helpful assistant." };
+const request = { userPrompt: "Summarize the context", context: {} };
+
+// Inject context into request
+request.context = { files: result.content };
+
+const agentResult = await runner.run(blueprint, request);
+
+// Agent should acknowledge truncation in response
+assertStringIncludes(
+  agentResult.content,
+  "context was truncated" || "some files were skipped",
+);
+```
+
+**Test 4: Local Agent (No Limits)**
+
+```typescript
+const localLoader = new ContextLoader({
+  maxTokens: 0, // Ignored for local agents
+  safetyMargin: 1.0,
+  truncationStrategy: "smallest-first",
+  isLocalAgent: true, // No enforcement
+});
+
+const result = await localLoader.loadWithLimit(files);
+
+// All files should be included
+assertEquals(result.skippedFiles.length, 0);
+assertEquals(result.warnings.length, 0);
+```
+
+**Test 5: Truncation Strategies**
+
+```typescript
+// Test each strategy produces different ordering
+const strategies = ["smallest-first", "drop-largest", "drop-oldest", "truncate-each"];
+
+for (const strategy of strategies) {
+  const loader = new ContextLoader({
+    maxTokens: 50000,
+    safetyMargin: 0.8,
+    truncationStrategy: strategy,
+    isLocalAgent: false,
+  });
+
+  const result = await loader.loadWithLimit(files);
+
+  // Verify strategy-specific behavior
+  // e.g., "smallest-first" includes more files
+  // "truncate-each" has more truncatedFiles
+}
+```
+
+#### Integration Notes
+
+**With AgentRunner (Step 3.2):**
+
+The `ContextLoader` enriches the `ParsedRequest.context` field before passing to `AgentRunner`:
+
+```typescript
+// Example integration flow
+const contextLoader = new ContextLoader(contextConfig);
+const contextResult = await contextLoader.loadWithLimit([
+  "/Knowledge/Portals/MyApp.md",
+  "/Knowledge/Reports/2024-01-15_trace123.md",
+]);
+
+const request: ParsedRequest = {
+  userPrompt: "Add authentication to the login page",
+  context: {
+    files: contextResult.content,
+    warnings: contextResult.warnings,
+  },
+};
+
+const runner = new AgentRunner(modelProvider);
+const result = await runner.run(blueprint, request);
+```
+
+**Activity Journal Logging:**
+
+Log context loading events:
+
+```sql
+INSERT INTO activity (action_type, entity_type, entity_id, metadata, trace_id)
+VALUES (
+  'context.loaded',
+  'request',
+  'request-123',
+  json_object(
+    'total_tokens', 45000,
+    'included_files', 5,
+    'skipped_files', 3,
+    'warnings', json_array('Skipped large_file.txt')
+  ),
+  'trace-456'
+);
+```
 
 ### Step 3.4: The Plan Writer (Drafting)
 
