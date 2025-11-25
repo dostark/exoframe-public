@@ -3,6 +3,8 @@
  * Implements Step 3.3 of the ExoFrame Implementation Plan
  */
 
+import type { DatabaseService } from "./db.ts";
+
 // ============================================================================
 // Types and Interfaces
 // ============================================================================
@@ -29,6 +31,15 @@ export interface ContextConfig {
 
   /** Whether this is a local-first agent (no enforced limits) */
   isLocalAgent: boolean;
+
+  /** Optional: Trace ID for activity logging */
+  traceId?: string;
+
+  /** Optional: Request ID for activity logging */
+  requestId?: string;
+
+  /** Optional: Database service for activity logging */
+  db?: DatabaseService;
 }
 
 /**
@@ -165,6 +176,16 @@ export class ContextLoader {
     // Step 5: Format context for injection
     const content = this.formatContext(selectedFiles, warnings, limit);
 
+    // Step 6: Log context loading to Activity Journal
+    await this.logContextLoad({
+      totalTokens,
+      includedCount: includedFiles.length,
+      skippedCount: skippedFiles.length,
+      truncatedCount: truncatedFiles.length,
+      strategy: this.config.truncationStrategy,
+      isLocalAgent: this.config.isLocalAgent,
+    });
+
     return {
       content,
       warnings,
@@ -213,7 +234,8 @@ export class ContextLoader {
             priority: 0, // Default priority, can be overridden
           };
         } catch (error) {
-          console.error(`Failed to load context file ${path}:`, error);
+          // Log file load failure to Activity Journal
+          await this.logFileLoadError(path, error);
           // Return null for failed loads, will be filtered out
           return null;
         }
@@ -318,5 +340,73 @@ export class ContextLoader {
     }
 
     return chunks.join("\n");
+  }
+
+  /**
+   * Log context loading operation to Activity Journal
+   */
+  private async logContextLoad(metadata: {
+    totalTokens: number;
+    includedCount: number;
+    skippedCount: number;
+    truncatedCount: number;
+    strategy: string;
+    isLocalAgent: boolean;
+  }): Promise<void> {
+    if (!this.config.db || !this.config.traceId) {
+      // If no database or trace ID provided, skip logging (testing/standalone mode)
+      return;
+    }
+
+    try {
+      this.config.db.logActivity(
+        "system",
+        "context.loaded",
+        this.config.requestId || null,
+        {
+          total_tokens: metadata.totalTokens,
+          included_files_count: metadata.includedCount,
+          skipped_files_count: metadata.skippedCount,
+          truncated_files_count: metadata.truncatedCount,
+          strategy: metadata.strategy,
+          is_local_agent: metadata.isLocalAgent,
+        },
+        this.config.traceId,
+      );
+    } catch (error) {
+      // Log to stderr but don't fail context loading
+      console.error("[Activity] Failed to log context.loaded:", error);
+    }
+  }
+
+  /**
+   * Log file load error to Activity Journal
+   */
+  private async logFileLoadError(
+    filePath: string,
+    error: unknown,
+  ): Promise<void> {
+    if (!this.config.db || !this.config.traceId) {
+      // If no database or trace ID, just log to stderr
+      console.error(`Failed to load context file ${filePath}:`, error);
+      return;
+    }
+
+    try {
+      this.config.db.logActivity(
+        "system",
+        "context.file_load_error",
+        filePath,
+        {
+          error_message: error instanceof Error ? error.message : String(error),
+          error_type: error instanceof Error ? error.name : "Unknown",
+        },
+        this.config.traceId,
+      );
+    } catch (dbError) {
+      // Log both errors to stderr
+      console.error(`Failed to load context file ${filePath}:`, error);
+      console.error("[Activity] Failed to log file_load_error:", dbError);
+    }
   }
 }
