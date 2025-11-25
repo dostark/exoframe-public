@@ -238,4 +238,82 @@ export class DatabaseService {
       timestamp: string;
     }>;
   }
+
+  /**
+   * Query recent activities (for testing/debugging)
+   */
+  getRecentActivity(limit: number = 100): Array<{
+    id: string;
+    trace_id: string;
+    actor: string;
+    agent_id: string | null;
+    action_type: string;
+    target: string | null;
+    payload: Record<string, unknown>;
+    timestamp: string;
+  }> {
+    // Flush pending logs synchronously for testing
+    if (this.flushTimer !== null) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+
+    if (this.logQueue.length > 0) {
+      const batch = this.logQueue.splice(0);
+
+      try {
+        this.db.exec("BEGIN TRANSACTION");
+
+        for (const entry of batch) {
+          this.db.exec(
+            `INSERT INTO activity (id, trace_id, actor, agent_id, action_type, target, payload, timestamp)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              entry.activityId,
+              entry.traceId,
+              entry.actor,
+              entry.agentId,
+              entry.actionType,
+              entry.target,
+              entry.payload,
+              entry.timestamp,
+            ],
+          );
+        }
+
+        this.db.exec("COMMIT");
+      } catch (error) {
+        console.error(`Failed to flush logs for getRecentActivity:`, error);
+        try {
+          this.db.exec("ROLLBACK");
+        } catch (rollbackError) {
+          console.error("Rollback failed:", rollbackError);
+        }
+      }
+    }
+
+    const stmt = this.db.prepare(
+      `SELECT id, trace_id, actor, agent_id, action_type, target, payload, timestamp
+       FROM activity
+       ORDER BY timestamp DESC
+       LIMIT ?`,
+    );
+
+    const rows = stmt.all(limit) as Array<{
+      id: string;
+      trace_id: string;
+      actor: string;
+      agent_id: string | null;
+      action_type: string;
+      target: string | null;
+      payload: string;
+      timestamp: string;
+    }>;
+
+    // Parse payload JSON
+    return rows.map((row) => ({
+      ...row,
+      payload: JSON.parse(row.payload),
+    }));
+  }
 }

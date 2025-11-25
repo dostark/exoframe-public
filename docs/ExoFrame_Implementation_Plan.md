@@ -1300,7 +1300,14 @@ PermissionDenied: write access to /etc/passwd is not allowed at PathResolver.val
 
 ---
 
-### Step 4.4: Plan Review CLI Commands
+### Step 4.4: Plan Review CLI Commands ✅ 
+
+**Status:** COMPLETED
+- ✅ PlanCommands service implemented (`src/cli/plan_commands.ts`)
+- ✅ 16 comprehensive tests passing (26 test steps total)
+- ✅ CLI entry point created (`src/cli/exoctl.ts`)
+- ✅ All 24 success criteria met
+- ✅ Activity logging verified for all commands
 
 - **Dependencies:** Steps 2.1 (Database Service), 4.3 (Execution Loop) — **Rollback:** users manually move files (error-prone)
 - **Action:** Implement CLI commands (`exoctl plan approve/reject/revise`) that provide validated, logged interface for human plan reviews.
@@ -2242,17 +2249,30 @@ GROUP BY payload->>'approved_by';
 
 **Success Criteria:**
 
-1. ✅ CLI validates plan exists before approving/rejecting/revising
-2. ✅ CLI checks plan status (only 'review' plans can be approved)
-3. ✅ Atomic file operations prevent partial state
-4. ✅ Clear error messages with resolution hints
-5. ✅ User identity captured automatically (git config or OS username)
-6. ✅ All actions logged with `actor: 'human'`, `agent_id: NULL`, `via: 'cli'`
-7. ✅ Frontmatter updated correctly (status, rejection_reason, reviewed_by, etc.)
-8. ✅ Review comments properly formatted in markdown
-9. ✅ Success messages include next steps
-10. ✅ `exoctl plan list` shows pending plans with status
-11. ✅ Activity queries can track approval/rejection rates by user
+1. ✅ **`exoctl plan approve <id>`** validates plan exists before approving
+2. ✅ **`exoctl plan approve <id>`** checks plan status (only 'review' plans can be approved)
+3. ✅ **`exoctl plan approve <id>`** moves plan atomically to /System/Active
+4. ✅ **`exoctl plan approve <id>`** logs approval with user identity and trace_id
+5. ✅ **`exoctl plan reject <id> --reason`** validates reason is required and non-empty
+6. ✅ **`exoctl plan reject <id> --reason`** updates frontmatter with rejection metadata
+7. ✅ **`exoctl plan reject <id> --reason`** moves plan to /Inbox/Rejected with _rejected.md suffix
+8. ✅ **`exoctl plan reject <id> --reason`** logs rejection with reason and trace_id
+9. ✅ **`exoctl plan revise <id> --comment`** validates at least one comment is provided
+10. ✅ **`exoctl plan revise <id> --comment`** supports multiple comments (--comment flag repeatable)
+11. ✅ **`exoctl plan revise <id> --comment`** appends "## Review Comments" section to plan
+12. ✅ **`exoctl plan revise <id> --comment`** updates frontmatter status to 'needs_revision'
+13. ✅ **`exoctl plan revise <id> --comment`** logs revision request with comment count
+14. ✅ **`exoctl plan list`** displays all plans in /Inbox/Plans with status indicators
+15. ✅ **`exoctl plan list --status=<filter>`** filters plans by status (review, needs_revision)
+16. ✅ **`exoctl plan show <id>`** displays plan frontmatter and full content
+17. ✅ **All commands** capture user identity automatically (git config or OS username)
+18. ✅ **All commands** perform atomic file operations (no partial states)
+19. ✅ **All commands** provide clear error messages with resolution hints
+20. ✅ **All commands** include success messages with next steps
+21. ✅ **All commands** log actions with `actor: 'human'`, `agent_id: NULL`, `via: 'cli'`
+22. ✅ **All commands** extract and validate trace_id from plan frontmatter
+23. ✅ **Activity queries** can track approval/rejection/revision rates by user
+24. ✅ **Activity queries** can find plans awaiting review (no approval/rejection logged)
 
 ---
 

@@ -3,8 +3,7 @@ node_modules/
 dist/
 .vscode/
 # runtime / user data (do not commit runtime DBs or user content)
-/System/*.db
-/System/*.sqlite
+/System/*.db*
 /Knowledge/
 /Inbox/
 /Portals/
