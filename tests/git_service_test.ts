@@ -66,7 +66,10 @@ Deno.test("GitService: auto-configures identity if missing", async () => {
     const userName = new TextDecoder().decode(stdout).trim();
 
     assertExists(userName);
-    assert(userName.includes("ExoFrame") || userName.includes("bot"), `Expected username to contain ExoFrame or bot, got: ${userName}`);
+    assert(
+      userName.includes("ExoFrame") || userName.includes("bot"),
+      `Expected username to contain ExoFrame or bot, got: ${userName}`,
+    );
   } finally {
     await cleanup();
     await Deno.remove(tempDir, { recursive: true });
@@ -222,7 +225,7 @@ Deno.test("GitService: logs all git operations", async () => {
     const gitLogs = logs.filter((log) => log.action_type.startsWith("git."));
 
     assertEquals(gitLogs.length >= 3, true); // init, identity, branch
-    
+
     // Check agent_id is tracked
     const agentLogs = logs.filter((log) => log.agent_id === "git-agent");
     assertEquals(agentLogs.length >= 1, true);

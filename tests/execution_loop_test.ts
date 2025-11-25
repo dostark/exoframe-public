@@ -516,3 +516,259 @@ agent_id: "test-agent"
     await Deno.remove(tempDir, { recursive: true });
   }
 });
+
+Deno.test("ExecutionLoop: parses YAML action blocks from plan", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "exec-test-yaml-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const systemActiveDir = join(tempDir, "System", "Active");
+    await Deno.mkdir(systemActiveDir, { recursive: true });
+
+    const planContent = `---
+trace_id: "test-trace-yaml"
+request_id: "yaml-actions"
+status: "active"
+---
+
+# Test Plan with YAML Actions
+
+## Actions to Execute
+
+\`\`\`yaml
+tool: read_file
+params:
+  path: "test.txt"
+description: Read test file
+\`\`\`
+
+\`\`\`yaml
+tool: write_file
+params:
+  path: "output.txt"
+  content: "test content"
+description: Write output file
+\`\`\`
+
+This plan has two actions in YAML format.
+`;
+
+    const planPath = join(systemActiveDir, "yaml-actions.md");
+    await Deno.writeTextFile(planPath, planContent);
+
+    const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
+    const result = await loop.processTask(planPath);
+
+    assertEquals(result.success, true);
+
+    // Verify actions were logged
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const activities = db.getActivitiesByTrace("test-trace-yaml");
+
+    const actionStarted = activities.filter((a: any) => a.action_type === "execution.action_started");
+    assertEquals(actionStarted.length, 2, "Should log 2 action starts");
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("ExecutionLoop: parses JSON action blocks from plan", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "exec-test-json-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const systemActiveDir = join(tempDir, "System", "Active");
+    await Deno.mkdir(systemActiveDir, { recursive: true });
+
+    const planContent = `---
+trace_id: "test-trace-json"
+request_id: "json-actions"
+status: "active"
+---
+
+# Test Plan with JSON Actions
+
+\`\`\`json
+{
+  "tool": "read_file",
+  "params": {
+    "path": "data.json"
+  },
+  "description": "Read JSON data"
+}
+\`\`\`
+
+This plan has one action in JSON format.
+`;
+
+    const planPath = join(systemActiveDir, "json-actions.md");
+    await Deno.writeTextFile(planPath, planContent);
+
+    const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
+    const result = await loop.processTask(planPath);
+
+    assertEquals(result.success, true);
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const activities = db.getActivitiesByTrace("test-trace-json");
+
+    const actionStarted = activities.filter((a: any) => a.action_type === "execution.action_started");
+    assertEquals(actionStarted.length, 1, "Should log 1 action start");
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("ExecutionLoop: handles plans with no action blocks", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "exec-test-noactions-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const systemActiveDir = join(tempDir, "System", "Active");
+    await Deno.mkdir(systemActiveDir, { recursive: true });
+
+    const planContent = `---
+trace_id: "test-trace-noactions"
+request_id: "no-actions"
+status: "active"
+---
+
+# Plan Without Actions
+
+This plan has no action blocks, just narrative text.
+The system should still execute successfully using fallback behavior.
+`;
+
+    const planPath = join(systemActiveDir, "no-actions.md");
+    await Deno.writeTextFile(planPath, planContent);
+
+    const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
+    const result = await loop.processTask(planPath);
+
+    assertEquals(result.success, true, "Should succeed even without actions");
+
+    // Should create test file as fallback
+    const testFile = join(tempDir, "test-execution.txt");
+    const testFileExists = await Deno.stat(testFile).then(() => true).catch(() => false);
+    assert(testFileExists, "Should create test file when no actions present");
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("ExecutionLoop: ignores malformed code blocks", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "exec-test-malformed-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const systemActiveDir = join(tempDir, "System", "Active");
+    await Deno.mkdir(systemActiveDir, { recursive: true });
+
+    const planContent = `---
+trace_id: "test-trace-malformed"
+request_id: "malformed-blocks"
+status: "active"
+---
+
+# Plan with Malformed Blocks
+
+\`\`\`yaml
+this is not valid yaml: [unclosed
+\`\`\`
+
+\`\`\`yaml
+tool: read_file
+params:
+  path: "valid.txt"
+\`\`\`
+
+\`\`\`json
+{ invalid json, no quotes }
+\`\`\`
+
+Only the middle block should be parsed.
+`;
+
+    const planPath = join(systemActiveDir, "malformed-blocks.md");
+    await Deno.writeTextFile(planPath, planContent);
+
+    const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
+    const result = await loop.processTask(planPath);
+
+    assertEquals(result.success, true, "Should succeed despite malformed blocks");
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const activities = db.getActivitiesByTrace("test-trace-malformed");
+
+    const actionStarted = activities.filter((a: any) => a.action_type === "execution.action_started");
+    assertEquals(actionStarted.length, 1, "Should only parse 1 valid action");
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("ExecutionLoop: ignores code blocks without tool field", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "exec-test-notool-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const systemActiveDir = join(tempDir, "System", "Active");
+    await Deno.mkdir(systemActiveDir, { recursive: true });
+
+    const planContent = `---
+trace_id: "test-trace-notool"
+request_id: "no-tool-field"
+status: "active"
+---
+
+# Plan with Non-Action Code Blocks
+
+\`\`\`yaml
+# This is just configuration, not an action
+database: postgres
+port: 5432
+\`\`\`
+
+\`\`\`yaml
+tool: read_file
+params:
+  path: "config.yml"
+\`\`\`
+
+\`\`\`json
+{
+  "name": "example",
+  "version": "1.0.0"
+}
+\`\`\`
+
+Only the middle block with 'tool' field should be treated as an action.
+`;
+
+    const planPath = join(systemActiveDir, "no-tool-field.md");
+    await Deno.writeTextFile(planPath, planContent);
+
+    const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
+    const result = await loop.processTask(planPath);
+
+    assertEquals(result.success, true);
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const activities = db.getActivitiesByTrace("test-trace-notool");
+
+    const actionStarted = activities.filter((a: any) => a.action_type === "execution.action_started");
+    assertEquals(actionStarted.length, 1, "Should only parse blocks with 'tool' field");
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
