@@ -9,6 +9,10 @@ knowledge = "./Knowledge"
 blueprints = "./Blueprints"
 system = "./System"
 
+[database]
+batch_flush_ms = 100
+batch_max_size = 100
+
 [watcher]
 debounce_ms = 200
 stability_check = true

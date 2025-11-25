@@ -7,6 +7,13 @@ knowledge = "./Knowledge"
 blueprints = "./Blueprints"
 system = "./System"
 
+[database]
+# Activity log batching configuration for performance
+# Flush interval: time to wait before writing batch (milliseconds)
+batch_flush_ms = 100
+# Maximum batch size: flush immediately when this many logs accumulated
+batch_max_size = 100
+
 [watcher]
 # Time to wait (in milliseconds) after the last file event before processing
 # Increase this if using network drives or cloud storage (e.g., 500-1000ms)

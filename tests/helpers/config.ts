@@ -20,6 +20,11 @@ export function createMockConfig(root: string, overrides: Partial<Config> = {}):
       blueprints: "Blueprints",
       ...overrides.paths,
     },
+    database: {
+      batch_flush_ms: 100,
+      batch_max_size: 100,
+      ...overrides.database,
+    },
     watcher: {
       debounce_ms: 200,
       stability_check: true,
@@ -30,6 +35,5 @@ export function createMockConfig(root: string, overrides: Partial<Config> = {}):
       timeout_sec: 60,
       ...overrides.agents,
     },
-    ...overrides,
   };
 }
