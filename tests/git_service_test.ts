@@ -218,14 +218,13 @@ Deno.test("GitService: logs all git operations", async () => {
     await new Promise((resolve) => setTimeout(resolve, 150));
 
     // Verify operations logged
-    const logs = db.instance.prepare(
-      "SELECT * FROM activity WHERE action_type LIKE 'git.%' AND trace_id = ?",
-    ).all("test-trace-456");
+    const logs = db.getActivitiesByTrace("test-trace-456");
+    const gitLogs = logs.filter((log) => log.action_type.startsWith("git."));
 
-    assertEquals(logs.length >= 3, true); // init, identity, branch
+    assertEquals(gitLogs.length >= 3, true); // init, identity, branch
     
     // Check agent_id is tracked
-    const agentLogs = logs.filter((log: any) => log.agent_id === "git-agent");
+    const agentLogs = logs.filter((log) => log.agent_id === "git-agent");
     assertEquals(agentLogs.length >= 1, true);
   } finally {
     await cleanup();
