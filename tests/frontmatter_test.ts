@@ -1,7 +1,7 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@^1.0.0";
 import { RequestSchema } from "../src/schemas/request.ts";
 import { FrontmatterParser } from "../src/parsers/markdown.ts";
-import { initTestDb } from "./helpers/db.ts";
+import { initTestDbService } from "./helpers/db.ts";
 
 /**
  * Tests for Step 2.2: The Zod Frontmatter Parser
@@ -183,50 +183,70 @@ status: "pending"
   assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
 });
 
-Deno.test("FrontmatterParser logs successful validation", () => {
-  const db = initTestDb();
-  const parser = new FrontmatterParser(db);
-  const markdown = `---
+Deno.test("FrontmatterParser logs successful validation", async () => {
+  const { db, cleanup } = await initTestDbService();
+  try {
+    const parser = new FrontmatterParser(db);
+    const markdown = `---
 trace_id: "550e8400-e29b-41d4-a716-446655440000"
 agent_id: "coder-agent"
 status: "pending"
 priority: 8
 tags: ["feature", "ui"]
 ---\n\n# Test\n`;
-  const result = parser.parse(markdown, "test.md");
-  assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
-  const rows = [...(db as any).prepare("SELECT * FROM activity WHERE action_type = ?").all(["request.validated"])];
-  assertEquals(rows.length, 1);
-  const { actor, action_type, target, payload } = rows[0];
-  assertEquals(actor, "frontmatter_parser");
-  assertEquals(action_type, "request.validated");
-  assertEquals(target, "test.md");
-  const payloadObj = JSON.parse(payload as string);
-  assertEquals(payloadObj.trace_id, "550e8400-e29b-41d4-a716-446655440000");
+    const result = parser.parse(markdown, "test.md");
+    assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
+
+    // Allow time for batched write to flush
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const rows = [
+      ...(db.instance as any).prepare("SELECT * FROM activity WHERE action_type = ?").all(["request.validated"]),
+    ];
+    assertEquals(rows.length, 1);
+    const { actor, action_type, target, payload } = rows[0];
+    assertEquals(actor, "system");
+    assertEquals(action_type, "request.validated");
+    assertEquals(target, "test.md");
+    const payloadObj = JSON.parse(payload as string);
+    assertEquals(payloadObj.trace_id, "550e8400-e29b-41d4-a716-446655440000");
+  } finally {
+    await cleanup();
+  }
 });
 
-Deno.test("FrontmatterParser logs validation failure", () => {
-  const db = initTestDb();
-  const parser = new FrontmatterParser(db);
-  const markdown = `---
+Deno.test("FrontmatterParser logs validation failure", async () => {
+  const { db, cleanup } = await initTestDbService();
+  try {
+    const parser = new FrontmatterParser(db);
+    const markdown = `---
 agent_id: "coder-agent"
 status: "pending"
 ---\n\n# Bad\n`;
-  let caught = false;
-  try {
-    parser.parse(markdown, "bad.md");
-  } catch {
-    caught = true;
+    let caught = false;
+    try {
+      parser.parse(markdown, "bad.md");
+    } catch {
+      caught = true;
+    }
+    assertEquals(caught, true);
+
+    // Allow time for batched write to flush
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const rows = [
+      ...(db.instance as any).prepare("SELECT * FROM activity WHERE action_type = ?").all([
+        "request.validation_failed",
+      ]),
+    ];
+    assertEquals(rows.length, 1);
+    const { actor, action_type, target, payload } = rows[0];
+    assertEquals(actor, "system");
+    assertEquals(action_type, "request.validation_failed");
+    assertEquals(target, "bad.md");
+    const payloadObj = JSON.parse(payload as string);
+    assertEquals(Array.isArray(payloadObj.errors), true);
+  } finally {
+    await cleanup();
   }
-  assertEquals(caught, true);
-  const rows = [
-    ...(db as any).prepare("SELECT * FROM activity WHERE action_type = ?").all(["request.validation_failed"]),
-  ];
-  assertEquals(rows.length, 1);
-  const { actor, action_type, target, payload } = rows[0];
-  assertEquals(actor, "frontmatter_parser");
-  assertEquals(action_type, "request.validation_failed");
-  assertEquals(target, "bad.md");
-  const payloadObj = JSON.parse(payload as string);
-  assertEquals(Array.isArray(payloadObj.errors), true);
 });

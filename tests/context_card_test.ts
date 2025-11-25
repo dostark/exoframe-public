@@ -2,7 +2,7 @@ import { assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { ContextCardGenerator } from "../src/services/context_card_generator.ts";
 import { createMockConfig } from "./helpers/config.ts";
-import { initTestDb } from "./helpers/db.ts";
+import { initTestDbService } from "./helpers/db.ts";
 
 /**
  * Tests for Step 2.4: Context Card Generator
@@ -116,8 +116,7 @@ Deno.test("ContextCardGenerator: sanitizes alias", async () => {
 });
 
 Deno.test("ContextCardGenerator: logs activity", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "card-test-log-" });
-  const db = initTestDb();
+  const { db, tempDir, cleanup } = await initTestDbService();
   try {
     const config = createMockConfig(tempDir);
     await Deno.mkdir(join(tempDir, "Knowledge", "Portals"), { recursive: true });
@@ -129,18 +128,20 @@ Deno.test("ContextCardGenerator: logs activity", async () => {
       techStack: ["LogStack"],
     });
 
+    // Allow time for batched write to flush
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
     // Verify log
-    const rows = db.prepare("SELECT * FROM activity WHERE action_type = ?").all("context_card.created");
+    const rows = db.instance.prepare("SELECT * FROM activity WHERE action_type = ?").all("context_card.created");
     assertEquals(rows.length, 1);
     const row = rows[0] as any;
-    assertEquals(row.actor, "context_card_generator");
+    assertEquals(row.actor, "system");
     assertEquals(row.target, "LoggedApp");
 
     const payload = JSON.parse(row.payload);
     assertEquals(payload.alias, "LoggedApp");
     assertEquals(payload.tech_stack[0], "LogStack");
   } finally {
-    await Deno.remove(tempDir, { recursive: true });
-    db.close();
+    await cleanup();
   }
 });
