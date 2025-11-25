@@ -9,3 +9,6 @@ dist/
 /Portals/
 *.log
 deno.lock
+
+# Test coverage reports
+/coverage/
