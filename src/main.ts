@@ -31,10 +31,12 @@ if (import.meta.main) {
 
       // Log event to Activity Journal
       dbService.logActivity(
-        "file_watcher",
+        "system",
         "file.detected",
         event.path,
         { size: event.content.length },
+        undefined,
+        null,
       );
 
       // TODO: Dispatch to request processor

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS activity (
   id TEXT PRIMARY KEY,
   trace_id TEXT NOT NULL,
   actor TEXT NOT NULL,
+  agent_id TEXT,
   action_type TEXT NOT NULL,
   target TEXT,
   payload TEXT NOT NULL,
@@ -14,6 +15,7 @@ CREATE TABLE IF NOT EXISTS activity (
 CREATE INDEX IF NOT EXISTS idx_activity_trace ON activity(trace_id);
 CREATE INDEX IF NOT EXISTS idx_activity_time ON activity(timestamp);
 CREATE INDEX IF NOT EXISTS idx_activity_actor ON activity(actor);
+CREATE INDEX IF NOT EXISTS idx_activity_agent ON activity(agent_id);
 
 CREATE TABLE IF NOT EXISTS leases (
   file_path TEXT PRIMARY KEY,

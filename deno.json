@@ -16,8 +16,8 @@
     "bench": "deno bench --allow-all tests/benchmarks/",
     "coverage": "deno test --coverage=cov_profile && deno coverage cov_profile",
     "lint": "deno lint src/ tests/",
-    "fmt": "deno fmt src/ tests/",
-    "fmt:check": "deno fmt --check src/ tests/",
+    "fmt": "deno fmt src/ tests/ docs/",
+    "fmt:check": "deno fmt --check src/ tests/ docs/",
     "cache": "deno cache src/main.ts",
     "compile": "deno compile --allow-all --output exoframe src/main.ts"
   },
@@ -43,7 +43,9 @@
     "lineWidth": 120,
     "indentWidth": 2,
     "semiColons": true,
-    "singleQuote": false
+    "singleQuote": false,
+    "proseWrap": "preserve",
+    "include": ["src/", "tests/", "docs/", "scripts/"]
   },
   "compilerOptions": {
     "strict": true,

@@ -12,6 +12,10 @@ export const ConfigSchema = z.object({
     system: z.string().default("System"),
     blueprints: z.string().default("Blueprints"),
   }),
+  database: z.object({
+    batch_flush_ms: z.number().min(10).max(10000).default(100),
+    batch_max_size: z.number().min(1).max(1000).default(100),
+  }).default({}),
   watcher: z.object({
     debounce_ms: z.number().min(50).max(5000).default(200),
     stability_check: z.boolean().default(true),

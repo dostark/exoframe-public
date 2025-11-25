@@ -1,6 +1,6 @@
 import { parse as parseYaml } from "@std/yaml";
 import { type Request, RequestSchema } from "../schemas/request.ts";
-import type { Database } from "@db/sqlite";
+import type { DatabaseService } from "../services/db.ts";
 
 /**
  * Result of parsing a request markdown file
@@ -20,9 +20,9 @@ export interface ParsedRequest {
  * - Logs validation events to Activity Journal (if database provided)
  */
 export class FrontmatterParser {
-  private db?: Database;
+  private db?: DatabaseService;
 
-  constructor(db?: Database) {
+  constructor(db?: DatabaseService) {
     this.db = db;
   }
 
@@ -72,22 +72,13 @@ export class FrontmatterParser {
     }
 
     try {
-      const activityId = crypto.randomUUID();
-      const traceId = crypto.randomUUID();
-      const timestamp = new Date().toISOString();
-
-      this.db.exec(
-        `INSERT INTO activity (id, trace_id, actor, action_type, target, payload, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          activityId,
-          traceId,
-          "frontmatter_parser",
-          actionType,
-          payload.file_path as string || null,
-          JSON.stringify(payload),
-          timestamp,
-        ],
+      this.db.logActivity(
+        "system",
+        actionType,
+        payload.file_path as string || null,
+        payload,
+        undefined, // No specific trace_id for validation operations
+        null, // No agent_id (system operation)
       );
     } catch (error) {
       // Log error but don't fail the parsing
