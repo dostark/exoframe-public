@@ -96,8 +96,8 @@ describe("ChangesetCommands", () => {
         "abc-789-def",
         null,
       );
-      // Wait a bit for batched write to complete
-      await delay(200);
+      // Wait for batched write to complete
+      await db.waitForFlush();
 
       // Filter for approved
       const approved = await changesetCommands.list("approved");
@@ -111,7 +111,8 @@ describe("ChangesetCommands", () => {
     it("should sort by creation date descending", async () => {
       // Create multiple branches with delays
       await createFeatureBranch(tempDir, "request-001", "aaa-111-bbb");
-      await delay(1500); // Increase delay to ensure different timestamps
+      // Git commit timestamps are second-precision, need real delay
+      await delay(1500);
       await createFeatureBranch(tempDir, "request-002", "bbb-222-ccc");
 
       const changesets = await changesetCommands.list();
@@ -217,7 +218,7 @@ describe("ChangesetCommands", () => {
 
       await changesetCommands.approve("request-012");
       // Wait for batched write to complete
-      await delay(200);
+      await db.waitForFlush();
 
       // Check activity log
       const activities = await db.getActivitiesByTrace("def-456-abc");
@@ -257,7 +258,7 @@ describe("ChangesetCommands", () => {
 
       await changesetCommands.reject("request-015", "Quality issues");
       // Wait for batched write to complete
-      await delay(200);
+      await db.waitForFlush();
 
       // Check activity log
       const activities = await db.getActivitiesByTrace("abc-345-edf");
@@ -274,7 +275,7 @@ describe("ChangesetCommands", () => {
 
       await changesetCommands.reject("request-016", "Needs redesign");
       // Wait for batched write to complete
-      await delay(200);
+      await db.waitForFlush();
 
       const activities = await db.getActivitiesByTrace("def-678-bca");
       const rejection = activities.find((a: { action_type: string }) => a.action_type === "changeset.rejected");

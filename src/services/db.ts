@@ -79,6 +79,33 @@ export class DatabaseService {
   }
 
   /**
+   * Wait for all pending log entries to be flushed
+   * Returns a promise that resolves when the queue is empty
+   */
+  async waitForFlush(): Promise<void> {
+    // If there's nothing queued, return immediately
+    if (this.logQueue.length === 0) return;
+
+    // Trigger flush if scheduled
+    this.flush();
+
+    // Wait for queue to be empty using exponential backoff
+    let attempts = 0;
+    const maxAttempts = 20; // Max 2 seconds (100ms * 20)
+    while (this.logQueue.length > 0 && attempts < maxAttempts) {
+      await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+      attempts++;
+      if (this.logQueue.length > 0) {
+        // Small delay if queue is still not empty
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
+
+    // One more microtask to ensure writes completed
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+  }
+
+  /**
    * Flush pending log entries to database
    */
   private flush() {

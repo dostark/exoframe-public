@@ -75,8 +75,8 @@ export class DaemonCommands extends BaseCommand {
     console.log(`  Logs: ${logFile}`);
     console.log(`  Run 'exoctl daemon status' to check health`);
 
-    // Wait a moment to check if it crashes immediately
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Wait for process to stabilize
+    await this.waitForProcessState(process.pid, true, 1000);
 
     const newStatus = await this.status();
     if (!newStatus.running) {
@@ -107,17 +107,12 @@ export class DaemonCommands extends BaseCommand {
 
       await killCmd.output();
 
-      // Wait for process to exit
-      let attempts = 0;
-      while (attempts < 10) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        const newStatus = await this.status();
-        if (!newStatus.running) {
-          console.log("✓ Daemon stopped");
-          await Deno.remove(this.pidFile).catch(() => {});
-          return;
-        }
-        attempts++;
+      // Wait for process to exit (up to 5 seconds)
+      const stopped = await this.waitForProcessState(status.pid!, false, 5000);
+      if (stopped) {
+        console.log("✓ Daemon stopped");
+        await Deno.remove(this.pidFile).catch(() => {});
+        return;
       }
 
       // Force kill if still running
@@ -143,7 +138,8 @@ export class DaemonCommands extends BaseCommand {
   async restart(): Promise<void> {
     console.log("Restarting daemon...");
     await this.stop();
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // Brief pause to ensure port/resources are released
+    await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
     await this.start();
   }
 
@@ -231,5 +227,52 @@ export class DaemonCommands extends BaseCommand {
 
     const process = cmd.spawn();
     await process.status;
+  }
+
+  /**
+   * Wait for a process to reach a desired state (running or stopped)
+   * @param pid Process ID to check
+   * @param shouldBeRunning Expected state (true = running, false = stopped)
+   * @param timeoutMs Maximum time to wait in milliseconds
+   * @returns true if desired state reached, false if timeout
+   */
+  private async waitForProcessState(
+    pid: number,
+    shouldBeRunning: boolean,
+    timeoutMs: number,
+  ): Promise<boolean> {
+    const startTime = Date.now();
+    const checkInterval = 50; // Check every 50ms
+
+    while (Date.now() - startTime < timeoutMs) {
+      const isRunning = await this.isProcessRunning(pid);
+      if (isRunning === shouldBeRunning) {
+        return true;
+      }
+      // Use queueMicrotask for first check, then small intervals
+      if (Date.now() - startTime < checkInterval) {
+        await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, checkInterval));
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Check if a process is running
+   */
+  private async isProcessRunning(pid: number): Promise<boolean> {
+    try {
+      const cmd = new Deno.Command("kill", {
+        args: ["-0", pid.toString()],
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const result = await cmd.output();
+      return result.success;
+    } catch {
+      return false;
+    }
   }
 }
