@@ -563,11 +563,52 @@ export interface IModelProvider {
 
 ### Step 3.2: The Agent Runtime (Stateless Execution)
 
-- **Action:** Implement `AgentRunner`. Compiles Blueprint + Request into a System Prompt; for `runtime_mode: hybrid`,
-  auto-splits prompts per agent type, sharing only the approved context slices and logging each hop.
+- **Dependencies:** Step 3.1 (Model Adapter).
+- **Action:** Implement `AgentRunner` service.
 - **Justification:** Core logic combining "Who I am" (Blueprint) with "What I need to do" (Request).
+
+**The Problem:**
+We have a request (User intent) and a Blueprint (Agent persona), but nothing to combine them and execute the prompt against the LLM.
+
+**The Solution:**
+Create an `AgentRunner` class that:
+1.  Takes a `Blueprint` (System Prompt) and `ParsedRequest` (User Prompt).
+2.  Constructs the final prompt.
+3.  Delegates execution to the injected `IModelProvider`.
+4.  **Parses the response** to extract reasoning and content.
+
+**Response Specification:**
+Agents must be instructed (via System Prompt) to structure their response as follows:
+```xml
+<thought>
+Internal reasoning regarding the request, plan formulation, and safety checks.
+</thought>
+<content>
+The actual user-facing response, plan, or code.
+</content>
+```
+
+```typescript
+// Example Usage
+const runner = new AgentRunner(modelProvider);
+const result = await runner.run(blueprint, request);
+console.log(result.thought); // "Analyzing request..."
+console.log(result.content); // "Here is the plan..."
+```
+
+**Implementation Checklist:**
+1.  Define `Blueprint` interface (initially just `systemPrompt`).
+2.  Define `AgentExecutionResult` interface (`{ thought: string; content: string; raw: string }`).
+3.  Create `src/services/agent_runner.ts`.
+4.  Implement `run(blueprint: Blueprint, request: ParsedRequest): Promise<AgentExecutionResult>`.
+5.  Implement regex parsing to extract `<thought>` and `<content>`.
+
 - **Success Criteria:**
-  - System can read Request, send to LLM, and receive text response.
+  - Test 1: `AgentRunner` combines System Prompt and User Request correctly.
+  - Test 2: `AgentRunner` calls `modelProvider.generate` with the combined prompt.
+  - Test 3: `AgentRunner` parses a structured response into `thought` and `content`.
+  - Test 4: `AgentRunner` handles malformed responses (fallback to treating whole string as content).
+  - Test 5: Handles empty blueprints or requests gracefully.
 
 ### Step 3.3: The Context Injector (Token Safe)
 
