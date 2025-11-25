@@ -53,7 +53,7 @@ Each step lists **Dependencies**, **Rollback/Contingency**, and updated success 
 **Goal:** A running Deno daemon that can write to the database, read configuration, and establish the physical storage
 structure.
 
-### Step 1.1: Project Scaffold & Deno Configuration
+### Step 1.1: Project Scaffold & Deno Configuration ✅
 
 - **Dependencies:** none — **Rollback:** delete generated config files.
 - **Action:** Initialize repository. Create `deno.json` with strict tasks (e.g., `deno task start`) and record a
@@ -150,7 +150,7 @@ deno task test
 
 Add a `deno.json` `test` task for convenience so contributors can run `deno task test` without remembering flags.
 
-### Step 1.2: The Activity Journal (SQLite)
+### Step 1.2: The Activity Journal (SQLite) ✅
 
 - **Dependencies:** Step 1.1 — **Rollback:** drop `journal.db`, run `deno task migrate down`.
 - **Action:** Implement Database Service using `jsr:@db/sqlite`. Create migration scripts for `activity` and `leases`
@@ -197,7 +197,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
   INSERT INTO schema_version (version) VALUES (1);
   ```
 
-### Step 1.3: Configuration Loader (TOML + Zod)
+### Step 1.3: Configuration Loader (TOML + Zod) ✅
 
 - **Dependencies:** Step 1.2 — **Rollback:** revert config schema, restore previous TOML.
 - **Action:** Create `ConfigService`. Define Zod schemas for `exo.config.toml`. Include config checksum in Activity
@@ -207,7 +207,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
   - System loads config on startup.
   - System throws a readable error if `exo.config.toml` is malformed or missing keys.
 
-### Step 1.4: The Knowledge Vault Scaffold
+### Step 1.4: The Knowledge Vault Scaffold ✅
 
 - **Dependencies:** Step 1.3 — **Rollback:** remove created folders/files (idempotent).
 - **Action:** Create rigid directory structure for the Obsidian Vault:
@@ -225,7 +225,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 
 **Goal:** The system reacts to file changes securely and reliably.
 
-### Step 2.1: The File Watcher (Stable Read)
+### Step 2.1: The File Watcher (Stable Read) ✅
 
 - **Dependencies:** Phase 1 exit — **Rollback:** disable watcher service flag, fall back to manual trigger script.
 - **Action:** Implement a robust file watcher using `Deno.watchFs` to monitor `/Inbox/Requests` for new request files.
@@ -326,7 +326,7 @@ async function readFileWhenStable(path: string): Promise<string> {
     arrives before processing
   - Test 3: Delete a file immediately after creating it → Watcher handles `NotFound` error gracefully
 
-### Step 2.2: The Zod Frontmatter Parser
+### Step 2.2: The Zod Frontmatter Parser ✅
 
 - **Dependencies:** Step 2.1 (File Watcher) — **Rollback:** accept any markdown file, skip validation.
 - **Action:** Implement a parser to extract and validate YAML frontmatter from request markdown files using Zod schemas.
@@ -442,7 +442,7 @@ Create a modern login page with:
   - Test 4: Extra fields in frontmatter → Ignored (Zod strips unknown keys by default)
   - Test 5: No frontmatter delimiters → Throws "No frontmatter found" error
 
-### Step 2.3: The Path Security & Portal Resolver
+### Step 2.3: The Path Security & Portal Resolver ✅
 
 - **Dependencies:** Step 1.3 (Config) — **Rollback:** Disable security checks (dangerous, dev-only).
 - **Action:** Implement a `PathResolver` service that maps "Portal Aliases" (e.g., `@MyApp`) to physical paths and
@@ -484,7 +484,7 @@ const unsafePath = resolver.resolve("@Blueprints/../../secret.txt");
   - Test 4: Unknown alias (`@Unknown/file.txt`) → Throws error.
   - Test 5: Root path itself is valid (`@Portal/`) → Returns portal root path.
 
-### Step 2.4: The Context Card Generator
+### Step 2.4: The Context Card Generator ✅
 
 - **Dependencies:** Step 1.3 (Config).
 - **Action:** Implement `ContextCardGenerator` service.
@@ -531,7 +531,7 @@ await generator.generate({
 > hybrid) and apply the correct constraints automatically. Hybrid mode requires explicit data-sharing policies logged
 > per hop.
 
-### Step 3.1: The Model Adapter (Mocked & Real)
+### Step 3.1: The Model Adapter (Mocked & Real) ✅
 
 - **Dependencies:** Step 1.3 (Config).
 - **Action:** Create `IModelProvider` interface and implement `MockProvider` and `OllamaProvider`.
@@ -563,7 +563,7 @@ export interface IModelProvider {
   - Test 3: `ModelFactory` returns correct provider based on config string ("mock" vs "ollama").
   - Test 4: Provider handles connection errors gracefully (throws typed error).
 
-### Step 3.2: The Agent Runtime (Stateless Execution)
+### Step 3.2: The Agent Runtime (Stateless Execution) ✅
 
 - **Dependencies:** Step 3.1 (Model Adapter).
 - **Action:** Implement `AgentRunner` service.
@@ -613,7 +613,7 @@ console.log(result.content); // "Here is the plan..."
   - Test 4: `AgentRunner` handles malformed responses (fallback to treating whole string as content).
   - Test 5: Handles empty blueprints or requests gracefully.
 
-### Step 3.3: The Context Injector (Token Safe)
+### Step 3.3: The Context Injector (Token Safe) ✅
 
 - **Dependencies:** Steps 3.1–3.2 — **Rollback:** disable loader and manually attach context bundle.
 - **Action:** Implement `ContextLoader` service with configurable truncation, per-file cap overrides, and logging of
@@ -1029,7 +1029,7 @@ See `tests/plan_writer_test.ts` for comprehensive test coverage (22 tests):
 
 **Goal:** Agents execute actions securely and robustly.
 
-### Step 4.1: The Tool Registry
+### Step 4.1: The Tool Registry ✅
 
 - **Dependencies:** Steps 3.1-3.4 (Model Adapter, Agent Runner, Context Loader, Plan Writer)
 - **Action:** Implement tool registry that maps LLM function calls (JSON) to safe Deno operations (`read_file`,
