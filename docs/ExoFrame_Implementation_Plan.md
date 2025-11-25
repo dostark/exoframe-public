@@ -902,31 +902,778 @@ const result = await runner.run(blueprint, request);
 
 **Activity Journal Logging:**
 
-Log context loading events:
+**Requirement:** All context loading operations must be logged to the Activity Journal for audit trail and debugging.
 
-```sql
-INSERT INTO activity (action_type, entity_type, entity_id, metadata, trace_id)
-VALUES (
-  'context.loaded',
-  'request',
-  'request-123',
-  json_object(
-    'total_tokens', 45000,
-    'included_files', 5,
-    'skipped_files', 3,
-    'warnings', json_array('Skipped large_file.txt')
-  ),
-  'trace-456'
-);
+**Events to Log:**
+
+1. **context.loaded** - Successful context loading operation
+   ```sql
+   INSERT INTO activity (action_type, entity_type, entity_id, actor, trace_id, metadata)
+   VALUES (
+     'context.loaded',
+     'request',
+     'request-123',
+     'system',
+     'trace-456',
+     json_object(
+       'total_tokens', 45000,
+       'included_files_count', 5,
+       'skipped_files_count', 3,
+       'truncated_files_count', 1,
+       'strategy', 'smallest-first',
+       'is_local_agent', false
+     )
+   );
+   ```
+
+2. **context.file_load_error** - Failed to load a context file
+   ```sql
+   INSERT INTO activity (action_type, entity_type, entity_id, actor, trace_id, metadata)
+   VALUES (
+     'context.file_load_error',
+     'file',
+     '/path/to/missing_file.txt',
+     'system',
+     'trace-456',
+     json_object(
+       'error_message', 'No such file or directory',
+       'error_type', 'NotFound'
+     )
+   );
+   ```
+
+**Implementation Requirements:**
+
+- Add `traceId` and `requestId` optional fields to `ContextConfig`
+- Call `logContextLoad()` after successful context assembly
+- Call `logFileLoadError()` when file loading fails
+- Log events should be async and non-blocking (don't fail if logging fails)
+- Include relevant metadata for debugging (token counts, file counts, strategy used)
+
+**Integration with ContextLoader:**
+
+```typescript
+const contextLoader = new ContextLoader({
+  maxTokens: 100000,
+  safetyMargin: 0.8,
+  truncationStrategy: "smallest-first",
+  isLocalAgent: false,
+  traceId: request.traceId, // For activity logging
+  requestId: request.id, // For activity logging
+});
+
+const result = await contextLoader.loadWithLimit(contextFiles);
+
+// Result includes warnings that can be passed to plan creation
+// All loading events are automatically logged to Activity Journal
 ```
 
 ### Step 3.4: The Plan Writer (Drafting)
 
-- **Action:** Wire output to write proposals to `/Inbox/Plans`.
-- **Requirement:** Plan must include "Reasoning" section referencing used Context files.
-- **Success Criteria:**
-  - Dropping `request.md` results in `request_plan.md`.
-  - Plan text links back to Obsidian notes: "Based on [[Architecture_Docs]]..."
+- **Dependencies:** Steps 3.1–3.3 (Model Adapter, Agent Runner, Context Loader) — **Rollback:** output to stdout instead
+  of file.
+- **Action:** Implement `PlanWriter` service that takes `AgentExecutionResult` and writes formatted plan proposals to
+  `/Inbox/Plans`.
+- **Requirement:** Plan must include structured sections (Reasoning, Changes, Context References) and link back to
+  Obsidian notes.
+
+**The Problem:** Agents generate plans, but we need to:
+
+1. Format the raw LLM output into a structured, user-friendly markdown document
+2. Extract and preserve reasoning (from `<thought>` tags) for transparency
+3. Link back to context files used in decision-making
+4. Generate a filename based on the original request
+5. Write to the correct location (`/Inbox/Plans`) for user review
+
+**The Solution:** Create a `PlanWriter` service that:
+
+1. Takes an `AgentExecutionResult` and request metadata
+2. Formats the content into a structured plan document
+3. Generates Obsidian-compatible wiki links to context files
+4. Writes the plan to `/Inbox/Plans` with proper naming convention
+5. Logs the plan creation to Activity Journal
+
+#### Core Interfaces
+
+```typescript
+// src/services/plan_writer.ts
+
+/**
+ * Metadata about the request that generated this plan
+ */
+export interface RequestMetadata {
+  /** Original request file name (without extension) */
+  requestId: string;
+
+  /** Trace ID linking request → plan → execution */
+  traceId: string;
+
+  /** Timestamp when request was created */
+  createdAt: Date;
+
+  /** Context files that were loaded for this request */
+  contextFiles: string[];
+
+  /** Warnings from context loading (truncation, etc.) */
+  contextWarnings: string[];
+}
+
+/**
+ * Configuration for plan writing
+ */
+export interface PlanWriterConfig {
+  /** Directory to write plans to (default: /Inbox/Plans) */
+  plansDirectory: string;
+
+  /** Whether to include reasoning section */
+  includeReasoning: boolean;
+
+  /** Whether to generate Obsidian wiki links */
+  generateWikiLinks: boolean;
+
+  /** Knowledge base root for relative path calculation */
+  knowledgeRoot: string;
+
+  /** System directory root for database access (default: /System) */
+  systemRoot: string;
+}
+
+/**
+ * Result of plan writing operation
+ */
+export interface PlanWriteResult {
+  /** Absolute path to written plan file */
+  planPath: string;
+
+  /** Generated plan content */
+  content: string;
+
+  /** Timestamp when plan was written */
+  writtenAt: Date;
+}
+```
+
+#### Plan Document Structure
+
+Plans should follow this standardized format:
+
+```markdown
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+request_id: "implement-auth"
+status: "review"
+created_at: "2024-11-25T10:30:00Z"
+agent_id: "senior-coder"
+---
+
+# Plan: Implement Authentication
+
+## Summary
+
+Brief 1-2 sentence overview of what this plan accomplishes.
+
+## Reasoning
+
+[Agent's internal thought process from <thought> tags]
+
+This section explains:
+
+- Why this approach was chosen
+- Alternative approaches considered
+- Risk assessment
+- Context files analyzed
+
+## Proposed Changes
+
+### Component: Authentication Module
+
+#### [NEW] `src/auth/login.ts`
+
+Create new login handler with:
+
+- Email/password validation
+- JWT token generation
+- Session management
+
+#### [MODIFY] `src/routes/api.ts`
+
+Add authentication middleware to protect routes.
+
+### Component: Database
+
+#### [MODIFY] `migrations/003_add_users.sql`
+
+Create users table with required fields.
+
+## Context References
+
+This plan was based on the following context:
+
+- [[Architecture_Docs]] - Overall system architecture
+- [[API_Spec]] - Existing API endpoints
+- [[Security_Guidelines]] - Authentication requirements
+
+**Context Warnings:**
+
+- Skipped large_legacy_file.txt (100k tokens, would exceed limit)
+
+## Next Steps
+
+1. Review this plan
+2. If approved, move to `/System/Active/implement-auth.md`
+3. Agent will execute changes on separate git branch
+4. Review pull request before merging
+```
+
+#### Implementation Checklist
+
+1. **Create `src/services/plan_writer.ts`**
+2. **Implement `PlanWriter` class** with:
+   - `writePlan(result: AgentExecutionResult, metadata: RequestMetadata): Promise<PlanWriteResult>`
+   - `formatPlan(result: AgentExecutionResult, metadata: RequestMetadata): string`
+   - `generateWikiLinks(filePaths: string[]): string[]`
+   - `generateFilename(requestId: string): string`
+3. **Handle frontmatter generation**: YAML frontmatter with trace_id, status, timestamps
+4. **Format reasoning section**: Extract and format the `thought` content
+5. **Format content section**: Parse and structure the `content` (proposed changes)
+6. **Generate context references**: Create wiki links to context files used
+7. **Include context warnings**: Add any truncation/skipping warnings
+8. **Write to file**: Atomic write with proper error handling
+9. **Log to Activity Journal**: Record plan creation event
+
+#### Detailed Implementation
+
+```typescript
+// src/services/plan_writer.ts
+
+export class PlanWriter {
+  constructor(private config: PlanWriterConfig) {}
+
+  /**
+   * Write a plan document based on agent execution result
+   */
+  async writePlan(
+    result: AgentExecutionResult,
+    metadata: RequestMetadata,
+  ): Promise<PlanWriteResult> {
+    // Generate plan content
+    const content = this.formatPlan(result, metadata);
+
+    // Generate filename: request-id_plan.md
+    const filename = this.generateFilename(metadata.requestId);
+    const planPath = `${this.config.plansDirectory}/${filename}`;
+
+    // Write to file
+    await Deno.writeTextFile(planPath, content);
+
+    const writtenAt = new Date();
+
+    // Log to Activity Journal
+    await this.logPlanCreation(planPath, metadata.traceId, metadata);
+
+    return {
+      planPath,
+      content,
+      writtenAt,
+    };
+  }
+
+  /**
+   * Format the complete plan document
+   */
+  private formatPlan(
+    result: AgentExecutionResult,
+    metadata: RequestMetadata,
+  ): string {
+    const sections: string[] = [];
+
+    // 1. Frontmatter
+    sections.push(this.generateFrontmatter(metadata));
+
+    // 2. Title (extract from content or use request ID)
+    const title = this.extractTitle(result.content) ||
+      `Plan: ${metadata.requestId}`;
+    sections.push(`# ${title}\n`);
+
+    // 3. Summary (first paragraph of content or generate)
+    sections.push(`## Summary\n`);
+    sections.push(this.extractSummary(result.content));
+    sections.push("");
+
+    // 4. Reasoning (from thought tags)
+    if (this.config.includeReasoning && result.thought) {
+      sections.push(`## Reasoning\n`);
+      sections.push(result.thought);
+      sections.push("");
+    }
+
+    // 5. Proposed Changes (main content)
+    sections.push(`## Proposed Changes\n`);
+    sections.push(result.content);
+    sections.push("");
+
+    // 6. Context References
+    if (metadata.contextFiles.length > 0) {
+      sections.push(this.generateContextReferences(metadata));
+    }
+
+    // 7. Next Steps
+    sections.push(this.generateNextSteps(metadata.requestId));
+
+    return sections.join("\n");
+  }
+
+  /**
+   * Generate YAML frontmatter
+   */
+  private generateFrontmatter(metadata: RequestMetadata): string {
+    return [
+      "---",
+      `trace_id: "${metadata.traceId}"`,
+      `request_id: "${metadata.requestId}"`,
+      `status: "review"`,
+      `created_at: "${metadata.createdAt.toISOString()}"`,
+      "---",
+      "",
+    ].join("\n");
+  }
+
+  /**
+   * Generate context references section with wiki links
+   */
+  private generateContextReferences(metadata: RequestMetadata): string {
+    const lines: string[] = [
+      "## Context References\n",
+      "This plan was based on the following context:\n",
+    ];
+
+    // Generate wiki links for context files
+    if (this.config.generateWikiLinks) {
+      const wikiLinks = this.generateWikiLinks(metadata.contextFiles);
+      lines.push(...wikiLinks.map((link) => `- ${link}`));
+    } else {
+      lines.push(...metadata.contextFiles.map((file) => `- ${file}`));
+    }
+
+    // Add warnings if any
+    if (metadata.contextWarnings.length > 0) {
+      lines.push("\n**Context Warnings:**");
+      lines.push(...metadata.contextWarnings.map((w) => `- ${w}`));
+    }
+
+    lines.push("");
+    return lines.join("\n");
+  }
+
+  /**
+   * Generate Obsidian wiki links from file paths
+   */
+  private generateWikiLinks(filePaths: string[]): string[] {
+    return filePaths.map((path) => {
+      // Convert absolute path to relative to knowledge base
+      const relativePath = path.replace(this.config.knowledgeRoot + "/", "");
+
+      // Extract filename without extension for wiki link
+      const filename = relativePath.split("/").pop()?.replace(/\.md$/, "") ||
+        relativePath;
+
+      // Generate wiki link: [[filename]]
+      return `[[${filename}]]`;
+    });
+  }
+
+  /**
+   * Generate filename for plan: requestId_plan.md
+   */
+  private generateFilename(requestId: string): string {
+    return `${requestId}_plan.md`;
+  }
+
+  /**
+   * Extract title from content (first # heading)
+   */
+  private extractTitle(content: string): string | null {
+    const match = content.match(/^#\s+(.+)$/m);
+    return match ? match[1] : null;
+  }
+
+  /**
+   * Extract summary (first paragraph or generate from title)
+   */
+  private extractSummary(content: string): string {
+    // Find first paragraph after any headings
+    const lines = content.split("\n");
+    let inParagraph = false;
+    const paragraphLines: string[] = [];
+
+    for (const line of lines) {
+      if (line.startsWith("#")) {
+        inParagraph = false;
+        continue;
+      }
+
+      if (line.trim() && !inParagraph) {
+        inParagraph = true;
+      }
+
+      if (inParagraph) {
+        if (!line.trim()) {
+          break; // End of paragraph
+        }
+        paragraphLines.push(line);
+      }
+    }
+
+    return paragraphLines.length > 0
+      ? paragraphLines.join("\n")
+      : "Generated implementation plan based on request analysis.";
+  }
+
+  /**
+   * Generate next steps section
+   */
+  private generateNextSteps(requestId: string): string {
+    return [
+      "## Next Steps\n",
+      "1. Review this plan for correctness and completeness",
+      `2. If approved, move to \`/System/Active/${requestId}.md\``,
+      "3. Agent will execute changes on a separate git branch",
+      "4. Review the pull request before merging to main\n",
+    ].join("\n");
+  }
+
+  /**
+   * Log plan creation to Activity Journal
+   */
+  private async logPlanCreation(
+    planPath: string,
+    traceId: string,
+    metadata: RequestMetadata,
+  ): Promise<void> {
+    // Insert into activity table
+    const db = await this.openDatabase();
+
+    db.query(
+      `INSERT INTO activity (
+        action_type,
+        entity_type,
+        entity_id,
+        actor,
+        trace_id,
+        metadata
+      ) VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        "plan.created",
+        "plan",
+        metadata.requestId,
+        "agent", // Or specific agent ID from blueprint
+        traceId,
+        JSON.stringify({
+          plan_path: planPath,
+          request_id: metadata.requestId,
+          context_files_count: metadata.contextFiles.length,
+          context_warnings_count: metadata.contextWarnings.length,
+          has_reasoning: true,
+        }),
+      ],
+    );
+
+    db.close();
+  }
+
+  /**
+   * Open connection to Activity Journal database
+   */
+  private async openDatabase(): Promise<Database> {
+    // Implementation depends on database setup
+    // This is a placeholder showing the interface
+    const dbPath = `${this.config.systemRoot}/journal.db`;
+    return new Database(dbPath);
+  }
+}
+```
+
+#### Activity Logging
+
+**Requirement:** All plan creation events must be logged to the Activity Journal (SQLite database) for audit trail and
+trace linking.
+
+**Activity Table Schema:**
+
+```sql
+-- From /System/journal.db
+CREATE TABLE activity (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  action_type TEXT NOT NULL,        -- 'plan.created', 'plan.approved', 'plan.rejected'
+  entity_type TEXT NOT NULL,        -- 'plan'
+  entity_id TEXT NOT NULL,          -- request_id
+  actor TEXT NOT NULL,              -- 'agent', 'user', 'system'
+  trace_id TEXT NOT NULL,           -- Links request → plan → execution → report
+  metadata JSON                     -- Additional context
+);
+
+CREATE INDEX idx_activity_trace ON activity(trace_id);
+CREATE INDEX idx_activity_type ON activity(action_type);
+CREATE INDEX idx_activity_entity ON activity(entity_type, entity_id);
+```
+
+**Logging Requirements:**
+
+1. **Log on plan creation** - Every `writePlan()` call must insert an `activity` record
+2. **Include trace_id** - Links plan back to original request
+3. **Store metadata** - Context about what was included/skipped
+4. **Actor identification** - Which agent created the plan
+
+**Metadata Structure:**
+
+```typescript
+interface PlanCreatedMetadata {
+  plan_path: string; // Absolute path to plan file
+  request_id: string; // Original request identifier
+  context_files_count: number; // How many context files were used
+  context_warnings_count: number; // How many files were skipped/truncated
+  has_reasoning: boolean; // Whether reasoning section was included
+  agent_id?: string; // Specific agent that created the plan
+}
+```
+
+**Example Activity Records:**
+
+```sql
+-- Plan created successfully
+INSERT INTO activity (action_type, entity_type, entity_id, actor, trace_id, metadata)
+VALUES (
+  'plan.created',
+  'plan',
+  'implement-auth',
+  'agent',
+  '550e8400-e29b-41d4-a716-446655440000',
+  json_object(
+    'plan_path', '/ExoFrame/Inbox/Plans/implement-auth_plan.md',
+    'request_id', 'implement-auth',
+    'context_files_count', 3,
+    'context_warnings_count', 1,
+    'has_reasoning', true
+  )
+);
+
+-- Plan approved by user (future step)
+INSERT INTO activity (action_type, entity_type, entity_id, actor, trace_id, metadata)
+VALUES (
+  'plan.approved',
+  'plan',
+  'implement-auth',
+  'user',
+  '550e8400-e29b-41d4-a716-446655440000',
+  json_object('approved_at', '2024-11-25T11:00:00Z')
+);
+```
+
+**Query Examples:**
+
+```sql
+-- Get all activities for a specific trace
+SELECT * FROM activity
+WHERE trace_id = '550e8400-e29b-41d4-a716-446655440000'
+ORDER BY timestamp;
+
+-- Get all plans created today
+SELECT * FROM activity
+WHERE action_type = 'plan.created'
+  AND DATE(timestamp) = DATE('now')
+ORDER BY timestamp DESC;
+
+-- Find plans with context warnings
+SELECT entity_id, metadata->>'plan_path', metadata->>'context_warnings_count'
+FROM activity
+WHERE action_type = 'plan.created'
+  AND CAST(metadata->>'context_warnings_count' AS INTEGER) > 0;
+```
+
+**Integration with PlanWriter:**
+
+The `writePlan()` method must call `logPlanCreation()` after successfully writing the file:
+
+```typescript
+async writePlan(
+  result: AgentExecutionResult,
+  metadata: RequestMetadata,
+): Promise<PlanWriteResult> {
+  // Generate and write plan
+  const content = this.formatPlan(result, metadata);
+  const filename = this.generateFilename(metadata.requestId);
+  const planPath = `${this.config.plansDirectory}/${filename}`;
+  await Deno.writeTextFile(planPath, content);
+
+  const writtenAt = new Date();
+
+  // CRITICAL: Log to Activity Journal
+  await this.logPlanCreation(planPath, metadata.traceId, metadata);
+
+  return { planPath, content, writtenAt };
+}
+```
+
+**Error Handling:**
+
+- If Activity Journal logging fails, log warning but don't fail plan creation
+- Record logging failure to stderr for monitoring
+- Consider retry logic for database connection failures
+
+#### Integration with Steps 3.1-3.3
+
+Complete workflow combining all Phase 3 components:
+
+```typescript
+// Example: Complete agent execution flow
+
+import { ModelFactory } from "./ai/providers.ts";
+import { AgentRunner } from "./services/agent_runner.ts";
+import { ContextLoader } from "./services/context_loader.ts";
+import { PlanWriter } from "./services/plan_writer.ts";
+
+async function executeAgentRequest(
+  requestPath: string,
+  blueprintPath: string,
+) {
+  // Step 1: Load request and blueprint
+  const request = await loadRequest(requestPath);
+  const blueprint = await loadBlueprint(blueprintPath);
+
+  // Step 2: Load context within token budget (Step 3.3)
+  const contextLoader = new ContextLoader({
+    maxTokens: 100000,
+    safetyMargin: 0.8,
+    truncationStrategy: "smallest-first",
+    isLocalAgent: false,
+  });
+
+  const contextResult = await contextLoader.loadWithLimit(
+    request.contextFiles,
+  );
+
+  // Step 3: Enrich request with loaded context
+  const enrichedRequest = {
+    userPrompt: request.content,
+    context: {
+      files: contextResult.content,
+      warnings: contextResult.warnings,
+    },
+  };
+
+  // Step 4: Execute agent (Steps 3.1, 3.2)
+  const modelProvider = ModelFactory.create("ollama", { model: "llama2" });
+  const runner = new AgentRunner(modelProvider);
+
+  const result = await runner.run(blueprint, enrichedRequest);
+
+  // Step 5: Write plan (Step 3.4)
+  const planWriter = new PlanWriter({
+    plansDirectory: "/ExoFrame/Inbox/Plans",
+    includeReasoning: true,
+    generateWikiLinks: true,
+    knowledgeRoot: "/ExoFrame/Knowledge",
+  });
+
+  const planResult = await planWriter.writePlan(result, {
+    requestId: request.id,
+    traceId: request.traceId,
+    createdAt: new Date(),
+    contextFiles: contextResult.includedFiles,
+    contextWarnings: contextResult.warnings,
+  });
+
+  console.log(`Plan written to: ${planResult.planPath}`);
+}
+```
+
+#### Success Criteria
+
+**Test 1: Filename Generation**
+
+```typescript
+// Test: Request file "implement-auth.md" → Plan "implement-auth_plan.md"
+const metadata = {
+  requestId: "implement-auth",
+  traceId: "550e8400-e29b-41d4-a716-446655440000",
+  createdAt: new Date(),
+  contextFiles: [],
+  contextWarnings: [],
+};
+
+const result = await planWriter.writePlan(agentResult, metadata);
+
+assertEquals(result.planPath.endsWith("implement-auth_plan.md"), true);
+```
+
+**Test 2: Wiki Link Generation**
+
+```typescript
+// Test: Context files generate Obsidian [[wiki links]]
+const metadata = {
+  requestId: "add-feature",
+  traceId: "abc123",
+  createdAt: new Date(),
+  contextFiles: [
+    "/ExoFrame/Knowledge/Architecture_Docs.md",
+    "/ExoFrame/Knowledge/Context/API_Spec.md",
+  ],
+  contextWarnings: [],
+};
+
+const result = await planWriter.writePlan(agentResult, metadata);
+
+assertStringIncludes(result.content, "[[Architecture_Docs]]");
+assertStringIncludes(result.content, "[[API_Spec]]");
+```
+
+**Test 3: Frontmatter Structure**
+
+```typescript
+// Test: Plan includes valid YAML frontmatter
+const result = await planWriter.writePlan(agentResult, metadata);
+
+assertStringIncludes(result.content, "---");
+assertStringIncludes(result.content, `trace_id: "${metadata.traceId}"`);
+assertStringIncludes(result.content, 'status: "review"');
+```
+
+**Test 4: Reasoning Section**
+
+```typescript
+// Test: Reasoning section includes thought content
+const agentResult = {
+  thought: "Analyzing the request, I recommend...",
+  content: "## Implementation\nCreate new auth module...",
+  raw: "<thought>...</thought><content>...</content>",
+};
+
+const result = await planWriter.writePlan(agentResult, metadata);
+
+assertStringIncludes(result.content, "## Reasoning");
+assertStringIncludes(result.content, "Analyzing the request");
+```
+
+**Test 5: Context Warnings**
+
+```typescript
+// Test: Context warnings are included in plan
+const metadata = {
+  requestId: "test",
+  traceId: "abc",
+  createdAt: new Date(),
+  contextFiles: [],
+  contextWarnings: [
+    "Skipped large_file.txt (100k tokens, would exceed limit)",
+  ],
+};
+
+const result = await planWriter.writePlan(agentResult, metadata);
+
+assertStringIncludes(result.content, "Context Warnings");
+assertStringIncludes(result.content, "Skipped large_file.txt");
+```
 
 ---
 

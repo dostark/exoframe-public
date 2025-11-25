@@ -278,17 +278,18 @@ Targets based on Reference Hardware (**Mac Mini M4 / Linux x64**). Benchmarks ar
 | **Memory Footprint**     | < 150 MB     | Idle daemon including Activity Journal cache                     |
 | **Plan Loop Throughput** | ≥ 10 req/min | Scenario A dry run with mock provider                            |
 
-
 ---
 
 ## 11. Future: External Agent Interoperability
 
 ### 11.1. Agent2Agent (A2A) Protocol
 
-**What is Agent2Agent?**
-Google's Agent2Agent (A2A) is an open standard protocol (now under Linux Foundation) for inter-agent communication. It enables agents from different vendors and frameworks to discover, communicate, and coordinate tasks using JSON-RPC 2.0 over HTTP(S).
+**What is Agent2Agent?** Google's Agent2Agent (A2A) is an open standard protocol (now under Linux Foundation) for
+inter-agent communication. It enables agents from different vendors and frameworks to discover, communicate, and
+coordinate tasks using JSON-RPC 2.0 over HTTP(S).
 
 **Key Features:**
+
 - **Agent Discovery**: Standardized Agent Cards at `/.well-known/agent.json`
 - **Task Lifecycle**: Structured task states (submitted, working, completed)
 - **Communication**: JSON-RPC 2.0 over HTTP(S) with Server-Sent Events (SSE) for streaming
@@ -300,12 +301,14 @@ Google's Agent2Agent (A2A) is an open standard protocol (now under Linux Foundat
 **Design Philosophy Mismatch:**
 
 ExoFrame's core architecture is **file-based and local-first**:
+
 - Agents communicate via markdown files in watched directories
 - No network infrastructure required for local agents
 - Security through Deno's capability system and filesystem boundaries
 - All coordination happens via file movements
 
 A2A is **network-based and distributed**:
+
 - Requires HTTP servers and exposed endpoints
 - Necessitates network permissions and authentication
 - Designed for cross-platform, cross-network agent meshes
@@ -313,13 +316,15 @@ A2A is **network-based and distributed**:
 **Current Coverage:**
 
 ExoFrame already supports multi-agent scenarios through its file-based protocol:
+
 - **Local Agents**: Coordinate via shared filesystem (no network)
 - **Federated Agents**: Call out to third-party APIs when needed
 - **Hybrid Agents**: Mix local and remote execution with logged handoffs
 
 ### 11.3. Future Bridge Architecture (If Needed)
 
-If ExoFrame needs to interoperate with external agent systems, we can implement an **A2A Adapter Layer** without changing the core architecture:
+If ExoFrame needs to interoperate with external agent systems, we can implement an **A2A Adapter Layer** without
+changing the core architecture:
 
 ```typescript
 // src/adapters/a2a_adapter.ts
@@ -331,7 +336,7 @@ If ExoFrame needs to interoperate with external agent systems, we can implement 
 class A2AAdapter {
   constructor(
     private exoRoot: string,
-    private port: number = 8080
+    private port: number = 8080,
   ) {}
 
   /**
@@ -406,9 +411,9 @@ Implement A2A bridge only if one or more of these requirements emerge:
 3. **Agent Marketplace**: ExoFrame agents need to be discoverable/invokable by third-party systems
 4. **Enterprise Requirements**: Organization requires standardized agent protocols
 
-**Current Recommendation**: Defer A2A implementation. File-based protocol is simpler, more secure, and sufficient for current use cases.
+**Current Recommendation**: Defer A2A implementation. File-based protocol is simpler, more secure, and sufficient for
+current use cases.
 
 ---
 
 _End of Technical Specification_
-
