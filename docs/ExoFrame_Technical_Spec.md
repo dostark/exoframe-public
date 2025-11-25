@@ -278,6 +278,137 @@ Targets based on Reference Hardware (**Mac Mini M4 / Linux x64**). Benchmarks ar
 | **Memory Footprint**     | < 150 MB     | Idle daemon including Activity Journal cache                     |
 | **Plan Loop Throughput** | ≥ 10 req/min | Scenario A dry run with mock provider                            |
 
+
+---
+
+## 11. Future: External Agent Interoperability
+
+### 11.1. Agent2Agent (A2A) Protocol
+
+**What is Agent2Agent?**
+Google's Agent2Agent (A2A) is an open standard protocol (now under Linux Foundation) for inter-agent communication. It enables agents from different vendors and frameworks to discover, communicate, and coordinate tasks using JSON-RPC 2.0 over HTTP(S).
+
+**Key Features:**
+- **Agent Discovery**: Standardized Agent Cards at `/.well-known/agent.json`
+- **Task Lifecycle**: Structured task states (submitted, working, completed)
+- **Communication**: JSON-RPC 2.0 over HTTP(S) with Server-Sent Events (SSE) for streaming
+- **Platform-Agnostic**: Works across frameworks and vendors
+- **Complementary to MCP**: While MCP handles tool/context sharing, A2A handles agent-to-agent coordination
+
+### 11.2. Why ExoFrame Doesn't Use A2A Currently
+
+**Design Philosophy Mismatch:**
+
+ExoFrame's core architecture is **file-based and local-first**:
+- Agents communicate via markdown files in watched directories
+- No network infrastructure required for local agents
+- Security through Deno's capability system and filesystem boundaries
+- All coordination happens via file movements
+
+A2A is **network-based and distributed**:
+- Requires HTTP servers and exposed endpoints
+- Necessitates network permissions and authentication
+- Designed for cross-platform, cross-network agent meshes
+
+**Current Coverage:**
+
+ExoFrame already supports multi-agent scenarios through its file-based protocol:
+- **Local Agents**: Coordinate via shared filesystem (no network)
+- **Federated Agents**: Call out to third-party APIs when needed
+- **Hybrid Agents**: Mix local and remote execution with logged handoffs
+
+### 11.3. Future Bridge Architecture (If Needed)
+
+If ExoFrame needs to interoperate with external agent systems, we can implement an **A2A Adapter Layer** without changing the core architecture:
+
+```typescript
+// src/adapters/a2a_adapter.ts
+
+/**
+ * Bridges ExoFrame's file-based protocol to Agent2Agent HTTP protocol
+ * Enables external agents to invoke ExoFrame agents via A2A
+ */
+class A2AAdapter {
+  constructor(
+    private exoRoot: string,
+    private port: number = 8080
+  ) {}
+
+  /**
+   * Start HTTP server exposing A2A endpoints
+   * Permissions: Requires --allow-net=0.0.0.0:8080
+   */
+  async start(): Promise<void> {
+    // Serve Agent Card at /.well-known/agent.json
+    // Handle POST /tasks for task submission
+    // Poll /Inbox/Plans for responses
+  }
+
+  /**
+   * Translate A2A task to ExoFrame request file
+   */
+  private async ingestA2ATask(task: A2ATask): Promise<string> {
+    const requestPath = `${this.exoRoot}/Inbox/Requests/${task.id}.md`;
+    const markdown = this.toExoFrameMarkdown(task);
+    await Deno.writeTextFile(requestPath, markdown);
+    return task.id;
+  }
+
+  /**
+   * Monitor for plan file and translate back to A2A response
+   */
+  private async pollForPlan(taskId: string): Promise<A2AResponse> {
+    const planPath = `${this.exoRoot}/Inbox/Plans/${taskId}_plan.md`;
+    const watcher = Deno.watchFs(planPath);
+    // Wait for file creation, parse, return A2A response
+  }
+}
+```
+
+**Integration Points:**
+
+1. **Inbound (External → ExoFrame)**:
+   - External agent calls A2A endpoint
+   - Adapter creates request file in `/Inbox/Requests`
+   - ExoFrame agent processes normally
+   - Adapter watches `/Inbox/Plans`, translates to A2A response
+
+2. **Outbound (ExoFrame → External)**:
+   - ExoFrame agent specifies A2A-compatible remote in blueprint
+   - Adapter translates request file to A2A task
+   - Posts to external agent's A2A endpoint
+   - Receives response, creates plan file
+
+**Security Considerations:**
+
+- A2A adapter runs as **separate Deno process** with `--allow-net` permission
+- Core ExoFrame daemon remains network-isolated for local agents
+- Adapter uses Unix socket or named pipe to communicate with main daemon
+- All A2A traffic logged to Activity Journal with external agent metadata
+
+**Deployment Model:**
+
+```bash
+# Core daemon (no network)
+deno run --allow-read=./ExoFrame --allow-write=./ExoFrame src/main.ts
+
+# Optional A2A adapter (when external integration needed)
+deno run --allow-read=./ExoFrame --allow-write=./ExoFrame \
+  --allow-net=0.0.0.0:8080 src/adapters/a2a_adapter.ts
+```
+
+### 11.4. Decision Criteria for A2A Integration
+
+Implement A2A bridge only if one or more of these requirements emerge:
+
+1. **External System Integration**: Need to invoke agents in other frameworks (LangChain, AutoGen, etc.)
+2. **Multi-Instance Coordination**: Multiple ExoFrame deployments need to collaborate across machines
+3. **Agent Marketplace**: ExoFrame agents need to be discoverable/invokable by third-party systems
+4. **Enterprise Requirements**: Organization requires standardized agent protocols
+
+**Current Recommendation**: Defer A2A implementation. File-based protocol is simpler, more secure, and sufficient for current use cases.
+
 ---
 
 _End of Technical Specification_
+
