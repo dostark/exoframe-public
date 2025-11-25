@@ -165,7 +165,8 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
   CREATE TABLE activity (
     id TEXT PRIMARY KEY,
     trace_id TEXT NOT NULL,
-    actor TEXT NOT NULL,
+    actor TEXT NOT NULL,              -- 'agent', 'human', 'system'
+    agent_id TEXT,                    -- Specific agent: 'senior-coder', 'security-auditor', NULL for human/system
     action_type TEXT NOT NULL,
     payload JSON NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -174,6 +175,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
   CREATE INDEX idx_activity_trace ON activity(trace_id);
   CREATE INDEX idx_activity_time ON activity(timestamp);
   CREATE INDEX idx_activity_actor ON activity(actor);
+  CREATE INDEX idx_activity_agent ON activity(agent_id);
 
   -- File Leases: Prevents concurrent modifications
   CREATE TABLE leases (
@@ -989,6 +991,7 @@ const result = await contextLoader.loadWithLimit(contextFiles);
 **Plan Document Structure:**
 
 Plans follow this standardized format with:
+
 - YAML frontmatter (trace_id, request_id, status, created_at)
 - Title and Summary sections
 - Reasoning section (from `<thought>` tags)
@@ -1000,9 +1003,13 @@ Plans follow this standardized format with:
 **Activity Logging:**
 
 All plan creation events are logged to `/System/journal.db` activity table with:
+
 - `action_type`: 'plan.created'
 - `trace_id`: Links request → plan → execution → report
 - `metadata`: Includes plan_path, context file counts, warnings
+
+**Note:** Activity logging uses batched non-blocking writes. Logs accumulate in memory queue and flush every 100ms or
+when 100 entries accumulated. Operations return immediately without waiting for disk I/O.
 
 #### Success Criteria
 
@@ -1024,138 +1031,731 @@ See `tests/plan_writer_test.ts` for comprehensive test coverage (22 tests):
 
 ### Step 4.1: The Tool Registry
 
-- **Action:** Map LLM tool calls (JSON) to Deno functions (`read_file`, `run_command`).
-- **Justification:** Turns text into action.
-- **Success Criteria:**
-  - LLM outputting `{"tool": "read_file", ...}` triggers actual file read.
+- **Dependencies:** Steps 3.1-3.4 (Model Adapter, Agent Runner, Context Loader, Plan Writer)
+- **Action:** Implement tool registry that maps LLM function calls (JSON) to safe Deno operations (`read_file`,
+  `write_file`, `run_command`, `list_directory`).
+- **Requirement:** Tools must be sandboxed within allowed paths and enforce security policies from Step 2.3.
+- **Justification:** Enables agents to execute concrete actions while maintaining security boundaries.
+
+**The Solution:** Create a `ToolRegistry` service that:
+
+1. Registers available tools with JSON schemas (for LLM function calling)
+2. Validates tool invocations against security policies
+3. Executes tools within sandboxed context (Deno permissions, path restrictions)
+4. Logs all tool executions to Activity Journal
+5. Returns structured results for LLM to interpret
+
+**Core Tools:**
+
+- `read_file(path: string)` - Read file content within allowed paths
+- `write_file(path: string, content: string)` - Write/modify files
+- `list_directory(path: string)` - List directory contents
+- `run_command(command: string, args: string[])` - Execute shell commands (restricted)
+- `search_files(pattern: string, path: string)` - Search for files/content
+
+**Security Requirements:**
+
+- All paths must be validated through `PathResolver` (Step 2.3)
+- Commands must be whitelisted (no arbitrary shell execution)
+- Tool execution must be logged with trace_id for audit (non-blocking batched writes)
+- Failures must return structured errors (not raw exceptions)
+
+**Success Criteria:**
+
+- LLM outputting `{"tool": "read_file", "path": "Knowledge/docs.md"}` triggers file read
+- Path traversal attempts (`../../etc/passwd`) are rejected
+- Tool execution logged to Activity Journal with trace_id
+- Restricted commands (`rm -rf /`) are blocked
 
 ### Step 4.2: Git Integration (Identity Aware)
 
-- **Action:** Implement `GitService` class with complete error handling.
-- **Features:**
-  - Auto-init repo if not exists
-  - Auto-configure identity if missing
-  - Handle branch name conflicts (append timestamp)
-  - Validate changes exist before commit
-  - Wrap all git operations in try/catch
-- **Success Criteria:**
-  - Run test in non-git directory → auto-initializes
-  - Run test with no git config → auto-configures
-  - Create branch twice → second gets unique name
-  - Attempt commit with no changes → throws clear error
-- **Partial implementation**
+- **Dependencies:** Step 4.1 (Tool Registry)
+- **Action:** Implement `GitService` class for managing agent-created branches and commits.
+- **Requirement:** All agent changes must be tracked in git with trace_id linking back to original request.
+- **Justification:** Provides audit trail, enables rollback, and integrates with standard PR review workflow.
+
+**The Solution:** Create a `GitService` that:
+
+1. Auto-initializes git repository if not present
+2. Auto-configures git identity (user.name, user.email) if missing
+3. Creates feature branches with naming convention: `feat/{requestId}-{traceId}`
+4. Commits changes with trace_id in commit message footer
+5. Handles branch name conflicts (appends timestamp if needed)
+6. Validates changes exist before attempting commit
+
+**Branch Naming Convention:**
+
+```
+feat/implement-auth-550e8400
+feat/fix-bug-abc12345
+```
+
+**Commit Message Format:**
+
+```
+Implement authentication system
+
+Created login handler, JWT tokens, and user session management.
+
+[ExoTrace: 550e8400-e29b-41d4-a716-446655440000]
+```
+
+**Error Handling:**
+
+- Repository not initialized → auto-run `git init` + empty commit
+- Identity not configured → use default bot identity (`bot@exoframe.local`)
+- Branch already exists → append timestamp to make unique
+- No changes to commit → throw clear error (don't create empty commit)
+- Git command failures → wrap in descriptive error with command context
+
+**Success Criteria:**
+
+- Run in non-git directory → auto-initializes with initial commit
+- Run with no git config → auto-configures bot identity
+- Create branch twice with same name → second gets unique name
+- Attempt commit with no changes → throws clear error
+- Commit message includes trace_id footer for audit
+- All git operations logged to Activity Journal
+
+### Step 4.3: The Execution Loop (Resilient)
+
+- **Dependencies:** Steps 4.1–4.2 (Tool Registry, Git Integration) — **Rollback:** pause queue processing through config
+  and replay from last clean snapshot.
+- **Action:** Implement execution loop that processes active tasks from `/System/Active` with comprehensive error
+  handling.
+- **Requirement:** All execution paths (success or failure) must be logged, and users must receive clear feedback.
+- **Justification:** Ensures system resilience and user visibility into agent operations.
+
+**The Solution:** Create an `ExecutionLoop` service that:
+
+1. Monitors `/System/Active` for approved plans
+2. Acquires lease on active task file (prevents concurrent execution)
+3. Executes plan using Tool Registry and Git Service
+4. Handles both success and failure paths with appropriate reporting
+5. Cleans up resources (releases leases, closes connections)
+
+**Execution Flow:**
+
+```
+Agent creates plan → /Inbox/Plans/{requestId}_plan.md (status: review)
+  ↓
+[HUMAN REVIEWS PLAN IN OBSIDIAN]
+  ↓
+  ├─ APPROVE: Move plan → /System/Active/{requestId}.md
+  │   └─ Log: plan.approved (action_type, trace_id, actor: 'human')
+  │
+  ├─ REJECT: Move plan → /Inbox/Rejected/{requestId}_rejected.md
+  │   ├─ Add frontmatter: rejection_reason, rejected_by, rejected_at
+  │   └─ Log: plan.rejected (action_type, trace_id, actor: 'human', metadata: reason)
+  │
+  └─ REQUEST CHANGES: Add comments to plan file, keep in /Inbox/Plans
+      ├─ Append "## Review Comments" section to plan
+      ├─ Update frontmatter: status: 'needs_revision', reviewed_by, reviewed_at
+      └─ Log: plan.revision_requested (action_type, trace_id, actor: 'human', metadata: comments)
+      
+      Agent responds: reads comments → generates revised plan
+        ├─ Update plan in-place or create new version
+        └─ Log: plan.revised (action_type, trace_id, actor: 'agent')
+  ↓
+/System/Active/{requestId}.md detected by ExecutionLoop
+  ↓
+Acquire lease (or skip if locked)
+  ↓
+Load plan + context
+  ↓
+Create git branch (feat/{requestId}-{traceId})
+  ↓
+Execute tools (wrapped in try/catch)
+  ↓
+  ├─ SUCCESS:
+  │   ├─ Commit changes to branch
+  │   ├─ Generate Mission Report → /Knowledge/Reports
+  │   ├─ Archive plan → /Inbox/Archive
+  │   └─ Log: execution.completed (trace_id, actor: 'agent', metadata: files_changed)
+  │   
+  │   [HUMAN REVIEWS PULL REQUEST]
+  │     ↓
+  │     ├─ APPROVE: Merge PR to main
+  │     │   └─ Log: pr.merged (trace_id, actor: 'human', metadata: commit_sha)
+  │     │
+  │     └─ REJECT: Close PR without merging
+  │         └─ Log: pr.rejected (trace_id, actor: 'human', metadata: reason)
+  │
+  └─ FAILURE:
+      ├─ Rollback git changes (reset branch)
+      ├─ Generate Failure Report → /Knowledge/Reports
+      ├─ Move plan back → /Inbox/Requests (status: error)
+      └─ Log: execution.failed (trace_id, actor: 'system', metadata: error_details)
+  ↓
+Release lease
+```
+
+**Human Review Actions:**
+
+1. **Approve Plan**
+   - Action: Move file from `/Inbox/Plans/{requestId}_plan.md` to `/System/Active/{requestId}.md`
+   - Logging: Insert activity record with `action_type: 'plan.approved'`, `actor: 'human'`
+
+2. **Reject Plan**
+   - Action: Move file to `/Inbox/Rejected/{requestId}_rejected.md`
+   - Add to frontmatter:
+     ```yaml
+     status: "rejected"
+     rejected_by: "user@example.com"
+     rejected_at: "2024-11-25T15:30:00Z"
+     rejection_reason: "Approach is too risky, use incremental strategy instead"
+     ```
+   - Logging: Insert activity record with `action_type: 'plan.rejected'`, `actor: 'human'`, `metadata: {reason: "..."}`
+
+3. **Request Changes**
+   - Action: Edit plan file in-place, append comments section:
+     ```markdown
+     ## Review Comments
+
+     **Reviewed by:** user@example.com\
+     **Reviewed at:** 2024-11-25T15:30:00Z
+
+     - ❌ Don't modify the production database directly
+     - ⚠️ Need to add rollback migration
+     - ✅ Login handler looks good
+     - 💡 Consider adding rate limiting to prevent brute force
+     ```
+   - Update frontmatter:
+     ```yaml
+     status: "needs_revision"
+     reviewed_by: "user@example.com"
+     reviewed_at: "2024-11-25T15:30:00Z"
+     ```
+   - Logging: Insert activity record with `action_type: 'plan.revision_requested'`, `actor: 'human'`,
+     `metadata: {comment_count: 4}`
+
+**Activity Logging Schema:**
+
+**Note:** Use `DatabaseService.logActivity()` instead of direct SQL INSERTs. Logs are batched and written asynchronously
+for performance.
 
 ```typescript
-// src/services/git.ts
+// All human actions must be logged via DatabaseService
+db.logActivity(
+  "human", // actor
+  "plan.approved", // action_type (or 'plan.rejected', 'plan.revision_requested')
+  "implement-auth", // target (plan name)
+  {
+    reviewed_by: "user@example.com",
+    action: "approved",
+    timestamp: "2024-11-25T15:30:00Z",
+  }, // payload
+  "550e8400-e29b-41d4-a716-446655440000", // trace_id
+  null, // agent_id (NULL for human actions)
+);
+```
 
-class GitService {
-  constructor(private workingDir: string) {}
+```sql
+-- Resulting SQL (executed in batched transaction, non-blocking)
+INSERT INTO activity (id, trace_id, actor, agent_id, action_type, target, payload, timestamp)
+VALUES (
+  'uuid-generated',
+  '550e8400-e29b-41d4-a716-446655440000',
+  'human',
+  NULL,
+  'plan.approved',
+  'implement-auth',
+  '{"reviewed_by":"user@example.com","action":"approved","timestamp":"2024-11-25T15:30:00Z"}',
+  '2024-11-25T15:30:00Z'
+);
+```
 
-  private async exec(args: string[]): Promise<string> {
-    const command = new Deno.Command("git", {
-      args,
-      cwd: this.workingDir,
-      stdout: "piped",
-      stderr: "piped",
-    });
+```typescript
+// Agent actions include agent_id
+db.logActivity(
+  "agent", // actor
+  "plan.created", // action_type
+  "implement-auth", // target
+  {
+    plan_path: "/ExoFrame/Inbox/Plans/implement-auth_plan.md",
+    context_files_count: 3,
+  }, // payload
+  "550e8400-e29b-41d4-a716-446655440000", // trace_id
+  "senior-coder", // agent_id (specific agent)
+);
+```
 
-    const { code, stdout, stderr } = await command.output();
+**Performance Note:** All `logActivity()` calls are non-blocking. Logs accumulate in an in-memory queue and are written
+to SQLite in batched transactions every 100ms or when 100 entries accumulated. This provides:
 
-    if (code !== 0) {
-      const error = new TextDecoder().decode(stderr);
-      throw new Error(`Git command failed: git ${args.join(" ")}\n${error}`);
-    }
+- **Zero latency**: Operations return immediately
+- **High throughput**: Batch transactions are 10-50x faster than individual INSERTs
+- **Data safety**: `DatabaseService.close()` flushes remaining logs synchronously before shutdown
 
-    return new TextDecoder().decode(stdout).trim();
-  }
+**Automatic Logging with TypeScript Decorators:**
 
-  async isRepo(): Promise<boolean> {
-    try {
-      await this.exec(["rev-parse", "--git-dir"]);
-      return true;
-    } catch {
-      return false;
-    }
-  }
+TypeScript supports decorators (experimental feature) for automatic activity logging. Enable in `deno.json`:
 
-  async initIfNeeded(): Promise<void> {
-    if (!(await this.isRepo())) {
-      await this.exec(["init"]);
-      await this.exec(["commit", "--allow-empty", "-m", "Initial commit"]);
-    }
-  }
-
-  async ensureIdentity(): Promise<void> {
-    try {
-      await this.exec(["config", "user.email"]);
-    } catch {
-      // Email not configured, set default
-      await this.exec(["config", "user.email", "bot@exoframe.local"]);
-      await this.exec(["config", "user.name", "ExoFrame Agent"]);
-    }
-  }
-
-  async createBranch(baseName: string, traceId: string): Promise<string> {
-    await this.ensureIdentity();
-
-    const branchName = `feat/${baseName}-${traceId.slice(0, 8)}`;
-
-    try {
-      await this.exec(["checkout", "-b", branchName]);
-      return branchName;
-    } catch (error) {
-      // Branch might already exist, try with suffix
-      const uniqueName = `${branchName}-${Date.now()}`;
-      await this.exec(["checkout", "-b", uniqueName]);
-      return uniqueName;
-    }
-  }
-
-  async commit(message: string, traceId: string): Promise<void> {
-    await this.ensureIdentity();
-
-    // Check if there are changes to commit
-    const status = await this.exec(["status", "--porcelain"]);
-    if (status.trim().length === 0) {
-      throw new Error("No changes to commit");
-    }
-
-    // Stage all changes
-    await this.exec(["add", "-A"]);
-
-    // Commit with trace ID footer
-    const fullMessage = `${message}\n\n[ExoTrace: ${traceId}]`;
-    await this.exec(["commit", "-m", fullMessage]);
-  }
-
-  async hasUncommittedChanges(): Promise<boolean> {
-    const status = await this.exec(["status", "--porcelain"]);
-    return status.trim().length > 0;
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   }
 }
 ```
 
-### Step 4.3: The Execution Loop (Resilient)
+**Implementation:**
 
-- **Dependencies:** Steps 4.1–4.2 — **Rollback:** pause queue processing through config and replay from last clean
-  snapshot.
-- **Action:** Implement logic for `/System/Active`.
-- **Logic:** Wrap execution in `try/catch`.
-  - _Success:_ Call Mission Reporter, move Request to `/Inbox/Archive`.
-  - _Failure:_ Write **Failure Report** (with error trace) to `/Knowledge/Reports`, move Request back to
-    `/Inbox/Requests` (status: `error`).
-- **Justification:** Ensures user knows _why_ an agent failed instead of infinite hanging.
-- **Success Criteria:**
-  - Force a tool failure. Verify "Failure Report" appears in Obsidian.
+```typescript
+// src/services/activity_logger.ts
+
+/**
+ * Decorator that automatically logs method execution to Activity Journal
+ *
+ * @param actionType - The action_type to log (e.g., 'execution.started')
+ * @param options - Additional logging options
+ */
+export function LogActivity(
+  actionType: string,
+  options?: {
+    entityType?: string;
+    actor?: "agent" | "human" | "system";
+    captureArgs?: boolean;
+    captureResult?: boolean;
+  },
+) {
+  return function (
+    target: any,
+    propertyKey: string,
+    descriptor: PropertyDescriptor,
+  ) {
+    const originalMethod = descriptor.value;
+
+    descriptor.value = async function (...args: any[]) {
+      const startTime = Date.now();
+      let result: any;
+      let error: any;
+
+      try {
+        // Execute original method
+        result = await originalMethod.apply(this, args);
+
+        // Log success
+        await logToActivity({
+          action_type: actionType,
+          entity_type: options?.entityType || "task",
+          entity_id: extractEntityId(this, args),
+          actor: options?.actor || "system",
+          agent_id: extractAgentId(this, args),
+          trace_id: extractTraceId(this, args),
+          metadata: {
+            method: propertyKey,
+            duration_ms: Date.now() - startTime,
+            status: "success",
+            ...(options?.captureArgs && { args: sanitizeArgs(args) }),
+            ...(options?.captureResult && { result: sanitizeResult(result) }),
+          },
+        });
+
+        return result;
+      } catch (err) {
+        error = err;
+
+        // Log failure
+        await logToActivity({
+          action_type: `${actionType}.failed`,
+          entity_type: options?.entityType || "task",
+          entity_id: extractEntityId(this, args),
+          actor: options?.actor || "system",
+          agent_id: extractAgentId(this, args),
+          trace_id: extractTraceId(this, args),
+          metadata: {
+            method: propertyKey,
+            duration_ms: Date.now() - startTime,
+            status: "error",
+            error_type: err.constructor.name,
+            error_message: err.message,
+            ...(options?.captureArgs && { args: sanitizeArgs(args) }),
+          },
+        });
+
+        throw err;
+      }
+    };
+
+    return descriptor;
+  };
+}
+
+/**
+ * Extract trace_id from method context or arguments
+ */
+function extractTraceId(context: any, args: any[]): string {
+  // Try context properties
+  if (context.traceId) return context.traceId;
+  if (context.trace_id) return context.trace_id;
+
+  // Try first argument if it has trace_id
+  if (args[0]?.traceId) return args[0].traceId;
+  if (args[0]?.trace_id) return args[0].trace_id;
+
+  return "unknown";
+}
+
+/**
+ * Extract agent_id from method context or arguments
+ */
+function extractAgentId(context: any, args: any[]): string | null {
+  // Try context properties
+  if (context.agentId) return context.agentId;
+  if (context.agent_id) return context.agent_id;
+
+  // Try first argument if it has agent_id
+  if (args[0]?.agentId) return args[0].agentId;
+  if (args[0]?.agent_id) return args[0].agent_id;
+
+  // If actor is not 'agent', return null
+  if (context.actor && context.actor !== "agent") return null;
+
+  return null;
+}
+
+/**
+ * Extract entity_id from method context or arguments
+ */
+function extractEntityId(context: any, args: any[]): string {
+  if (context.entityId) return context.entityId;
+  if (context.requestId) return context.requestId;
+  if (args[0]?.requestId) return args[0].requestId;
+  if (args[0]?.id) return args[0].id;
+
+  return "unknown";
+}
+
+/**
+ * Sanitize arguments for logging (remove sensitive data, limit size)
+ */
+function sanitizeArgs(args: any[]): any {
+  return args.map((arg) => {
+    if (typeof arg === "string" && arg.length > 200) {
+      return arg.substring(0, 200) + "...";
+    }
+    if (typeof arg === "object") {
+      // Remove sensitive fields
+      const { password, token, apiKey, ...safe } = arg;
+      return safe;
+    }
+    return arg;
+  });
+}
+
+/**
+ * Sanitize result for logging
+ */
+function sanitizeResult(result: any): any {
+  if (typeof result === "string" && result.length > 500) {
+    return result.substring(0, 500) + "...";
+  }
+  return result;
+}
+
+/**
+ * Write to Activity Journal database
+ */
+async function logToActivity(record: {
+  action_type: string;
+  entity_type: string;
+  entity_id: string;
+  actor: string;
+  agent_id: string | null;
+  trace_id: string;
+  metadata: Record<string, any>;
+}): Promise<void> {
+  const db = await DatabaseService.getInstance();
+
+  await db.logActivity(
+    record.action_type,
+    record.entity_type,
+    record.entity_id,
+    record.actor,
+    record.agent_id,
+    record.trace_id,
+    record.metadata,
+  );
+}
+```
+
+**Usage Example:**
+
+```typescript
+// src/services/execution_loop.ts
+
+export class ExecutionLoop {
+  private traceId: string;
+  private requestId: string;
+  private agentId: string;
+
+  constructor(traceId: string, requestId: string, agentId: string) {
+    this.traceId = traceId;
+    this.requestId = requestId;
+    this.agentId = agentId; // e.g., 'senior-coder', 'security-auditor'
+  }
+
+  @LogActivity("execution.started", {
+    entityType: "task",
+    actor: "system",
+    captureArgs: true,
+  })
+  async acquireLease(filePath: string): Promise<Lease> {
+    // Method automatically logged on entry and exit
+    const lease = await LeaseService.acquire(filePath, this.traceId);
+    return lease;
+  }
+
+  @LogActivity("execution.branch_created", {
+    entityType: "task",
+    actor: "agent",
+    captureResult: true,
+  })
+  async createBranch(baseName: string): Promise<string> {
+    // Logs success with branch name, or failure with error
+    const git = new GitService(this.workingDir);
+    return await git.createBranch(baseName, this.traceId);
+  }
+
+  @LogActivity("execution.tool_executed", {
+    entityType: "tool",
+    actor: "agent",
+  })
+  async executeTool(toolName: string, params: any): Promise<any> {
+    // Each tool execution is logged
+    const toolRegistry = new ToolRegistry();
+    return await toolRegistry.execute(toolName, params);
+  }
+
+  @LogActivity("execution.completed", {
+    entityType: "task",
+    actor: "agent",
+    captureResult: true,
+  })
+  async commitChanges(message: string): Promise<void> {
+    // Logs commit with trace_id
+    const git = new GitService(this.workingDir);
+    await git.commit(message, this.traceId);
+  }
+}
+```
+
+**Benefits of Decorator Approach:**
+
+1. **DRY Principle** - Logging logic defined once, applied everywhere
+2. **Consistent Format** - All logs have same structure
+3. **Error Handling** - Automatically captures exceptions
+4. **Performance Tracking** - Duration measured automatically
+5. **Less Boilerplate** - No manual `try/catch/finally` blocks needed
+
+**Complete Activity Trail:**
+
+With decorators, every step is logged automatically:
+
+```sql
+-- Query full execution trace with agent identification
+SELECT 
+  timestamp,
+  action_type,
+  actor,
+  agent_id,
+  metadata->>'method' as method,
+  metadata->>'duration_ms' as duration,
+  metadata->>'status' as status
+FROM activity
+WHERE trace_id = '550e8400-e29b-41d4-a716-446655440000'
+ORDER BY timestamp;
+
+-- Example output:
+-- timestamp           | action_type               | actor  | agent_id      | method        | duration | status
+-- 2024-11-25 14:00:00 | plan.created              | agent  | senior-coder  | writePlan     | 234ms    | success
+-- 2024-11-25 14:05:00 | plan.approved             | human  | NULL          | NULL          | NULL     | NULL
+-- 2024-11-25 14:05:01 | execution.started         | system | NULL          | acquireLease  | 12ms     | success
+-- 2024-11-25 14:05:02 | execution.branch_created  | agent  | senior-coder  | createBranch  | 145ms    | success
+-- 2024-11-25 14:05:03 | execution.tool_executed   | agent  | senior-coder  | executeTool   | 234ms    | success
+-- 2024-11-25 14:05:04 | execution.completed       | agent  | senior-coder  | commitChanges | 456ms    | success
+
+-- Find which agents are most active
+SELECT 
+  agent_id,
+  COUNT(*) as action_count,
+  COUNT(*) FILTER (WHERE metadata->>'status' = 'success') as success_count,
+  COUNT(*) FILTER (WHERE metadata->>'status' = 'error') as error_count
+FROM activity
+WHERE actor = 'agent' AND agent_id IS NOT NULL
+GROUP BY agent_id
+ORDER BY action_count DESC;
+
+-- Get error rate by agent
+SELECT 
+  agent_id,
+  COUNT(*) FILTER (WHERE action_type LIKE '%.failed') * 100.0 / COUNT(*) as error_rate
+FROM activity
+WHERE actor = 'agent' AND agent_id IS NOT NULL
+GROUP BY agent_id;
+```
+
+**Query Examples:**
+
+```sql
+-- Get all human review actions for a trace
+SELECT action_type, metadata->>'reviewed_by', timestamp
+FROM activity
+WHERE trace_id = '550e8400-e29b-41d4-a716-446655440000'
+  AND actor = 'human'
+ORDER BY timestamp;
+
+-- Find plans awaiting human review
+SELECT entity_id, timestamp
+FROM activity
+WHERE action_type = 'plan.created'
+  AND entity_id NOT IN (
+    SELECT entity_id FROM activity 
+    WHERE action_type IN ('plan.approved', 'plan.rejected')
+  )
+ORDER BY timestamp DESC;
+
+-- Get rejection rate
+SELECT 
+  COUNT(*) FILTER (WHERE action_type = 'plan.rejected') * 100.0 / COUNT(*) as rejection_rate
+FROM activity
+WHERE action_type IN ('plan.approved', 'plan.rejected');
+```
+
+**Failure Report Format:**
+
+```markdown
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+request_id: "implement-auth"
+status: "failed"
+failed_at: "2024-11-25T12:00:00Z"
+error_type: "ToolExecutionError"
+---
+
+# Failure Report: Implement Authentication
+
+## Error Summary
+
+Execution failed during tool operation: write_file
+
+## Error Details
+```
+
+PermissionDenied: write access to /etc/passwd is not allowed at PathResolver.validatePath
+(src/services/path_resolver.ts:45) at ToolRegistry.executeTool (src/services/tool_registry.ts:89)
+
+```
+## Execution Context
+
+- Agent: senior-coder
+- Branch: feat/implement-auth-550e8400
+- Tools executed before failure: read_file (3), list_directory (1)
+- Last successful operation: Read /Knowledge/API_Spec.md
+
+## Next Steps
+
+1. Review the error and adjust the request
+2. Move corrected request back to /Inbox/Requests
+3. System will retry execution
+```
+
+**Success Criteria:**
+
+- Force tool failure (path traversal) → Failure Report created in /Knowledge/Reports
+- Failure Report includes full error trace and context
+- Original plan moved back to /Inbox/Requests with status: error
+- Git branch cleaned up (changes not committed)
+- All operations logged to Activity Journal
+- Lease released even if execution fails
 
 ### Step 4.4: The Mission Reporter (Episodic Memory)
 
-- **Dependencies:** Step 4.3 — **Rollback:** rerun reporter for trace or regenerate from Activity Journal.
-- **Action:** On active task completion, write `YYYY-MM-DD_TraceID.md` to `/Knowledge/Reports`.
-- **Content:** Summary of changes, files modified, self-reflection on errors.
-- **Success Criteria:**
-  - After active task, new Markdown file appears in Obsidian.
-  - File contains valid link to Portal card.
+- **Dependencies:** Step 4.3 (Execution Loop) — **Rollback:** rerun reporter for trace or regenerate from Activity
+  Journal.
+- **Action:** Generate comprehensive mission reports after successful task execution.
+- **Requirement:** Reports must document what was done, why, and link back to context for future reference.
+- **Justification:** Creates episodic memory for agents, enables learning from past executions, provides audit trail.
+
+**The Solution:** Create a `MissionReporter` service that:
+
+1. Generates structured report after successful execution
+2. Includes git diff summary, files modified, reasoning
+3. Links back to original request, plan, and context files
+4. Stores reports in `/Knowledge/Reports` (becomes searchable context)
+5. Logs report creation to Activity Journal
+
+**Report Naming Convention:**
+
+```
+2024-11-25_550e8400_implement-auth.md
+{date}_{traceId}_{requestId}.md
+```
+
+**Report Structure:**
+
+```markdown
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+request_id: "implement-auth"
+status: "completed"
+completed_at: "2024-11-25T14:30:00Z"
+agent_id: "senior-coder"
+branch: "feat/implement-auth-550e8400"
+---
+
+# Mission Report: Implement Authentication
+
+## Summary
+
+Successfully implemented JWT-based authentication system with login/logout endpoints.
+
+## Changes Made
+
+### Files Created (3)
+
+- `src/auth/login.ts` - Login handler with email/password validation
+- `src/auth/middleware.ts` - JWT verification middleware
+- `migrations/003_users.sql` - User table schema
+
+### Files Modified (2)
+
+- `src/routes/api.ts` - Added authentication routes
+- `README.md` - Updated setup instructions
+
+## Git Summary
+```
+
+5 files changed, 234 insertions(+), 12 deletions(-) Branch: feat/implement-auth-550e8400 Commit: abc123def
+
+```
+## Context Used
+
+- [[Architecture_Docs]] - System design patterns
+- [[API_Spec]] - Endpoint conventions
+- [[Security_Guidelines]] - Password hashing requirements
+
+## Reasoning
+
+Chose JWT over sessions for stateless authentication. Used bcrypt for password hashing per security guidelines. Implemented rate limiting on login endpoint to prevent brute force.
+
+## Next Steps
+
+- Review pull request
+- Test authentication flow
+- Merge to main after approval
+```
+
+**Success Criteria:**
+
+- After successful execution, report created in /Knowledge/Reports
+- Report filename follows convention: `{date}_{traceId}_{requestId}.md`
+- Report includes git diff summary and file changes
+- Report contains Obsidian wiki links to context files
+- Report logged to Activity Journal with trace_id
+- Report is searchable for future context loading
 
 ---
 
