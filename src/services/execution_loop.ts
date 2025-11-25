@@ -8,6 +8,7 @@ import { parse as parseYaml } from "@std/yaml";
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "./db.ts";
 import { GitService } from "./git_service.ts";
+import { ToolRegistry } from "./tool_registry.ts";
 
 // ============================================================================
 // Types
@@ -36,6 +37,12 @@ interface Lease {
   filePath: string;
   holder: string;
   acquiredAt: Date;
+}
+
+interface PlanAction {
+  tool: string;
+  params: Record<string, unknown>;
+  description?: string;
 }
 
 // ============================================================================
@@ -105,15 +112,16 @@ export class ExecutionLoop {
         throw new Error("Simulated execution failure");
       }
 
-      // Execute plan actions (simplified for now)
-      // In real implementation, this would:
-      // 1. Parse plan actions
-      // 2. Execute tools via ToolRegistry
-      // 3. Track changes
+      // Execute plan actions
+      const actions = this.parsePlanActions(planContent);
 
-      // For testing, create a dummy file to ensure we have changes
-      const testFile = join(this.config.system.root, "test-execution.txt");
-      await Deno.writeTextFile(testFile, `Execution by ${this.agentId} at ${new Date().toISOString()}`);
+      if (actions.length > 0) {
+        await this.executePlanActions(actions, traceId, requestId);
+      } else {
+        // For testing or empty plans, create a dummy file to ensure we have changes
+        const testFile = join(this.config.system.root, "test-execution.txt");
+        await Deno.writeTextFile(testFile, `Execution by ${this.agentId} at ${new Date().toISOString()}`);
+      }
 
       // Commit changes
       try {
@@ -185,6 +193,111 @@ export class ExecutionLoop {
     }
 
     return frontmatter;
+  }
+
+  /**
+   * Parse action blocks from plan content
+   * Looks for code blocks with tool invocations in YAML or JSON format
+   */
+  private parsePlanActions(planContent: string): PlanAction[] {
+    const actions: PlanAction[] = [];
+
+    // Match code blocks that contain action definitions
+    // Format: ```yaml or ```json blocks with tool and params fields
+    const codeBlockRegex = /```(?:yaml|json)\n([\s\S]*?)\n```/g;
+    let match;
+
+    while ((match = codeBlockRegex.exec(planContent)) !== null) {
+      try {
+        const block = match[1];
+        const parsed = parseYaml(block) as any;
+
+        // Check if this looks like an action (has tool field)
+        if (parsed && typeof parsed === "object" && "tool" in parsed) {
+          actions.push({
+            tool: parsed.tool,
+            params: parsed.params || {},
+            description: parsed.description,
+          });
+        }
+      } catch {
+        // Skip blocks that aren't valid YAML/JSON or don't match action format
+        continue;
+      }
+    }
+
+    return actions;
+  }
+
+  /**
+   * Execute plan actions using ToolRegistry
+   */
+  private async executePlanActions(
+    actions: PlanAction[],
+    traceId: string,
+    requestId: string,
+  ): Promise<void> {
+    const toolRegistry = new ToolRegistry({
+      config: this.config,
+      db: this.db,
+      traceId,
+      agentId: this.agentId,
+    });
+
+    let actionIndex = 0;
+    for (const action of actions) {
+      actionIndex++;
+
+      this.logActivity("execution.action_started", traceId, {
+        request_id: requestId,
+        action_index: actionIndex,
+        tool: action.tool,
+        description: action.description,
+      });
+
+      try {
+        const result = await toolRegistry.execute(action.tool, action.params);
+
+        this.logActivity("execution.action_completed", traceId, {
+          request_id: requestId,
+          action_index: actionIndex,
+          tool: action.tool,
+          result_summary: this.summarizeResult(result),
+        });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        this.logActivity("execution.action_failed", traceId, {
+          request_id: requestId,
+          action_index: actionIndex,
+          tool: action.tool,
+          error: errorMessage,
+        });
+
+        // Re-throw to trigger failure handling
+        throw new Error(`Action ${actionIndex} (${action.tool}) failed: ${errorMessage}`);
+      }
+    }
+  }
+
+  /**
+   * Create a safe summary of tool execution result for logging
+   */
+  private summarizeResult(result: any): string {
+    if (result === null || result === undefined) {
+      return "null";
+    }
+
+    if (typeof result === "string") {
+      return result.length > 100 ? `${result.substring(0, 100)}...` : result;
+    }
+
+    if (typeof result === "object") {
+      const json = JSON.stringify(result);
+      return json.length > 100 ? `${json.substring(0, 100)}...` : json;
+    }
+
+    return String(result);
   }
 
   /**
