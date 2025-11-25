@@ -4,6 +4,7 @@
  */
 
 import type { IModelProvider } from "../ai/providers.ts";
+import type { DatabaseService } from "./db.ts";
 
 // ============================================================================
 // Types and Interfaces
@@ -16,6 +17,9 @@ import type { IModelProvider } from "../ai/providers.ts";
 export interface Blueprint {
   /** System prompt that defines the agent's behavior and capabilities */
   systemPrompt: string;
+
+  /** Optional: Agent identifier for logging */
+  agentId?: string;
 }
 
 /**
@@ -27,6 +31,12 @@ export interface ParsedRequest {
 
   /** Additional context (e.g., file contents, environment info) */
   context: Record<string, unknown>;
+
+  /** Optional: Request ID for logging */
+  requestId?: string;
+
+  /** Optional: Trace ID for logging */
+  traceId?: string;
 }
 
 /**
@@ -43,6 +53,14 @@ export interface AgentExecutionResult {
   raw: string;
 }
 
+/**
+ * Configuration for AgentRunner
+ */
+export interface AgentRunnerConfig {
+  /** Optional: Database service for activity logging */
+  db?: DatabaseService;
+}
+
 // ============================================================================
 // Agent Runner Service
 // ============================================================================
@@ -52,7 +70,14 @@ export interface AgentExecutionResult {
  * executes via an LLM provider, and parses the structured XML response.
  */
 export class AgentRunner {
-  constructor(private readonly modelProvider: IModelProvider) {}
+  private db?: DatabaseService;
+
+  constructor(
+    private readonly modelProvider: IModelProvider,
+    config?: AgentRunnerConfig,
+  ) {
+    this.db = config?.db;
+  }
 
   /**
    * Run the agent with a blueprint and request
@@ -64,16 +89,74 @@ export class AgentRunner {
     blueprint: Blueprint,
     request: ParsedRequest,
   ): Promise<AgentExecutionResult> {
-    // Step 1: Construct the combined prompt
-    const combinedPrompt = this.constructPrompt(blueprint, request);
+    const startTime = Date.now();
+    const agentId = blueprint.agentId || "unknown";
+    const traceId = request.traceId;
+    const requestId = request.requestId;
 
-    // Step 2: Execute via the model provider
-    const rawResponse = await this.modelProvider.generate(combinedPrompt);
+    try {
+      // Log agent execution start
+      this.logActivity(
+        "agent",
+        "agent.execution_started",
+        requestId || null,
+        {
+          agent_id: agentId,
+          prompt_length: request.userPrompt.length,
+          has_context: Object.keys(request.context).length > 0,
+        },
+        traceId,
+        agentId,
+      );
 
-    // Step 3: Parse the response to extract thought and content
-    const result = this.parseResponse(rawResponse);
+      // Step 1: Construct the combined prompt
+      const combinedPrompt = this.constructPrompt(blueprint, request);
 
-    return result;
+      // Step 2: Execute via the model provider
+      const rawResponse = await this.modelProvider.generate(combinedPrompt);
+
+      // Step 3: Parse the response to extract thought and content
+      const result = this.parseResponse(rawResponse);
+
+      const duration = Date.now() - startTime;
+
+      // Log successful execution
+      this.logActivity(
+        "agent",
+        "agent.execution_completed",
+        requestId || null,
+        {
+          agent_id: agentId,
+          duration_ms: duration,
+          response_length: rawResponse.length,
+          has_thought: result.thought.length > 0,
+          has_content: result.content.length > 0,
+        },
+        traceId,
+        agentId,
+      );
+
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+
+      // Log execution failure
+      this.logActivity(
+        "agent",
+        "agent.execution_failed",
+        requestId || null,
+        {
+          agent_id: agentId,
+          duration_ms: duration,
+          error_type: error instanceof Error ? error.constructor.name : "Unknown",
+          error_message: error instanceof Error ? error.message : String(error),
+        },
+        traceId,
+        agentId,
+      );
+
+      throw error;
+    }
   }
 
   /**
@@ -135,5 +218,27 @@ export class AgentRunner {
       content,
       raw: rawResponse,
     };
+  }
+
+  /**
+   * Log activity to Activity Journal (if database provided)
+   */
+  private logActivity(
+    actor: string,
+    actionType: string,
+    target: string | null,
+    payload: Record<string, unknown>,
+    traceId?: string,
+    agentId?: string | null,
+  ): void {
+    if (!this.db) {
+      return; // No database, skip logging
+    }
+
+    try {
+      this.db.logActivity(actor, actionType, target, payload, traceId, agentId || null);
+    } catch (error) {
+      console.error("[AgentRunner] Failed to log activity:", error);
+    }
   }
 }

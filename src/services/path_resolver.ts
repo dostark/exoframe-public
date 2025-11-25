@@ -1,11 +1,24 @@
 import { join } from "@std/path";
 import type { Config } from "../config/schema.ts";
+import type { DatabaseService } from "./db.ts";
+
+export interface PathResolverConfig {
+  /** Optional: Database service for activity logging */
+  db?: DatabaseService;
+
+  /** Optional: Trace ID for logging */
+  traceId?: string;
+}
 
 export class PathResolver {
   private config: Config;
+  private db?: DatabaseService;
+  private traceId?: string;
 
-  constructor(config: Config) {
+  constructor(config: Config, options?: PathResolverConfig) {
     this.config = config;
+    this.db = options?.db;
+    this.traceId = options?.traceId;
   }
 
   /**
@@ -13,24 +26,47 @@ export class PathResolver {
    * Enforces security boundaries to prevent path traversal.
    */
   async resolve(aliasPath: string): Promise<string> {
-    if (!aliasPath.startsWith("@")) {
-      throw new Error("Path must start with a portal alias (e.g., @Blueprints/)");
+    const startTime = Date.now();
+
+    try {
+      if (!aliasPath.startsWith("@")) {
+        this.logSecurityViolation("path.invalid_alias", aliasPath, "Path must start with @ alias");
+        throw new Error("Path must start with a portal alias (e.g., @Blueprints/)");
+      }
+
+      // Split alias and relative path
+      const parts = aliasPath.split("/");
+      const alias = parts[0];
+      const relativePath = parts.slice(1).join("/");
+
+      const root = this.resolveAliasRoot(alias);
+      const fullPath = join(root, relativePath);
+
+      // Validate security
+      const resolvedPath = await this.validatePath(fullPath, [root]);
+
+      const duration = Date.now() - startTime;
+
+      // Log successful resolution
+      this.logActivity("system", "path.resolved", aliasPath, {
+        alias,
+        resolved_path: resolvedPath,
+        duration_ms: duration,
+      });
+
+      return resolvedPath;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+
+      // Log resolution failure
+      this.logActivity("system", "path.resolution_failed", aliasPath, {
+        duration_ms: duration,
+        error_type: error instanceof Error ? error.constructor.name : "Unknown",
+        error_message: error instanceof Error ? error.message : String(error),
+      });
+
+      throw error;
     }
-
-    // Split alias and relative path
-    // e.g. "@Blueprints/agent.md" -> ["@Blueprints", "agent.md"]
-    // e.g. "@Blueprints/" -> ["@Blueprints", ""]
-    const parts = aliasPath.split("/");
-    const alias = parts[0];
-    const relativePath = parts.slice(1).join("/");
-
-    const root = this.resolveAliasRoot(alias);
-
-    // Construct the full potential path
-    const fullPath = join(root, relativePath);
-
-    // Validate security
-    return await this.validatePath(fullPath, [root]);
   }
 
   private resolveAliasRoot(alias: string): string {
@@ -69,9 +105,66 @@ export class PathResolver {
     });
 
     if (!isAllowed) {
+      // Log security violation
+      this.logSecurityViolation(
+        "path.access_denied",
+        path,
+        `Path ${path} resolves to ${realPath}, outside allowed roots`,
+      );
       throw new Error(`Access denied: Path ${path} resolves to ${realPath}, which is outside allowed roots.`);
     }
 
     return realPath;
+  }
+
+  /**
+   * Log activity to Activity Journal
+   */
+  private logActivity(
+    actor: string,
+    actionType: string,
+    target: string | null,
+    payload: Record<string, unknown>,
+  ): void {
+    if (!this.db) {
+      return;
+    }
+
+    try {
+      this.db.logActivity(actor, actionType, target, payload, this.traceId, null);
+    } catch (error) {
+      console.error("[PathResolver] Failed to log activity:", error);
+    }
+  }
+
+  /**
+   * Log security violations with high priority
+   */
+  private logSecurityViolation(
+    actionType: string,
+    path: string,
+    reason: string,
+  ): void {
+    if (!this.db) {
+      console.warn(`[SECURITY] ${actionType}: ${path} - ${reason}`);
+      return;
+    }
+
+    try {
+      this.db.logActivity(
+        "system",
+        actionType,
+        path,
+        {
+          reason,
+          severity: "high",
+          timestamp: new Date().toISOString(),
+        },
+        this.traceId,
+        null,
+      );
+    } catch (error) {
+      console.error("[PathResolver] Failed to log security violation:", error);
+    }
   }
 }

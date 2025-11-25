@@ -38,6 +38,9 @@ export interface ContextConfig {
   /** Optional: Request ID for activity logging */
   requestId?: string;
 
+  /** Optional: Agent ID for activity logging */
+  agentId?: string;
+
   /** Optional: Database service for activity logging */
   db?: DatabaseService;
 }
@@ -177,7 +180,7 @@ export class ContextLoader {
     const content = this.formatContext(selectedFiles, warnings, limit);
 
     // Step 6: Log context loading to Activity Journal
-    await this.logContextLoad({
+    this.logContextLoad({
       totalTokens,
       includedCount: includedFiles.length,
       skippedCount: skippedFiles.length,
@@ -235,7 +238,7 @@ export class ContextLoader {
           };
         } catch (error) {
           // Log file load failure to Activity Journal
-          await this.logFileLoadError(path, error);
+          this.logFileLoadError(path, error);
           // Return null for failed loads, will be filtered out
           return null;
         }
@@ -345,14 +348,14 @@ export class ContextLoader {
   /**
    * Log context loading operation to Activity Journal
    */
-  private async logContextLoad(metadata: {
+  private logContextLoad(metadata: {
     totalTokens: number;
     includedCount: number;
     skippedCount: number;
     truncatedCount: number;
     strategy: string;
     isLocalAgent: boolean;
-  }): Promise<void> {
+  }): void {
     if (!this.config.db || !this.config.traceId) {
       // If no database or trace ID provided, skip logging (testing/standalone mode)
       return;
@@ -372,6 +375,7 @@ export class ContextLoader {
           is_local_agent: metadata.isLocalAgent,
         },
         this.config.traceId,
+        this.config.agentId || null,
       );
     } catch (error) {
       // Log to stderr but don't fail context loading
@@ -382,10 +386,10 @@ export class ContextLoader {
   /**
    * Log file load error to Activity Journal
    */
-  private async logFileLoadError(
+  private logFileLoadError(
     filePath: string,
     error: unknown,
-  ): Promise<void> {
+  ): void {
     if (!this.config.db || !this.config.traceId) {
       // If no database or trace ID, just log to stderr
       console.error(`Failed to load context file ${filePath}:`, error);
@@ -402,6 +406,7 @@ export class ContextLoader {
           error_type: error instanceof Error ? error.name : "Unknown",
         },
         this.config.traceId,
+        this.config.agentId || null,
       );
     } catch (dbError) {
       // Log both errors to stderr

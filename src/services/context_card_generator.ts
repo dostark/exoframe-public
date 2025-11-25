@@ -1,5 +1,5 @@
 import { join } from "@std/path";
-import type { Database } from "@db/sqlite";
+import type { DatabaseService } from "./db.ts";
 import type { Config } from "../config/schema.ts";
 
 export interface PortalInfo {
@@ -10,9 +10,9 @@ export interface PortalInfo {
 
 export class ContextCardGenerator {
   private config: Config;
-  private db?: Database;
+  private db?: DatabaseService;
 
-  constructor(config: Config, db?: Database) {
+  constructor(config: Config, db?: DatabaseService) {
     this.config = config;
     this.db = db;
   }
@@ -74,22 +74,13 @@ export class ContextCardGenerator {
     if (!this.db) return;
 
     try {
-      const activityId = crypto.randomUUID();
-      const traceId = crypto.randomUUID(); // New trace for this action
-      const timestamp = new Date().toISOString();
-
-      this.db.exec(
-        `INSERT INTO activity (id, trace_id, actor, action_type, target, payload, timestamp)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          activityId,
-          traceId,
-          "context_card_generator",
-          actionType,
-          payload.alias as string,
-          JSON.stringify(payload),
-          timestamp,
-        ],
+      this.db.logActivity(
+        "system",
+        actionType,
+        payload.alias as string,
+        payload,
+        undefined, // No specific trace_id for context card operations
+        null, // No agent_id (system operation)
       );
     } catch (error) {
       console.error("Failed to log activity:", error);
