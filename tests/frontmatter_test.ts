@@ -200,15 +200,13 @@ tags: ["feature", "ui"]
     // Allow time for batched write to flush
     await new Promise((resolve) => setTimeout(resolve, 150));
 
-    const rows = [
-      ...(db.instance as any).prepare("SELECT * FROM activity WHERE action_type = ?").all(["request.validated"]),
-    ];
+    const rows = db.getActivitiesByActionType("request.validated");
     assertEquals(rows.length, 1);
     const { actor, action_type, target, payload } = rows[0];
     assertEquals(actor, "system");
     assertEquals(action_type, "request.validated");
     assertEquals(target, "test.md");
-    const payloadObj = JSON.parse(payload as string);
+    const payloadObj = JSON.parse(payload);
     assertEquals(payloadObj.trace_id, "550e8400-e29b-41d4-a716-446655440000");
   } finally {
     await cleanup();
@@ -234,17 +232,13 @@ status: "pending"
     // Allow time for batched write to flush
     await new Promise((resolve) => setTimeout(resolve, 150));
 
-    const rows = [
-      ...(db.instance as any).prepare("SELECT * FROM activity WHERE action_type = ?").all([
-        "request.validation_failed",
-      ]),
-    ];
+    const rows = db.getActivitiesByActionType("request.validation_failed");
     assertEquals(rows.length, 1);
     const { actor, action_type, target, payload } = rows[0];
     assertEquals(actor, "system");
     assertEquals(action_type, "request.validation_failed");
     assertEquals(target, "bad.md");
-    const payloadObj = JSON.parse(payload as string);
+    const payloadObj = JSON.parse(payload);
     assertEquals(Array.isArray(payloadObj.errors), true);
   } finally {
     await cleanup();

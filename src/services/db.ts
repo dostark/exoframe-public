@@ -129,7 +129,7 @@ export class DatabaseService {
   /**
    * Close the database connection and flush pending logs
    */
-  async close() {
+  close() {
     this.isClosing = true;
 
     // Flush any remaining logs synchronously before closing
@@ -173,5 +173,69 @@ export class DatabaseService {
     }
 
     this.db.close();
+  }
+
+  /**
+   * Query activities by trace_id (for testing/debugging)
+   */
+  getActivitiesByTrace(traceId: string): Array<{
+    id: string;
+    trace_id: string;
+    actor: string;
+    agent_id: string | null;
+    action_type: string;
+    target: string | null;
+    payload: string;
+    timestamp: string;
+  }> {
+    const stmt = this.db.prepare(
+      `SELECT id, trace_id, actor, agent_id, action_type, target, payload, timestamp
+       FROM activity
+       WHERE trace_id = ?
+       ORDER BY timestamp`,
+    );
+
+    return stmt.all(traceId) as Array<{
+      id: string;
+      trace_id: string;
+      actor: string;
+      agent_id: string | null;
+      action_type: string;
+      target: string | null;
+      payload: string;
+      timestamp: string;
+    }>;
+  }
+
+  /**
+   * Query activities by action_type (for testing/debugging)
+   */
+  getActivitiesByActionType(actionType: string): Array<{
+    id: string;
+    trace_id: string;
+    actor: string;
+    agent_id: string | null;
+    action_type: string;
+    target: string | null;
+    payload: string;
+    timestamp: string;
+  }> {
+    const stmt = this.db.prepare(
+      `SELECT id, trace_id, actor, agent_id, action_type, target, payload, timestamp
+       FROM activity
+       WHERE action_type = ?
+       ORDER BY timestamp`,
+    );
+
+    return stmt.all(actionType) as Array<{
+      id: string;
+      trace_id: string;
+      actor: string;
+      agent_id: string | null;
+      action_type: string;
+      target: string | null;
+      payload: string;
+      timestamp: string;
+    }>;
   }
 }

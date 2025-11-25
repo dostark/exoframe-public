@@ -132,9 +132,9 @@ Deno.test("ContextCardGenerator: logs activity", async () => {
     await new Promise((resolve) => setTimeout(resolve, 150));
 
     // Verify log
-    const rows = db.instance.prepare("SELECT * FROM activity WHERE action_type = ?").all("context_card.created");
+    const rows = db.getActivitiesByActionType("context_card.created");
     assertEquals(rows.length, 1);
-    const row = rows[0] as any;
+    const row = rows[0];
     assertEquals(row.actor, "system");
     assertEquals(row.target, "LoggedApp");
 

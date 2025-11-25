@@ -333,11 +333,10 @@ Deno.test("ToolRegistry: all tool executions are logged", async () => {
     await new Promise((resolve) => setTimeout(resolve, 150));
 
     // Verify all executions logged
-    const logs = db.instance.prepare(
-      "SELECT * FROM activity WHERE action_type LIKE 'tool.%' AND trace_id = ?",
-    ).all("test-trace-123");
+    const logs = db.getActivitiesByTrace("test-trace-123");
+    const toolLogs = logs.filter((log) => log.action_type.startsWith("tool."));
 
-    assertEquals(logs.length >= 2, true);
+    assertEquals(toolLogs.length >= 2, true);
   } finally {
     await cleanup();
     await Deno.remove(tempDir, { recursive: true });
