@@ -1,5 +1,6 @@
 import { assert } from "https://deno.land/std@0.201.0/testing/asserts.ts";
 import { dirname, fromFileUrl, join } from "https://deno.land/std@0.201.0/path/mod.ts";
+import { exists } from "https://deno.land/std@0.201.0/fs/mod.ts";
 
 const __dirname = dirname(fromFileUrl(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
@@ -34,6 +35,27 @@ Deno.test("deploy_workspace.sh --no-run creates deploy files", async () => {
 
     const setupStat = await Deno.stat(setupScript);
     assert(setupStat.isFile, "setup_db.ts not copied to deployed workspace/scripts");
+
+    // Verify migrate_db.ts was copied (required for setup_db.ts)
+    const migrateScript = join(tmp, "scripts", "migrate_db.ts");
+    assert(
+      await exists(migrateScript),
+      "migrate_db.ts not copied to deployed workspace/scripts",
+    );
+
+    // Verify migrations folder was copied
+    const migrationsDir = join(tmp, "migrations");
+    assert(
+      await exists(migrationsDir),
+      "migrations folder not copied to deployed workspace",
+    );
+
+    // Verify at least one migration file exists
+    const initMigration = join(tmp, "migrations", "001_init.sql");
+    assert(
+      await exists(initMigration),
+      "001_init.sql not copied to deployed workspace/migrations",
+    );
   } finally {
     await Deno.remove(tmp, { recursive: true }).catch(() => {});
   }
