@@ -6,6 +6,7 @@
 import {
   assertEquals,
   assertExists,
+  assertRejects,
   assertStringIncludes,
 } from "jsr:@std/assert@^1.0.0";
 import { afterEach, beforeEach, describe, it } from "jsr:@std/testing@^1.0.0/bdd";
@@ -429,3 +430,108 @@ async function waitForProcessState(
   }
   return false;
 }
+
+// Additional edge case tests from tests/daemon_commands_test.ts
+describe("DaemonCommands - Edge Cases", () => {
+  let tempDir: string;
+  let db: DatabaseService;
+  let daemonCommands: DaemonCommands;
+  let pidFile: string;
+
+  beforeEach(async () => {
+    tempDir = await Deno.makeTempDir({ prefix: "daemon_edge_test_" });
+    const systemDir = join(tempDir, "System");
+    await ensureDir(systemDir);
+    pidFile = join(systemDir, "daemon.pid");
+
+    const config = createMockConfig(tempDir);
+    db = new DatabaseService(config);
+    daemonCommands = new DaemonCommands({ config, db });
+  });
+
+  afterEach(async () => {
+    await db.close();
+    await Deno.remove(tempDir, { recursive: true });
+  });
+
+  it("status() should return not running when PID file missing", async () => {
+    const status = await daemonCommands.status();
+    assertEquals(status.running, false);
+    assertEquals(status.version, "1.0.0");
+  });
+
+  it("status() should return not running when PID file contains invalid number", async () => {
+    await Deno.writeTextFile(pidFile, "not-a-number");
+    
+    const status = await daemonCommands.status();
+    
+    assertEquals(status.running, false);
+    assertEquals(status.pid, undefined);
+  });
+
+  it("status() should clean up PID file for dead process", async () => {
+    // Use a PID that definitely doesn't exist (999999)
+    await Deno.writeTextFile(pidFile, "999999");
+    
+    const status = await daemonCommands.status();
+    
+    assertEquals(status.running, false);
+    // PID file should be cleaned up
+    const pidFileExists = await Deno.stat(pidFile).then(() => true).catch(() => false);
+    assertEquals(pidFileExists, false);
+  });
+
+  it("start() should throw error when main script not found", async () => {
+    await assertRejects(
+      async () => await daemonCommands.start(),
+      Error,
+      "Daemon script not found",
+    );
+  });
+
+  it("start() should return early when daemon already running", async () => {
+    // Use current Deno process PID (which is definitely running)
+    const currentPid = Deno.pid;
+    await Deno.writeTextFile(pidFile, currentPid.toString());
+    
+    // Should return without error (early return)
+    await daemonCommands.start();
+    
+    // PID file should still exist
+    const pidContent = await Deno.readTextFile(pidFile);
+    assertEquals(pidContent, currentPid.toString());
+  });
+
+  it("stop() should return early when daemon not running", async () => {
+    // Should return without error (early return)
+    await daemonCommands.stop();
+  });
+
+  it("logs() should handle missing log file gracefully", async () => {
+    // Should not throw when log file doesn't exist
+    await daemonCommands.logs(10, false);
+  });
+
+  it("status() should handle process check exception", async () => {
+    // Use a negative PID to potentially trigger exception in kill -0
+    await Deno.writeTextFile(pidFile, "-1");
+    
+    const status = await daemonCommands.status();
+    
+    // Should handle exception and return not running
+    assertEquals(status.running, false);
+  });
+
+  it("status() should return uptime for running process", async () => {
+    // Use current Deno process PID
+    const currentPid = Deno.pid;
+    await Deno.writeTextFile(pidFile, currentPid.toString());
+    
+    const status = await daemonCommands.status();
+    
+    assertEquals(status.running, true);
+    assertEquals(status.pid, currentPid);
+    // Uptime should be present (some value from ps command)
+    assertEquals(typeof status.uptime, "string");
+  });
+});

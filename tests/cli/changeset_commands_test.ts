@@ -334,3 +334,143 @@ async function createFeatureBranch(
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+// Additional edge case tests from tests/changeset_commands_test.ts
+describe("ChangesetCommands - Edge Cases", () => {
+  let tempDir: string;
+  let db: DatabaseService;
+  let gitService: GitService;
+  let changesetCommands: ChangesetCommands;
+
+  beforeEach(async () => {
+    tempDir = await Deno.makeTempDir({ prefix: "changeset_edge_test_" });
+    const systemDir = join(tempDir, "System");
+    await ensureDir(systemDir);
+
+    // Initialize git repository
+    await runGitCommand(tempDir, ["init", "-b", "main"]);
+    await runGitCommand(tempDir, ["config", "user.email", "test@example.com"]);
+    await runGitCommand(tempDir, ["config", "user.name", "Test User"]);
+    
+    // Create initial commit on main
+    await Deno.writeTextFile(join(tempDir, "README.md"), "# Test Project\n");
+    await runGitCommand(tempDir, ["add", "README.md"]);
+    await runGitCommand(tempDir, ["commit", "-m", "Initial commit"]);
+
+    const config = createMockConfig(tempDir);
+    db = new DatabaseService(config);
+
+    db.instance.exec(`
+      CREATE TABLE IF NOT EXISTS activity (
+        id TEXT PRIMARY KEY,
+        trace_id TEXT NOT NULL,
+        actor TEXT NOT NULL,
+        agent_id TEXT,
+        action_type TEXT NOT NULL,
+        target TEXT,
+        payload TEXT NOT NULL,
+        timestamp DATETIME DEFAULT (datetime('now'))
+      );
+    `);
+
+    gitService = new GitService({ config, db });
+    changesetCommands = new ChangesetCommands({ config, db }, gitService);
+  });
+
+  afterEach(async () => {
+    await db.close();
+    await Deno.remove(tempDir, { recursive: true });
+  });
+
+  it("list() should skip branches with invalid naming format", async () => {
+    // Create branches with various invalid formats
+    await runGitCommand(tempDir, ["checkout", "-b", "feat/invalid"]);
+    await runGitCommand(tempDir, ["checkout", "main"]);
+    
+    await runGitCommand(tempDir, ["checkout", "-b", "feature/not-feat"]);
+    await runGitCommand(tempDir, ["checkout", "main"]);
+    
+    const changesets = await changesetCommands.list();
+    assertEquals(changesets.length, 0);
+  });
+
+  it("list() should handle branches with no files changed", async () => {
+    // Create empty feature branch (no actual file changes)
+    const branchName = "feat/request-003-empty-branch";
+    await runGitCommand(tempDir, ["checkout", "-b", branchName]);
+    await runGitCommand(tempDir, ["commit", "--allow-empty", "-m", "Empty commit"]);
+    await runGitCommand(tempDir, ["checkout", "main"]);
+    
+    const changesets = await changesetCommands.list();
+    assertEquals(changesets.length, 1);
+    assertEquals(changesets[0].files_changed, 0);
+  });
+
+  it("show() should throw error when branch does not exist", async () => {
+    await assertRejects(
+      async () => await changesetCommands.show("feat/nonexistent-branch"),
+      Error,
+      "not found",
+    );
+  });
+
+  it("show() should find branch by request_id", async () => {
+    await createFeatureBranch(tempDir, "request-007", "abc-901-def");
+    
+    const details = await changesetCommands.show("request-007");
+    assertExists(details);
+    assertEquals(details.request_id, "request-007");
+  });
+
+  it("show() should throw error when request_id not found", async () => {
+    await assertRejects(
+      async () => await changesetCommands.show("nonexistent-request"),
+      Error,
+      "Changeset not found",
+    );
+  });
+
+  it("approve() should throw error when not on main branch", async () => {
+    await createFeatureBranch(tempDir, "request-010", "def-890-abc");
+    
+    // Switch to a different branch
+    await runGitCommand(tempDir, ["checkout", "-b", "other-branch"]);
+    
+    await assertRejects(
+      async () => await changesetCommands.approve("request-010"),
+      Error,
+      "main",
+    );
+    
+    // Switch back for cleanup
+    await runGitCommand(tempDir, ["checkout", "main"]);
+  });
+
+  it("reject() should throw error when rejection reason is empty", async () => {
+    await createFeatureBranch(tempDir, "request-011", "abc-111-def");
+    
+    await assertRejects(
+      async () => await changesetCommands.reject("request-011", ""),
+      Error,
+      "Rejection reason is required",
+    );
+  });
+
+  it("reject() should throw error when rejection reason is whitespace only", async () => {
+    await createFeatureBranch(tempDir, "request-012", "def-222-abc");
+    
+    await assertRejects(
+      async () => await changesetCommands.reject("request-012", "   "),
+      Error,
+      "Rejection reason is required",
+    );
+  });
+
+  it("reject() should handle rejection of non-existent branch gracefully", async () => {
+    await assertRejects(
+      async () => await changesetCommands.reject("nonexistent", "Not needed"),
+      Error,
+      "Changeset not found",
+    );
+  });
+});
