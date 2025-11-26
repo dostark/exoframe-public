@@ -7,6 +7,7 @@
  * - Changeset review (approve/reject code changes)
  * - Git operations (branch/status/log with trace_id)
  * - Daemon control (start/stop/status)
+ * - Portal management (add/remove/verify external projects)
  *
  * NOTE: Run with --no-check flag for rapid development.
  */
@@ -19,6 +20,7 @@ import { PlanCommands } from "./plan_commands.ts";
 import { ChangesetCommands } from "./changeset_commands.ts";
 import { GitCommands } from "./git_commands.ts";
 import { DaemonCommands } from "./daemon_commands.ts";
+import { PortalCommands } from "./portal_commands.ts";
 
 // Initialize services
 const configService = new ConfigService();
@@ -32,6 +34,7 @@ const planCommands = new PlanCommands(context, config.system.root);
 const changesetCommands = new ChangesetCommands(context, gitService);
 const gitCommands = new GitCommands(context);
 const daemonCommands = new DaemonCommands(context);
+const portalCommands = new PortalCommands({ config, db, configService });
 
 await new Command()
   .name("exoctl")
@@ -383,6 +386,147 @@ await new Command()
           .action(async (options) => {
             try {
               await daemonCommands.logs(options.lines, options.follow);
+            } catch (error) {
+              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              Deno.exit(1);
+            }
+          }),
+      ),
+  )
+  // Portal commands
+  .command(
+    "portal",
+    new Command()
+      .description("Manage external project portals")
+      .command(
+        "add <target-path> <alias>",
+        new Command()
+          .description("Add a new portal (symlink to external project)")
+          .action(async (_options, ...args: string[]) => {
+            const targetPath = args[0] as unknown as string;
+            const alias = args[1] as unknown as string;
+            try {
+              await portalCommands.add(targetPath, alias);
+              console.log(`✓ Portal '${alias}' added successfully`);
+              console.log(`  Target: ${targetPath}`);
+              console.log(`  Symlink: Portals/${alias}`);
+              console.log(`  Context card generated`);
+              console.log(`\n⚠️  Restart daemon to apply changes: exoctl daemon restart`);
+            } catch (error) {
+              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              Deno.exit(1);
+            }
+          }),
+      )
+      .command(
+        "list",
+        new Command()
+          .description("List all configured portals")
+          .action(async () => {
+            try {
+              const portals = await portalCommands.list();
+              if (portals.length === 0) {
+                console.log("No portals configured.");
+                console.log("\nAdd a portal with: exoctl portal add <path> <alias>");
+                return;
+              }
+              console.log(`\n🔗 Configured Portals (${portals.length}):\n`);
+              for (const portal of portals) {
+                const statusIcon = portal.status === "active" ? "✓" : "⚠";
+                console.log(`${portal.alias}`);
+                console.log(`  Status: ${portal.status === "active" ? "Active" : "Broken"} ${statusIcon}`);
+                console.log(`  Target: ${portal.targetPath}${portal.status === "broken" ? " (not found)" : ""}`);
+                console.log(`  Symlink: ${portal.symlinkPath}`);
+                console.log(`  Context: ${portal.contextCardPath}`);
+                console.log();
+              }
+            } catch (error) {
+              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              Deno.exit(1);
+            }
+          }),
+      )
+      .command(
+        "show <alias>",
+        new Command()
+          .description("Show detailed information about a portal")
+          .action(async (_options, ...args: string[]) => {
+            const alias = args[0] as unknown as string;
+            try {
+              const portal = await portalCommands.show(alias);
+              console.log(`\n📁 Portal: ${portal.alias}\n`);
+              console.log(`Target Path:    ${portal.targetPath}`);
+              console.log(`Symlink:        ${portal.symlinkPath}`);
+              console.log(`Status:         ${portal.status === "active" ? "Active ✓" : "Broken ⚠"}`);
+              console.log(`Context Card:   ${portal.contextCardPath}`);
+              if (portal.permissions) console.log(`Permissions:    ${portal.permissions}`);
+              if (portal.created) console.log(`Created:        ${portal.created}`);
+              if (portal.lastVerified) console.log(`Last Verified:  ${portal.lastVerified}`);
+            } catch (error) {
+              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              Deno.exit(1);
+            }
+          }),
+      )
+      .command(
+        "remove <alias>",
+        new Command()
+          .description("Remove a portal (archives context card)")
+          .option("--keep-card", "Keep context card instead of archiving")
+          .action(async (options, ...args: string[]) => {
+            const alias = args[0] as unknown as string;
+            try {
+              await portalCommands.remove(alias, { keepCard: options.keepCard });
+              console.log(`✓ Portal '${alias}' removed`);
+              if (!options.keepCard) {
+                console.log(`  Context card archived`);
+              }
+              console.log(`\n⚠️  Restart daemon to apply changes: exoctl daemon restart`);
+            } catch (error) {
+              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              Deno.exit(1);
+            }
+          }),
+      )
+      .command(
+        "verify",
+        new Command()
+          .description("Verify portal integrity")
+          .arguments("[alias:string]")
+          .action(async (_options, alias?: string) => {
+            try {
+              const results = await portalCommands.verify(alias);
+              console.log("\n🔍 Portal Verification:\n");
+              let healthy = 0;
+              let broken = 0;
+              for (const result of results) {
+                const icon = result.status === "ok" ? "✓" : "✗";
+                console.log(`${result.alias}: ${result.status.toUpperCase()} ${icon}`);
+                if (result.issues && result.issues.length > 0) {
+                  for (const issue of result.issues) {
+                    console.log(`  ⚠️  ${issue}`);
+                  }
+                  broken++;
+                } else {
+                  healthy++;
+                }
+              }
+              console.log(`\nSummary: ${healthy} healthy, ${broken} broken`);
+            } catch (error) {
+              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              Deno.exit(1);
+            }
+          }),
+      )
+      .command(
+        "refresh <alias>",
+        new Command()
+          .description("Refresh portal context card (re-scan project)")
+          .action(async (_options, ...args: string[]) => {
+            const alias = args[0] as unknown as string;
+            try {
+              await portalCommands.refresh(alias);
+              console.log(`✓ Context card refreshed for '${alias}'`);
             } catch (error) {
               console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
               Deno.exit(1);
