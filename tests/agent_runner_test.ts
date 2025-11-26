@@ -433,7 +433,7 @@ Deno.test("AgentRunner handles provider errors gracefully", async () => {
 
   let errorCaught = false;
   let errorMessage = "";
-  
+
   try {
     await runner.run(sampleBlueprint, sampleRequest);
   } catch (error) {
@@ -454,7 +454,7 @@ Deno.test("AgentRunner handles network timeout errors", async () => {
   const runner = new AgentRunner(timeoutProvider);
 
   let errorCaught = false;
-  
+
   try {
     await runner.run(sampleBlueprint, sampleRequest);
   } catch (error) {
@@ -474,7 +474,7 @@ Deno.test("AgentRunner handles JSON parse errors", async () => {
   const runner = new AgentRunner(malformedProvider);
 
   let errorCaught = false;
-  
+
   try {
     await runner.run(sampleBlueprint, sampleRequest);
   } catch (error) {
@@ -494,7 +494,7 @@ Deno.test("AgentRunner handles provider returning null", async () => {
   const runner = new AgentRunner(nullProvider);
 
   const result = await runner.run(sampleBlueprint, sampleRequest);
-  
+
   // Should handle null gracefully (convert to empty string or fallback)
   assertExists(result);
 });
@@ -508,7 +508,7 @@ Deno.test("AgentRunner handles provider returning undefined", async () => {
   const runner = new AgentRunner(undefinedProvider);
 
   const result = await runner.run(sampleBlueprint, sampleRequest);
-  
+
   // Should handle undefined gracefully
   assertExists(result);
 });
@@ -576,7 +576,7 @@ Deno.test("AgentRunner handles request with many context keys", async () => {
   const manyKeysContext: ParsedRequest = {
     userPrompt: "Process all",
     context: Object.fromEntries(
-      Array.from({ length: 1000 }, (_, i) => [`key${i}`, `value${i}`])
+      Array.from({ length: 1000 }, (_, i) => [`key${i}`, `value${i}`]),
     ),
   };
 

@@ -14,7 +14,6 @@ import { createMockConfig } from "./helpers/config.ts";
 Deno.test("DatabaseService: initializes with configuration", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
-
     assertExists(db.instance);
     assertEquals(db.instance.constructor.name, "Database");
 
@@ -27,7 +26,6 @@ Deno.test("DatabaseService: initializes with configuration", async () => {
 Deno.test("DatabaseService: logs single activity", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
-
     const traceId = crypto.randomUUID();
     db.logActivity("user", "test.action", "target", { foo: "bar" }, traceId);
 
@@ -49,7 +47,6 @@ Deno.test("DatabaseService: logs single activity", async () => {
 Deno.test("DatabaseService: batches multiple activities", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
-
     const traceId = crypto.randomUUID();
 
     // Log multiple activities
@@ -96,8 +93,7 @@ Deno.test("DatabaseService: flushes when max batch size reached", async () => {
 
 Deno.test("DatabaseService: handles waitForFlush with empty queue", async () => {
   const { db, cleanup } = await initTestDbService();
-  try{
-
+  try {
     // Should return immediately
     await db.waitForFlush();
 
@@ -110,7 +106,6 @@ Deno.test("DatabaseService: handles waitForFlush with empty queue", async () => 
 Deno.test("DatabaseService: prevents logging when closing", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
-
     const traceId = crypto.randomUUID();
     db.logActivity("user", "test.before", "target", { test: 1 }, traceId);
 
@@ -180,7 +175,6 @@ Deno.test("DatabaseService: flushes pending logs on close", async () => {
 Deno.test("DatabaseService: getActivitiesByActionType returns filtered results", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
-
     const traceId = crypto.randomUUID();
 
     // Log different action types
@@ -207,7 +201,6 @@ Deno.test("DatabaseService: getActivitiesByActionType returns filtered results",
 Deno.test("DatabaseService: getRecentActivity returns limited results", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
-
     const traceId = crypto.randomUUID();
 
     // Log 10 activities
@@ -234,8 +227,7 @@ Deno.test("DatabaseService: getRecentActivity returns limited results", async ()
 
 Deno.test("DatabaseService: getRecentActivity flushes pending logs", async () => {
   const { db, cleanup } = await initTestDbService();
-  try{
-
+  try {
     const traceId = crypto.randomUUID();
 
     // Log activities without waiting for flush
@@ -255,7 +247,6 @@ Deno.test("DatabaseService: getRecentActivity flushes pending logs", async () =>
 Deno.test("DatabaseService: handles null agent_id", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
-
     const traceId = crypto.randomUUID();
 
     // Log with explicit null agent
@@ -276,7 +267,6 @@ Deno.test("DatabaseService: handles null agent_id", async () => {
 Deno.test("DatabaseService: handles null target", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
-
     const traceId = crypto.randomUUID();
 
     // Log with null target
@@ -297,7 +287,6 @@ Deno.test("DatabaseService: handles null target", async () => {
 Deno.test("DatabaseService: handles complex payload objects", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
-
     const traceId = crypto.randomUUID();
 
     const complexPayload = {
@@ -335,7 +324,6 @@ Deno.test("DatabaseService: handles complex payload objects", async () => {
 Deno.test("DatabaseService: generates unique activity IDs", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
-
     const traceId = crypto.randomUUID();
 
     // Log multiple activities
@@ -361,7 +349,6 @@ Deno.test("DatabaseService: generates unique activity IDs", async () => {
 Deno.test("DatabaseService: auto-generates trace_id if not provided", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
-
     // Log without trace_id
     db.logActivity("user", "test.action", "target", {});
 
@@ -417,7 +404,6 @@ Deno.test("DatabaseService: persists data across connections", async () => {
 Deno.test("DatabaseService: handles rapid concurrent logging", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
-
     const traceId = crypto.randomUUID();
 
     // Log many activities rapidly

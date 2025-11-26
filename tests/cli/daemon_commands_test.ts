@@ -3,12 +3,7 @@
  * Covers start, stop, restart, status, and logs operations
  */
 
-import {
-  assertEquals,
-  assertExists,
-  assertRejects,
-  assertStringIncludes,
-} from "jsr:@std/assert@^1.0.0";
+import { assertEquals, assertExists, assertRejects, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { afterEach, beforeEach, describe, it } from "jsr:@std/testing@^1.0.0/bdd";
 import { join } from "@std/path";
 import { ensureDir, exists } from "@std/fs";
@@ -40,7 +35,7 @@ describe("DaemonCommands", {
     const srcDir = join(tempDir, "src");
     await ensureDir(srcDir);
     mainScript = join(srcDir, "main.ts");
-    
+
     // Mock daemon script that stays alive for testing
     await Deno.writeTextFile(
       mainScript,
@@ -82,7 +77,7 @@ await new Promise(() => {});
         // Ignore errors in cleanup
       }
     }
-    
+
     await db.close();
     await Deno.remove(tempDir, { recursive: true });
   });
@@ -199,7 +194,7 @@ await new Promise(() => {});
       // if graceful shutdown fails. We can't easily test the actual timeout
       // behavior in a unit test without making it flaky, so we just verify
       // the mechanism exists by checking the code path works.
-      
+
       // Create a simple daemon
       await daemonCommands.start();
       const pidStr = await Deno.readTextFile(pidFile);
@@ -263,7 +258,7 @@ await new Promise(() => {});
     it("should accurately check process state when not running", async () => {
       // Don't start daemon
       const status = await daemonCommands.status();
-      
+
       assertEquals(status.running, false);
       assertEquals(status.pid, undefined);
       assertExists(status.version);
@@ -280,7 +275,7 @@ await new Promise(() => {});
       const status = await daemonCommands.status();
       assertEquals(status.running, true);
       assertExists(status.uptime);
-      
+
       // Uptime should be a non-empty string
       assertEquals(typeof status.uptime, "string");
       assertEquals(status.uptime!.length > 0, true);
@@ -320,9 +315,9 @@ await new Promise(() => {});
         // Create a promise that resolves quickly
         const logPromise = daemonCommands.logs(10, false);
         const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 1000));
-        
+
         await Promise.race([logPromise, timeoutPromise]);
-        
+
         // If we got here without error, logs command works
         assertEquals(true, true);
       } catch (error) {
@@ -360,7 +355,7 @@ await new Promise(() => {});
       // In a real scenario, this would use tail -f
       // For testing, we just ensure the command structure is correct
       assertEquals(await exists(logFile), true);
-      
+
       // Verify logs method exists and accepts follow parameter
       assertEquals(typeof daemonCommands.logs, "function");
     });
@@ -392,10 +387,10 @@ async function killProcess(pid: number): Promise<void> {
       stderr: "piped",
     });
     await termCmd.output();
-    
+
     // Wait for graceful termination
     const terminated = await waitForProcessState(pid, false, 1000);
-    
+
     // Force kill if still alive
     if (!terminated && await isProcessAlive(pid)) {
       const killCmd = new Deno.Command("kill", {
@@ -462,9 +457,9 @@ describe("DaemonCommands - Edge Cases", () => {
 
   it("status() should return not running when PID file contains invalid number", async () => {
     await Deno.writeTextFile(pidFile, "not-a-number");
-    
+
     const status = await daemonCommands.status();
-    
+
     assertEquals(status.running, false);
     assertEquals(status.pid, undefined);
   });
@@ -472,9 +467,9 @@ describe("DaemonCommands - Edge Cases", () => {
   it("status() should clean up PID file for dead process", async () => {
     // Use a PID that definitely doesn't exist (999999)
     await Deno.writeTextFile(pidFile, "999999");
-    
+
     const status = await daemonCommands.status();
-    
+
     assertEquals(status.running, false);
     // PID file should be cleaned up
     const pidFileExists = await Deno.stat(pidFile).then(() => true).catch(() => false);
@@ -493,10 +488,10 @@ describe("DaemonCommands - Edge Cases", () => {
     // Use current Deno process PID (which is definitely running)
     const currentPid = Deno.pid;
     await Deno.writeTextFile(pidFile, currentPid.toString());
-    
+
     // Should return without error (early return)
     await daemonCommands.start();
-    
+
     // PID file should still exist
     const pidContent = await Deno.readTextFile(pidFile);
     assertEquals(pidContent, currentPid.toString());
@@ -515,9 +510,9 @@ describe("DaemonCommands - Edge Cases", () => {
   it("status() should handle process check exception", async () => {
     // Use a negative PID to potentially trigger exception in kill -0
     await Deno.writeTextFile(pidFile, "-1");
-    
+
     const status = await daemonCommands.status();
-    
+
     // Should handle exception and return not running
     assertEquals(status.running, false);
   });
@@ -526,9 +521,9 @@ describe("DaemonCommands - Edge Cases", () => {
     // Use current Deno process PID
     const currentPid = Deno.pid;
     await Deno.writeTextFile(pidFile, currentPid.toString());
-    
+
     const status = await daemonCommands.status();
-    
+
     assertEquals(status.running, true);
     assertEquals(status.pid, currentPid);
     // Uptime should be present (some value from ps command)

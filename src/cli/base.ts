@@ -30,7 +30,7 @@ export abstract class BaseCommand {
    */
   protected async getUserIdentity(): Promise<string> {
     const workspaceRoot = this.config.system.root;
-    
+
     // Try git config first
     try {
       const gitCmd = new Deno.Command("git", {
@@ -91,8 +91,10 @@ export abstract class BaseCommand {
       let value = line.substring(colonIndex + 1).trim();
 
       // Remove quotes if present
-      if ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))) {
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
         value = value.substring(1, value.length - 1);
       }
 

@@ -1310,6 +1310,7 @@ PermissionDenied: write access to /etc/passwd is not allowed at PathResolver.val
 **The Problem:**
 
 Without proper CLI tooling, human interactions with ExoFrame are problematic:
+
 - ❌ Users might move files to wrong directories
 - ❌ Frontmatter not updated correctly
 - ❌ No validation of state before operations
@@ -1329,6 +1330,7 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 **Purpose:** Provide shared utilities and ensure consistent patterns across all command handlers.
 
 **Key Components:**
+
 - `BaseCommand` abstract class that all command handlers extend
 - `CommandContext` interface: `{ config: Config, db: DatabaseService }`
 - Shared methods available to all commands:
@@ -1341,6 +1343,7 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
   - `truncate()`: String truncation for display
 
 **Success Criteria (Base Infrastructure):**
+
 1. ✅ BaseCommand abstract class exists in `src/cli/base.ts`
 2. ✅ CommandContext interface properly typed (config + db)
 3. ✅ getUserIdentity() tries git config, falls back to OS username
@@ -1353,6 +1356,7 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 **Purpose:** Review and manage AI-generated plans before execution.
 
 **Commands:**
+
 - `exoctl plan list [--status <filter>]` - List all plans with metadata
 - `exoctl plan show <id>` - Display full plan content
 - `exoctl plan approve <id>` - Move to /System/Active for execution
@@ -1360,6 +1364,7 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 - `exoctl plan revise <id> --comment "..." [--comment "..."]` - Request changes
 
 **Operations:**
+
 - **Approve**: Validates status='review', atomically moves to /System/Active, updates frontmatter, logs activity
 - **Reject**: Requires non-empty reason, moves to /Inbox/Rejected with `_rejected.md` suffix, adds rejection metadata
 - **Revise**: Appends review comments with ⚠️ prefix, sets status='needs_revision', preserves existing comments
@@ -1367,11 +1372,13 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 - **Show**: Returns full PlanDetails with content
 
 **Activity Logging:**
+
 - `plan.approved` with `{user, approved_at, via: 'cli'}`
 - `plan.rejected` with `{user, reason, rejected_at, via: 'cli'}`
 - `plan.revision_requested` with `{user, comment_count, reviewed_at, via: 'cli'}`
 
 **Success Criteria (Plan Commands):**
+
 1. ✅ PlanCommands extends BaseCommand
 2. ✅ approve() validates status='review' before moving
 3. ✅ approve() atomically moves file (no partial state)
@@ -1394,22 +1401,26 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 **Purpose:** Review and manage agent-generated code changes (git branches).
 
 **Commands:**
+
 - `exoctl changeset list [--status <filter>]` - List agent-created branches
 - `exoctl changeset show <id>` - Display diff and commits
 - `exoctl changeset approve <id>` - Merge branch to main
 - `exoctl changeset reject <id> --reason "..."` - Delete branch without merging
 
 **Operations:**
+
 - **List**: Finds all `feat/*` branches, extracts trace_id, checks approval status via activity log
 - **Show**: Displays commit history, full diff, file count, trace_id
 - **Approve**: Validates on main branch, merges with --no-ff, logs merge commit SHA
 - **Reject**: Deletes branch with `git branch -D`, requires reason, logs rejection
 
 **Activity Logging:**
+
 - `changeset.approved` with `{user, branch, commit_sha, files_changed, via: 'cli'}`
 - `changeset.rejected` with `{user, branch, reason, files_changed, via: 'cli'}`
 
 **Success Criteria (Changeset Commands):**
+
 1. ✅ ChangesetCommands extends BaseCommand
 2. ✅ list() finds all feat/* branches
 3. ✅ list() extracts trace_id from commit messages
@@ -1430,16 +1441,19 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 **Purpose:** Repository operations with trace_id awareness.
 
 **Commands:**
+
 - `exoctl git branches [--pattern <glob>]` - List branches with metadata
 - `exoctl git status` - Show working tree status
 - `exoctl git log --trace <trace_id>` - Search commits by trace_id
 
 **Operations:**
+
 - **branches**: Lists all branches sorted by date, extracts trace_id from commits, shows current branch marker
 - **status**: Uses git status --porcelain, categorizes changes (modified/added/deleted/untracked)
 - **log**: Searches all commits with `git log --all --grep "Trace-Id: <id>"`, returns matching commits
 
 **Success Criteria (Git Commands):**
+
 1. ✅ GitCommands extends BaseCommand
 2. ✅ listBranches() returns sorted by commit date
 3. ✅ listBranches() extracts trace_id from commit body
@@ -1458,6 +1472,7 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 **Purpose:** Control the ExoFrame background daemon.
 
 **Commands:**
+
 - `exoctl daemon start` - Start background daemon
 - `exoctl daemon stop` - Stop gracefully (SIGTERM)
 - `exoctl daemon restart` - Stop then start
@@ -1465,6 +1480,7 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 - `exoctl daemon logs [--lines N] [--follow]` - View logs
 
 **Operations:**
+
 - **start**: Spawns daemon process, writes PID file, verifies startup
 - **stop**: Sends SIGTERM, waits for clean exit (10s timeout), force kills if needed
 - **restart**: Calls stop() then start() with 1s delay
@@ -1472,6 +1488,7 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 - **logs**: Uses tail command with -n and optional -f flag
 
 **Success Criteria (Daemon Commands):**
+
 1. ✅ DaemonCommands extends BaseCommand
 2. ✅ start() writes PID file to System/daemon.pid
 3. ✅ start() verifies daemon actually started
@@ -1491,6 +1508,7 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 **Purpose:** Single CLI binary that routes to all command groups.
 
 **Implementation:**
+
 - Uses @cliffy/command v1.0.0-rc.8 for CLI framework
 - Initializes shared CommandContext (config + db)
 - Creates all command handler instances
@@ -1499,6 +1517,7 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 - Shebang: `#!/usr/bin/env -S deno run --allow-all --no-check`
 
 **Success Criteria (Entry Point):**
+
 1. ✅ Single exoctl.ts file with all command groups
 2. ✅ Proper shebang for direct execution
 3. ✅ CommandContext initialized once at startup
@@ -1510,6 +1529,7 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 9. ✅ Can be installed globally with deno install
 
 **Overall Success Criteria:**
+
 1. ✅ All 4 command groups implemented
 2. ✅ All extend BaseCommand for consistency
 3. ✅ All use CommandContext interface
@@ -1520,374 +1540,6 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 8. ✅ Complete documentation in User Guide
 9. ✅ Type-safe with proper TypeScript typing
 10. ✅ No code duplication (shared base utilities)
-
----
-
-### Step 4.5: Mission Report Writer (Agent → /Knowledge/Reports)
-  await this.detectPlanRejection(path);
-  }
-
-  this.fileStates.set(path, {
-  path,
-  lastEvent: "create",
-  timestamp: Date.now(),
-  });
-
-}
-
-/**
-
-- Handle file modification (potential revision request)
-  */
-  private async handleFileModification(path: string): Promise<void> {
-  if (path.includes("/Inbox/Plans/") && path.endsWith(".md")) {
-  await this.detectRevisionRequest(path);
-  }
-
-  this.fileStates.set(path, {
-  path,
-  lastEvent: "modify",
-  timestamp: Date.now(),
-  });
-
-}
-
-/**
-
-- Handle file removal (track for approval/rejection detection)
-  */
-  private async handleFileRemoval(path: string): Promise<void> {
-  this.fileStates.set(path, {
-  path,
-  lastEvent: "remove",
-  timestamp: Date.now(),
-  });
-  }
-
-/**
-
-- Detect plan approval (file moved to /System/Active)
-  */
-  private async detectPlanApproval(activePath: string): Promise<void> {
-  try {
-  const content = await Deno.readTextFile(activePath);
-  const traceId = this.extractTraceId(content);
-
-  if (!traceId) return;
-
-  const filename = activePath.split("/").pop()!;
-  const plansPath = join(
-  this.config.system.root,
-  "Inbox",
-  "Plans",
-  filename.replace(".md", "_plan.md"),
-  );
-
-  // Check if this file was recently removed from Plans directory
-  const planState = this.fileStates.get(plansPath);
-  const timeSinceRemoval = planState ? Date.now() - planState.timestamp : Infinity;
-
-  // If file was removed from Plans within last 2 seconds, it's an approval
-  if (planState?.lastEvent === "remove" && timeSinceRemoval < 2000) {
-  this.db.logActivity(
-  "human",
-  "plan.approved",
-  filename.replace(".md", ""),
-  {
-  moved_from: plansPath,
-  moved_to: activePath,
-  approved_at: new Date().toISOString(),
-  },
-  traceId,
-  null, // agent_id is null for human actions
-  );
-
-  console.log(`[HumanActionTracker] Logged plan.approved for ${filename}`);
-  }
-  } catch (error) {
-  console.error("[HumanActionTracker] Failed to detect approval:", error);
-  }
-  }
-
-/**
-
-- Detect plan rejection (file moved to /Inbox/Rejected)
-  */
-  private async detectPlanRejection(rejectedPath: string): Promise<void> {
-  try {
-  const content = await Deno.readTextFile(rejectedPath);
-  const traceId = this.extractTraceId(content);
-  const reason = this.extractRejectionReason(content);
-
-  if (!traceId) return;
-
-  const filename = rejectedPath.split("/").pop()!;
-
-  this.db.logActivity(
-  "human",
-  "plan.rejected",
-  filename.replace("_rejected.md", "").replace(".md", ""),
-  {
-  moved_to: rejectedPath,
-  rejection_reason: reason || "No reason provided",
-  rejected_at: new Date().toISOString(),
-  },
-  traceId,
-  null,
-  );
-
-  console.log(`[HumanActionTracker] Logged plan.rejected for ${filename}`);
-  } catch (error) {
-  console.error("[HumanActionTracker] Failed to detect rejection:", error);
-  }
-  }
-
-/**
-
-- Detect revision request (plan modified with review comments)
-  */
-  private async detectRevisionRequest(planPath: string): Promise<void> {
-  try {
-  const content = await Deno.readTextFile(planPath);
-
-  // Check if file contains review comments section
-  if (!content.includes("## Review Comments")) return;
-
-  const traceId = this.extractTraceId(content);
-  if (!traceId) return;
-
-  const filename = planPath.split("/").pop()!;
-  const commentCount = this.countReviewComments(content);
-
-  this.db.logActivity(
-  "human",
-  "plan.revision_requested",
-  filename.replace("_plan.md", "").replace(".md", ""),
-  {
-  plan_path: planPath,
-  comment_count: commentCount,
-  reviewed_at: new Date().toISOString(),
-  },
-  traceId,
-  null,
-  );
-
-  console.log(
-  `[HumanActionTracker] Logged plan.revision_requested for ${filename}`,
-  );
-  } catch (error) {
-  console.error("[HumanActionTracker] Failed to detect revision request:", error);
-  }
-  }
-
-/**
-
-- Extract trace_id from plan frontmatter
-  _/
-  private extractTraceId(content: string): string | null {
-  const match = content.match(/^---\n([\s\S]_?)\n---/);
-  if (!match) return null;
-
-  try {
-  const frontmatter = parseYaml(match[1]) as any;
-  return frontmatter.trace_id || null;
-  } catch {
-  return null;
-  }
-
-}
-
-/**
-
-- Extract rejection reason from frontmatter
-  _/
-  private extractRejectionReason(content: string): string | null {
-  const match = content.match(/^---\n([\s\S]_?)\n---/);
-  if (!match) return null;
-
-  try {
-  const frontmatter = parseYaml(match[1]) as any;
-  return frontmatter.rejection_reason || null;
-  } catch {
-  return null;
-  }
-
-}
-
-/**
-
-- Count review comment items in content
-  */
-  private countReviewComments(content: string): number {
-  const commentsSection = content.split("## Review Comments")[1];
-  if (!commentsSection) return 0;
-
-  // Count lines starting with - ❌, - ⚠️, - ✅, - 💡
-
-**Usage Examples:**
-
-```bash
-# List all pending plans
-$ exoctl plan list
-Found 2 plan(s):
-
-📋 implement-auth
-   Status: review
-   Trace: 550e8400...
-
-⚠️ add-logging
-   Status: needs_revision
-   Trace: 770e8400...
-
-# Approve a plan
-$ exoctl plan approve implement-auth
-✓ Plan 'implement-auth' approved by user@example.com
-  Moved to: /System/Active/implement-auth.md
-  Trace ID: 550e8400-e29b-41d4-a716-446655440000
-
-Next: ExecutionLoop will process this plan automatically
-
-# Reject a plan with reason
-$ exoctl plan reject risky-feature --reason "Approach too risky, use incremental rollout"
-✗ Plan 'risky-feature' rejected by user@example.com
-  Reason: Approach too risky, use incremental rollout
-  Moved to: /Inbox/Rejected/risky-feature_rejected.md
-  Trace ID: 660e8400-e29b-41d4-a716-446655440001
-
-# Request revisions with multiple comments
-$ exoctl plan revise add-tests \
-    --comment "Need integration tests, not just unit tests" \
-    --comment "Add error handling for edge cases" \
-    --comment "Include performance benchmarks"
-⚠ Revision requested for 'add-tests' by user@example.com
-  Comments added: 3
-    1. Need integration tests, not just unit tests
-    2. Add error handling for edge cases
-    3. Include performance benchmarks
-  Trace ID: 880e8400-e29b-41d4-a716-446655440003
-
-Next: Agent will review comments and update the plan
-
-# Show plan details
-$ exoctl plan show implement-auth
-
-Plan: implement-auth
-Status: review
-Trace ID: 550e8400-e29b-41d4-a716-446655440000
-Request ID: implement-auth
-
---- Plan Content ---
-...
-```
-
-**Activity Logging Examples:**
-
-```typescript
-// Plan Approved (via CLI)
-db.logActivity(
-  "human",
-  "plan.approved",
-  "implement-auth",
-  {
-    approved_by: "user@example.com",
-    approved_at: "2024-11-25T15:30:00Z",
-    via: "cli",
-  },
-  "550e8400-e29b-41d4-a716-446655440000",
-  null,
-);
-
-// Plan Rejected (via CLI)
-db.logActivity(
-  "human",
-  "plan.rejected",
-  "risky-change",
-  {
-    rejected_by: "user@example.com",
-    rejection_reason: "Approach is too risky, use incremental strategy instead",
-    rejected_at: "2024-11-25T15:35:00Z",
-    via: "cli",
-  },
-  "660e8400-e29b-41d4-a716-446655440001",
-  null,
-);
-
-// Revision Requested (via CLI)
-db.logActivity(
-  "human",
-  "plan.revision_requested",
-  "add-logging",
-  {
-    reviewed_by: "user@example.com",
-    comment_count: 3,
-    reviewed_at: "2024-11-25T16:00:00Z",
-    via: "cli",
-  },
-  "770e8400-e29b-41d4-a716-446655440002",
-  null,
-);
-```
-
-**Query Examples:**
-
-```sql
--- Get all human actions for a trace
-SELECT action_type, payload, timestamp
-FROM activity
-WHERE trace_id = '550e8400-e29b-41d4-a716-446655440000'
-  AND actor = 'human'
-ORDER BY timestamp;
-
--- Find plans awaiting human review (no approval/rejection logged)
-SELECT 
-  a1.target as plan_id,
-  a1.timestamp as created_at
-FROM activity a1
-WHERE a1.action_type = 'plan.created'
-  AND NOT EXISTS (
-    SELECT 1 FROM activity a2
-    WHERE a2.trace_id = a1.trace_id
-      AND a2.action_type IN ('plan.approved', 'plan.rejected')
-  )
-ORDER BY a1.timestamp DESC;
-
--- Calculate approval/rejection rate by user
-SELECT 
-  payload->>'approved_by' as user,
-  COUNT(*) FILTER (WHERE action_type = 'plan.approved') as approved,
-  COUNT(*) FILTER (WHERE action_type = 'plan.rejected') as rejected,
-  COUNT(*) FILTER (WHERE action_type = 'plan.revision_requested') as revisions
-FROM activity
-WHERE actor = 'human'
-GROUP BY payload->>'approved_by';
-```
-
-**Success Criteria:**
-
-1. ✅ **`exoctl plan approve <id>`** validates plan exists before approving
-2. ✅ **`exoctl plan approve <id>`** checks plan status (only 'review' plans can be approved)
-3. ✅ **`exoctl plan approve <id>`** moves plan atomically to /System/Active
-4. ✅ **`exoctl plan approve <id>`** logs approval with user identity and trace_id
-5. ✅ **`exoctl plan reject <id> --reason`** validates reason is required and non-empty
-6. ✅ **`exoctl plan reject <id> --reason`** updates frontmatter with rejection metadata
-7. ✅ **`exoctl plan reject <id> --reason`** moves plan to /Inbox/Rejected with _rejected.md suffix
-8. ✅ **`exoctl plan reject <id> --reason`** logs rejection with reason and trace_id
-9. ✅ **`exoctl plan revise <id> --comment`** validates at least one comment is provided
-10. ✅ **`exoctl plan revise <id> --comment`** supports multiple comments (--comment flag repeatable)
-11. ✅ **`exoctl plan revise <id> --comment`** appends "## Review Comments" section to plan
-12. ✅ **`exoctl plan revise <id> --comment`** updates frontmatter status to 'needs_revision'
-13. ✅ **`exoctl plan revise <id> --comment`** logs revision request with comment count
-14. ✅ **`exoctl plan list`** displays all plans in /Inbox/Plans with status indicators
-15. ✅ **`exoctl plan list --status=<filter>`** filters plans by status (review, needs_revision)
-16. ✅ **`exoctl plan show <id>`** displays plan frontmatter and full content
-17. ✅ **All commands** capture user identity automatically (git config or OS username)
-18. ✅ **All commands** perform atomic file operations (no partial states)
-19. ✅ **All commands** provide clear error messages with resolution hints
-20. ✅ **All commands** include success messages with next steps
-21. ✅ **All commands** log actions with `actor: 'human'`, `agent_id: NULL`, `via: 'cli'`
-22. ✅ **All commands** extract and validate trace_id from plan frontmatter
-23. ✅ **Activity queries** can track approval/rejection/revision rates by user
-24. ✅ **Activity queries** can find plans awaiting review (no approval/rejection logged)
 
 ---
 
@@ -1968,14 +1620,239 @@ Chose JWT over sessions for stateless authentication. Used bcrypt for password h
 - Merge to main after approval
 ```
 
+**Implementation Details:**
+
+1. **Create `src/reporter/mission_reporter.ts`:**
+   - `MissionReporter` class with methods: `generate()`, `buildReport()`, `analyzeChanges()`, `linkContext()`
+   - Integration with `GitService` for diff analysis and commit info
+   - Integration with `DatabaseService` for Activity Journal logging
+   - Integration with `PlanStore` for retrieving execution plan and reasoning
+   - Report template with YAML frontmatter and structured markdown sections
+
+2. **Report Generation Flow:**
+   ```typescript
+   async generate(traceId: string, agentId: string): Promise<void> {
+     // 1. Retrieve trace data from Activity Journal (all actions with trace_id)
+     // 2. Get execution plan from PlanStore
+     // 3. Analyze git changes (files created/modified/deleted, line counts)
+     // 4. Extract context references from plan (wiki links, files used)
+     // 5. Build reasoning section from plan decisions
+     // 6. Generate report filename: {date}_{shortTraceId}_{requestId}.md
+     // 7. Write report to /Knowledge/Reports/
+     // 8. Log to Activity Journal (report.generated)
+     // On failure: log error, preserve partial data for manual recovery
+   }
+   ```
+
+3. **Git Change Analysis:**
+   - Parse `git diff --stat` for file change counts
+   - Categorize changes: files created, modified, deleted
+   - Include commit SHA and branch name
+   - Calculate insertion/deletion statistics
+   - Detect renamed or moved files
+
+4. **Context Linking:**
+   - Extract `[[wiki_links]]` from original request
+   - Include context cards loaded during execution
+   - Link to plan file: `[[Plans/{traceId}]]`
+   - Link to request file: `[[Requests/{requestId}]]`
+   - Preserve references for future context loading
+
+5. **Activity Logging Events:**
+   - `report.generated` - Report created (trace_id, report_path, status)
+   - `report.failed` - Generation failed (trace_id, error, partial_data)
+   - `report.archived` - Old report moved to archive (report_path, reason)
+
+**Test Coverage:**
+
+```typescript
+// tests/reporter/mission_reporter_test.ts
+Deno.test("MissionReporter: generates report after successful execution", async () => {
+  // Simulates completed trace, verifies report created
+});
+
+Deno.test("MissionReporter: includes git diff summary", async () => {
+  // Verifies file change statistics are accurate
+});
+
+Deno.test("MissionReporter: links to context files", async () => {
+  // Checks wiki links are preserved
+});
+
+Deno.test("MissionReporter: handles missing trace data gracefully", async () => {
+  // Tests error handling for incomplete traces
+});
+
+Deno.test("MissionReporter: formats report with valid YAML frontmatter", async () => {
+  // Validates YAML structure and required fields
+});
+```
+
 **Success Criteria:**
 
-- After successful execution, report created in /Knowledge/Reports
-- Report filename follows convention: `{date}_{traceId}_{requestId}.md`
-- Report includes git diff summary and file changes
-- Report contains Obsidian wiki links to context files
-- Report logged to Activity Journal with trace_id
-- Report is searchable for future context loading
+1. After successful execution, report created in `/Knowledge/Reports/`
+2. Report filename follows convention: `{date}_{traceId}_{requestId}.md`
+3. Report includes git diff summary with file change counts
+4. Report contains Obsidian wiki links to all context files used
+5. Report frontmatter has all required fields (trace_id, status, agent_id, completed_at)
+6. Report logged to Activity Journal with `action_type='report.generated'`
+7. Report is searchable via Obsidian and context loading
+8. Report generation errors logged but don't crash execution loop
+9. Reports indexed in Activity Journal for retrieval by trace_id
+10. Report includes reasoning section explaining key decisions
+
+**Acceptance Criteria (Manual Testing):**
+
+1. **Report Generation After Execution:**
+   ```bash
+   # Run task to completion
+   exoctl request add "Implement user registration" --portal=MyProject
+   # Wait for agent to complete
+
+   # Verify report created
+   ls -la Knowledge/Reports/
+   # Expected: 2025-01-26_550e8400_implement-user-registration.md
+
+   # Verify report structure
+   cat Knowledge/Reports/2025-01-26_550e8400_implement-user-registration.md
+   # Expected: Valid YAML frontmatter, Summary, Changes Made, Git Summary, Context Used, Reasoning sections
+   ```
+
+2. **Git Diff Summary Accuracy:**
+   ```bash
+   # After execution, compare report to actual git changes
+   git diff --stat feat/implement-user-registration-550e8400
+
+   # Verify report shows matching statistics
+   grep "files changed" Knowledge/Reports/2025-01-26_*.md
+   # Expected: Matches git diff output
+   ```
+
+3. **Context Linking Verification:**
+   ```bash
+   # Check report contains wiki links
+   grep "\[\[" Knowledge/Reports/2025-01-26_*.md
+   # Expected output:
+   # - [[Architecture_Docs]]
+   # - [[API_Spec]]
+   # - [[Plans/550e8400-e29b-41d4-a716-446655440000]]
+   # - [[Requests/implement-user-registration]]
+
+   # Verify links are valid Obsidian links
+   cat Knowledge/Reports/2025-01-26_*.md | grep -o "\[\[.*\]\]"
+   # Expected: All referenced files exist in Knowledge/
+   ```
+
+4. **Activity Journal Logging:**
+   ```bash
+   # After report generation, verify logging
+   sqlite3 System/journal.db <<EOF
+   SELECT action_type, trace_id, payload 
+   FROM activity 
+   WHERE action_type = 'report.generated' 
+   ORDER BY timestamp DESC 
+   LIMIT 1;
+   EOF
+
+   # Expected: Logged with trace_id, report_path, status='completed'
+   ```
+
+5. **Frontmatter Validation:**
+   ```bash
+   # Extract and validate YAML frontmatter
+   head -10 Knowledge/Reports/2025-01-26_*.md
+   # Expected output:
+   # ---
+   # trace_id: "550e8400-e29b-41d4-a716-446655440000"
+   # request_id: "implement-user-registration"
+   # status: "completed"
+   # completed_at: "2025-01-26T14:30:00Z"
+   # agent_id: "senior-coder"
+   # branch: "feat/implement-user-registration-550e8400"
+   # ---
+
+   # Verify YAML is valid
+   deno eval "import {parse} from 'https://deno.land/std@0.208.0/yaml/mod.ts'; const text=Deno.readTextFileSync('Knowledge/Reports/2025-01-26_*.md'); const frontmatter = text.match(/^---\n([\s\S]*?)\n---/)?.[1]; console.log(parse(frontmatter));"
+   # Expected: Valid YAML object
+   ```
+
+6. **Report Searchability:**
+   ```bash
+   # Search reports by trace_id
+   grep -r "550e8400" Knowledge/Reports/
+   # Expected: Report found
+
+   # Search reports by keywords
+   grep -r "authentication" Knowledge/Reports/
+   # Expected: Reports mentioning authentication listed
+
+   # Verify Obsidian can find reports
+   # Open Obsidian, search "trace_id:550e8400"
+   # Expected: Report appears in search results
+   ```
+
+7. **File Change Categorization:**
+   ```bash
+   # Verify report categorizes changes correctly
+   cat Knowledge/Reports/2025-01-26_*.md
+   # Expected sections:
+   # ### Files Created (3)
+   # - src/auth/register.ts - User registration handler
+   # - migrations/004_registration.sql - Registration table
+   # - tests/auth/register_test.ts - Registration tests
+   #
+   # ### Files Modified (2)
+   # - src/routes/api.ts - Added registration route
+   # - README.md - Updated setup instructions
+   #
+   # ### Files Deleted (0)
+   ```
+
+8. **Error Handling for Missing Data:**
+   ```bash
+   # Simulate missing trace data
+   sqlite3 System/journal.db "DELETE FROM activity WHERE trace_id='test-trace-id';"
+
+   # Attempt report generation
+   deno run --allow-all src/reporter/mission_reporter.ts --trace-id=test-trace-id
+   # Expected output:
+   # ✗ Error: No trace data found for trace_id 'test-trace-id'
+   # ✗ Report generation failed - check Activity Journal
+
+   # Verify error logged
+   sqlite3 System/journal.db "SELECT action_type, payload FROM activity WHERE action_type='report.failed' ORDER BY timestamp DESC LIMIT 1;"
+   # Expected: Error details preserved
+   ```
+
+9. **Reasoning Section Quality:**
+   ```bash
+   # Verify reasoning section explains decisions
+   cat Knowledge/Reports/2025-01-26_*.md | grep -A 10 "## Reasoning"
+   # Expected output:
+   # ## Reasoning
+   #
+   # Chose JWT over sessions for stateless authentication. Used bcrypt 
+   # for password hashing per security guidelines. Implemented rate 
+   # limiting on login endpoint to prevent brute force attacks.
+   #
+   # Registration flow validates email format and password strength before
+   # creating user record. Email verification tokens expire after 24h.
+   ```
+
+10. **Report Retrieval by Trace ID:**
+    ```bash
+    # Query Activity Journal for reports by trace
+    sqlite3 System/journal.db <<EOF
+    SELECT json_extract(payload, '$.report_path') as report_path
+    FROM activity
+    WHERE action_type = 'report.generated'
+      AND trace_id = '550e8400-e29b-41d4-a716-446655440000';
+    EOF
+
+    # Expected: Returns report file path
+    # Then verify file exists
+    # ls $(sqlite3 System/journal.db "SELECT json_extract(payload, '$.report_path') FROM activity WHERE action_type='report.generated' AND trace_id='550e8400-e29b-41d4-a716-446655440000';")
+    ```
 
 ---
 
@@ -2073,7 +1950,7 @@ Deno.test("PortalCommands: rollback on config validation failure", async () => {
    # ✓ Validated permissions
    # ✓ Logged to Activity Journal
    # ⚠️  Daemon restart required: exoctl daemon restart
-   
+
    # Verify:
    ls -la ~/ExoFrame/Portals/MyProject           # Symlink exists
    cat ~/ExoFrame/Knowledge/Portals/MyProject.md # Context card created
@@ -2118,7 +1995,7 @@ Deno.test("PortalCommands: rollback on config validation failure", async () => {
    ```bash
    # Remove target to break portal
    mv ~/Dev/MyProject ~/Dev/MyProject_old
-   
+
    exoctl portal verify
    # Expected output:
    # 🔍 Verifying Portals...
@@ -2154,7 +2031,7 @@ Deno.test("PortalCommands: rollback on config validation failure", async () => {
    # ✓ Updated configuration
    # ✓ Logged to Activity Journal
    # ⚠️  Daemon restart recommended: exoctl daemon restart
-   
+
    # Verify:
    ls ~/ExoFrame/Portals/MyProject                                      # Should not exist
    ls ~/ExoFrame/Knowledge/Portals/_archived/MyProject_*.md            # Should exist
@@ -2165,7 +2042,7 @@ Deno.test("PortalCommands: rollback on config validation failure", async () => {
    ```bash
    # Add new files to project
    echo "# New Feature" > ~/Dev/MyProject/NEW_FEATURE.md
-   
+
    exoctl portal refresh MyProject
    # Expected output:
    # 🔄 Refreshing context card for 'MyProject'...
@@ -2174,7 +2051,7 @@ Deno.test("PortalCommands: rollback on config validation failure", async () => {
    # ✓ Updated context card
    # ✓ Preserved user notes
    # ✓ Logged to Activity Journal
-   
+
    # Verify:
    cat ~/ExoFrame/Knowledge/Portals/MyProject.md  # Shows new file in structure
    ```
@@ -2186,7 +2063,7 @@ Deno.test("PortalCommands: rollback on config validation failure", async () => {
    # Expected output:
    # ✗ Error: Target path does not exist: /nonexistent/path
    # ✗ Portal creation failed - no changes made
-   
+
    # Verify nothing created:
    ls ~/ExoFrame/Portals/BadPortal                # Should not exist
    ls ~/ExoFrame/Knowledge/Portals/BadPortal.md  # Should not exist
@@ -2203,7 +2080,7 @@ Deno.test("PortalCommands: rollback on config validation failure", async () => {
    ORDER BY timestamp DESC 
    LIMIT 5;
    EOF
-   
+
    # Expected: All portal operations logged with actor='human', via='cli'
    ```
 
@@ -2212,11 +2089,11 @@ Deno.test("PortalCommands: rollback on config validation failure", async () => {
    # Windows: Should create junction if symlink fails
    exoctl portal add C:\Dev\MyProject MyProject
    # Expected: Falls back to junction, logs deviation
-   
+
    # macOS: Should detect and prompt for Full Disk Access
    exoctl portal add ~/Dev/MyProject MyProject
    # Expected: Shows instructions if permission denied
-   
+
    # Linux: Should check inotify limits
    exoctl portal verify
    # Expected: Warns if inotify limit insufficient
@@ -2227,11 +2104,11 @@ Deno.test("PortalCommands: rollback on config validation failure", async () => {
     # Invalid alias characters
     exoctl portal add ~/Dev/Project "My Project!"
     # Expected: ✗ Error: Alias contains invalid characters. Use alphanumeric, dash, underscore only.
-    
+
     # Duplicate alias
     exoctl portal add ~/Dev/Another MyProject
     # Expected: ✗ Error: Portal 'MyProject' already exists
-    
+
     # Reserved alias
     exoctl portal add ~/Dev/Project System
     # Expected: ✗ Error: Alias 'System' is reserved

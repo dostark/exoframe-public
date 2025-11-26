@@ -396,9 +396,10 @@ Deno.test("GitService: commit - validates files exist before committing", async 
 
     // Try to commit with no changes
     await assertRejects(
-      async () => await git.commit(
-        { message: "Test", traceId: "trace-123" }
-      ),
+      async () =>
+        await git.commit(
+          { message: "Test", traceId: "trace-123" },
+        ),
       Error,
     );
   } finally {
@@ -468,9 +469,10 @@ Deno.test("GitService: commit - handles git add failures", async () => {
 
     // Should handle git commit failure (no .git dir)
     await assertRejects(
-      async () => await git.commit(
-        { message: "Test", traceId: "trace-123" }
-      ),
+      async () =>
+        await git.commit(
+          { message: "Test", traceId: "trace-123" },
+        ),
       Error,
     );
   } finally {
@@ -499,7 +501,7 @@ Deno.test("GitService: commit - includes description in commit message", async (
         message: "Add file",
         description: "This is a longer description\nwith multiple lines",
         traceId: "trace-789",
-      }
+      },
     );
 
     // Verify commit message includes description
@@ -509,7 +511,7 @@ Deno.test("GitService: commit - includes description in commit message", async (
       stdout: "piped",
     }).output();
     const commitMsg = new TextDecoder().decode(logResult.stdout);
-    
+
     assertEquals(commitMsg.includes("Add file"), true);
     assertEquals(commitMsg.includes("This is a longer description"), true);
     assertEquals(commitMsg.includes("ExoTrace: trace-789"), true);

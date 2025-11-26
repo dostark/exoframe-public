@@ -556,6 +556,7 @@ exoctl portal refresh MyProject           # Re-scans project and updates context
 **Activity Logging:**
 
 All portal operations are logged to Activity Journal:
+
 - `portal.added` - Portal created with target path and alias
 - `portal.removed` - Portal removed with reason
 - `portal.verified` - Verification check with results

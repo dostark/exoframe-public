@@ -369,9 +369,9 @@ Deno.test("ToolRegistry: write_file - handles permission denied", async () => {
     const registry = new ToolRegistry({ config, db });
 
     // Try to write to root (should fail with permission)
-    const result = await registry.execute("write_file", { 
+    const result = await registry.execute("write_file", {
       path: "/root/forbidden.txt",
-      content: "test" 
+      content: "test",
     });
 
     assertEquals(result.success, false);
@@ -393,7 +393,7 @@ Deno.test("ToolRegistry: run_command - handles command execution failure", async
     // Execute a command that will fail
     const result = await registry.execute("run_command", {
       command: "ls",
-      args: ["/nonexistent-directory-99999"]
+      args: ["/nonexistent-directory-99999"],
     });
 
     // Should return success false due to non-zero exit code
@@ -416,7 +416,7 @@ Deno.test("ToolRegistry: search_files - handles invalid glob patterns", async ()
     // Search with pattern in non-existent directory
     const result = await registry.execute("search_files", {
       pattern: "*.txt",
-      path: "/nonexistent-search-path"
+      path: "/nonexistent-search-path",
     });
 
     // Should handle error gracefully
@@ -437,7 +437,7 @@ Deno.test("ToolRegistry: list_directory - handles non-existent directory", async
     const registry = new ToolRegistry({ config, db });
 
     const result = await registry.execute("list_directory", {
-      path: join(tempDir, "does-not-exist")
+      path: join(tempDir, "does-not-exist"),
     });
 
     assertEquals(result.success, false);
@@ -455,7 +455,7 @@ Deno.test("ToolRegistry: getTools - returns all registered tools", () => {
   const tools = registry.getTools();
 
   assertEquals(tools.length, 5);
-  const toolNames = tools.map(t => t.name);
+  const toolNames = tools.map((t) => t.name);
   assertEquals(toolNames.includes("read_file"), true);
   assertEquals(toolNames.includes("write_file"), true);
   assertEquals(toolNames.includes("list_directory"), true);

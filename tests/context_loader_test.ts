@@ -587,7 +587,7 @@ describe("Token Budget Boundary Cases", () => {
 
     // file1 should fit (smaller file loaded first with smallest-first)
     assertEquals(result.includedFiles.length >= 1, true);
-    
+
     // Total should not exceed budget
     assertEquals(result.totalTokens <= 8000, true);
   });
@@ -608,7 +608,7 @@ describe("Token Budget Boundary Cases", () => {
 
     // file1 fits, file2 can't fit meaningfully (remaining < 100)
     assertEquals(result.includedFiles.includes(file1), true);
-    
+
     // With truncate-each, file2 should be skipped if remaining < 100
     if (result.totalTokens > 7900) {
       assertEquals(result.skippedFiles.includes(file2), true);
@@ -653,7 +653,7 @@ describe("Token Budget Boundary Cases", () => {
     // Should prioritize smallest files: small1 (1000) + small2 (1500) + medium (3000) = ~5500
     assertEquals(result.includedFiles.includes(small1), true);
     assertEquals(result.includedFiles.includes(small2), true);
-    
+
     // Large should be skipped
     assertEquals(result.skippedFiles.includes(large), true);
   });
@@ -667,7 +667,7 @@ describe("File System Error Handling", () => {
   it("should handle permission denied errors gracefully", async () => {
     const readable = await createTestFile("readable.txt", generateContent(1000));
     const restricted = await createTestFile("restricted.txt", generateContent(1000));
-    
+
     // Remove read permissions
     await Deno.chmod(restricted, 0o000);
 
@@ -684,7 +684,7 @@ describe("File System Error Handling", () => {
 
       // Should load readable file
       assertEquals(result.includedFiles.includes(readable), true);
-      
+
       // Restricted file should be excluded (not in included or skipped)
       assertEquals(result.includedFiles.includes(restricted), false);
     } finally {
@@ -700,7 +700,7 @@ describe("File System Error Handling", () => {
   it("should handle symbolic links correctly", async () => {
     const original = await createTestFile("original.txt", generateContent(1000));
     const symlinkPath = `${testDir}/symlink.txt`;
-    
+
     // Create symlink
     await Deno.symlink(original, symlinkPath);
     testFiles.push(symlinkPath);
@@ -723,7 +723,7 @@ describe("File System Error Handling", () => {
   it("should handle broken symbolic links", async () => {
     const brokenLink = `${testDir}/broken-link.txt`;
     const nonExistent = `${testDir}/does-not-exist.txt`;
-    
+
     // Create broken symlink
     await Deno.symlink(nonExistent, brokenLink);
     testFiles.push(brokenLink);
@@ -761,7 +761,7 @@ describe("File System Error Handling", () => {
 
     // Empty file should be filtered out (zero tokens)
     assertEquals(result.includedFiles.includes(empty), false);
-    
+
     // File with content should be included
     assertEquals(result.includedFiles.includes(withContent), true);
   });
@@ -777,13 +777,13 @@ describe("File System Error Handling", () => {
     };
 
     const loader = new ContextLoader(config);
-    
+
     // Start loading
     const resultPromise = loader.loadWithLimit([file]);
-    
+
     // Modify file during load (though this is a race condition)
     await Deno.writeTextFile(file, generateContent(2000));
-    
+
     const result = await resultPromise;
 
     // Should complete without error (may have either version)

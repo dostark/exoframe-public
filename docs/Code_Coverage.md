@@ -41,38 +41,41 @@ The `scripts/coverage.sh` script provides an all-in-one solution:
 
 As of the last run:
 
-| Metric | Coverage |
-|--------|----------|
-| Overall Line Coverage | 82.9% |
-| Overall Branch Coverage | 67.2% |
+| Metric                  | Coverage |
+| ----------------------- | -------- |
+| Overall Line Coverage   | 82.9%    |
+| Overall Branch Coverage | 67.2%    |
 
 ### Per-Module Coverage
 
-| Module | Branch % | Line % |
-|--------|----------|--------|
-| **CLI Commands** | | |
-| cli/base.ts | 86.4% | 83.5% |
-| cli/changeset_commands.ts | 63.6% | 89.0% |
-| cli/daemon_commands.ts | 66.7% | 79.4% |
-| cli/git_commands.ts | 87.0% | 94.9% |
-| cli/plan_commands.ts | 73.7% | 90.0% |
-| **Services** | | |
-| services/db.ts | 43.8% | 79.5% |
-| services/git_service.ts | 64.0% | 80.0% |
-| services/agent_runner.ts | 60.0% | 80.7% |
-| services/context_loader.ts | 55.9% | 82.2% |
-| services/execution_loop.ts | 60.0% | 85.8% |
-| **Parsers & Config** | | |
-| config/schema.ts | 100.0% | 100.0% |
-| parsers/markdown.ts | 71.4% | 77.6% |
+| Module                     | Branch % | Line % |
+| -------------------------- | -------- | ------ |
+| **CLI Commands**           |          |        |
+| cli/base.ts                | 86.4%    | 83.5%  |
+| cli/changeset_commands.ts  | 63.6%    | 89.0%  |
+| cli/daemon_commands.ts     | 66.7%    | 79.4%  |
+| cli/git_commands.ts        | 87.0%    | 94.9%  |
+| cli/plan_commands.ts       | 73.7%    | 90.0%  |
+| **Services**               |          |        |
+| services/db.ts             | 43.8%    | 79.5%  |
+| services/git_service.ts    | 64.0%    | 80.0%  |
+| services/agent_runner.ts   | 60.0%    | 80.7%  |
+| services/context_loader.ts | 55.9%    | 82.2%  |
+| services/execution_loop.ts | 60.0%    | 85.8%  |
+| **Parsers & Config**       |          |        |
+| config/schema.ts           | 100.0%   | 100.0% |
+| parsers/markdown.ts        | 71.4%    | 77.6%  |
 
 ## Coverage Reports
 
 ### Summary Report
+
 The default report shows coverage percentages for each file and overall coverage.
 
 ### HTML Report
+
 Interactive HTML report with:
+
 - Line-by-line coverage highlighting
 - Branch coverage visualization
 - Sortable file list
@@ -81,7 +84,9 @@ Interactive HTML report with:
 Located at: `coverage/html/index.html`
 
 ### LCOV Report
+
 Standard LCOV format for integration with:
+
 - CI/CD pipelines (GitHub Actions, GitLab CI, etc.)
 - Coverage tracking services (Codecov, Coveralls)
 - IDE plugins
@@ -91,18 +96,23 @@ Located at: `coverage/lcov.info`
 ## Interpreting Coverage
 
 ### Line Coverage
+
 Percentage of executable lines that were run during tests.
+
 - ✅ Target: 80%+ for production code
 - 🎯 Stretch goal: 90%+
 
 ### Branch Coverage
+
 Percentage of decision branches (if/else, switch, ternary) that were taken.
+
 - ✅ Target: 70%+ for production code
 - 🎯 Stretch goal: 85%+
 
 ### Areas with Lower Coverage
 
 Some modules have intentionally lower coverage:
+
 - **config/service.ts** (61.1%): Error handling paths, rarely exercised
 - **services/watcher.ts** (65.7%): File system edge cases
 - **services/path_resolver.ts** (69.1%): Platform-specific paths
@@ -127,12 +137,14 @@ Some modules have intentionally lower coverage:
 ## Improving Coverage
 
 When adding new features:
+
 1. Write tests first (TDD approach)
 2. Run coverage to identify gaps
 3. Add tests for uncovered branches
 4. Aim for 80%+ line coverage on new code
 
 To find uncovered lines:
+
 ```bash
 # Detailed report shows exact lines
 ./scripts/coverage.sh detailed
@@ -144,6 +156,7 @@ To find uncovered lines:
 ## Excluding Files
 
 Coverage automatically excludes:
+
 - Test files (`*.test.ts`, `*.test.js`)
 - Files outside `src/` directory
 - Third-party dependencies

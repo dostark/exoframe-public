@@ -101,9 +101,9 @@ export class ChangesetCommands extends BaseCommand {
 
       // Check if branch has been merged or rejected via activity log
       const activities = await this.db.getActivitiesByTrace(trace_id);
-      const status = activities.some((a: { action_type: string; }) => a.action_type === "changeset.approved")
+      const status = activities.some((a: { action_type: string }) => a.action_type === "changeset.approved")
         ? "approved"
-        : activities.some((a: { action_type: string; }) => a.action_type === "changeset.rejected")
+        : activities.some((a: { action_type: string }) => a.action_type === "changeset.rejected")
         ? "rejected"
         : "pending";
 
@@ -248,7 +248,9 @@ export class ChangesetCommands extends BaseCommand {
         "--no-ff",
         changeset.branch,
         "-m",
-        `Merge ${changeset.request_id}: ${changeset.commits[0]?.message || "agent changes"}\n\nTrace-Id: ${changeset.trace_id}`,
+        `Merge ${changeset.request_id}: ${
+          changeset.commits[0]?.message || "agent changes"
+        }\n\nTrace-Id: ${changeset.trace_id}`,
       ],
       stdout: "piped",
       stderr: "piped",

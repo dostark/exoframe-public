@@ -1,5 +1,5 @@
 import { parse } from "@std/toml";
-import { join, isAbsolute } from "@std/path";
+import { isAbsolute, join } from "@std/path";
 import { crypto } from "@std/crypto";
 import { encodeHex } from "@std/encoding/hex";
 import { Config, ConfigSchema } from "./schema.ts";
@@ -82,16 +82,16 @@ stability_check = true
 
   public async addPortal(alias: string, targetPath: string): Promise<void> {
     const created = new Date().toISOString();
-    
+
     // Read current config
     const content = await Deno.readTextFile(this.configPath);
-    
+
     // Add portal entry
     const portalEntry = `\n[[portals]]\nalias = "${alias}"\ntarget_path = "${targetPath}"\ncreated = "${created}"\n`;
-    
+
     // Append to config
     await Deno.writeTextFile(this.configPath, content + portalEntry);
-    
+
     // Reload config
     this.config = this.load();
   }
@@ -99,20 +99,20 @@ stability_check = true
   public async removePortal(alias: string): Promise<void> {
     // Read current config
     let content = await Deno.readTextFile(this.configPath);
-    
+
     // Remove portal section using regex
     const portalRegex = new RegExp(
       `\\[\\[portals\\]\\][\\s\\S]*?alias\\s*=\\s*["']${alias}["'][\\s\\S]*?(?=\\[\\[portals\\]\\]|\\[\\w+\\]|$)`,
-      'g'
+      "g",
     );
-    
-    content = content.replace(portalRegex, '');
-    
+
+    content = content.replace(portalRegex, "");
+
     // Clean up extra blank lines
-    content = content.replace(/\n{3,}/g, '\n\n');
-    
+    content = content.replace(/\n{3,}/g, "\n\n");
+
     await Deno.writeTextFile(this.configPath, content);
-    
+
     // Reload config
     this.config = this.load();
   }
@@ -122,7 +122,7 @@ stability_check = true
   }
 
   public getPortal(alias: string): { alias: string; target_path: string; created?: string } | undefined {
-    return this.config.portals?.find(p => p.alias === alias);
+    return this.config.portals?.find((p) => p.alias === alias);
   }
 
   public async updatePortalVerification(alias: string): Promise<void> {

@@ -1,8 +1,4 @@
-import {
-  assertEquals,
-  assertExists,
-  assertThrows,
-} from "jsr:@std/assert@^1.0.0";
+import { assertEquals, assertExists, assertThrows } from "jsr:@std/assert@^1.0.0";
 import { ConfigService } from "../src/config/service.ts";
 import { ConfigSchema } from "../src/config/schema.ts";
 import { join } from "@std/path";
@@ -112,8 +108,8 @@ Deno.test("ConfigService handles missing config file", async (t) => {
 
     // Verify config has defaults (from the created default file)
     assertEquals(config.system.log_level, "info");
-    assertEquals(config.paths.knowledge, "./Knowledge");  // From file
-    assertEquals(config.paths.blueprints, "./Blueprints");  // From file
+    assertEquals(config.paths.knowledge, "./Knowledge"); // From file
+    assertEquals(config.paths.blueprints, "./Blueprints"); // From file
 
     // Verify file was created
     const fileExists = (() => {

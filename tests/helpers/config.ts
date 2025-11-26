@@ -46,7 +46,7 @@ export function createMockConfig(root: string, overrides: Partial<Config> = {}):
  */
 export async function createTestConfigService(root: string): Promise<ConfigService> {
   const configPath = join(root, "exo.config.toml");
-  
+
   const configContent = `[system]
 version = "1.0.0"
 log_level = "info"
@@ -71,9 +71,9 @@ timeout_sec = 60
 `;
 
   await Deno.writeTextFile(configPath, configContent);
-  
+
   // Create service with absolute path
   const service = new ConfigService(configPath);
-  
+
   return service;
 }

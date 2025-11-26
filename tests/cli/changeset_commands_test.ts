@@ -28,7 +28,7 @@ describe("ChangesetCommands", () => {
     await runGitCommand(tempDir, ["init", "-b", "main"]);
     await runGitCommand(tempDir, ["config", "user.email", "test@example.com"]);
     await runGitCommand(tempDir, ["config", "user.name", "Test User"]);
-    
+
     // Create initial commit on main
     await Deno.writeTextFile(join(tempDir, "README.md"), "# Test Project\n");
     await runGitCommand(tempDir, ["add", "README.md"]);
@@ -135,7 +135,7 @@ describe("ChangesetCommands", () => {
       await createFeatureBranch(tempDir, "request-005", "abc-345-fed");
 
       const details = await changesetCommands.show("feat/request-005-abc-345-fed");
-      
+
       assertExists(details);
       assertEquals(details.branch, "feat/request-005-abc-345-fed");
       assertEquals(details.trace_id, "abc-345-fed");
@@ -192,7 +192,7 @@ describe("ChangesetCommands", () => {
 
     it("should validate current branch is main", async () => {
       await createFeatureBranch(tempDir, "request-010", "def-890-abc");
-      
+
       // Switch to a different branch
       await runGitCommand(tempDir, ["checkout", "-b", "other-branch"]);
 
@@ -223,7 +223,7 @@ describe("ChangesetCommands", () => {
       // Check activity log
       const activities = await db.getActivitiesByTrace("def-456-abc");
       const approval = activities.find((a: { action_type: string }) => a.action_type === "changeset.approved");
-      
+
       assertExists(approval);
       assertExists(approval.payload);
       const payload = JSON.parse(approval.payload);
@@ -263,7 +263,7 @@ describe("ChangesetCommands", () => {
       // Check activity log
       const activities = await db.getActivitiesByTrace("abc-345-edf");
       const rejection = activities.find((a: { action_type: string }) => a.action_type === "changeset.rejected");
-      
+
       assertExists(rejection);
       const payload = JSON.parse(rejection.payload);
       assertEquals(payload.rejection_reason, "Quality issues");
@@ -282,7 +282,7 @@ describe("ChangesetCommands", () => {
       assertExists(rejection);
       if (!rejection) throw new Error("Rejection not found");
       const payload = JSON.parse(rejection.payload);
-      
+
       assertStringIncludes(payload.rejection_reason, "Needs redesign");
     });
   });
@@ -299,7 +299,7 @@ async function runGitCommand(cwd: string, args: string[]): Promise<string> {
 
   const { stdout, success } = await cmd.output();
   if (!success) {
-    const stderr = new TextDecoder().decode(await cmd.output().then(r => r.stderr));
+    const stderr = new TextDecoder().decode(await cmd.output().then((r) => r.stderr));
     throw new Error(`Git command failed: ${args.join(" ")}\n${stderr}`);
   }
 
@@ -313,7 +313,7 @@ async function createFeatureBranch(
   fileCount: number = 1,
 ): Promise<void> {
   const branchName = `feat/${requestId}-${traceId}`;
-  
+
   // Create branch
   await runGitCommand(repoDir, ["checkout", "-b", branchName]);
 
@@ -351,7 +351,7 @@ describe("ChangesetCommands - Edge Cases", () => {
     await runGitCommand(tempDir, ["init", "-b", "main"]);
     await runGitCommand(tempDir, ["config", "user.email", "test@example.com"]);
     await runGitCommand(tempDir, ["config", "user.name", "Test User"]);
-    
+
     // Create initial commit on main
     await Deno.writeTextFile(join(tempDir, "README.md"), "# Test Project\n");
     await runGitCommand(tempDir, ["add", "README.md"]);
@@ -386,10 +386,10 @@ describe("ChangesetCommands - Edge Cases", () => {
     // Create branches with various invalid formats
     await runGitCommand(tempDir, ["checkout", "-b", "feat/invalid"]);
     await runGitCommand(tempDir, ["checkout", "main"]);
-    
+
     await runGitCommand(tempDir, ["checkout", "-b", "feature/not-feat"]);
     await runGitCommand(tempDir, ["checkout", "main"]);
-    
+
     const changesets = await changesetCommands.list();
     assertEquals(changesets.length, 0);
   });
@@ -400,7 +400,7 @@ describe("ChangesetCommands - Edge Cases", () => {
     await runGitCommand(tempDir, ["checkout", "-b", branchName]);
     await runGitCommand(tempDir, ["commit", "--allow-empty", "-m", "Empty commit"]);
     await runGitCommand(tempDir, ["checkout", "main"]);
-    
+
     const changesets = await changesetCommands.list();
     assertEquals(changesets.length, 1);
     assertEquals(changesets[0].files_changed, 0);
@@ -416,7 +416,7 @@ describe("ChangesetCommands - Edge Cases", () => {
 
   it("show() should find branch by request_id", async () => {
     await createFeatureBranch(tempDir, "request-007", "abc-901-def");
-    
+
     const details = await changesetCommands.show("request-007");
     assertExists(details);
     assertEquals(details.request_id, "request-007");
@@ -432,23 +432,23 @@ describe("ChangesetCommands - Edge Cases", () => {
 
   it("approve() should throw error when not on main branch", async () => {
     await createFeatureBranch(tempDir, "request-010", "def-890-abc");
-    
+
     // Switch to a different branch
     await runGitCommand(tempDir, ["checkout", "-b", "other-branch"]);
-    
+
     await assertRejects(
       async () => await changesetCommands.approve("request-010"),
       Error,
       "main",
     );
-    
+
     // Switch back for cleanup
     await runGitCommand(tempDir, ["checkout", "main"]);
   });
 
   it("reject() should throw error when rejection reason is empty", async () => {
     await createFeatureBranch(tempDir, "request-011", "abc-111-def");
-    
+
     await assertRejects(
       async () => await changesetCommands.reject("request-011", ""),
       Error,
@@ -458,7 +458,7 @@ describe("ChangesetCommands - Edge Cases", () => {
 
   it("reject() should throw error when rejection reason is whitespace only", async () => {
     await createFeatureBranch(tempDir, "request-012", "def-222-abc");
-    
+
     await assertRejects(
       async () => await changesetCommands.reject("request-012", "   "),
       Error,

@@ -112,7 +112,7 @@ export class PortalCommands {
       } catch {
         // Ignore cleanup errors
       }
-      
+
       // Try to rollback config if it was added
       if (this.configService) {
         try {
@@ -121,7 +121,7 @@ export class PortalCommands {
           // Ignore config rollback errors
         }
       }
-      
+
       throw error;
     }
   }
@@ -141,7 +141,7 @@ export class PortalCommands {
           this.config.system.root,
           this.config.paths.knowledge,
           "Portals",
-          `${entry.name}.md`
+          `${entry.name}.md`,
         );
 
         let targetPath: string;
@@ -188,7 +188,7 @@ export class PortalCommands {
       this.config.system.root,
       this.config.paths.knowledge,
       "Portals",
-      `${alias}.md`
+      `${alias}.md`,
     );
 
     let targetPath: string;
@@ -243,7 +243,7 @@ export class PortalCommands {
       this.config.system.root,
       this.config.paths.knowledge,
       "Portals",
-      `${alias}.md`
+      `${alias}.md`,
     );
 
     // Check portal exists
@@ -267,7 +267,7 @@ export class PortalCommands {
         this.config.system.root,
         this.config.paths.knowledge,
         "Portals",
-        "_archived"
+        "_archived",
       );
       await Deno.mkdir(archivedDir, { recursive: true });
 
@@ -305,7 +305,7 @@ export class PortalCommands {
         this.config.system.root,
         this.config.paths.knowledge,
         "Portals",
-        `${portalAlias}.md`
+        `${portalAlias}.md`,
       );
 
       // Check symlink exists
@@ -436,7 +436,7 @@ export class PortalCommands {
         null,
         payload,
         "cli-" + crypto.randomUUID(),
-        null
+        null,
       );
     } catch (error) {
       // Log errors but don't fail the operation

@@ -115,6 +115,7 @@ exoctl plan revise <plan-id> \
 ```
 
 **Example workflow:**
+
 ```bash
 # 1. Check what's pending
 $ exoctl plan list
@@ -159,6 +160,7 @@ exoctl changeset reject <request-id> --reason "Failed code review"
 ```
 
 **Example workflow:**
+
 ```bash
 # 1. See what code changes are ready
 $ exoctl changeset list
@@ -210,6 +212,7 @@ exoctl git log --trace <trace-id>
 ```
 
 **Example workflow:**
+
 ```bash
 # Find all branches created by agents
 $ exoctl git branches --pattern "feat/*"
@@ -474,6 +477,7 @@ exoctl daemon logs --follow              # Stream logs (like tail -f)
 ```
 
 **Example workflow:**
+
 ```bash
 # Check if daemon is running
 $ exoctl daemon status
@@ -542,6 +546,7 @@ All human actions via CLI are automatically logged to the Activity Journal:
 - User identity captured from git config or OS username
 
 Query activity history:
+
 ```bash
 # View activity database directly
 sqlite3 ~/ExoFrame/System/journal.db \
@@ -584,6 +589,7 @@ exoctl daemon status
 ```
 
 **Complete workflow example:**
+
 ```bash
 # 1. Drop a request in Inbox
 echo "Implement user authentication" > ~/ExoFrame/Inbox/Requests/auth.md

@@ -51,11 +51,11 @@ Deno.test("PortalCommands: rejects non-existent target path", async () => {
     await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
 
     const commands = new PortalCommands({ config, db });
-    
+
     await assertRejects(
       async () => await commands.add("/nonexistent/path", "BadPortal"),
       Error,
-      "Target path does not exist"
+      "Target path does not exist",
     );
 
     // Verify no symlink created
@@ -80,13 +80,13 @@ Deno.test("PortalCommands: rejects invalid alias characters", async () => {
     await assertRejects(
       async () => await commands.add(targetDir, "Bad Portal!"),
       Error,
-      "invalid characters"
+      "invalid characters",
     );
 
     await assertRejects(
       async () => await commands.add(targetDir, "123Start"),
       Error,
-      "cannot start with a number"
+      "cannot start with a number",
     );
   } finally {
     await cleanup();
@@ -107,13 +107,13 @@ Deno.test("PortalCommands: rejects reserved alias names", async () => {
     await assertRejects(
       async () => await commands.add(targetDir, "System"),
       Error,
-      "reserved"
+      "reserved",
     );
 
     await assertRejects(
       async () => await commands.add(targetDir, "Inbox"),
       Error,
-      "reserved"
+      "reserved",
     );
   } finally {
     await cleanup();
@@ -134,7 +134,7 @@ Deno.test("PortalCommands: rejects duplicate alias", async () => {
     await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
 
     const commands = new PortalCommands({ config, db });
-    
+
     // Add first portal
     await commands.add(targetDir1, "DupePortal");
 
@@ -142,7 +142,7 @@ Deno.test("PortalCommands: rejects duplicate alias", async () => {
     await assertRejects(
       async () => await commands.add(targetDir2, "DupePortal"),
       Error,
-      "already exists"
+      "already exists",
     );
   } finally {
     await cleanup();
@@ -164,18 +164,18 @@ Deno.test("PortalCommands: lists all portals with status", async () => {
     await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
 
     const commands = new PortalCommands({ config, db });
-    
+
     // Add two portals
     await commands.add(targetDir1, "Portal1");
     await commands.add(targetDir2, "Portal2");
 
     const portals = await commands.list();
-    
+
     assertEquals(portals.length, 2);
-    
+
     // Sort to ensure consistent ordering
     portals.sort((a, b) => a.alias.localeCompare(b.alias));
-    
+
     assertEquals(portals[0].alias, "Portal1");
     assertEquals(portals[0].status, "active");
     assertEquals(portals[1].alias, "Portal2");
@@ -199,7 +199,7 @@ Deno.test("PortalCommands: detects broken portals", async () => {
     await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
 
     const commands = new PortalCommands({ config, db });
-    
+
     // Add portal
     await commands.add(targetDir, "BrokenPortal");
 
@@ -207,7 +207,7 @@ Deno.test("PortalCommands: detects broken portals", async () => {
     await Deno.remove(targetDir, { recursive: true });
 
     const portals = await commands.list();
-    
+
     assertEquals(portals.length, 1);
     assertEquals(portals[0].alias, "BrokenPortal");
     assertEquals(portals[0].status, "broken");
@@ -231,7 +231,7 @@ Deno.test("PortalCommands: shows portal details", async () => {
     await commands.add(targetDir, "ShowPortal");
 
     const details = await commands.show("ShowPortal");
-    
+
     assertExists(details);
     assertEquals(details.alias, "ShowPortal");
     assertEquals(details.status, "active");
@@ -256,7 +256,7 @@ Deno.test("PortalCommands: show throws error for non-existent portal", async () 
     await assertRejects(
       async () => await commands.show("NonExistent"),
       Error,
-      "not found"
+      "not found",
     );
   } finally {
     await cleanup();
@@ -343,16 +343,16 @@ Deno.test("PortalCommands: verifies all portals", async () => {
     await Deno.remove(targetDir2, { recursive: true });
 
     const results = await commands.verify();
-    
+
     assertEquals(results.length, 2);
-    
+
     // Find each portal in results
-    const portal1 = results.find(r => r.alias === "Portal1");
-    const portal2 = results.find(r => r.alias === "Portal2");
-    
+    const portal1 = results.find((r) => r.alias === "Portal1");
+    const portal2 = results.find((r) => r.alias === "Portal2");
+
     assertExists(portal1);
     assertEquals(portal1.status, "ok");
-    
+
     assertExists(portal2);
     assertEquals(portal2.status, "failed");
     assertExists(portal2.issues);
@@ -378,7 +378,7 @@ Deno.test("PortalCommands: verifies specific portal", async () => {
     await commands.add(targetDir, "VerifyPortal");
 
     const results = await commands.verify("VerifyPortal");
-    
+
     assertEquals(results.length, 1);
     assertEquals(results[0].alias, "VerifyPortal");
     assertEquals(results[0].status, "ok");
@@ -448,11 +448,11 @@ Deno.test("PortalCommands: rejects target that is a file not directory", async (
     await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
 
     const commands = new PortalCommands({ config, db });
-    
+
     await assertRejects(
       async () => await commands.add(targetFile, "FilePortal"),
       Error,
-      "not a directory"
+      "not a directory",
     );
   } finally {
     await cleanup();
@@ -473,7 +473,7 @@ Deno.test("PortalCommands: rejects empty alias", async () => {
     await assertRejects(
       async () => await commands.add(targetDir, ""),
       Error,
-      "cannot be empty"
+      "cannot be empty",
     );
   } finally {
     await cleanup();
@@ -495,7 +495,7 @@ Deno.test("PortalCommands: rejects alias exceeding 50 characters", async () => {
     await assertRejects(
       async () => await commands.add(targetDir, longAlias),
       Error,
-      "cannot exceed 50 characters"
+      "cannot exceed 50 characters",
     );
   } finally {
     await cleanup();
@@ -511,10 +511,10 @@ Deno.test("PortalCommands: list handles empty portals directory", async () => {
   try {
     const config = createMockConfig(tempRoot);
     // Don't create Portals directory
-    
+
     const commands = new PortalCommands({ config, db });
     const portals = await commands.list();
-    
+
     assertEquals(portals.length, 0);
   } finally {
     await cleanup();
@@ -535,7 +535,7 @@ Deno.test("PortalCommands: list skips non-symlink entries", async () => {
 
     const commands = new PortalCommands({ config, db });
     const portals = await commands.list();
-    
+
     assertEquals(portals.length, 0);
   } finally {
     await cleanup();
@@ -560,7 +560,7 @@ Deno.test("PortalCommands: show handles broken symlink with unknown target", asy
     await Deno.remove(targetDir, { recursive: true });
 
     const details = await commands.show("BrokenShow");
-    
+
     assertEquals(details.status, "broken");
   } finally {
     await cleanup();
@@ -585,10 +585,10 @@ Deno.test("PortalCommands: show detects read-only permissions", async () => {
     await Deno.chmod(targetDir, 0o555);
 
     const details = await commands.show("ReadOnlyPortal");
-    
+
     // Should detect as read-only or broken depending on OS
     assertExists(details.permissions);
-    
+
     // Restore permissions for cleanup
     await Deno.chmod(targetDir, 0o755);
   } finally {
@@ -646,11 +646,11 @@ Deno.test("PortalCommands: verify detects missing symlink", async () => {
     await Deno.remove(symlinkPath);
 
     const results = await commands.verify("NoSymlink");
-    
+
     assertEquals(results.length, 1);
     assertEquals(results[0].status, "failed");
     assertExists(results[0].issues);
-    assertEquals(results[0].issues!.some(i => i.includes("Symlink")), true);
+    assertEquals(results[0].issues!.some((i) => i.includes("Symlink")), true);
   } finally {
     await cleanup();
     await Deno.remove(tempRoot, { recursive: true });
@@ -676,11 +676,11 @@ Deno.test("PortalCommands: verify detects missing context card", async () => {
     await Deno.remove(cardPath);
 
     const results = await commands.verify("NoCardVerify");
-    
+
     assertEquals(results.length, 1);
     assertEquals(results[0].status, "failed");
     assertExists(results[0].issues);
-    assertEquals(results[0].issues!.some(i => i.includes("Context card")), true);
+    assertEquals(results[0].issues!.some((i) => i.includes("Context card")), true);
   } finally {
     await cleanup();
     await Deno.remove(tempRoot, { recursive: true });
@@ -703,7 +703,7 @@ Deno.test("PortalCommands: rollback on symlink creation failure", async () => {
     await Deno.writeTextFile(symlinkPath, "existing file");
 
     const commands = new PortalCommands({ config, db });
-    
+
     try {
       await commands.add(targetDir, "RollbackTest");
       // Should not reach here
@@ -731,7 +731,7 @@ Deno.test("PortalCommands: adds portal to config file", async () => {
   try {
     const configService = await createTestConfigService(tempRoot);
     const config = configService.get();
-    
+
     await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
     await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
 
@@ -759,19 +759,19 @@ Deno.test("PortalCommands: removes portal from config file", async () => {
   try {
     const configService = await createTestConfigService(tempRoot);
     const config = configService.get();
-    
+
     await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
     await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
 
     const commands = new PortalCommands({ config, db, configService });
-    
+
     // Add portal
     await commands.add(targetDir, "RemoveTest");
     assertEquals(configService.getPortals().length, 1);
-    
+
     // Remove portal
     await commands.remove("RemoveTest");
-    
+
     // Verify portal was removed from config
     const portals = configService.getPortals();
     assertEquals(portals.length, 0);
@@ -790,7 +790,7 @@ Deno.test("PortalCommands: list includes created timestamp from config", async (
   try {
     const configService = await createTestConfigService(tempRoot);
     const config = configService.get();
-    
+
     await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
     await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
 
@@ -800,12 +800,12 @@ Deno.test("PortalCommands: list includes created timestamp from config", async (
     // Get fresh config to see updated portals
     const updatedConfig = configService.get();
     const commandsRefreshed = new PortalCommands({ config: updatedConfig, db, configService });
-    
+
     // List portals and verify timestamp
     const portals = await commandsRefreshed.list();
     assertEquals(portals.length, 1);
     assertExists(portals[0].created);
-    
+
     // Verify timestamp is valid ISO string
     const date = new Date(portals[0].created!);
     assertEquals(isNaN(date.getTime()), false);
@@ -825,18 +825,18 @@ Deno.test("PortalCommands: verify detects config mismatch", async () => {
   try {
     const configService = await createTestConfigService(tempRoot);
     const config = configService.get();
-    
+
     await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
     await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
 
     const commands = new PortalCommands({ config, db, configService });
-    
+
     // Add portal normally
     await commands.add(targetDir, "MismatchTest");
-    
+
     // Manually change symlink to point elsewhere
     const symlinkPath = join(tempRoot, "Portals", "MismatchTest");
-    
+
     // Check if symlink exists first
     try {
       await Deno.lstat(symlinkPath);
@@ -846,15 +846,15 @@ Deno.test("PortalCommands: verify detects config mismatch", async () => {
       // If symlink doesn't exist, just create it
       await Deno.symlink(wrongDir, symlinkPath);
     }
-    
+
     // Verify should detect mismatch
     const results = await commands.verify("MismatchTest");
     assertEquals(results.length, 1);
     assertEquals(results[0].status, "failed");
     assertExists(results[0].issues);
     assertEquals(
-      results[0].issues!.some(i => i.includes("Config mismatch")),
-      true
+      results[0].issues!.some((i) => i.includes("Config mismatch")),
+      true,
     );
   } finally {
     await cleanup();
@@ -872,28 +872,28 @@ Deno.test("PortalCommands: verify detects missing config entry", async () => {
   try {
     const configService = await createTestConfigService(tempRoot);
     const config = configService.get();
-    
+
     await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
     await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
 
     // Create symlink manually without adding to config
     const symlinkPath = join(tempRoot, "Portals", "Orphaned");
     await Deno.symlink(targetDir, symlinkPath);
-    
+
     // Create context card
     const cardPath = join(tempRoot, "Knowledge", "Portals", "Orphaned.md");
     await Deno.writeTextFile(cardPath, "# Orphaned Portal");
 
     const commands = new PortalCommands({ config, db, configService });
-    
+
     // Verify should detect missing config
     const results = await commands.verify("Orphaned");
     assertEquals(results.length, 1);
     assertEquals(results[0].status, "failed");
     assertExists(results[0].issues);
     assertEquals(
-      results[0].issues!.some(i => i.includes("not found in configuration")),
-      true
+      results[0].issues!.some((i) => i.includes("not found in configuration")),
+      true,
     );
   } finally {
     await cleanup();
@@ -901,4 +901,3 @@ Deno.test("PortalCommands: verify detects missing config entry", async () => {
     await Deno.remove(targetDir, { recursive: true });
   }
 });
-

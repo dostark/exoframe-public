@@ -58,11 +58,11 @@ describe("BaseCommand", () => {
 
   beforeEach(async () => {
     tempDir = await Deno.makeTempDir({ prefix: "base_command_test_" });
-    
+
     // Create System directory for database
     const systemDir = join(tempDir, "System");
     await ensureDir(systemDir);
-    
+
     const config = createMockConfig(tempDir);
     db = new DatabaseService(config);
     testCommand = new TestCommand({ config, db });

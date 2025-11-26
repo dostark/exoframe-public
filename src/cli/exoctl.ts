@@ -37,7 +37,6 @@ await new Command()
   .name("exoctl")
   .version("1.0.0")
   .description("ExoFrame CLI - Human interface for agent orchestration")
-
   // Plan commands
   .command(
     "plan",
@@ -136,7 +135,6 @@ await new Command()
           }),
       ),
   )
-
   // Changeset commands
   .command(
     "changeset",
@@ -222,7 +220,6 @@ await new Command()
           }),
       ),
   )
-
   // Git commands
   .command(
     "git",
@@ -240,7 +237,9 @@ await new Command()
               for (const branch of branches) {
                 const current = branch.is_current ? "* " : "  ";
                 console.log(`${current}${branch.name}`);
-                console.log(`   Last commit: ${branch.last_commit} (${new Date(branch.last_commit_date).toLocaleDateString()})`);
+                console.log(
+                  `   Last commit: ${branch.last_commit} (${new Date(branch.last_commit_date).toLocaleDateString()})`,
+                );
                 if (branch.trace_id) console.log(`   Trace: ${branch.trace_id.substring(0, 8)}...`);
                 console.log();
               }
@@ -313,7 +312,6 @@ await new Command()
           }),
       ),
   )
-
   // Daemon commands
   .command(
     "daemon",
@@ -392,5 +390,4 @@ await new Command()
           }),
       ),
   )
-
   .parse(Deno.args);

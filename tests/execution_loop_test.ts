@@ -842,7 +842,7 @@ This plan has no action blocks, and the test-execution.txt file will be identica
     await new Promise((resolve) => setTimeout(resolve, 150));
     const activities = db.getActivitiesByTrace("test-trace-nochanges");
     const _noChangesLog = activities.find((a: any) => a.action_type === "execution.no_changes");
-    
+
     // May or may not log no_changes depending on timing, but should complete
     assertEquals(result.success, true);
   } finally {
@@ -874,19 +874,19 @@ agent_id: "test-agent"
     await Deno.writeTextFile(planPath, planContent);
 
     const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
-    
+
     // Process task successfully - lease should be acquired and released
     const result1 = await loop.processTask(planPath);
     assertEquals(result1.success, true);
 
     // Wait for activities to be logged
     await new Promise((resolve) => setTimeout(resolve, 150));
-    
+
     // Verify lease was acquired
     const activities = db.getActivitiesByTrace("test-trace-lease");
     const leaseAcquired = activities.find((a: any) => a.action_type === "execution.lease_acquired");
     assertExists(leaseAcquired, "Lease should be acquired");
-    
+
     // Parse payload to verify holder
     const payload = JSON.parse(leaseAcquired.payload);
     assertEquals(payload.holder, "test-agent");
@@ -998,11 +998,11 @@ description: Uses unknown tool
 
     await new Promise((resolve) => setTimeout(resolve, 150));
     const activities = db.getActivitiesByTrace("test-trace-unknown");
-    
+
     // Should have started and completed the action (even though tool result was success:false)
     const actionStarted = activities.find((a: any) => a.action_type === "execution.action_started");
     assertExists(actionStarted, "Action should be started");
-    
+
     const actionCompleted = activities.find((a: any) => a.action_type === "execution.action_completed");
     assertExists(actionCompleted, "Action should complete even with unknown tool");
   } finally {
@@ -1099,7 +1099,7 @@ Intentionally fail
       // Directory may not exist
     }
 
-    const failureReport = files.find(f => f.includes("failure"));
+    const failureReport = files.find((f) => f.includes("failure"));
     assertExists(failureReport, "Failure report should be generated");
 
     // Verify plan moved back to Requests with error status
@@ -1177,7 +1177,7 @@ path traversal: ../../etc/passwd
     });
     const statusResult = await statusCmd.output();
     const _status = new TextDecoder().decode(statusResult.stdout).trim();
-    
+
     // Status should be clean after rollback (rollback does git reset --hard HEAD)
     // Note: test-execution.txt may still exist in working dir but not staged
   } finally {
