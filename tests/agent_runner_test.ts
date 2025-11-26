@@ -418,3 +418,309 @@ Deno.test("AgentRunner can be reused for multiple runs", async () => {
   assertExists(result2);
   assertExists(result3);
 });
+
+// ============================================================================
+// Error Recovery and Handling
+// ============================================================================
+
+Deno.test("AgentRunner handles provider errors gracefully", async () => {
+  const errorProvider = new MockProvider(wellFormedResponse);
+  errorProvider.generate = async () => {
+    throw new Error("API Error: Rate limit exceeded");
+  };
+
+  const runner = new AgentRunner(errorProvider);
+
+  let errorCaught = false;
+  let errorMessage = "";
+  
+  try {
+    await runner.run(sampleBlueprint, sampleRequest);
+  } catch (error) {
+    errorCaught = true;
+    errorMessage = (error as Error).message;
+  }
+
+  assertEquals(errorCaught, true);
+  assertStringIncludes(errorMessage, "Rate limit exceeded");
+});
+
+Deno.test("AgentRunner handles network timeout errors", async () => {
+  const timeoutProvider = new MockProvider(wellFormedResponse);
+  timeoutProvider.generate = async () => {
+    throw new Error("Network timeout");
+  };
+
+  const runner = new AgentRunner(timeoutProvider);
+
+  let errorCaught = false;
+  
+  try {
+    await runner.run(sampleBlueprint, sampleRequest);
+  } catch (error) {
+    errorCaught = true;
+    assertEquals((error as Error).message, "Network timeout");
+  }
+
+  assertEquals(errorCaught, true);
+});
+
+Deno.test("AgentRunner handles JSON parse errors", async () => {
+  const malformedProvider = new MockProvider(wellFormedResponse);
+  malformedProvider.generate = async () => {
+    throw new SyntaxError("Unexpected token in JSON");
+  };
+
+  const runner = new AgentRunner(malformedProvider);
+
+  let errorCaught = false;
+  
+  try {
+    await runner.run(sampleBlueprint, sampleRequest);
+  } catch (error) {
+    errorCaught = true;
+    assertEquals(error instanceof SyntaxError, true);
+  }
+
+  assertEquals(errorCaught, true);
+});
+
+Deno.test("AgentRunner handles provider returning null", async () => {
+  const nullProvider = new MockProvider(wellFormedResponse);
+  nullProvider.generate = async () => {
+    return null as unknown as string;
+  };
+
+  const runner = new AgentRunner(nullProvider);
+
+  const result = await runner.run(sampleBlueprint, sampleRequest);
+  
+  // Should handle null gracefully (convert to empty string or fallback)
+  assertExists(result);
+});
+
+Deno.test("AgentRunner handles provider returning undefined", async () => {
+  const undefinedProvider = new MockProvider(wellFormedResponse);
+  undefinedProvider.generate = async () => {
+    return undefined as unknown as string;
+  };
+
+  const runner = new AgentRunner(undefinedProvider);
+
+  const result = await runner.run(sampleBlueprint, sampleRequest);
+  
+  // Should handle undefined gracefully
+  assertExists(result);
+});
+
+// ============================================================================
+// Context Management
+// ============================================================================
+
+Deno.test("AgentRunner handles request with large context", async () => {
+  const largeContext: ParsedRequest = {
+    userPrompt: "Analyze these files",
+    context: {
+      file1: "x".repeat(100000),
+      file2: "y".repeat(100000),
+      file3: "z".repeat(100000),
+    },
+  };
+
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(sampleBlueprint, largeContext);
+
+  assertExists(result);
+  assertEquals(result.raw, wellFormedResponse);
+});
+
+Deno.test("AgentRunner handles request with nested context objects", async () => {
+  const nestedContext: ParsedRequest = {
+    userPrompt: "Process this data",
+    context: {
+      level1: {
+        level2: {
+          level3: {
+            data: "deeply nested",
+          },
+        },
+      },
+    },
+  };
+
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(sampleBlueprint, nestedContext);
+
+  assertExists(result);
+});
+
+Deno.test("AgentRunner handles request with empty context", async () => {
+  const emptyContext: ParsedRequest = {
+    userPrompt: "Simple request",
+    context: {},
+  };
+
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(sampleBlueprint, emptyContext);
+
+  assertExists(result);
+});
+
+Deno.test("AgentRunner handles request with many context keys", async () => {
+  const manyKeysContext: ParsedRequest = {
+    userPrompt: "Process all",
+    context: Object.fromEntries(
+      Array.from({ length: 1000 }, (_, i) => [`key${i}`, `value${i}`])
+    ),
+  };
+
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(sampleBlueprint, manyKeysContext);
+
+  assertExists(result);
+});
+
+// ============================================================================
+// Response Parsing Edge Cases
+// ============================================================================
+
+Deno.test("AgentRunner handles case-insensitive XML tags", async () => {
+  const response = `<THOUGHT>Uppercase thought</THOUGHT>
+<CONTENT>Uppercase content</CONTENT>`;
+
+  const mockProvider = new MockProvider(response);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(sampleBlueprint, sampleRequest);
+
+  // Regex should be case-insensitive
+  assertStringIncludes(result.thought, "Uppercase thought");
+  assertStringIncludes(result.content, "Uppercase content");
+});
+
+Deno.test("AgentRunner handles mixed case XML tags", async () => {
+  const response = `<Thought>Mixed case thought</Thought>
+<Content>Mixed case content</Content>`;
+
+  const mockProvider = new MockProvider(response);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(sampleBlueprint, sampleRequest);
+
+  assertStringIncludes(result.thought, "Mixed case thought");
+  assertStringIncludes(result.content, "Mixed case content");
+});
+
+Deno.test("AgentRunner handles tags with extra whitespace", async () => {
+  const response = `<thought>   
+  Thought with whitespace   
+  </thought>
+  <content>   
+  Content with whitespace   
+  </content>`;
+
+  const mockProvider = new MockProvider(response);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(sampleBlueprint, sampleRequest);
+
+  // trim() should handle whitespace
+  assertStringIncludes(result.thought, "Thought with whitespace");
+  assertStringIncludes(result.content, "Content with whitespace");
+});
+
+Deno.test("AgentRunner handles CDATA sections in tags", async () => {
+  const response = `<thought><![CDATA[Thought with <special> chars]]></thought>
+<content><![CDATA[Content with <tags>]]></content>`;
+
+  const mockProvider = new MockProvider(response);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(sampleBlueprint, sampleRequest);
+
+  // Should extract CDATA content
+  assertExists(result.thought);
+  assertExists(result.content);
+});
+
+Deno.test("AgentRunner handles self-closing tags", async () => {
+  const response = `<thought/>
+<content>Only content here</content>`;
+
+  const mockProvider = new MockProvider(response);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(sampleBlueprint, sampleRequest);
+
+  // Self-closing tags should result in empty thought
+  assertStringIncludes(result.content, "Only content here");
+});
+
+// ============================================================================
+// Blueprint and Request Variations
+// ============================================================================
+
+Deno.test("AgentRunner handles blueprint with agentId", async () => {
+  const blueprintWithId: Blueprint = {
+    systemPrompt: "You are an assistant",
+    agentId: "test-agent-001",
+  };
+
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(blueprintWithId, sampleRequest);
+
+  assertExists(result);
+});
+
+Deno.test("AgentRunner handles request with traceId and requestId", async () => {
+  const requestWithIds: ParsedRequest = {
+    userPrompt: "Test prompt",
+    context: {},
+    traceId: "trace-123",
+    requestId: "req-456",
+  };
+
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(sampleBlueprint, requestWithIds);
+
+  assertExists(result);
+});
+
+Deno.test("AgentRunner handles very long system prompt", async () => {
+  const longBlueprint: Blueprint = {
+    systemPrompt: "You are an assistant. " + "Rules: ".repeat(10000),
+  };
+
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(longBlueprint, sampleRequest);
+
+  assertExists(result);
+});
+
+Deno.test("AgentRunner handles very long user prompt", async () => {
+  const longRequest: ParsedRequest = {
+    userPrompt: "Please analyze this: " + "data ".repeat(50000),
+    context: {},
+  };
+
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(sampleBlueprint, longRequest);
+
+  assertExists(result);
+});

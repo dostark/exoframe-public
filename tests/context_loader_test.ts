@@ -546,3 +546,321 @@ describe("Result Structure", () => {
     assertEquals(Array.isArray(result.truncatedFiles), true);
   });
 });
+
+// ============================================================================
+// Test 9: Token Budget Boundary Cases
+// ============================================================================
+
+describe("Token Budget Boundary Cases", () => {
+  it("should handle exact budget boundary", async () => {
+    // Create a file that exactly matches the budget
+    const file = await createTestFile("exact.txt", generateContent(8000));
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 0.8, // Exactly 8000 tokens
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([file]);
+
+    // Should include the file since it fits exactly
+    assertEquals(result.includedFiles.length, 1);
+    assertEquals(result.skippedFiles.length, 0);
+  });
+
+  it("should skip files exceeding remaining budget by 1 token", async () => {
+    const file1 = await createTestFile("file1.txt", generateContent(7000));
+    const file2 = await createTestFile("file2.txt", generateContent(1500)); // Exceeds budget
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 0.8, // 8000 tokens
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([file1, file2]);
+
+    // file1 should fit (smaller file loaded first with smallest-first)
+    assertEquals(result.includedFiles.length >= 1, true);
+    
+    // Total should not exceed budget
+    assertEquals(result.totalTokens <= 8000, true);
+  });
+
+  it("should skip files when remaining budget is insufficient (< 100 tokens)", async () => {
+    const file1 = await createTestFile("file1.txt", generateContent(7950));
+    const file2 = await createTestFile("file2.txt", generateContent(200));
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 0.8, // 8000 tokens
+      truncationStrategy: "truncate-each",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([file1, file2]);
+
+    // file1 fits, file2 can't fit meaningfully (remaining < 100)
+    assertEquals(result.includedFiles.includes(file1), true);
+    
+    // With truncate-each, file2 should be skipped if remaining < 100
+    if (result.totalTokens > 7900) {
+      assertEquals(result.skippedFiles.includes(file2), true);
+    }
+  });
+
+  it("should handle zero budget (safety margin = 0)", async () => {
+    const file = await createTestFile("file.txt", generateContent(1000));
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 0, // Zero budget
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([file]);
+
+    // With zero budget, nothing should be included
+    assertEquals(result.includedFiles.length, 0);
+    assertEquals(result.skippedFiles.length, 1);
+  });
+
+  it("should prioritize files when budget allows only some", async () => {
+    // Create files with different sizes
+    const small1 = await createTestFile("small1.txt", generateContent(1000));
+    const small2 = await createTestFile("small2.txt", generateContent(1500));
+    const medium = await createTestFile("medium.txt", generateContent(3000));
+    const large = await createTestFile("large.txt", generateContent(5000));
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 0.6, // 6000 tokens budget
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([large, medium, small2, small1]);
+
+    // Should prioritize smallest files: small1 (1000) + small2 (1500) + medium (3000) = ~5500
+    assertEquals(result.includedFiles.includes(small1), true);
+    assertEquals(result.includedFiles.includes(small2), true);
+    
+    // Large should be skipped
+    assertEquals(result.skippedFiles.includes(large), true);
+  });
+});
+
+// ============================================================================
+// Test 10: File System Error Handling
+// ============================================================================
+
+describe("File System Error Handling", () => {
+  it("should handle permission denied errors gracefully", async () => {
+    const readable = await createTestFile("readable.txt", generateContent(1000));
+    const restricted = await createTestFile("restricted.txt", generateContent(1000));
+    
+    // Remove read permissions
+    await Deno.chmod(restricted, 0o000);
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 1.0,
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    try {
+      const loader = new ContextLoader(config);
+      const result = await loader.loadWithLimit([readable, restricted]);
+
+      // Should load readable file
+      assertEquals(result.includedFiles.includes(readable), true);
+      
+      // Restricted file should be excluded (not in included or skipped)
+      assertEquals(result.includedFiles.includes(restricted), false);
+    } finally {
+      // Restore permissions for cleanup
+      try {
+        await Deno.chmod(restricted, 0o644);
+      } catch {
+        // Ignore if already cleaned up
+      }
+    }
+  });
+
+  it("should handle symbolic links correctly", async () => {
+    const original = await createTestFile("original.txt", generateContent(1000));
+    const symlinkPath = `${testDir}/symlink.txt`;
+    
+    // Create symlink
+    await Deno.symlink(original, symlinkPath);
+    testFiles.push(symlinkPath);
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 1.0,
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([symlinkPath]);
+
+    // Should follow symlink and load content
+    assertEquals(result.includedFiles.length, 1);
+    assertEquals(result.totalTokens > 900, true); // ~1000 tokens
+  });
+
+  it("should handle broken symbolic links", async () => {
+    const brokenLink = `${testDir}/broken-link.txt`;
+    const nonExistent = `${testDir}/does-not-exist.txt`;
+    
+    // Create broken symlink
+    await Deno.symlink(nonExistent, brokenLink);
+    testFiles.push(brokenLink);
+
+    const validFile = await createTestFile("valid.txt", generateContent(1000));
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 1.0,
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([brokenLink, validFile]);
+
+    // Should skip broken link, load valid file
+    assertEquals(result.includedFiles.includes(validFile), true);
+    assertEquals(result.includedFiles.includes(brokenLink), false);
+  });
+
+  it("should handle empty files (zero tokens)", async () => {
+    const empty = await createTestFile("empty.txt", "");
+    const withContent = await createTestFile("content.txt", generateContent(1000));
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 1.0,
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([empty, withContent]);
+
+    // Empty file should be filtered out (zero tokens)
+    assertEquals(result.includedFiles.includes(empty), false);
+    
+    // File with content should be included
+    assertEquals(result.includedFiles.includes(withContent), true);
+  });
+
+  it("should handle files modified during loading", async () => {
+    const file = await createTestFile("modified.txt", generateContent(1000));
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 1.0,
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    
+    // Start loading
+    const resultPromise = loader.loadWithLimit([file]);
+    
+    // Modify file during load (though this is a race condition)
+    await Deno.writeTextFile(file, generateContent(2000));
+    
+    const result = await resultPromise;
+
+    // Should complete without error (may have either version)
+    assertEquals(result.includedFiles.length <= 1, true);
+  });
+});
+
+// ============================================================================
+// Test 11: Edge Cases and Special Content
+// ============================================================================
+
+describe("Edge Cases and Special Content", () => {
+  it("should handle very long file paths", async () => {
+    const longName = "a".repeat(200) + ".txt";
+    const file = await createTestFile(longName, generateContent(1000));
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 1.0,
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([file]);
+
+    assertEquals(result.includedFiles.length, 1);
+    assertStringIncludes(result.content, longName);
+  });
+
+  it("should handle unicode in file content", async () => {
+    const unicodeContent = "Hello 世界 🌍 مرحبا Здравствуй";
+    const file = await createTestFile("unicode.txt", unicodeContent);
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 1.0,
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([file]);
+
+    assertStringIncludes(result.content, unicodeContent);
+  });
+
+  it("should handle special characters in file paths", async () => {
+    const specialFile = await createTestFile("file with spaces & special!.txt", generateContent(1000));
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 1.0,
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([specialFile]);
+
+    assertEquals(result.includedFiles.length, 1);
+  });
+
+  it("should handle mixed line endings (CRLF, LF)", async () => {
+    const mixedContent = "Line 1\nLine 2\r\nLine 3\rLine 4";
+    const file = await createTestFile("mixed.txt", mixedContent);
+
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 1.0,
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([file]);
+
+    assertStringIncludes(result.content, mixedContent);
+  });
+});

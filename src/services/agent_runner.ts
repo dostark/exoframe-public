@@ -128,7 +128,7 @@ export class AgentRunner {
         {
           agent_id: agentId,
           duration_ms: duration,
-          response_length: rawResponse.length,
+          response_length: rawResponse?.length || 0,
           has_thought: result.thought.length > 0,
           has_content: result.content.length > 0,
         },
@@ -188,13 +188,25 @@ export class AgentRunner {
    * @returns Parsed result with thought, content, and raw response
    */
   private parseResponse(rawResponse: string): AgentExecutionResult {
+    // Handle null/undefined responses
+    if (rawResponse == null) {
+      return {
+        thought: "",
+        content: "",
+        raw: "",
+      };
+    }
+
+    // Ensure rawResponse is a string
+    const responseStr = String(rawResponse);
+
     // Regex to extract <thought>...</thought>
     const thoughtRegex = /<thought>([\s\S]*?)<\/thought>/i;
-    const thoughtMatch = rawResponse.match(thoughtRegex);
+    const thoughtMatch = responseStr.match(thoughtRegex);
 
     // Regex to extract <content>...</content>
     const contentRegex = /<content>([\s\S]*?)<\/content>/i;
-    const contentMatch = rawResponse.match(contentRegex);
+    const contentMatch = responseStr.match(contentRegex);
 
     let thought = "";
     let content = "";
@@ -209,14 +221,14 @@ export class AgentRunner {
 
     // Fallback: if no tags found, treat whole response as content
     if (!thoughtMatch && !contentMatch) {
-      content = rawResponse;
+      content = responseStr;
       thought = "";
     }
 
     return {
       thought,
       content,
-      raw: rawResponse,
+      raw: responseStr,
     };
   }
 

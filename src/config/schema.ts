@@ -22,7 +22,7 @@ export const ConfigSchema = z.object({
   }).default({}),
   agents: z.object({
     default_model: z.string().default("gpt-4o"),
-    timeout_sec: z.number().default(60),
+    timeout_sec: z.number().min(1).max(300).default(60),
   }).default({}),
 });
 

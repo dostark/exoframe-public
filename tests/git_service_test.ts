@@ -338,3 +338,183 @@ Deno.test("GitService: works in already initialized repository", async () => {
     await Deno.remove(tempDir, { recursive: true });
   }
 });
+
+Deno.test("GitService: createBranch - generates unique branch names on conflict", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "git-test-unique-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const git = new GitService({ config, db, traceId: "test-unique" });
+
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Create initial commit
+    await Deno.writeTextFile(join(tempDir, "file.txt"), "content");
+    await new Deno.Command("git", {
+      args: ["add", "."],
+      cwd: tempDir,
+    }).output();
+    await new Deno.Command("git", {
+      args: ["commit", "-m", "Initial"],
+      cwd: tempDir,
+    }).output();
+
+    // Create first branch
+    const branch1 = await git.createBranch({
+      requestId: "request-999",
+      traceId: "same-trace",
+    });
+
+    // Try to create another with same IDs - should get different name
+    const branch2 = await git.createBranch({
+      requestId: "request-999",
+      traceId: "same-trace",
+    });
+
+    // Both should exist but be different
+    assertEquals(branch1 !== branch2, true);
+    assertEquals(branch1.startsWith("feat/request-999-"), true);
+    assertEquals(branch2.startsWith("feat/request-999-"), true);
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("GitService: commit - validates files exist before committing", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "git-test-valid-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const git = new GitService({ config, db });
+
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Try to commit with no changes
+    await assertRejects(
+      async () => await git.commit(
+        { message: "Test", traceId: "trace-123" }
+      ),
+      Error,
+    );
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("GitService: ensureIdentity - uses git config if available", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "git-test-identity-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    // Initialize with existing identity
+    await new Deno.Command("git", {
+      args: ["init"],
+      cwd: tempDir,
+    }).output();
+
+    await new Deno.Command("git", {
+      args: ["config", "user.name", "Existing User"],
+      cwd: tempDir,
+    }).output();
+
+    await new Deno.Command("git", {
+      args: ["config", "user.email", "existing@test.com"],
+      cwd: tempDir,
+    }).output();
+
+    const config = createMockConfig(tempDir);
+    const git = new GitService({ config, db });
+
+    // Should not override existing identity
+    await git.ensureIdentity();
+
+    // Verify identity wasn't changed
+    const nameResult = await new Deno.Command("git", {
+      args: ["config", "user.name"],
+      cwd: tempDir,
+      stdout: "piped",
+    }).output();
+    const name = new TextDecoder().decode(nameResult.stdout).trim();
+
+    assertEquals(name, "Existing User");
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("GitService: commit - handles git add failures", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "git-test-add-fail-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const git = new GitService({ config, db });
+
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Create a file
+    await Deno.writeTextFile(join(tempDir, "test.txt"), "content");
+
+    // Remove git directory to cause add to fail
+    await Deno.remove(join(tempDir, ".git"), { recursive: true });
+
+    // Should handle git commit failure (no .git dir)
+    await assertRejects(
+      async () => await git.commit(
+        { message: "Test", traceId: "trace-123" }
+      ),
+      Error,
+    );
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("GitService: commit - includes description in commit message", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "git-test-desc-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const git = new GitService({ config, db, traceId: "test-desc" });
+
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Create and commit file with description
+    const testFile = join(tempDir, "described.txt");
+    await Deno.writeTextFile(testFile, "content");
+
+    await git.commit(
+      {
+        message: "Add file",
+        description: "This is a longer description\nwith multiple lines",
+        traceId: "trace-789",
+      }
+    );
+
+    // Verify commit message includes description
+    const logResult = await new Deno.Command("git", {
+      args: ["log", "-1", "--pretty=%B"],
+      cwd: tempDir,
+      stdout: "piped",
+    }).output();
+    const commitMsg = new TextDecoder().decode(logResult.stdout);
+    
+    assertEquals(commitMsg.includes("Add file"), true);
+    assertEquals(commitMsg.includes("This is a longer description"), true);
+    assertEquals(commitMsg.includes("ExoTrace: trace-789"), true);
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});

@@ -36,7 +36,11 @@ export class ConfigService {
         console.warn("⚠️  Configuration file not found. Using defaults.");
         // Create default config file
         this.createDefaultConfig();
-        return ConfigSchema.parse({});
+        // Reload the newly created file
+        const content = Deno.readTextFileSync(this.configPath);
+        this.checksum = this.computeChecksum(content);
+        const rawConfig = parse(content);
+        return ConfigSchema.parse(rawConfig);
       }
       throw error;
     }

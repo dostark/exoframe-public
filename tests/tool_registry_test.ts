@@ -342,3 +342,140 @@ Deno.test("ToolRegistry: all tool executions are logged", async () => {
     await Deno.remove(tempDir, { recursive: true });
   }
 });
+
+Deno.test("ToolRegistry: execute - handles tool execution exceptions", async () => {
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig("/nonexistent-path-12345");
+    const registry = new ToolRegistry({ config, db });
+
+    // Try to read from invalid path - should catch exception and return error
+    const result = await registry.execute("read_file", { path: "some-file.txt" });
+
+    assertEquals(result.success, false);
+    assertExists(result.error);
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("ToolRegistry: write_file - handles permission denied", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "tool-test-perm-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const registry = new ToolRegistry({ config, db });
+
+    // Try to write to root (should fail with permission)
+    const result = await registry.execute("write_file", { 
+      path: "/root/forbidden.txt",
+      content: "test" 
+    });
+
+    assertEquals(result.success, false);
+    assertExists(result.error);
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("ToolRegistry: run_command - handles command execution failure", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "tool-test-cmd-fail-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const registry = new ToolRegistry({ config, db });
+
+    // Execute a command that will fail
+    const result = await registry.execute("run_command", {
+      command: "ls",
+      args: ["/nonexistent-directory-99999"]
+    });
+
+    // Should return success false due to non-zero exit code
+    assertEquals(result.success, false);
+    assertExists(result.error);
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("ToolRegistry: search_files - handles invalid glob patterns", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "tool-test-glob-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const registry = new ToolRegistry({ config, db });
+
+    // Search with pattern in non-existent directory
+    const result = await registry.execute("search_files", {
+      pattern: "*.txt",
+      path: "/nonexistent-search-path"
+    });
+
+    // Should handle error gracefully
+    assertEquals(result.success, false);
+    assertExists(result.error);
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("ToolRegistry: list_directory - handles non-existent directory", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "tool-test-dir-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const registry = new ToolRegistry({ config, db });
+
+    const result = await registry.execute("list_directory", {
+      path: join(tempDir, "does-not-exist")
+    });
+
+    assertEquals(result.success, false);
+    assertExists(result.error);
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("ToolRegistry: getTools - returns all registered tools", () => {
+  const config = createMockConfig(Deno.cwd());
+  const registry = new ToolRegistry({ config });
+
+  const tools = registry.getTools();
+
+  assertEquals(tools.length, 5);
+  const toolNames = tools.map(t => t.name);
+  assertEquals(toolNames.includes("read_file"), true);
+  assertEquals(toolNames.includes("write_file"), true);
+  assertEquals(toolNames.includes("list_directory"), true);
+  assertEquals(toolNames.includes("search_files"), true);
+  assertEquals(toolNames.includes("run_command"), true);
+});
+
+Deno.test("ToolRegistry: execute - validates required parameters", async () => {
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(Deno.cwd());
+    const registry = new ToolRegistry({ config, db });
+
+    // Try to execute read_file without path parameter
+    const result = await registry.execute("read_file", {});
+
+    assertEquals(result.success, false);
+    assertExists(result.error);
+  } finally {
+    await cleanup();
+  }
+});

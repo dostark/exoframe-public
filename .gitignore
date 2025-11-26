@@ -12,3 +12,6 @@ deno.lock
 
 # Test coverage reports
 /coverage/
+
+# Test artifacts
+test-*.toml
