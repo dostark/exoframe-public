@@ -43,11 +43,18 @@ fi
 rsync -a --exclude='node_modules' --exclude='.git' --exclude='*.log' \
   "$REPO_ROOT/deno.json" "$REPO_ROOT/import_map.json" "$REPO_ROOT/templates/exo.config.sample.toml" "$DEST/" || true
 
-# Copy runtime scripts (setup + deploy + scaffold)
+# Copy runtime scripts (setup + deploy + scaffold + migrate)
 mkdir -p "$DEST/scripts"
 cp -f "$REPO_ROOT/scripts/setup_db.ts" "$DEST/scripts/" 2>/dev/null || true
+cp -f "$REPO_ROOT/scripts/migrate_db.ts" "$DEST/scripts/" 2>/dev/null || true
 cp -f "$REPO_ROOT/scripts/deploy_workspace.sh" "$DEST/scripts/" 2>/dev/null || true
 cp -f "$REPO_ROOT/scripts/scaffold.sh" "$DEST/scripts/" 2>/dev/null || true
+
+# Copy migrations folder (required for database setup)
+if [ -d "$REPO_ROOT/migrations" ]; then
+  mkdir -p "$DEST/migrations"
+  cp -r "$REPO_ROOT/migrations/"* "$DEST/migrations/" 2>/dev/null || true
+fi
 
 # Copy minimal src if present
 if [ -d "$REPO_ROOT/src" ]; then
