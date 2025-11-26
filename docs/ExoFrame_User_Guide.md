@@ -110,11 +110,11 @@ If you need to reinstall or the automatic installation failed:
 # From your ExoFrame workspace
 cd ~/ExoFrame
 
-# Install globally (Deno 2.x syntax)
-deno install --global --allow-all -n exoctl src/cli/exoctl.ts
+# Install globally with config (required for import map resolution)
+deno install --global --allow-all --config deno.json -n exoctl src/cli/exoctl.ts
 
 # For Deno 1.x (older versions)
-# deno install --allow-all -n exoctl src/cli/exoctl.ts
+# deno install --allow-all --config deno.json -n exoctl src/cli/exoctl.ts
 ```
 
 **Alternative: Use via task runner (no global install):**
