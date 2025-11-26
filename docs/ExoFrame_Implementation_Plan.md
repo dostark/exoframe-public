@@ -1530,16 +1530,17 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 
 **Overall Success Criteria:**
 
-1. ✅ All 4 command groups implemented
-2. ✅ All extend BaseCommand for consistency
+1. ✅ All 5 command groups implemented (plan, changeset, git, daemon, portal)
+2. ✅ All extend BaseCommand for consistency (except PortalCommands which has inline utilities)
 3. ✅ All use CommandContext interface
 4. ✅ All CLI tests in tests/cli/ directory
-5. ✅ 123 total tests passing (16 CLI tests)
-6. ✅ Activity logging for all human actions
+5. ✅ 278 total tests passing (31 portal tests, 35 daemon tests, 16 plan tests)
+6. ✅ Activity logging for all human actions with full command line tracking
 7. ✅ Clear user feedback and error messages
 8. ✅ Complete documentation in User Guide
 9. ✅ Type-safe with proper TypeScript typing
 10. ✅ No code duplication (shared base utilities)
+11. ✅ Portal commands: add, list, show, remove, verify, refresh (84.2% branch coverage)
 
 ---
 
@@ -1857,265 +1858,797 @@ Deno.test("MissionReporter: formats report with valid YAML frontmatter", async (
 
 ---
 
-## Phase 5: Usability & Polish
+## Phase 5: Obsidian Setup
 
-**Goal:** Human usability and system stability.
+**Goal:** Configure Obsidian as the primary UI for ExoFrame, enabling users to view dashboards, manage tasks, and monitor agent activity without leaving their knowledge management environment.
 
-### Step 5.1: CLI (exoctl)
+> **Platform note:** Maintainers must document OS-specific instructions (Windows symlink prerequisites, macOS sandbox
+> prompts, Linux desktop watchers) before marking each sub-step complete.
 
-- **Dependencies:** Phase 4 exit — **Rollback:** hide commands behind `EXOCLI_EXPERIMENTAL`.
-- **Action:** Create `cli/portal_commands.ts` implementing full portal management.
-- **Justification:** Manual portal management (symlinks, config updates, permission regeneration) is error-prone and needs atomic operations.
-- **Success Criteria:**
-  - `exoctl portal add ~/Dev/MyProject MyProject` creates symlink, generates context card, updates config, restarts daemon.
-  - `exoctl portal list` shows all portals with status (active/broken).
-  - `exoctl portal verify` detects broken symlinks and reports permission issues.
-  - `exoctl portal remove MyProject` safely removes portal and archives context card.
-  - All operations logged to Activity Journal with `actor='human'`.
+### 5.1: Install Required Plugins
 
-**Implementation Details:**
+- **Dependencies:** Obsidian installed on user system.
+- **Rollback:** Uninstall plugins via Community Plugins settings.
 
-1. **Create `src/cli/portal_commands.ts`:**
-   - `PortalCommands` class with methods: `add()`, `list()`, `show()`, `remove()`, `verify()`, `refresh()`
-   - Integration with `ConfigService` for config updates
-   - Integration with `ContextCardGenerator` for card management
-   - OS-specific symlink handling (Windows junctions, macOS permissions, Linux inotify)
+**Action:** Install and configure required Obsidian plugins for ExoFrame integration.
 
-2. **Portal Add Flow:**
-   ```typescript
-   async add(targetPath: string, alias: string): Promise<void> {
-     // 1. Validate target path exists and is accessible
-     // 2. Resolve absolute path
-     // 3. Create symlink in /Portals/<alias>
-     // 4. Generate context card via ContextCardGenerator
-     // 5. Update exo.config.toml [portals] section
-     // 6. Validate new config (Zod schema)
-     // 7. Log to Activity Journal (portal.added)
-     // 8. Prompt for daemon restart or restart automatically
-     // On any failure: rollback (delete symlink, restore config)
-   }
-   ```
+**Required Plugins:**
 
-3. **Portal Verification:**
-   - Check symlink exists and points to valid target
-   - Verify target path is readable
-   - Confirm Deno permissions include portal path
-   - Validate context card exists
-   - Report detailed status for each portal
+1. **Dataview** (required)
+   - Enables live queries for dashboard tables
+   - Open Obsidian Settings → Community Plugins
+   - Disable Safe Mode
+   - Browse → Search "Dataview"
+   - Install and Enable
 
-4. **Portal Removal:**
-   - Delete symlink from `/Portals/<alias>`
-   - Move context card to `/Knowledge/Portals/_archived/<alias>_<timestamp>.md`
-   - Remove from `exo.config.toml`
-   - Log to Activity Journal (portal.removed)
-   - Prompt for daemon restart
+2. **File Tree Alternative** (optional)
+   - Enables sidebar navigation of ExoFrame folders
+   - Provides better folder structure visibility
 
-5. **Activity Logging Events:**
-   - `portal.added` - Portal created (target, alias, symlink path)
-   - `portal.removed` - Portal removed (alias, reason)
-   - `portal.verified` - Verification check (results, issues found)
-   - `portal.refreshed` - Context card regenerated
-   - `portal.broken` - Portal detected as broken during operation
+3. **Templater** (optional)
+   - Enables template-based file creation
+   - Useful for creating new requests with consistent frontmatter
 
-**Test Coverage:**
+**TDD Approach:**
 
 ```typescript
-// tests/portal_commands_test.ts
-Deno.test("PortalCommands: adds portal successfully", async () => {
-  // Creates symlink, generates card, updates config
+// tests/obsidian/plugin_detection_test.ts
+Deno.test("Obsidian plugin requirements documented", async () => {
+  const readme = await Deno.readTextFile("docs/ExoFrame_User_Guide.md");
+  
+  // Verify plugin requirements are documented
+  assertStringIncludes(readme, "Dataview");
+  assertStringIncludes(readme, "Community Plugins");
 });
 
-Deno.test("PortalCommands: detects broken portals", async () => {
-  // Removes target, verifies detection
-});
-
-Deno.test("PortalCommands: handles Windows junctions", async () => {
-  // Falls back to junction if symlink fails
-});
-
-Deno.test("PortalCommands: rollback on config validation failure", async () => {
-  // Ensures atomic operation
+Deno.test("Dashboard file uses valid Dataview syntax", async () => {
+  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
+  
+  // Verify Dataview code blocks are properly formatted
+  const dataviewBlocks = dashboard.match(/```dataview[\s\S]*?```/g) ?? [];
+  assert(dataviewBlocks.length >= 3, "Dashboard should have at least 3 Dataview queries");
+  
+  // Verify common Dataview keywords
+  for (const block of dataviewBlocks) {
+    assert(
+      block.includes("TABLE") || block.includes("LIST") || block.includes("TASK"),
+      "Each block should use TABLE, LIST, or TASK"
+    );
+  }
 });
 ```
 
-**Acceptance Criteria (Manual Testing):**
+**Success Criteria:**
+- [ ] Dataview plugin installed and enabled
+- [ ] Dashboard.md renders without Dataview errors
+- [ ] User Guide documents plugin installation steps
 
-1. **Portal Add Success:**
-   ```bash
-   exoctl portal add ~/Dev/MyProject MyProject
-   # Expected output:
-   # ✓ Validated target: /home/user/Dev/MyProject
-   # ✓ Created symlink: ~/ExoFrame/Portals/MyProject
-   # ✓ Generated context card: ~/ExoFrame/Knowledge/Portals/MyProject.md
-   # ✓ Updated configuration: exo.config.toml
-   # ✓ Validated permissions
-   # ✓ Logged to Activity Journal
-   # ⚠️  Daemon restart required: exoctl daemon restart
+---
 
-   # Verify:
-   ls -la ~/ExoFrame/Portals/MyProject           # Symlink exists
-   cat ~/ExoFrame/Knowledge/Portals/MyProject.md # Context card created
-   grep "MyProject" exo.config.toml              # Config updated
-   sqlite3 System/journal.db "SELECT * FROM activity WHERE action_type='portal.added' ORDER BY timestamp DESC LIMIT 1;"
-   ```
+### 5.2: Configure Obsidian Vault
 
-2. **Portal List Shows Status:**
-   ```bash
-   exoctl portal list
-   # Expected output:
-   # 🔗 Configured Portals (2):
-   #
-   # MyProject
-   #   Status: Active ✓
-   #   Target: /home/user/Dev/MyProject
-   #   Symlink: ~/ExoFrame/Portals/MyProject
-   #   Context: ~/ExoFrame/Knowledge/Portals/MyProject.md
-   #
-   # BrokenPortal
-   #   Status: Broken ⚠
-   #   Target: /home/user/Dev/Deleted (not found)
-   #   Symlink: ~/ExoFrame/Portals/BrokenPortal
-   ```
+- **Dependencies:** Step 5.1 plugins installed.
+- **Rollback:** Close vault, reopen original vault.
 
-3. **Portal Show Details:**
-   ```bash
-   exoctl portal show MyProject
-   # Expected output:
-   # 📁 Portal: MyProject
-   #
-   # Target Path:    /home/user/Dev/MyProject
-   # Symlink:        ~/ExoFrame/Portals/MyProject
-   # Status:         Active ✓
-   # Context Card:   ~/ExoFrame/Knowledge/Portals/MyProject.md
-   # Permissions:    Read/Write ✓
-   # Created:        2025-11-26 10:30:15
-   # Last Verified:  2025-11-26 14:22:33
-   ```
+**Action:** Configure Obsidian to use ExoFrame's Knowledge directory as a vault.
 
-4. **Portal Verify Detects Issues:**
-   ```bash
-   # Remove target to break portal
-   mv ~/Dev/MyProject ~/Dev/MyProject_old
+**Implementation Steps:**
 
-   exoctl portal verify
-   # Expected output:
-   # 🔍 Verifying Portals...
-   #
-   # MyProject: FAILED ✗
-   #   ✗ Target not found: /home/user/Dev/MyProject
-   #   ✓ Symlink exists
-   #   ✓ Context card exists
-   #   ⚠️  Portal is broken - target directory missing
-   #
-   # OtherPortal: OK ✓
-   #   ✓ Target accessible
-   #   ✓ Symlink valid
-   #   ✓ Permissions correct
-   #   ✓ Context card exists
-   #
-   # Summary: 1 broken, 1 healthy
-   ```
+1. Open Obsidian
+2. Select "Open folder as vault"
+3. Navigate to `/path/to/ExoFrame/Knowledge`
+4. Confirm vault creation
 
-5. **Portal Remove Archives Card:**
-   ```bash
-   exoctl portal remove MyProject
-   # Expected output:
-   # ⚠️  Remove portal 'MyProject'?
-   # This will:
-   #   - Delete symlink: ~/ExoFrame/Portals/MyProject
-   #   - Archive context card: ~/ExoFrame/Knowledge/Portals/_archived/MyProject_20251126.md
-   #   - Update configuration
-   # Continue? (y/N): y
-   #
-   # ✓ Removed symlink
-   # ✓ Archived context card
-   # ✓ Updated configuration
-   # ✓ Logged to Activity Journal
-   # ⚠️  Daemon restart recommended: exoctl daemon restart
+**Vault Structure:**
 
-   # Verify:
-   ls ~/ExoFrame/Portals/MyProject                                      # Should not exist
-   ls ~/ExoFrame/Knowledge/Portals/_archived/MyProject_*.md            # Should exist
-   grep "MyProject" exo.config.toml                                    # Should not exist
-   ```
+```
+Knowledge/
+├── Dashboard.md           # Main dashboard with Dataview queries
+├── Portals/               # Symlinks to external projects (via portal commands)
+├── Reports/               # Generated mission reports
+└── README.md              # Knowledge base documentation
+```
 
-6. **Portal Refresh Updates Card:**
-   ```bash
-   # Add new files to project
-   echo "# New Feature" > ~/Dev/MyProject/NEW_FEATURE.md
+**TDD Approach:**
 
-   exoctl portal refresh MyProject
-   # Expected output:
-   # 🔄 Refreshing context card for 'MyProject'...
-   # ✓ Scanned target directory
-   # ✓ Detected changes: 1 new file
-   # ✓ Updated context card
-   # ✓ Preserved user notes
-   # ✓ Logged to Activity Journal
+```typescript
+// tests/obsidian/vault_structure_test.ts
+Deno.test("Knowledge directory has required structure", async () => {
+  const knowledgePath = "./Knowledge";
+  
+  // Verify required directories exist
+  const requiredDirs = ["Portals", "Reports"];
+  for (const dir of requiredDirs) {
+    const stat = await Deno.stat(`${knowledgePath}/${dir}`);
+    assert(stat.isDirectory, `${dir} should be a directory`);
+  }
+});
 
-   # Verify:
-   cat ~/ExoFrame/Knowledge/Portals/MyProject.md  # Shows new file in structure
-   ```
+Deno.test("Knowledge directory has Dashboard.md", async () => {
+  const dashboardPath = "./Knowledge/Dashboard.md";
+  const stat = await Deno.stat(dashboardPath);
+  assert(stat.isFile, "Dashboard.md should exist");
+});
 
-7. **Rollback on Failure:**
-   ```bash
-   # Create invalid target
-   exoctl portal add /nonexistent/path BadPortal
-   # Expected output:
-   # ✗ Error: Target path does not exist: /nonexistent/path
-   # ✗ Portal creation failed - no changes made
+Deno.test("Vault .obsidian config is gitignored", async () => {
+  const gitignore = await Deno.readTextFile(".gitignore");
+  assertStringIncludes(gitignore, ".obsidian");
+});
+```
 
-   # Verify nothing created:
-   ls ~/ExoFrame/Portals/BadPortal                # Should not exist
-   ls ~/ExoFrame/Knowledge/Portals/BadPortal.md  # Should not exist
-   grep "BadPortal" exo.config.toml              # Should not exist
-   ```
+**CLI Support:**
 
-8. **Activity Logging Verification:**
-   ```bash
-   # After portal operations, verify logging
-   sqlite3 System/journal.db <<EOF
-   SELECT action_type, actor, timestamp, payload 
-   FROM activity 
-   WHERE action_type LIKE 'portal.%' 
-   ORDER BY timestamp DESC 
-   LIMIT 5;
-   EOF
+```bash
+# Scaffold Knowledge directory with required structure
+exoctl scaffold --knowledge
 
-   # Expected: All portal operations logged with actor='human', via='cli'
-   ```
+# Verify vault structure
+exoctl verify --vault
+```
 
-9. **OS-Specific Handling:**
-   ```bash
-   # Windows: Should create junction if symlink fails
-   exoctl portal add C:\Dev\MyProject MyProject
-   # Expected: Falls back to junction, logs deviation
+**Success Criteria:**
+- [ ] Knowledge/ directory contains required subdirectories
+- [ ] Dashboard.md exists at Knowledge/Dashboard.md
+- [ ] .obsidian/ directory is gitignored
+- [ ] Vault opens without errors in Obsidian
 
-   # macOS: Should detect and prompt for Full Disk Access
-   exoctl portal add ~/Dev/MyProject MyProject
-   # Expected: Shows instructions if permission denied
+---
 
-   # Linux: Should check inotify limits
-   exoctl portal verify
-   # Expected: Warns if inotify limit insufficient
-   ```
+### 5.3: Pin Dashboard
 
-10. **Alias Validation:**
-    ```bash
-    # Invalid alias characters
-    exoctl portal add ~/Dev/Project "My Project!"
-    # Expected: ✗ Error: Alias contains invalid characters. Use alphanumeric, dash, underscore only.
+- **Dependencies:** Step 5.2 vault configured.
+- **Rollback:** Unpin tab, remove from startup.
 
-    # Duplicate alias
-    exoctl portal add ~/Dev/Another MyProject
-    # Expected: ✗ Error: Portal 'MyProject' already exists
+**Action:** Configure Dashboard.md as the primary view when opening the vault.
 
-    # Reserved alias
-    exoctl portal add ~/Dev/Project System
-    # Expected: ✗ Error: Alias 'System' is reserved
-    ```
+**Implementation Steps:**
 
-### Step 5.2: Heartbeat & Leases
+1. Open `Dashboard.md` in Obsidian
+2. Right-click the tab → "Pin"
+3. Configure as startup file:
+   - Settings → Core Plugins → Enable "Daily Notes" (for startup file support)
+   - Or use Workspaces plugin to save layout
+
+**Alternative: Workspace Layout:**
+
+```json
+// .obsidian/workspaces.json (auto-generated by Obsidian)
+{
+  "workspaces": {
+    "ExoFrame": {
+      "main": {
+        "type": "leaf",
+        "state": {
+          "type": "markdown",
+          "file": "Dashboard.md"
+        }
+      }
+    }
+  }
+}
+```
+
+**TDD Approach:**
+
+```typescript
+// tests/obsidian/dashboard_content_test.ts
+Deno.test("Dashboard has required sections", async () => {
+  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
+  
+  const requiredSections = [
+    "Active Tasks",
+    "Recent Plans", 
+    "Reports",
+    "Failed"
+  ];
+  
+  for (const section of requiredSections) {
+    assertStringIncludes(dashboard, section, `Dashboard should have ${section} section`);
+  }
+});
+
+Deno.test("Dashboard frontmatter is valid", async () => {
+  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
+  
+  // Check for optional frontmatter (pinned status hint)
+  if (dashboard.startsWith("---")) {
+    const frontmatter = dashboard.split("---")[1];
+    assert(frontmatter.length > 0, "Frontmatter should not be empty if present");
+  }
+});
+```
+
+**Success Criteria:**
+- [ ] Dashboard.md is pinned in Obsidian
+- [ ] Dashboard opens automatically on vault startup
+- [ ] All Dataview queries render correctly
+
+---
+
+### 5.4: Configure File Watcher
+
+- **Dependencies:** Step 5.2 vault configured.
+- **Rollback:** Revert settings to defaults.
+
+**Action:** Configure Obsidian to handle external file changes from ExoFrame agents.
+
+**Note:** Obsidian will show "Vault changed externally" warnings when agents write files. This is expected behavior.
+
+**Settings Configuration:**
+
+Settings → Files & Links:
+- ☑ Automatically update internal links
+- ☑ Detect all file extensions (to see .toml, .yaml, .json)
+- ☑ Use Wikilinks (optional, for easier linking)
+
+Settings → Editor:
+- ☑ Auto-reload file when externally changed (if available)
+
+**Platform-Specific Notes:**
+
+| Platform | Consideration |
+|----------|---------------|
+| **Linux** | inotify watchers may need increasing: `fs.inotify.max_user_watches` |
+| **macOS** | FSEvents works well, no special config needed |
+| **Windows** | May need to run Obsidian as admin for symlink support |
+
+**TDD Approach:**
+
+```typescript
+// tests/obsidian/file_watcher_test.ts
+Deno.test("ExoFrame creates files Obsidian can detect", async () => {
+  const testDir = await Deno.makeTempDir();
+  const testFile = `${testDir}/test-report.md`;
+  
+  // Simulate agent writing a file
+  const content = `---
+title: Test Report
+status: completed
+created: ${new Date().toISOString()}
+---
+
+# Test Report
+
+This is a test.
+`;
+  
+  await Deno.writeTextFile(testFile, content);
+  
+  // Verify file is readable
+  const stat = await Deno.stat(testFile);
+  assert(stat.isFile);
+  assert(stat.size > 0);
+  
+  // Verify content round-trips correctly
+  const readBack = await Deno.readTextFile(testFile);
+  assertEquals(readBack, content);
+  
+  await Deno.remove(testDir, { recursive: true });
+});
+
+Deno.test("Report files have Obsidian-compatible frontmatter", async () => {
+  // Use MissionReporter to generate a test report
+  const reporter = new MissionReporter(testDb, testConfig);
+  const reportPath = await reporter.generateReport({
+    traceId: "test-trace",
+    status: "success",
+    summary: "Test mission"
+  });
+  
+  const content = await Deno.readTextFile(reportPath);
+  
+  // Verify YAML frontmatter format
+  assert(content.startsWith("---"), "Report should start with frontmatter");
+  const parts = content.split("---");
+  assert(parts.length >= 3, "Report should have complete frontmatter");
+  
+  // Verify required frontmatter fields for Dataview
+  const frontmatter = parts[1];
+  assertStringIncludes(frontmatter, "status:");
+  assertStringIncludes(frontmatter, "created:");
+});
+```
+
+**Success Criteria:**
+- [ ] Obsidian detects new files created by agents within 2 seconds
+- [ ] Internal links update automatically when files are renamed
+- [ ] .toml and .yaml files are visible in the file explorer
+- [ ] No file permission errors when agents write to vault
+
+---
+
+### 5.5: The Obsidian Dashboard
+
+- **Dependencies:** Phase 4, Steps 5.1-5.4 — **Rollback:** provide plain Markdown summary.
+- **Action:** Create `/Knowledge/Dashboard.md` with Dataview queries.
+- **Justification:** Users live in Obsidian, not the terminal.
+
+**Implementation:**
+
+Create `Knowledge/Dashboard.md` with the following content:
+
+```markdown
+---
+title: ExoFrame Dashboard
+aliases: [Home, Index]
+tags: [dashboard, exoframe]
+---
+
+# ExoFrame Dashboard
+
+> Last refreshed: `= date(now)`
+
+## 📊 System Status
+
+| Metric | Value |
+|--------|-------|
+| Active Tasks | `= length(filter(dv.pages('"System/Active"'), p => p.status = "running"))` |
+| Pending Plans | `= length(dv.pages('"Inbox/Plans"'))` |
+| Today's Reports | `= length(filter(dv.pages('"Knowledge/Reports"'), p => p.created >= date(today)))` |
+
+---
+
+## 🔄 Current Active Tasks
+
+```dataview
+TABLE 
+  status as Status, 
+  agent as Agent, 
+  dateformat(created, "HH:mm") as Started,
+  target as Target
+FROM "System/Active"
+SORT created DESC
+LIMIT 10
+```
+
+---
+
+## 📋 Recent Plans (Awaiting Review)
+
+```dataview
+TABLE 
+  status as Status,
+  link(file.path, file.name) as Plan,
+  dateformat(created, "yyyy-MM-dd HH:mm") as Created
+FROM "Inbox/Plans"
+WHERE status = "review"
+SORT created DESC
+LIMIT 5
+```
+
+---
+
+## 📄 Recent Reports
+
+```dataview
+TABLE 
+  status as Status, 
+  dateformat(created, "yyyy-MM-dd") as Date,
+  agent as Agent,
+  target as Target
+FROM "Knowledge/Reports"
+WHERE contains(file.name, "trace")
+SORT created DESC
+LIMIT 10
+```
+
+---
+
+## ⚠️ Failed Tasks (Need Attention)
+
+```dataview
+LIST
+FROM "Knowledge/Reports"
+WHERE status = "failed"
+SORT created DESC
+LIMIT 5
+```
+
+---
+
+## 🔗 Quick Links
+
+- [[Inbox/Requests/README|Create New Request]]
+- [[Knowledge/Portals/README|Manage Portals]]
+- [[docs/ExoFrame_User_Guide|User Guide]]
+```
+
+**TDD Approach:**
+
+```typescript
+// tests/obsidian/dashboard_test.ts
+import { assertEquals, assertStringIncludes, assert } from "@std/assert";
+
+Deno.test("Dashboard template exists", async () => {
+  const templatePath = "./templates/Dashboard.md";
+  const stat = await Deno.stat(templatePath);
+  assert(stat.isFile, "Dashboard template should exist");
+});
+
+Deno.test("Dashboard has valid Dataview queries", async () => {
+  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
+  
+  // Extract all dataview blocks
+  const dataviewRegex = /```dataview\n([\s\S]*?)```/g;
+  const matches = [...dashboard.matchAll(dataviewRegex)];
+  
+  assert(matches.length >= 4, "Dashboard should have at least 4 Dataview queries");
+  
+  // Verify each query has required clauses
+  for (const match of matches) {
+    const query = match[1];
+    assert(
+      query.includes("FROM") || query.includes("from"),
+      "Each query should have a FROM clause"
+    );
+  }
+});
+
+Deno.test("Dashboard queries reference correct folders", async () => {
+  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
+  
+  // Verify queries reference ExoFrame folders
+  const expectedFolders = [
+    "System/Active",
+    "Inbox/Plans", 
+    "Knowledge/Reports"
+  ];
+  
+  for (const folder of expectedFolders) {
+    assertStringIncludes(dashboard, folder, `Dashboard should query ${folder}`);
+  }
+});
+
+Deno.test("Dashboard frontmatter is valid YAML", async () => {
+  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
+  
+  assert(dashboard.startsWith("---"), "Dashboard should have frontmatter");
+  
+  const endIndex = dashboard.indexOf("---", 3);
+  assert(endIndex > 0, "Frontmatter should be closed");
+  
+  const frontmatter = dashboard.slice(4, endIndex);
+  
+  // Verify required fields
+  assertStringIncludes(frontmatter, "title:");
+});
+
+// Integration test: verify dashboard works with real data
+Deno.test("Dashboard renders with sample data", async (t) => {
+  const testDir = await Deno.makeTempDir();
+  
+  await t.step("create sample active task", async () => {
+    await Deno.mkdir(`${testDir}/System/Active`, { recursive: true });
+    await Deno.writeTextFile(`${testDir}/System/Active/test-task.md`, `---
+status: running
+agent: copilot
+created: ${new Date().toISOString()}
+target: src/main.ts
+---
+
+# Test Task
+`);
+  });
+  
+  await t.step("create sample report", async () => {
+    await Deno.mkdir(`${testDir}/Knowledge/Reports`, { recursive: true });
+    await Deno.writeTextFile(`${testDir}/Knowledge/Reports/trace-123.md`, `---
+status: success
+created: ${new Date().toISOString()}
+agent: copilot
+target: src/main.ts
+---
+
+# Mission Report
+`);
+  });
+  
+  await t.step("verify files have correct frontmatter", async () => {
+    const task = await Deno.readTextFile(`${testDir}/System/Active/test-task.md`);
+    assertStringIncludes(task, "status: running");
+    
+    const report = await Deno.readTextFile(`${testDir}/Knowledge/Reports/trace-123.md`);
+    assertStringIncludes(report, "status: success");
+  });
+  
+  await Deno.remove(testDir, { recursive: true });
+});
+```
+
+**CLI Support:**
+
+```bash
+# Generate default dashboard
+exoctl scaffold --dashboard
+
+# Regenerate dashboard from template
+exoctl scaffold --dashboard --force
+```
+
+**Success Criteria:**
+- [ ] Dashboard.md created at Knowledge/Dashboard.md
+- [ ] All 4 Dataview queries are syntactically valid
+- [ ] Queries reference correct ExoFrame folders
+- [ ] Dashboard displays live data when Dataview plugin is active
+- [ ] Template exists at templates/Dashboard.md
+
+---
+
+### 5.6: Test Integration
+
+- **Dependencies:** Steps 5.1-5.5 completed.
+- **Rollback:** Remove test files.
+
+**Action:** Verify end-to-end integration between ExoFrame and Obsidian.
+
+**Manual Test Procedure:**
+
+1. Create a test request:
+```bash
+echo "---
+title: Integration Test
+priority: low
+---
+
+# Test Task
+
+Please verify Obsidian integration is working.
+" > /ExoFrame/Inbox/Requests/integration-test.md
+```
+
+2. Watch Dashboard refresh (Ctrl+R to force refresh in Obsidian)
+
+3. Verify new entry appears in "Current Tasks" or "Recent Plans" table
+
+4. Clean up test file:
+```bash
+rm /ExoFrame/Inbox/Requests/integration-test.md
+```
+
+**TDD Approach:**
+
+```typescript
+// tests/obsidian/integration_test.ts
+import { assertEquals, assertStringIncludes, assert } from "@std/assert";
+import { exists } from "@std/fs";
+
+Deno.test("End-to-end: Request to Dashboard visibility", async (t) => {
+  const testWorkspace = await Deno.makeTempDir();
+  
+  // Setup workspace structure
+  await t.step("setup workspace", async () => {
+    const dirs = [
+      "Inbox/Requests",
+      "Inbox/Plans", 
+      "System/Active",
+      "Knowledge/Reports",
+      "Knowledge/Portals"
+    ];
+    
+    for (const dir of dirs) {
+      await Deno.mkdir(`${testWorkspace}/${dir}`, { recursive: true });
+    }
+  });
+  
+  await t.step("create request file", async () => {
+    const requestContent = `---
+title: Test Integration Request
+priority: medium
+created: ${new Date().toISOString()}
+status: pending
+---
+
+# Test Request
+
+This tests the Obsidian integration.
+`;
+    
+    await Deno.writeTextFile(
+      `${testWorkspace}/Inbox/Requests/test-request.md`,
+      requestContent
+    );
+    
+    // Verify file exists
+    const fileExists = await exists(`${testWorkspace}/Inbox/Requests/test-request.md`);
+    assert(fileExists, "Request file should be created");
+  });
+  
+  await t.step("verify frontmatter is Dataview-compatible", async () => {
+    const content = await Deno.readTextFile(
+      `${testWorkspace}/Inbox/Requests/test-request.md`
+    );
+    
+    // Dataview requires valid YAML frontmatter
+    assert(content.startsWith("---"), "File should have frontmatter");
+    assertStringIncludes(content, "title:");
+    assertStringIncludes(content, "status:");
+    assertStringIncludes(content, "created:");
+  });
+  
+  await t.step("simulate plan creation", async () => {
+    const planContent = `---
+title: Test Integration Request
+status: review
+created: ${new Date().toISOString()}
+agent: test-agent
+source: Inbox/Requests/test-request.md
+---
+
+# Proposed Plan
+
+## Steps
+1. Step one
+2. Step two
+
+## Files to Modify
+- src/main.ts
+`;
+    
+    await Deno.writeTextFile(
+      `${testWorkspace}/Inbox/Plans/test-request.md`,
+      planContent
+    );
+  });
+  
+  await t.step("verify plan has required Dataview fields", async () => {
+    const plan = await Deno.readTextFile(
+      `${testWorkspace}/Inbox/Plans/test-request.md`
+    );
+    
+    // These fields are queried by Dashboard
+    assertStringIncludes(plan, "status: review");
+    assertStringIncludes(plan, "created:");
+  });
+  
+  await t.step("simulate report generation", async () => {
+    const reportContent = `---
+title: Mission Report - test-request
+status: success
+created: ${new Date().toISOString()}
+agent: test-agent
+target: src/main.ts
+trace_id: test-trace-123
+---
+
+# Mission Report
+
+## Summary
+Integration test completed successfully.
+
+## Changes Made
+- Modified src/main.ts
+
+## Metrics
+- Duration: 5s
+- Files: 1
+`;
+    
+    await Deno.writeTextFile(
+      `${testWorkspace}/Knowledge/Reports/trace-test-trace-123.md`,
+      reportContent
+    );
+  });
+  
+  await t.step("verify report has required Dataview fields", async () => {
+    const report = await Deno.readTextFile(
+      `${testWorkspace}/Knowledge/Reports/trace-test-trace-123.md`
+    );
+    
+    // These fields are queried by Dashboard
+    assertStringIncludes(report, "status:");
+    assertStringIncludes(report, "created:");
+    assertStringIncludes(report, "agent:");
+    assertStringIncludes(report, "target:");
+  });
+  
+  await t.step("verify all files follow naming conventions", async () => {
+    // Reports should include trace ID in filename
+    const reports = [];
+    for await (const entry of Deno.readDir(`${testWorkspace}/Knowledge/Reports`)) {
+      reports.push(entry.name);
+    }
+    
+    assert(
+      reports.some(r => r.includes("trace-")),
+      "Reports should include trace ID in filename"
+    );
+  });
+  
+  // Cleanup
+  await Deno.remove(testWorkspace, { recursive: true });
+});
+
+Deno.test("Dataview query simulation", async () => {
+  // This test verifies the frontmatter structure matches what Dataview expects
+  
+  const sampleFiles = {
+    activeTask: {
+      path: "System/Active/task-1.md",
+      frontmatter: {
+        status: "running",
+        agent: "copilot",
+        created: new Date().toISOString(),
+        target: "src/main.ts"
+      }
+    },
+    plan: {
+      path: "Inbox/Plans/plan-1.md",
+      frontmatter: {
+        status: "review",
+        created: new Date().toISOString(),
+        agent: "copilot"
+      }
+    },
+    report: {
+      path: "Knowledge/Reports/trace-abc.md",
+      frontmatter: {
+        status: "success",
+        created: new Date().toISOString(),
+        agent: "copilot",
+        target: "src/main.ts"
+      }
+    }
+  };
+  
+  // Verify all frontmatter keys are present
+  for (const [type, file] of Object.entries(sampleFiles)) {
+    assert(file.frontmatter.status, `${type} should have status`);
+    assert(file.frontmatter.created, `${type} should have created`);
+  }
+});
+
+Deno.test("Obsidian link format compatibility", () => {
+  // Test that generated links work in Obsidian
+  
+  const wikiLink = "[[Knowledge/Reports/trace-123|View Report]]";
+  const markdownLink = "[View Report](Knowledge/Reports/trace-123.md)";
+  
+  // Verify wiki link format
+  assert(wikiLink.startsWith("[["), "Wiki link should start with [[");
+  assert(wikiLink.endsWith("]]"), "Wiki link should end with ]]");
+  
+  // Verify markdown link format
+  assert(markdownLink.includes("]("), "Markdown link should have proper format");
+  assert(markdownLink.endsWith(")"), "Markdown link should end with )");
+});
+```
+
+**CLI Verification Commands:**
+
+```bash
+# Verify workspace structure
+exoctl verify --workspace
+
+# Check all required directories exist
+exoctl verify --vault
+
+# Test file creation permissions
+exoctl scaffold --test
+```
+
+**Success Criteria:**
+- [ ] Request files appear in Obsidian within 2 seconds of creation
+- [ ] Plan files have frontmatter queryable by Dataview
+- [ ] Report files have frontmatter queryable by Dataview
+- [ ] Dashboard queries return expected results
+- [ ] No broken links in generated files
+- [ ] All integration tests pass: `deno test tests/obsidian/`
+
+---
+
+## Phase 6: Testing & Quality Assurance
+
+### Risk-to-Test Traceability
+
+| Threat / Risk       | Mitigation Step          | Automated Test                         |
+| ------------------- | ------------------------ | -------------------------------------- |
+| Path traversal      | Step 2.3 security checks | `tests/security_test.ts`               |
+| Lease starvation    | Step 6.1 heartbeat loop  | `tests/leases/heartbeat_test.ts`       |
+| Context overflow    | Step 3.3 context loader  | `tests/context/context_loader_test.ts` |
+| Git identity drift  | Step 4.2 Git service     | `tests/git/git_service_test.ts`        |
+| Watcher instability | Step 2.1 watcher         | `tests/watcher/stability_test.ts`      |
+
+### Step 6.1: Heartbeat & Leases
 
 - **Dependencies:** Step 1.2 — **Rollback:** disable loop, run manual `lease clean`.
 - **Action:** Implement background loop updating `leases` table.
@@ -2123,109 +2656,14 @@ Deno.test("PortalCommands: rollback on config validation failure", async () => {
 - **Success Criteria:**
   - Simulate crash; verify lock expires after 60s and file becomes writable.
 
-### Step 5.3: The Dry Run (Integration Test)
+### Step 6.2: The Dry Run (Integration Test)
 
 - **Dependencies:** Phases 1–4 — **Rollback:** keep script in `/scripts/experimental`.
 - **Action:** Create script running "Scenario A" (Software House of One) with Mock LLM.
 - **Success Criteria:**
   - Script runs end-to-end without manual intervention.
 
-### Step 5.4: The Obsidian Dashboard
-
-- **Dependencies:** Step 5.1 — **Rollback:** provide plain Markdown summary.
-- **Action:** Create `/Knowledge/Dashboard.md` with Dataview queries.
-- **Justification:** Users live in Obsidian, not the terminal.
-- **Success Criteria:**
-  - Opening Dashboard shows live list of Active tasks.
-
-- **Example implementation**
-
-  ## /Knowledge/Dashboard.md
-
-  \`\`\`dataview TABLE status as Status, date(created) as Created, agent as Agent, target as Target FROM "Reports" WHERE
-  contains(file.name, "trace") SORT created DESC LIMIT 10 \`\`\`
-
-  ## Current Active Tasks
-
-  \`\`\`dataview TABLE status, agent, date(created) as Started FROM "System/Active" SORT created DESC \`\`\`
-
-  ## Recent Plans
-
-  \`\`\`dataview TABLE status as Status, link(file.path, "Open") as File FROM "Inbox/Plans" WHERE status = "review" SORT
-  created DESC LIMIT 5 \`\`\`
-
-  ## Failed Tasks (Need Attention)
-
-  \`\`\`dataview LIST FROM "Reports" WHERE status = "failed" SORT created DESC \`\`\`
-
-## Phase 6: Obsidian Setup
-
-> **Platform note:** Maintainers must document OS-specific instructions (Windows symlink prerequisites, macOS sandbox
-> prompts, Linux desktop watchers) before marking each sub-step complete.
-
-### 6.1: Install Required Plugins
-
-**Dataview:**
-
-1. Open Obsidian Settings → Community Plugins
-2. Disable Safe Mode
-3. Browse → Search "Dataview"
-4. Install and Enable
-
-**File Tree Alternative (Optional):**
-
-- Enables sidebar navigation of ExoFrame folders
-
-### 6.2: Configure Obsidian Vault
-
-Point Obsidian to `/ExoFrame/Knowledge`:
-
-1. Open Obsidian
-2. "Open folder as vault"
-3. Select `/home/user/ExoFrame/Knowledge`
-
-### 6.3: Pin Dashboard
-
-1. Open `Dashboard.md`
-2. Right-click tab → Pin
-3. Set as default start page (Settings → Core Plugins → Daily Notes)
-
-### 6.4: Configure File Watcher
-
-**Note:** Obsidian will show "Vault changed externally" warnings when agents write files. This is normal.
-
-Settings → Files & Links:
-
-- ☑ Automatically update internal links
-- ☑ Detect all file extensions (to see .toml/.yaml)
-
-### 6.5: Test Integration
-
-1. Create a test request:
-
-```bash
-echo "Test task" > /ExoFrame/Inbox/Requests/test.md
-```
-
-2. Watch Dashboard refresh (Ctrl+R to force)
-
-3. Should see new entry appear in "Current Tasks" table
-
----
-
-## Phase 7: Testing & Quality Assurance
-
-### Risk-to-Test Traceability
-
-| Threat / Risk       | Mitigation Step          | Automated Test                         |
-| ------------------- | ------------------------ | -------------------------------------- |
-| Path traversal      | Step 2.3 security checks | `tests/security_test.ts`               |
-| Lease starvation    | Step 5.2 heartbeat loop  | `tests/leases/heartbeat_test.ts`       |
-| Context overflow    | Step 3.3 context loader  | `tests/context/context_loader_test.ts` |
-| Git identity drift  | Step 4.2 Git service     | `tests/git/git_service_test.ts`        |
-| Watcher instability | Step 2.1 watcher         | `tests/watcher/stability_test.ts`      |
-
-### Step 7.1: Unit Test Foundation
+### Step 6.3: Unit Test Foundation
 
 - **Framework:** Deno's built-in test runner (`deno test`)
 - **Coverage Target:** 70% for core logic (Engine, Security, Parser)
@@ -2253,7 +2691,7 @@ Deno.test("Path canonicalization prevents escapes", async () => {
 });
 ```
 
-### Step 7.2: Mock LLM Provider
+### Step 6.4: Mock LLM Provider
 
 - **Purpose:** Enable deterministic testing without API calls
 - **Implementation:** Record real LLM responses, replay during tests
@@ -2284,7 +2722,7 @@ class MockLLMProvider implements IModelProvider {
 }
 ```
 
-### Step 7.3: Integration Test Scenarios
+### Step 6.5: Integration Test Scenarios
 
 - **Goal:** Test complete workflows end-to-end
 - **Scenarios:**
@@ -2332,7 +2770,7 @@ Deno.test("Complete workflow: Request to Report", async () => {
 });
 ```
 
-### Step 7.4: Security Validation Tests
+### Step 6.6: Security Validation Tests
 
 - **Purpose:** Verify Deno permissions are enforced
 - **Method:** Spawn subprocess with restricted permissions, try attacks
