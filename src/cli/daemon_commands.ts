@@ -311,6 +311,7 @@ export class DaemonCommands extends BaseCommand {
         {
           ...payload,
           via: "cli",
+          command: this.getCommandLineString(),
           timestamp: new Date().toISOString(),
         },
         undefined,

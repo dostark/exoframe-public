@@ -434,7 +434,11 @@ export class PortalCommands {
         "human",
         actionType,
         null,
-        payload,
+        {
+          ...payload,
+          via: "cli",
+          command: `exoctl ${Deno.args.join(" ")}`,
+        },
         "cli-" + crypto.randomUUID(),
         null,
       );

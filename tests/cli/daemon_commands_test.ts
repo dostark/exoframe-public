@@ -177,6 +177,8 @@ await new Promise(() => {});
       assertExists(payload.pid);
       assertExists(payload.log_file);
       assertEquals(payload.via, "cli");
+      assertExists(payload.command);
+      assertEquals(payload.command.startsWith("exoctl "), true);
       assertExists(payload.timestamp);
     });
   });

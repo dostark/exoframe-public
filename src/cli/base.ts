@@ -178,4 +178,20 @@ export abstract class BaseCommand {
     if (str.length <= maxLength) return str;
     return str.substring(0, maxLength - 3) + "...";
   }
+
+  /**
+   * Get the full command line that was invoked
+   * @returns Array of command arguments (excluding 'deno run' etc.)
+   */
+  protected getCommandLine(): string[] {
+    return Deno.args;
+  }
+
+  /**
+   * Get the command line as a single string for logging
+   * @returns Command line string like "exoctl daemon start --force"
+   */
+  protected getCommandLineString(): string {
+    return `exoctl ${Deno.args.join(" ")}`;
+  }
 }
