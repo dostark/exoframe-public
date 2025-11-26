@@ -1352,17 +1352,20 @@ That's not just irony—it's validation.
 
 ### The Essential Patterns
 
-| Pattern                       | Command                                      | Result                                         |
-| ----------------------------- | -------------------------------------------- | ---------------------------------------------- |
-| **Design Review**             | "Review these docs. What's wrong?"           | AI critiques design pre-implementation         |
-| **Refinement**                | "Refine Phase X steps with success criteria" | Expands brief specs into detailed requirements |
-| **Walking Skeleton**          | "Build minimal end-to-end flow"              | Demo-able system from day 1                    |
-| **TDD Feature**               | "Implement step X in TDD manner"             | Tests first, implementation follows            |
-| **Performance Investigation** | "Why is X slow?"                             | Measurement, not guessing                      |
-| **Configuration**             | "Make X configurable"                        | Replaces magic numbers with schema             |
-| **Security Audit**            | "What attacks could work on Y?"              | AI proposes vulnerabilities to test            |
-| **Code Archaeology**          | "Is X actually used anywhere?"               | Find zombie code                               |
-| **Full Verification**         | "Run all tests"                              | Verify nothing broke                           |
+| Pattern                       | Command                                              | Result                                         |
+| ----------------------------- | ---------------------------------------------------- | ---------------------------------------------- |
+| **Design Review**             | "Review these docs. What's wrong?"                   | AI critiques design pre-implementation         |
+| **Refinement**                | "Refine Phase X steps with success criteria"         | Expands brief specs into detailed requirements |
+| **Walking Skeleton**          | "Build minimal end-to-end flow"                      | Demo-able system from day 1                    |
+| **TDD Feature**               | "Implement step X in TDD manner"                     | Tests first, implementation follows            |
+| **Coverage Target**           | "Implement in TDD manner. Achieve 70% branch coverage" | Measurable test quality                      |
+| **Performance Investigation** | "Why is X slow?"                                     | Measurement, not guessing                      |
+| **Configuration**             | "Make X configurable"                                | Replaces magic numbers with schema             |
+| **Security Audit**            | "What attacks could work on Y?"                      | AI proposes vulnerabilities to test            |
+| **Code Archaeology**          | "Is X actually used anywhere?"                       | Find zombie code                               |
+| **Test Deduplication**        | "Check if there are test duplications"               | Consolidate scattered tests                    |
+| **Activity Logging Audit**    | "Verify every CLI command is traced in activity log" | Complete audit trail                           |
+| **Full Verification**         | "Run all tests"                                      | Verify nothing broke                           |
 
 ### The Question Templates
 
@@ -1387,6 +1390,270 @@ That's not just irony—it's validation.
 - "What could be simplified?"
 - "What's no longer used?"
 
+### Pattern 12: Coverage-Driven TDD
+
+**The Target**: Minimum 70% branch coverage on all new features.
+
+**The Request Pattern**:
+
+```
+You: "Proceed with implementation in TDD manner. Try to achieve 70% in branch coverage."
+Agent: [writes comprehensive test suite]
+Agent: [implements feature]
+Agent: [runs coverage report]
+Agent: "Branch coverage: 84.2%"
+```
+
+**Real Results from ExoFrame**:
+
+| Feature         | Tests | Branch Coverage |
+| --------------- | ----- | --------------- |
+| Portal Commands | 31    | 84.2%           |
+| MissionReporter | 28    | 83.3%           |
+| GitService      | 11    | 78.4%           |
+| ToolRegistry    | 14    | 82.1%           |
+
+**The Coverage Request**:
+
+```
+You: "Run tests with coverage for src/cli/portal_commands.ts"
+Agent: [runs deno test --coverage]
+Agent: [generates lcov report]
+Agent: "Branch coverage: 84.2% (target: 70%)"
+```
+
+**Why Branch Coverage Matters**:
+
+- Line coverage misses untested branches (if/else paths)
+- Branch coverage catches conditional logic gaps
+- 70% minimum ensures edge cases are tested
+- Higher coverage = safer refactoring
+
+**The Coverage Improvement Loop**:
+
+```
+1. Run coverage report
+2. Identify uncovered branches
+3. Add tests for those branches
+4. Verify coverage increased
+5. Repeat until target met
+```
+
+**The Anti-Pattern**:
+
+```
+❌ "Add tests to improve coverage" (vague)
+✅ "Add test for the else branch on line 145 where config is undefined"
+```
+
+### Pattern 13: Test Organization and Deduplication
+
+**The Discovery**:
+
+```
+You: "Run all tests"
+Agent: [runs tests]
+Agent: "Found 305 tests"
+You: "Check if there is some tests duplications"
+Agent: [searches test files]
+Agent: "Found duplicate tests in tests/daemon_commands_test.ts and 
+        tests/cli/daemon_commands_test.ts"
+```
+
+**The Problem**:
+
+- Tests scattered across multiple locations
+- Same functionality tested twice
+- Inconsistent test patterns
+
+**The Solution**:
+
+```
+You: "Move unique tests from tests/foo_test.ts to tests/cli/foo_test.ts 
+     and delete the duplicate file"
+Agent: [identifies unique tests]
+Agent: [merges into canonical location]
+Agent: [removes duplicate file]
+Agent: [runs full test suite to verify]
+```
+
+**The Result**:
+
+```
+Before: 305 tests (with duplicates)
+After:  278 tests (consolidated, all passing)
+```
+
+**The Test Organization Pattern**:
+
+```
+tests/
+├── cli/                    # CLI command tests
+│   ├── daemon_commands_test.ts
+│   ├── portal_commands_test.ts
+│   └── plan_commands_test.ts
+├── helpers/                # Test utilities
+│   ├── config.ts
+│   └── db.ts
+├── services/               # Service unit tests
+│   ├── db_test.ts
+│   └── git_service_test.ts
+└── integration/            # E2E tests
+```
+
+**The Deduplication Checklist**:
+
+1. Search for similar test file names across directories
+2. Compare test case names for duplicates
+3. Identify unique vs. redundant tests
+4. Merge unique cases into canonical location
+5. Delete duplicate files
+6. Run full suite to verify nothing broke
+
+### Pattern 14: CLI Activity Logging Audit
+
+**The Audit Trigger**:
+
+```
+You: "Verify that every exoctl CLI command call correctly traced in activity log"
+Agent: [creates comprehensive audit report]
+```
+
+**The Audit Report Format**:
+
+```markdown
+## CLI Activity Logging Verification Report
+
+### Commands with Complete Logging ✅
+| Command | Actions Logged |
+| plan create | plan.created |
+| portal add | portal.added |
+| changeset apply | changeset.applied |
+
+### Commands Missing Logging ❌
+| Command | Issue |
+| daemon start | No logging |
+| daemon stop | No logging |
+| daemon restart | No logging |
+```
+
+**The Fix Pattern**:
+
+```
+You: "Yes, update daemon commands"
+Agent: [adds logDaemonActivity() helper]
+Agent: [adds daemon.started, daemon.stopped, daemon.restarted events]
+Agent: [updates tests to verify logging]
+```
+
+**The Activity Logging Checklist**:
+
+Every CLI command that modifies state must log:
+
+- ✅ `command.action` event type (e.g., `daemon.started`)
+- ✅ Actor: `"human"` for CLI operations
+- ✅ Via: `"cli"` in payload
+- ✅ Timestamp: ISO 8601 format
+- ✅ Relevant context (PID, file paths, method)
+
+**The Verification Test Pattern**:
+
+```typescript
+it("should log daemon.started to activity journal", async () => {
+  await daemonCommands.start();
+  await db.waitForFlush();
+
+  const logs = db.instance.prepare(
+    "SELECT * FROM activity WHERE action_type = ?",
+  ).all("daemon.started");
+
+  assertEquals(logs.length, 1);
+  const payload = JSON.parse(logs[0].payload);
+  assertExists(payload.pid);
+  assertEquals(payload.via, "cli");
+  assertExists(payload.timestamp);
+});
+```
+
+**Why This Matters**:
+
+- Complete audit trail for all user actions
+- Debugging multi-step operations
+- Compliance and accountability
+- Understanding system behavior
+
+### Pattern 15: Test Database Setup
+
+**The Discovery**:
+
+```
+Agent: [runs tests]
+Error: "no such table: activity"
+```
+
+**The Problem**:
+
+- Test was querying activity table
+- Test setup didn't initialize the table
+- Other tests worked because they used `initTestDbService()`
+
+**The Lesson**: When adding tests that use database features, ensure proper setup.
+
+**The Helper Pattern**:
+
+```typescript
+// tests/helpers/db.ts
+export async function initTestDbService(): Promise<{
+  db: DatabaseService;
+  tempDir: string;
+  cleanup: () => Promise<void>;
+}> {
+  const tempDir = await Deno.makeTempDir({ prefix: "exo-test-" });
+  const config = createMockConfig(tempDir);
+  const db = new DatabaseService(config);
+
+  // Initialize required tables
+  db.instance.exec(`
+    CREATE TABLE IF NOT EXISTS activity (
+      id TEXT PRIMARY KEY,
+      trace_id TEXT NOT NULL,
+      actor TEXT NOT NULL,
+      agent_id TEXT,
+      action_type TEXT NOT NULL,
+      target TEXT,
+      payload TEXT NOT NULL,
+      timestamp DATETIME DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_activity_trace ON activity(trace_id);
+  `);
+
+  return { db, tempDir, cleanup: async () => { ... } };
+}
+```
+
+**The Test Setup Pattern**:
+
+```typescript
+// Option 1: Use shared helper
+const { db, cleanup } = await initTestDbService();
+
+// Option 2: Inline table creation (for specific tests)
+beforeEach(async () => {
+  db = new DatabaseService(config);
+  db.instance.exec(`
+    CREATE TABLE IF NOT EXISTS activity (...);
+  `);
+});
+```
+
+**The Database Test Checklist**:
+
+- ✅ Initialize required tables in test setup
+- ✅ Use in-memory database for isolation (`:memory:`)
+- ✅ Clean up temp directories in `afterEach`
+- ✅ Wait for async operations (`db.waitForFlush()`)
+- ✅ Use shared helpers for common setup
+
 ### The Test Checklist
 
 Every feature needs tests for:
@@ -1398,6 +1665,7 @@ Every feature needs tests for:
 - ✅ Error handling (network, filesystem, validation)
 - ✅ Integration (works with existing code)
 - ✅ Performance (meets requirements)
+- ✅ Activity logging (operations traced)
 
 ### The Success Metrics
 
@@ -1411,6 +1679,9 @@ Every feature needs tests for:
 - Configuration options grow over time
 - Tests serve as documentation
 - You trust the test suite
+- Branch coverage meets targets (70%+ minimum)
+- All CLI commands have activity logging
+- No duplicate test files exist
 
 **You know it's not working when**:
 
@@ -1422,6 +1693,8 @@ Every feature needs tests for:
 - You're afraid to refactor
 - Comments contradict code
 - Manual testing is required
+- Coverage is unknown or unmeasured
+- Operations happen without audit trail
 
 ### The Refinement Red Flags vs. Green Lights
 
