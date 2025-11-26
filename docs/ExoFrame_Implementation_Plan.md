@@ -1543,13 +1543,14 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 
 ---
 
-### Step 4.5: The Mission Reporter (Episodic Memory)
+### Step 4.5: The Mission Reporter (Episodic Memory) ✅
 
 - **Dependencies:** Step 4.3 (Execution Loop) — **Rollback:** rerun reporter for trace or regenerate from Activity
   Journal.
 - **Action:** Generate comprehensive mission reports after successful task execution.
 - **Requirement:** Reports must document what was done, why, and link back to context for future reference.
 - **Justification:** Creates episodic memory for agents, enables learning from past executions, provides audit trail.
+- **Status:** Implemented in `src/services/mission_reporter.ts`, tested in `tests/mission_reporter_test.ts` (28 tests passing, 83.3% branch coverage)
 
 **The Solution:** Create a `MissionReporter` service that:
 
@@ -1690,16 +1691,16 @@ Deno.test("MissionReporter: formats report with valid YAML frontmatter", async (
 
 **Success Criteria:**
 
-1. After successful execution, report created in `/Knowledge/Reports/`
-2. Report filename follows convention: `{date}_{traceId}_{requestId}.md`
-3. Report includes git diff summary with file change counts
-4. Report contains Obsidian wiki links to all context files used
-5. Report frontmatter has all required fields (trace_id, status, agent_id, completed_at)
-6. Report logged to Activity Journal with `action_type='report.generated'`
-7. Report is searchable via Obsidian and context loading
-8. Report generation errors logged but don't crash execution loop
-9. Reports indexed in Activity Journal for retrieval by trace_id
-10. Report includes reasoning section explaining key decisions
+1. ✅ After successful execution, report created in `/Knowledge/Reports/`
+2. ✅ Report filename follows convention: `{date}_{traceId}_{requestId}.md`
+3. ✅ Report includes git diff summary with file change counts
+4. ✅ Report contains Obsidian wiki links to all context files used
+5. ✅ Report frontmatter has all required fields (trace_id, status, agent_id, completed_at)
+6. ✅ Report logged to Activity Journal with `action_type='report.generated'`
+7. ✅ Report is searchable via Obsidian and context loading
+8. ✅ Report generation errors logged but don't crash execution loop
+9. ✅ Reports indexed in Activity Journal for retrieval by trace_id
+10. ✅ Report includes reasoning section explaining key decisions
 
 **Acceptance Criteria (Manual Testing):**
 
