@@ -1986,11 +1986,256 @@ Chose JWT over sessions for stateless authentication. Used bcrypt for password h
 ### Step 5.1: CLI (exoctl)
 
 - **Dependencies:** Phase 4 exit — **Rollback:** hide commands behind `EXOCLI_EXPERIMENTAL`.
-- **Action:** Create `cli.ts` implementing `mount`, `status`, `log`.
-- **Justification:** Manual SQLite queries are painful.
+- **Action:** Create `cli/portal_commands.ts` implementing full portal management.
+- **Justification:** Manual portal management (symlinks, config updates, permission regeneration) is error-prone and needs atomic operations.
 - **Success Criteria:**
-  - `exoctl status` shows running agents.
-  - `exoctl portal add` creates symlink and context card.
+  - `exoctl portal add ~/Dev/MyProject MyProject` creates symlink, generates context card, updates config, restarts daemon.
+  - `exoctl portal list` shows all portals with status (active/broken).
+  - `exoctl portal verify` detects broken symlinks and reports permission issues.
+  - `exoctl portal remove MyProject` safely removes portal and archives context card.
+  - All operations logged to Activity Journal with `actor='human'`.
+
+**Implementation Details:**
+
+1. **Create `src/cli/portal_commands.ts`:**
+   - `PortalCommands` class with methods: `add()`, `list()`, `show()`, `remove()`, `verify()`, `refresh()`
+   - Integration with `ConfigService` for config updates
+   - Integration with `ContextCardGenerator` for card management
+   - OS-specific symlink handling (Windows junctions, macOS permissions, Linux inotify)
+
+2. **Portal Add Flow:**
+   ```typescript
+   async add(targetPath: string, alias: string): Promise<void> {
+     // 1. Validate target path exists and is accessible
+     // 2. Resolve absolute path
+     // 3. Create symlink in /Portals/<alias>
+     // 4. Generate context card via ContextCardGenerator
+     // 5. Update exo.config.toml [portals] section
+     // 6. Validate new config (Zod schema)
+     // 7. Log to Activity Journal (portal.added)
+     // 8. Prompt for daemon restart or restart automatically
+     // On any failure: rollback (delete symlink, restore config)
+   }
+   ```
+
+3. **Portal Verification:**
+   - Check symlink exists and points to valid target
+   - Verify target path is readable
+   - Confirm Deno permissions include portal path
+   - Validate context card exists
+   - Report detailed status for each portal
+
+4. **Portal Removal:**
+   - Delete symlink from `/Portals/<alias>`
+   - Move context card to `/Knowledge/Portals/_archived/<alias>_<timestamp>.md`
+   - Remove from `exo.config.toml`
+   - Log to Activity Journal (portal.removed)
+   - Prompt for daemon restart
+
+5. **Activity Logging Events:**
+   - `portal.added` - Portal created (target, alias, symlink path)
+   - `portal.removed` - Portal removed (alias, reason)
+   - `portal.verified` - Verification check (results, issues found)
+   - `portal.refreshed` - Context card regenerated
+   - `portal.broken` - Portal detected as broken during operation
+
+**Test Coverage:**
+
+```typescript
+// tests/portal_commands_test.ts
+Deno.test("PortalCommands: adds portal successfully", async () => {
+  // Creates symlink, generates card, updates config
+});
+
+Deno.test("PortalCommands: detects broken portals", async () => {
+  // Removes target, verifies detection
+});
+
+Deno.test("PortalCommands: handles Windows junctions", async () => {
+  // Falls back to junction if symlink fails
+});
+
+Deno.test("PortalCommands: rollback on config validation failure", async () => {
+  // Ensures atomic operation
+});
+```
+
+**Acceptance Criteria (Manual Testing):**
+
+1. **Portal Add Success:**
+   ```bash
+   exoctl portal add ~/Dev/MyProject MyProject
+   # Expected output:
+   # ✓ Validated target: /home/user/Dev/MyProject
+   # ✓ Created symlink: ~/ExoFrame/Portals/MyProject
+   # ✓ Generated context card: ~/ExoFrame/Knowledge/Portals/MyProject.md
+   # ✓ Updated configuration: exo.config.toml
+   # ✓ Validated permissions
+   # ✓ Logged to Activity Journal
+   # ⚠️  Daemon restart required: exoctl daemon restart
+   
+   # Verify:
+   ls -la ~/ExoFrame/Portals/MyProject           # Symlink exists
+   cat ~/ExoFrame/Knowledge/Portals/MyProject.md # Context card created
+   grep "MyProject" exo.config.toml              # Config updated
+   sqlite3 System/journal.db "SELECT * FROM activity WHERE action_type='portal.added' ORDER BY timestamp DESC LIMIT 1;"
+   ```
+
+2. **Portal List Shows Status:**
+   ```bash
+   exoctl portal list
+   # Expected output:
+   # 🔗 Configured Portals (2):
+   #
+   # MyProject
+   #   Status: Active ✓
+   #   Target: /home/user/Dev/MyProject
+   #   Symlink: ~/ExoFrame/Portals/MyProject
+   #   Context: ~/ExoFrame/Knowledge/Portals/MyProject.md
+   #
+   # BrokenPortal
+   #   Status: Broken ⚠
+   #   Target: /home/user/Dev/Deleted (not found)
+   #   Symlink: ~/ExoFrame/Portals/BrokenPortal
+   ```
+
+3. **Portal Show Details:**
+   ```bash
+   exoctl portal show MyProject
+   # Expected output:
+   # 📁 Portal: MyProject
+   #
+   # Target Path:    /home/user/Dev/MyProject
+   # Symlink:        ~/ExoFrame/Portals/MyProject
+   # Status:         Active ✓
+   # Context Card:   ~/ExoFrame/Knowledge/Portals/MyProject.md
+   # Permissions:    Read/Write ✓
+   # Created:        2025-11-26 10:30:15
+   # Last Verified:  2025-11-26 14:22:33
+   ```
+
+4. **Portal Verify Detects Issues:**
+   ```bash
+   # Remove target to break portal
+   mv ~/Dev/MyProject ~/Dev/MyProject_old
+   
+   exoctl portal verify
+   # Expected output:
+   # 🔍 Verifying Portals...
+   #
+   # MyProject: FAILED ✗
+   #   ✗ Target not found: /home/user/Dev/MyProject
+   #   ✓ Symlink exists
+   #   ✓ Context card exists
+   #   ⚠️  Portal is broken - target directory missing
+   #
+   # OtherPortal: OK ✓
+   #   ✓ Target accessible
+   #   ✓ Symlink valid
+   #   ✓ Permissions correct
+   #   ✓ Context card exists
+   #
+   # Summary: 1 broken, 1 healthy
+   ```
+
+5. **Portal Remove Archives Card:**
+   ```bash
+   exoctl portal remove MyProject
+   # Expected output:
+   # ⚠️  Remove portal 'MyProject'?
+   # This will:
+   #   - Delete symlink: ~/ExoFrame/Portals/MyProject
+   #   - Archive context card: ~/ExoFrame/Knowledge/Portals/_archived/MyProject_20251126.md
+   #   - Update configuration
+   # Continue? (y/N): y
+   #
+   # ✓ Removed symlink
+   # ✓ Archived context card
+   # ✓ Updated configuration
+   # ✓ Logged to Activity Journal
+   # ⚠️  Daemon restart recommended: exoctl daemon restart
+   
+   # Verify:
+   ls ~/ExoFrame/Portals/MyProject                                      # Should not exist
+   ls ~/ExoFrame/Knowledge/Portals/_archived/MyProject_*.md            # Should exist
+   grep "MyProject" exo.config.toml                                    # Should not exist
+   ```
+
+6. **Portal Refresh Updates Card:**
+   ```bash
+   # Add new files to project
+   echo "# New Feature" > ~/Dev/MyProject/NEW_FEATURE.md
+   
+   exoctl portal refresh MyProject
+   # Expected output:
+   # 🔄 Refreshing context card for 'MyProject'...
+   # ✓ Scanned target directory
+   # ✓ Detected changes: 1 new file
+   # ✓ Updated context card
+   # ✓ Preserved user notes
+   # ✓ Logged to Activity Journal
+   
+   # Verify:
+   cat ~/ExoFrame/Knowledge/Portals/MyProject.md  # Shows new file in structure
+   ```
+
+7. **Rollback on Failure:**
+   ```bash
+   # Create invalid target
+   exoctl portal add /nonexistent/path BadPortal
+   # Expected output:
+   # ✗ Error: Target path does not exist: /nonexistent/path
+   # ✗ Portal creation failed - no changes made
+   
+   # Verify nothing created:
+   ls ~/ExoFrame/Portals/BadPortal                # Should not exist
+   ls ~/ExoFrame/Knowledge/Portals/BadPortal.md  # Should not exist
+   grep "BadPortal" exo.config.toml              # Should not exist
+   ```
+
+8. **Activity Logging Verification:**
+   ```bash
+   # After portal operations, verify logging
+   sqlite3 System/journal.db <<EOF
+   SELECT action_type, actor, timestamp, payload 
+   FROM activity 
+   WHERE action_type LIKE 'portal.%' 
+   ORDER BY timestamp DESC 
+   LIMIT 5;
+   EOF
+   
+   # Expected: All portal operations logged with actor='human', via='cli'
+   ```
+
+9. **OS-Specific Handling:**
+   ```bash
+   # Windows: Should create junction if symlink fails
+   exoctl portal add C:\Dev\MyProject MyProject
+   # Expected: Falls back to junction, logs deviation
+   
+   # macOS: Should detect and prompt for Full Disk Access
+   exoctl portal add ~/Dev/MyProject MyProject
+   # Expected: Shows instructions if permission denied
+   
+   # Linux: Should check inotify limits
+   exoctl portal verify
+   # Expected: Warns if inotify limit insufficient
+   ```
+
+10. **Alias Validation:**
+    ```bash
+    # Invalid alias characters
+    exoctl portal add ~/Dev/Project "My Project!"
+    # Expected: ✗ Error: Alias contains invalid characters. Use alphanumeric, dash, underscore only.
+    
+    # Duplicate alias
+    exoctl portal add ~/Dev/Another MyProject
+    # Expected: ✗ Error: Portal 'MyProject' already exists
+    
+    # Reserved alias
+    exoctl portal add ~/Dev/Project System
+    # Expected: ✗ Error: Alias 'System' is reserved
+    ```
 
 ### Step 5.2: Heartbeat & Leases
 

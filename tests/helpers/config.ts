@@ -1,4 +1,6 @@
 import type { Config } from "../../src/config/schema.ts";
+import { ConfigService } from "../../src/config/service.ts";
+import { join } from "@std/path";
 
 /**
  * Creates a mock configuration for testing.
@@ -35,5 +37,43 @@ export function createMockConfig(root: string, overrides: Partial<Config> = {}):
       timeout_sec: 60,
       ...overrides.agents,
     },
+    portals: overrides.portals || [],
   };
+}
+
+/**
+ * Creates a test config file and ConfigService for testing
+ */
+export async function createTestConfigService(root: string): Promise<ConfigService> {
+  const configPath = join(root, "exo.config.toml");
+  
+  const configContent = `[system]
+version = "1.0.0"
+log_level = "info"
+root = "${root}"
+
+[paths]
+knowledge = "Knowledge"
+blueprints = "Blueprints"
+system = "System"
+
+[database]
+batch_flush_ms = 100
+batch_max_size = 100
+
+[watcher]
+debounce_ms = 200
+stability_check = true
+
+[agents]
+default_model = "gpt-4o"
+timeout_sec = 60
+`;
+
+  await Deno.writeTextFile(configPath, configContent);
+  
+  // Create service with absolute path
+  const service = new ConfigService(configPath);
+  
+  return service;
 }

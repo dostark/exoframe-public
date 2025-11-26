@@ -242,6 +242,214 @@ a3f21b89 - Add JWT authentication
   Date: 11/25/2025, 2:30:45 PM
 ```
 
+#### **Portal Commands** - Manage external project access
+
+Portals are symlinked directories that give agents controlled access to external projects:
+
+```bash
+# Add a new portal
+exoctl portal add <target-path> <alias>
+exoctl portal add ~/Dev/MyWebsite MyWebsite
+
+# List all configured portals
+exoctl portal list
+
+# Portal listing output:
+# 🔗 Configured Portals (2):
+# 
+# MyWebsite
+#   Status: Active ✓
+#   Target: /home/user/Dev/MyWebsite
+#   Symlink: ~/ExoFrame/Portals/MyWebsite
+#   Context: ~/ExoFrame/Knowledge/Portals/MyWebsite.md
+#
+# MyAPI
+#   Status: Broken ⚠
+#   Target: /home/user/Dev/MyAPI (not found)
+#   Symlink: ~/ExoFrame/Portals/MyAPI
+
+# Show detailed information about a portal
+exoctl portal show <alias>
+exoctl portal show MyWebsite
+
+# Remove a portal (deletes symlink, archives context card)
+exoctl portal remove <alias>
+exoctl portal remove MyWebsite
+exoctl portal remove MyWebsite --keep-card  # Keep context card
+
+# Verify portal integrity
+exoctl portal verify                        # Check all portals
+exoctl portal verify MyWebsite              # Check specific portal
+
+# Refresh context card (re-scan project)
+exoctl portal refresh <alias>
+exoctl portal refresh MyWebsite
+```
+
+**What happens when adding a portal:**
+
+1. Creates symlink: `~/ExoFrame/Portals/<alias>` → `<target-path>`
+2. Generates context card: `~/ExoFrame/Knowledge/Portals/<alias>.md`
+3. Updates `exo.config.toml` with portal configuration
+4. Validates Deno permissions for new path
+5. Restarts daemon if running (or prompts for manual restart)
+6. Logs action to Activity Journal
+
+**Portal verification checks:**
+
+- Symlink exists and is valid
+- Target directory exists and is readable
+- Target path matches config
+- Deno has necessary permissions
+- Context card exists
+
+**Safety features:**
+
+- Portal removal moves context cards to `_archived/` instead of deleting
+- Broken portals are detected and flagged (target moved/deleted)
+- OS-specific handling:
+  - **Windows:** Creates junction points if symlinks unavailable
+  - **macOS:** Prompts for Full Disk Access on first portal
+  - **Linux:** Checks inotify limits for filesystem watching
+
+**Example workflows:**
+
+```bash
+# 1. Add a new portal
+$ exoctl portal add ~/Dev/MyWebsite MyWebsite
+✓ Validated target: /home/user/Dev/MyWebsite
+✓ Created symlink: ~/ExoFrame/Portals/MyWebsite
+✓ Generated context card: ~/ExoFrame/Knowledge/Portals/MyWebsite.md
+✓ Updated configuration: exo.config.toml
+✓ Validated permissions
+✓ Logged to Activity Journal
+⚠️  Daemon restart required: exoctl daemon restart
+
+# 2. List all portals and check status
+$ exoctl portal list
+🔗 Configured Portals (3):
+
+MyWebsite
+  Status: Active ✓
+  Target: /home/user/Dev/MyWebsite
+  Symlink: ~/ExoFrame/Portals/MyWebsite
+  Context: ~/ExoFrame/Knowledge/Portals/MyWebsite.md
+
+MyAPI
+  Status: Active ✓
+  Target: /home/user/Dev/MyAPI
+  Symlink: ~/ExoFrame/Portals/MyAPI
+  Context: ~/ExoFrame/Knowledge/Portals/MyAPI.md
+
+OldProject
+  Status: Broken ⚠
+  Target: /home/user/Dev/OldProject (not found)
+  Symlink: ~/ExoFrame/Portals/OldProject
+
+# 3. View detailed portal information
+$ exoctl portal show MyWebsite
+📁 Portal: MyWebsite
+
+Target Path:    /home/user/Dev/MyWebsite
+Symlink:        ~/ExoFrame/Portals/MyWebsite
+Status:         Active ✓
+Context Card:   ~/ExoFrame/Knowledge/Portals/MyWebsite.md
+Permissions:    Read/Write ✓
+Created:        2025-11-26 10:30:15
+Last Verified:  2025-11-26 14:22:33
+
+# 4. Verify portal integrity
+$ exoctl portal verify
+🔍 Verifying Portals...
+
+MyWebsite: OK ✓
+  ✓ Target accessible
+  ✓ Symlink valid
+  ✓ Permissions correct
+  ✓ Context card exists
+
+MyAPI: OK ✓
+  ✓ Target accessible
+  ✓ Symlink valid
+  ✓ Permissions correct
+  ✓ Context card exists
+
+OldProject: FAILED ✗
+  ✗ Target not found: /home/user/Dev/OldProject
+  ✓ Symlink exists
+  ✓ Context card exists
+  ⚠️  Portal is broken - target directory missing
+
+Summary: 1 broken, 2 healthy
+
+# 5. Refresh context card after project changes
+$ exoctl portal refresh MyWebsite
+🔄 Refreshing context card for 'MyWebsite'...
+✓ Scanned target directory
+✓ Detected changes: 3 new files
+✓ Updated context card
+✓ Preserved user notes
+✓ Logged to Activity Journal
+
+# 6. Remove a portal safely
+$ exoctl portal remove OldProject
+⚠️  Remove portal 'OldProject'?
+This will:
+  - Delete symlink: ~/ExoFrame/Portals/OldProject
+  - Archive context card: ~/ExoFrame/Knowledge/Portals/_archived/OldProject_20251126.md
+  - Update configuration
+Continue? (y/N): y
+
+✓ Removed symlink
+✓ Archived context card
+✓ Updated configuration
+✓ Logged to Activity Journal
+⚠️  Daemon restart recommended: exoctl daemon restart
+```
+
+**Common errors and solutions:**
+
+```bash
+# Error: Target path does not exist
+$ exoctl portal add /nonexistent/path BadPortal
+✗ Error: Target path does not exist: /nonexistent/path
+✗ Portal creation failed - no changes made
+
+Solution: Verify the path exists and is accessible
+
+# Error: Alias already exists
+$ exoctl portal add ~/Dev/Another MyWebsite
+✗ Error: Portal 'MyWebsite' already exists
+
+Solution: Use a different alias or remove the existing portal first
+
+# Error: Invalid alias characters
+$ exoctl portal add ~/Dev/Project "My Project!"
+✗ Error: Alias contains invalid characters. Use alphanumeric, dash, underscore only.
+
+Solution: Use only letters, numbers, dashes, and underscores
+
+# Error: Permission denied (macOS)
+$ exoctl portal add ~/Desktop/MyApp MyApp
+✗ Error: Permission denied - Full Disk Access required
+
+Solution: System Settings → Privacy & Security → Full Disk Access → Enable for Terminal
+
+# Warning: inotify limit (Linux)
+⚠️  Warning: File watch limit may be insufficient for large portals
+Current limit: 8192 watches
+
+Solution: Increase limit with: echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
+```
+
+**Alias validation rules:**
+
+- Must contain only alphanumeric characters, dashes, and underscores
+- Cannot start with a number
+- Cannot be empty
+- Cannot use reserved names: `System`, `Inbox`, `Knowledge`, `Blueprints`, `Active`, `Archive`
+- Maximum length: 50 characters
+
 #### **Daemon Commands** - Control the ExoFrame daemon
 
 Manage the background daemon process:
@@ -303,6 +511,14 @@ exoctl changeset list                      # See agent-created branches
 exoctl changeset show <id>                 # Review code changes
 exoctl changeset approve <id>              # Merge to main
 exoctl changeset reject <id> --reason "..."# Delete branch
+
+# Portal management
+exoctl portal add ~/Dev/MyProject MyProject  # Mount external project
+exoctl portal list                           # Show all portals
+exoctl portal show MyProject                 # Portal details
+exoctl portal remove MyProject               # Unmount portal
+exoctl portal verify                         # Check portal integrity
+exoctl portal refresh MyProject              # Update context card
 
 # Daemon management
 exoctl daemon start                        # Start background process

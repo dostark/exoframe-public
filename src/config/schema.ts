@@ -24,6 +24,17 @@ export const ConfigSchema = z.object({
     default_model: z.string().default("gpt-4o"),
     timeout_sec: z.number().min(1).max(300).default(60),
   }).default({}),
+  portals: z.array(z.object({
+    alias: z.string(),
+    target_path: z.string(),
+    created: z.string().optional(),
+  })).default([]),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
+
+export interface PortalConfig {
+  alias: string;
+  target_path: string;
+  created?: string;
+}

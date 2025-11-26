@@ -515,6 +515,53 @@ export default class ExoFramePlugin extends Plugin {
 # 4. Restarts daemon automatically
 ```
 
+**Portal CLI Commands:**
+
+```bash
+# Add a new portal (creates symlink, generates context card, updates config)
+exoctl portal add <target-path> <alias>
+exoctl portal add ~/Dev/MyProject MyProject
+
+# List all configured portals with their status
+exoctl portal list
+exoctl portal list --json                 # Machine-readable output
+
+# Show detailed information about a specific portal
+exoctl portal show <alias>
+exoctl portal show MyProject              # Shows path, status, context card location
+
+# Remove a portal (deletes symlink, removes from config, archives context card)
+exoctl portal remove <alias>
+exoctl portal remove MyProject
+exoctl portal remove <alias> --keep-card  # Keep context card in Knowledge/Portals
+
+# Verify portal integrity (checks symlink, target existence, permissions)
+exoctl portal verify
+exoctl portal verify <alias>              # Verify specific portal
+
+# Regenerate context card for a portal
+exoctl portal refresh <alias>
+exoctl portal refresh MyProject           # Re-scans project and updates context card
+```
+
+**Portal Command Behavior:**
+
+- **add:** Creates symlink at `/Portals/<alias>`, generates context card at `/Knowledge/Portals/<alias>.md`, updates `exo.config.toml` with portal path, validates config, restarts daemon if running
+- **list:** Shows all portals from config with status (active, broken, missing)
+- **show:** Displays portal details including target path, symlink status, context card location, file permissions
+- **remove:** Safely removes portal by deleting symlink, removing from config, moving context card to `/Knowledge/Portals/_archived/`
+- **verify:** Checks symlink integrity, target accessibility, permission validity, reports issues
+- **refresh:** Re-generates context card by scanning target directory for tech stack, file structure changes
+
+**Activity Logging:**
+
+All portal operations are logged to Activity Journal:
+- `portal.added` - Portal created with target path and alias
+- `portal.removed` - Portal removed with reason
+- `portal.verified` - Verification check with results
+- `portal.refreshed` - Context card regenerated
+- All actions tagged with `actor='human'`, `via='cli'`
+
 ### 6.2. Path Safety
 
 - **Engine Level:** Deno prevents access outside the allowed list.
