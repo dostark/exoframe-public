@@ -4,7 +4,7 @@
  */
 
 import { join } from "@std/path";
-import { exists } from "@std/fs";
+import { ensureDir, exists } from "@std/fs";
 import { BaseCommand, type CommandContext } from "./base.ts";
 
 export interface DaemonStatus {
@@ -52,31 +52,41 @@ export class DaemonCommands extends BaseCommand {
       );
     }
 
-    // Start daemon process in background
-    const cmd = new Deno.Command("deno", {
+    // Ensure log file directory exists
+    const systemDir = join(workspaceRoot, "System");
+    await ensureDir(systemDir);
+
+    // Start daemon process in background using shell for true detachment
+    // This allows the CLI to exit while daemon continues running
+    const cmd = new Deno.Command("bash", {
       args: [
-        "run",
-        "--allow-all",
-        mainScript,
+        "-c",
+        `nohup deno run --allow-all "${mainScript}" > "${logFile}" 2>&1 & echo $!`,
       ],
       stdout: "piped",
       stderr: "piped",
       stdin: "null",
+      cwd: workspaceRoot,
     });
 
-    const process = cmd.spawn();
+    const output = await cmd.output();
+    const pidStr = new TextDecoder().decode(output.stdout).trim();
+    const pid = parseInt(pidStr, 10);
+
+    if (isNaN(pid) || output.code !== 0) {
+      const err = new TextDecoder().decode(output.stderr);
+      throw new Error(`Failed to start daemon: ${err}`);
+    }
 
     // Write PID file
-    await Deno.writeTextFile(this.pidFile, process.pid.toString());
+    await Deno.writeTextFile(this.pidFile, pid.toString());
 
-    // Detach process (it will continue running after CLI exits)
-    // In Deno, we can't truly detach, so we just return and let it run
-    console.log(`✓ Daemon started (PID: ${process.pid})`);
+    // Give process a moment to start
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    console.log(`✓ Daemon started (PID: ${pid})`);
     console.log(`  Logs: ${logFile}`);
     console.log(`  Run 'exoctl daemon status' to check health`);
-
-    // Wait for process to stabilize
-    await this.waitForProcessState(process.pid, true, 1000);
 
     const newStatus = await this.status();
     if (!newStatus.running) {
@@ -88,7 +98,7 @@ export class DaemonCommands extends BaseCommand {
 
     // Log successful start
     this.logDaemonActivity("daemon.started", {
-      pid: process.pid,
+      pid: pid,
       log_file: logFile,
     });
   }

@@ -25,19 +25,33 @@ From the repository root run the included script to create a user workspace (def
 **What the deploy script does:**
 
 - Creates the standard runtime folders (`System`, `Knowledge`, `Inbox`, `Portals`).
-- Copies runtime artifacts (`deno.json`, `import_map.json`, `scripts/setup_db.ts`, minimal `src/`) into the target
-  workspace.
-- Runs `deno task cache` and attempts `deno task setup` in the target workspace.
+- Copies runtime artifacts (`deno.json`, `import_map.json`, `scripts/`, `migrations/`, `src/`) into the target workspace.
+- Runs `deno task cache` and `deno task setup` to initialize the database.
+- Installs `exoctl` CLI globally to `~/.deno/bin/`.
 
 ### 2.2 Post-Deployment Setup
 
-After deploy, you should inspect the copied `exo.config.sample.toml`, copy it to `exo.config.toml` and adjust paths as
-needed, then run:
+After deployment, ensure `~/.deno/bin` is in your PATH (one-time setup):
+
+```bash
+# Add to your shell profile
+echo 'export PATH="$HOME/.deno/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+Then optionally customize your configuration:
 
 ```bash
 cd /path/to/target-workspace
-deno task cache
-deno task setup
+
+# Review and customize config (optional)
+cp exo.config.sample.toml exo.config.toml
+nano exo.config.toml
+
+# Start the daemon
+deno task start
+# or: exoctl daemon start
+```
 deno task start
 ```
 
@@ -73,16 +87,56 @@ deno task start
 
 ### 4.1 Installation
 
-The ExoFrame CLI (`exoctl`) provides a comprehensive interface for managing plans, changesets, git operations, and the daemon.
+The ExoFrame CLI (`exoctl`) provides a comprehensive interface for managing plans, changesets, git operations, the daemon, and portals.
+
+**Automatic Installation (recommended):**
+
+The deploy script automatically installs `exoctl` globally. You just need to ensure `~/.deno/bin` is in your PATH:
 
 ```bash
-# Use via task runner (recommended for development)
+# Add to your ~/.bashrc or ~/.zshrc (one-time setup)
+echo 'export PATH="$HOME/.deno/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# Verify installation
+exoctl --help
+```
+
+**Manual Installation:**
+
+If you need to reinstall or the automatic installation failed:
+
+```bash
+# From your ExoFrame workspace
+cd ~/ExoFrame
+
+# Install globally (Deno 2.x syntax)
+deno install --global --allow-all -n exoctl src/cli/exoctl.ts
+
+# For Deno 1.x (older versions)
+# deno install --allow-all -n exoctl src/cli/exoctl.ts
+```
+
+**Alternative: Use via task runner (no global install):**
+
+```bash
+cd ~/ExoFrame
 deno task cli <command>
 
-# Or install globally for system-wide access
-deno install --allow-all -n exoctl src/cli/exoctl.ts
+# Examples:
+deno task cli daemon status
+deno task cli plan list
+```
 
-# Then use directly
+**Verify CLI is working:**
+
+```bash
+# Check exoctl is accessible
+exoctl --help
+
+# Check daemon status
+exoctl daemon status
+```
 exoctl <command>
 ```
 
@@ -458,8 +512,14 @@ Solution: Increase limit with: echo fs.inotify.max_user_watches=524288 | sudo te
 Manage the background daemon process:
 
 ```bash
-# Start the daemon
+# Start the daemon (runs in background, returns to prompt)
 exoctl daemon start
+
+# Alternative: start via deno task (also backgrounds)
+deno task start:bg
+
+# For development: run in foreground (blocks terminal, shows live output)
+deno task start
 
 # Stop the daemon gracefully
 exoctl daemon stop

@@ -81,6 +81,18 @@ if [ "$NORUN" -eq 0 ]; then
   echo "Running deno task cache and setup in $DEST (requires deno in PATH)"
   ( cd "$DEST" && deno task cache || true )
   ( cd "$DEST" && deno task setup || true )
+  
+  # Install exoctl CLI globally
+  echo "Installing exoctl CLI..."
+  ( cd "$DEST" && deno install --global --allow-all --force -n exoctl src/cli/exoctl.ts 2>/dev/null || true )
+  
+  # Check if ~/.deno/bin is in PATH
+  if [[ ":$PATH:" != *":$HOME/.deno/bin:"* ]]; then
+    echo ""
+    echo "⚠️  Add ~/.deno/bin to your PATH to use exoctl:"
+    echo "   echo 'export PATH=\"\$HOME/.deno/bin:\$PATH\"' >> ~/.bashrc"
+    echo "   source ~/.bashrc"
+  fi
 else
   echo "--no-run specified: skipping deno cache/setup in deployed workspace"
 fi
