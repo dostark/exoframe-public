@@ -80,8 +80,17 @@ export class DaemonCommands extends BaseCommand {
 
     const newStatus = await this.status();
     if (!newStatus.running) {
+      this.logDaemonActivity("daemon.start_failed", {
+        error: "Daemon failed to start",
+      });
       throw new Error("Daemon failed to start. Check logs for details.");
     }
+
+    // Log successful start
+    this.logDaemonActivity("daemon.started", {
+      pid: process.pid,
+      log_file: logFile,
+    });
   }
 
   /**
@@ -112,6 +121,10 @@ export class DaemonCommands extends BaseCommand {
       if (stopped) {
         console.log("✓ Daemon stopped");
         await Deno.remove(this.pidFile).catch(() => {});
+        this.logDaemonActivity("daemon.stopped", {
+          pid: status.pid,
+          method: "graceful",
+        });
         return;
       }
 
@@ -126,6 +139,10 @@ export class DaemonCommands extends BaseCommand {
       await forceKillCmd.output();
       await Deno.remove(this.pidFile).catch(() => {});
       console.log("✓ Daemon stopped (forced)");
+      this.logDaemonActivity("daemon.stopped", {
+        pid: status.pid,
+        method: "forced",
+      });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(`Failed to stop daemon: ${message}`);
@@ -137,10 +154,16 @@ export class DaemonCommands extends BaseCommand {
    */
   async restart(): Promise<void> {
     console.log("Restarting daemon...");
+    const beforeStatus = await this.status();
     await this.stop();
     // Brief pause to ensure port/resources are released
     await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
     await this.start();
+    const afterStatus = await this.status();
+    this.logDaemonActivity("daemon.restarted", {
+      previous_pid: beforeStatus.pid,
+      new_pid: afterStatus.pid,
+    });
   }
 
   /**
@@ -273,6 +296,29 @@ export class DaemonCommands extends BaseCommand {
       return result.success;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Log daemon activity to the activity journal
+   */
+  private logDaemonActivity(actionType: string, payload: Record<string, unknown>): void {
+    try {
+      this.db.logActivity(
+        "human",
+        actionType,
+        null,
+        {
+          ...payload,
+          via: "cli",
+          timestamp: new Date().toISOString(),
+        },
+        undefined,
+        null,
+      );
+    } catch (error) {
+      // Log errors but don't fail the operation
+      console.error("Failed to log daemon activity:", error);
     }
   }
 }

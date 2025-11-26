@@ -57,6 +57,22 @@ await new Promise(() => {});
     const config = createMockConfig(tempDir);
     db = new DatabaseService(config);
 
+    // Initialize activity table for logging tests
+    db.instance.exec(`
+      CREATE TABLE IF NOT EXISTS activity (
+        id TEXT PRIMARY KEY,
+        trace_id TEXT NOT NULL,
+        actor TEXT NOT NULL,
+        agent_id TEXT,
+        action_type TEXT NOT NULL,
+        target TEXT,
+        payload TEXT NOT NULL,
+        timestamp DATETIME DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_activity_trace ON activity(trace_id);
+      CREATE INDEX IF NOT EXISTS idx_activity_agent ON activity(agent_id);
+    `);
+
     daemonCommands = new DaemonCommands({ config, db });
   });
 
@@ -140,6 +156,29 @@ await new Promise(() => {});
       const isAlive = await isProcessAlive(pid);
       assertEquals(isAlive, true);
     });
+
+    it("should log daemon.started to activity journal", async () => {
+      await daemonCommands.start();
+
+      // Wait for batched logs to flush
+      await db.waitForFlush();
+
+      // Verify activity log entry
+      const logs = db.instance.prepare(
+        "SELECT * FROM activity WHERE action_type = ?",
+      ).all("daemon.started");
+
+      assertEquals(logs.length, 1);
+      const log = logs[0] as Record<string, unknown>;
+      assertEquals(log.actor, "human");
+
+      // Verify payload contains expected fields
+      const payload = JSON.parse(log.payload as string);
+      assertExists(payload.pid);
+      assertExists(payload.log_file);
+      assertEquals(payload.via, "cli");
+      assertExists(payload.timestamp);
+    });
   });
 
   describe("stop", () => {
@@ -207,6 +246,37 @@ await new Promise(() => {});
       const stopped = await waitForProcessState(pid, false, 1000);
       assertEquals(stopped, true, "Process should be stopped");
     });
+
+    it("should log daemon.stopped to activity journal", async () => {
+      // Start daemon first
+      await daemonCommands.start();
+
+      // Clear any start logs
+      await db.waitForFlush();
+      db.instance.exec("DELETE FROM activity WHERE action_type = 'daemon.started'");
+
+      // Stop daemon
+      await daemonCommands.stop();
+
+      // Wait for batched logs to flush
+      await db.waitForFlush();
+
+      // Verify activity log entry
+      const logs = db.instance.prepare(
+        "SELECT * FROM activity WHERE action_type = ?",
+      ).all("daemon.stopped");
+
+      assertEquals(logs.length, 1);
+      const log = logs[0] as Record<string, unknown>;
+      assertEquals(log.actor, "human");
+
+      // Verify payload contains expected fields
+      const payload = JSON.parse(log.payload as string);
+      assertExists(payload.pid);
+      assertExists(payload.method); // 'graceful' or 'forced'
+      assertEquals(payload.via, "cli");
+      assertExists(payload.timestamp);
+    });
   });
 
   describe("restart", () => {
@@ -240,6 +310,38 @@ await new Promise(() => {});
       const status = await daemonCommands.status();
       assertEquals(status.running, true);
       assertExists(status.pid);
+    });
+
+    it("should log daemon.restarted to activity journal", async () => {
+      // Start daemon first
+      await daemonCommands.start();
+      const firstStatus = await daemonCommands.status();
+
+      // Clear previous logs
+      await db.waitForFlush();
+      db.instance.exec("DELETE FROM activity");
+
+      // Restart daemon
+      await daemonCommands.restart();
+
+      // Wait for batched logs to flush
+      await db.waitForFlush();
+
+      // Verify activity log entry for restart
+      const logs = db.instance.prepare(
+        "SELECT * FROM activity WHERE action_type = ?",
+      ).all("daemon.restarted");
+
+      assertEquals(logs.length, 1);
+      const log = logs[0] as Record<string, unknown>;
+      assertEquals(log.actor, "human");
+
+      // Verify payload contains expected fields
+      const payload = JSON.parse(log.payload as string);
+      assertEquals(payload.previous_pid, firstStatus.pid);
+      assertExists(payload.new_pid);
+      assertEquals(payload.via, "cli");
+      assertExists(payload.timestamp);
     });
   });
 
