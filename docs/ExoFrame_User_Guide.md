@@ -1,12 +1,41 @@
 # ExoFrame User Guide
 
-- **Version:** 1.5.0
-- **Date:** 2025-11-23
+- **Version:** 1.6.0
+- **Date:** 2025-11-27
 
 ## 1. Introduction
 
 This guide explains how to deploy and use an ExoFrame workspace. Unlike the development repository (where the code
 lives), a **User Workspace** is where your actual agents, knowledge, and portals reside.
+
+### 1.1 When to Use ExoFrame
+
+ExoFrame is **not** a replacement for IDE-integrated AI assistants (Copilot, Cursor, Windsurf). Those tools excel at real-time, interactive coding help.
+
+**Use ExoFrame when you need:**
+
+| Scenario                          | Why ExoFrame                                          |
+| --------------------------------- | ----------------------------------------------------- |
+| **Overnight batch processing**    | Drop request, go to lunch, come back to results       |
+| **Audit/compliance requirements** | Full trace_id linking: request → plan → code → commit |
+| **Multi-project refactoring**     | Portals give agents context across multiple codebases |
+| **Air-gapped environments**       | 100% local with Ollama (no cloud required)            |
+| **Team accountability**           | Know who approved what change and why                 |
+
+**Use IDE agents when you need:**
+
+| Scenario                    | Why IDE Agent            |
+| --------------------------- | ------------------------ |
+| Quick code fix while coding | Faster, more interactive |
+| Real-time pair programming  | Conversational interface |
+| Exploring unfamiliar code   | Inline explanations      |
+
+### 1.2 Key Concepts
+
+- **Request:** What you want the agent to do (markdown file or CLI command)
+- **Plan:** Agent's proposal for how to accomplish the request
+- **Approval:** Human review gate before agent executes
+- **Trace ID:** UUID linking everything together for audit
 
 ## 2. Installation & Deployment
 
@@ -52,9 +81,10 @@ nano exo.config.toml
 deno task start
 # or: exoctl daemon start
 ```
-deno task start
-```
 
+deno task start
+
+````
 ### 2.3 Advanced Deployment Options
 
 ```bash
@@ -72,7 +102,7 @@ cd /home/alice/ExoFrame
 deno task cache
 deno task setup
 deno task start
-```
+````
 
 ## 3. Workspace Overview
 
@@ -137,12 +167,57 @@ exoctl --help
 # Check daemon status
 exoctl daemon status
 ```
-exoctl <command>
-```
 
+exoctl <command>
+
+````
 ### 4.2 Command Groups
 
-ExoFrame CLI is organized into four main command groups:
+ExoFrame CLI is organized into five main command groups:
+
+#### **Request Commands** - Create new requests quickly
+
+Instead of manually creating markdown files, use the CLI for rapid request creation:
+
+```bash
+# Quick request (auto-generates trace_id, timestamps, frontmatter)
+exoctl request "Implement user authentication for the API"
+
+# With options
+exoctl request "Add rate limiting" --agent senior_coder --priority high
+
+# From file (reads description from file)
+exoctl request --file requirements.txt
+
+# Interactive mode (prompts for details)
+exoctl request -i
+````
+
+**Example workflow:**
+
+```bash
+# Create a request with one command
+$ exoctl request "Add input validation to all API endpoints"
+✓ Request created: request-a1b2c3d4.md
+  Trace ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+  Path: /home/user/ExoFrame/Inbox/Requests/request-a1b2c3d4.md
+  Next: Daemon will process this automatically
+
+# Check status
+$ exoctl plan list
+📋 Plans (1):
+
+🔍 add-validation-a1b2c3d4
+   Status: review
+   Trace: a1b2c3d4...
+```
+
+**Why use this instead of creating files manually?**
+
+- Auto-generates valid frontmatter (trace_id, timestamps)
+- Validates input before creating file
+- Logs creation to Activity Journal
+- Faster than opening editor, writing YAML, saving
 
 #### **Plan Commands** - Review AI-generated plans
 
@@ -564,6 +639,11 @@ $ exoctl daemon logs --follow
 **Most Common Operations:**
 
 ```bash
+# Create requests quickly (instead of manual file creation)
+exoctl request "Add user authentication"    # Quick request
+exoctl request "Fix bug" --priority high    # With priority
+exoctl request -i                           # Interactive mode
+
 # Human review workflow
 exoctl plan list                           # See pending plans
 exoctl plan show <id>                      # Review plan details
@@ -651,11 +731,15 @@ exoctl daemon status
 **Complete workflow example:**
 
 ```bash
-# 1. Drop a request in Inbox
-echo "Implement user authentication" > ~/ExoFrame/Inbox/Requests/auth.md
+# 1. Create a request (quick method - recommended)
+exoctl request "Implement user authentication for the API"
+# Output: ✓ Request created: request-a1b2c3d4.md
+
+# Alternative: Manual file creation (if you need custom frontmatter)
+# echo "Implement user authentication" > ~/ExoFrame/Inbox/Requests/auth.md
 
 # 2. Agent will generate a plan automatically
-# Wait a moment...
+# Wait a moment... (daemon watches Inbox/Requests)
 
 # 3. Review the plan
 exoctl plan list
@@ -675,6 +759,7 @@ exoctl changeset show implement-auth
 exoctl changeset approve implement-auth
 
 # Done! Changes are now in main branch
+# All steps logged to Activity Journal with trace_id
 ```
 
 ## 5. Operational Procedures

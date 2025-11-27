@@ -1,7 +1,7 @@
 # ExoFrame Implementation Plan
 
-- **Version:** 1.5.0
-- **Release Date:** 2025-11-23
+- **Version:** 1.6.0
+- **Release Date:** 2025-11-27
 - **Philosophy:** Walking Skeleton (End-to-End first, features second).
 - **Runtime:** Deno.
 - **Target:** Honest MVP (Personal Developer Tool supporting both local sovereign agents and federated third-party
@@ -9,6 +9,7 @@
 
 ### Change Log
 
+- **v1.6.0:** Clarified market positioning vs IDE agents, added Phase 7 UX improvements (quick request CLI, UI evaluation), updated Executive Summary in White Paper.
 - **v1.4.0:** Introduced hybrid agent orchestration, clarified dual-mode context handling, and refreshed documentation
   references.
 - **v1.3.x:** Tightened governance (owners, dependencies, rollback), clarified security/test linkages, expanded
@@ -40,9 +41,9 @@
 | Phase 2 | 1 week  | Phase 1 exit + watcher harness        | Watcher + parser tests pass           |
 | Phase 3 | 2 weeks | Validated config + mock LLM           | Request → Plan loop verified          |
 | Phase 4 | 1 week  | Stable agent runtime                  | Git + tool registry exercised         |
-| Phase 5 | 1 week  | CLI scaffold merged                   | CLI + dashboard smoke tests           |
-| Phase 6 | 2 days  | Knowledge tree exists                 | Obsidian vault validated              |
-| Phase 7 | Ongoing | All prior phases code-complete        | 80% of test plan automated            |
+| Phase 5 | 1 week  | CLI scaffold merged                   | Obsidian vault validated              |
+| Phase 6 | 2 days  | All prior phases code-complete        | 80% of test plan automated            |
+| Phase 7 | 1 week  | Core functionality stable             | UX improvements + UI evaluation done  |
 
 Each step lists **Dependencies**, **Rollback/Contingency**, and updated success metrics.
 
@@ -1891,11 +1892,11 @@ Deno.test("MissionReporter: formats report with valid YAML frontmatter", async (
 
 **TDD Approach:**
 
-```typescript
+````typescript
 // tests/obsidian/plugin_detection_test.ts
 Deno.test("Obsidian plugin requirements documented", async () => {
   const readme = await Deno.readTextFile("docs/ExoFrame_User_Guide.md");
-  
+
   // Verify plugin requirements are documented
   assertStringIncludes(readme, "Dataview");
   assertStringIncludes(readme, "Community Plugins");
@@ -1903,22 +1904,23 @@ Deno.test("Obsidian plugin requirements documented", async () => {
 
 Deno.test("Dashboard file uses valid Dataview syntax", async () => {
   const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
-  
+
   // Verify Dataview code blocks are properly formatted
   const dataviewBlocks = dashboard.match(/```dataview[\s\S]*?```/g) ?? [];
   assert(dataviewBlocks.length >= 3, "Dashboard should have at least 3 Dataview queries");
-  
+
   // Verify common Dataview keywords
   for (const block of dataviewBlocks) {
     assert(
       block.includes("TABLE") || block.includes("LIST") || block.includes("TASK"),
-      "Each block should use TABLE, LIST, or TASK"
+      "Each block should use TABLE, LIST, or TASK",
     );
   }
 });
-```
+````
 
 **Success Criteria:**
+
 - [ ] Dataview plugin installed and enabled
 - [ ] Dashboard.md renders without Dataview errors
 - [ ] User Guide documents plugin installation steps
@@ -1955,7 +1957,7 @@ Knowledge/
 // tests/obsidian/vault_structure_test.ts
 Deno.test("Knowledge directory has required structure", async () => {
   const knowledgePath = "./Knowledge";
-  
+
   // Verify required directories exist
   const requiredDirs = ["Portals", "Reports"];
   for (const dir of requiredDirs) {
@@ -1987,6 +1989,7 @@ exoctl verify --vault
 ```
 
 **Success Criteria:**
+
 - [ ] Knowledge/ directory contains required subdirectories
 - [ ] Dashboard.md exists at Knowledge/Dashboard.md
 - [ ] .obsidian/ directory is gitignored
@@ -2034,14 +2037,14 @@ exoctl verify --vault
 // tests/obsidian/dashboard_content_test.ts
 Deno.test("Dashboard has required sections", async () => {
   const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
-  
+
   const requiredSections = [
     "Active Tasks",
-    "Recent Plans", 
+    "Recent Plans",
     "Reports",
-    "Failed"
+    "Failed",
   ];
-  
+
   for (const section of requiredSections) {
     assertStringIncludes(dashboard, section, `Dashboard should have ${section} section`);
   }
@@ -2049,7 +2052,7 @@ Deno.test("Dashboard has required sections", async () => {
 
 Deno.test("Dashboard frontmatter is valid", async () => {
   const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
-  
+
   // Check for optional frontmatter (pinned status hint)
   if (dashboard.startsWith("---")) {
     const frontmatter = dashboard.split("---")[1];
@@ -2059,6 +2062,7 @@ Deno.test("Dashboard frontmatter is valid", async () => {
 ```
 
 **Success Criteria:**
+
 - [ ] Dashboard.md is pinned in Obsidian
 - [ ] Dashboard opens automatically on vault startup
 - [ ] All Dataview queries render correctly
@@ -2077,20 +2081,22 @@ Deno.test("Dashboard frontmatter is valid", async () => {
 **Settings Configuration:**
 
 Settings → Files & Links:
+
 - ☑ Automatically update internal links
 - ☑ Detect all file extensions (to see .toml, .yaml, .json)
 - ☑ Use Wikilinks (optional, for easier linking)
 
 Settings → Editor:
+
 - ☑ Auto-reload file when externally changed (if available)
 
 **Platform-Specific Notes:**
 
-| Platform | Consideration |
-|----------|---------------|
-| **Linux** | inotify watchers may need increasing: `fs.inotify.max_user_watches` |
-| **macOS** | FSEvents works well, no special config needed |
-| **Windows** | May need to run Obsidian as admin for symlink support |
+| Platform    | Consideration                                                       |
+| ----------- | ------------------------------------------------------------------- |
+| **Linux**   | inotify watchers may need increasing: `fs.inotify.max_user_watches` |
+| **macOS**   | FSEvents works well, no special config needed                       |
+| **Windows** | May need to run Obsidian as admin for symlink support               |
 
 **TDD Approach:**
 
@@ -2099,7 +2105,7 @@ Settings → Editor:
 Deno.test("ExoFrame creates files Obsidian can detect", async () => {
   const testDir = await Deno.makeTempDir();
   const testFile = `${testDir}/test-report.md`;
-  
+
   // Simulate agent writing a file
   const content = `---
 title: Test Report
@@ -2111,18 +2117,18 @@ created: ${new Date().toISOString()}
 
 This is a test.
 `;
-  
+
   await Deno.writeTextFile(testFile, content);
-  
+
   // Verify file is readable
   const stat = await Deno.stat(testFile);
   assert(stat.isFile);
   assert(stat.size > 0);
-  
+
   // Verify content round-trips correctly
   const readBack = await Deno.readTextFile(testFile);
   assertEquals(readBack, content);
-  
+
   await Deno.remove(testDir, { recursive: true });
 });
 
@@ -2132,16 +2138,16 @@ Deno.test("Report files have Obsidian-compatible frontmatter", async () => {
   const reportPath = await reporter.generateReport({
     traceId: "test-trace",
     status: "success",
-    summary: "Test mission"
+    summary: "Test mission",
   });
-  
+
   const content = await Deno.readTextFile(reportPath);
-  
+
   // Verify YAML frontmatter format
   assert(content.startsWith("---"), "Report should start with frontmatter");
   const parts = content.split("---");
   assert(parts.length >= 3, "Report should have complete frontmatter");
-  
+
   // Verify required frontmatter fields for Dataview
   const frontmatter = parts[1];
   assertStringIncludes(frontmatter, "status:");
@@ -2150,6 +2156,7 @@ Deno.test("Report files have Obsidian-compatible frontmatter", async () => {
 ```
 
 **Success Criteria:**
+
 - [ ] Obsidian detects new files created by agents within 2 seconds
 - [ ] Internal links update automatically when files are renamed
 - [ ] .toml and .yaml files are visible in the file explorer
@@ -2167,7 +2174,7 @@ Deno.test("Report files have Obsidian-compatible frontmatter", async () => {
 
 Create `Knowledge/Dashboard.md` with the following content:
 
-```markdown
+````markdown
 ---
 title: ExoFrame Dashboard
 aliases: [Home, Index]
@@ -2180,10 +2187,10 @@ tags: [dashboard, exoframe]
 
 ## 📊 System Status
 
-| Metric | Value |
-|--------|-------|
-| Active Tasks | `= length(filter(dv.pages('"System/Active"'), p => p.status = "running"))` |
-| Pending Plans | `= length(dv.pages('"Inbox/Plans"'))` |
+| Metric          | Value                                                                              |
+| --------------- | ---------------------------------------------------------------------------------- |
+| Active Tasks    | `= length(filter(dv.pages('"System/Active"'), p => p.status = "running"))`         |
+| Pending Plans   | `= length(dv.pages('"Inbox/Plans"'))`                                              |
 | Today's Reports | `= length(filter(dv.pages('"Knowledge/Reports"'), p => p.created >= date(today)))` |
 
 ---
@@ -2200,6 +2207,7 @@ FROM "System/Active"
 SORT created DESC
 LIMIT 10
 ```
+````
 
 ---
 
@@ -2251,8 +2259,8 @@ LIMIT 5
 - [[Inbox/Requests/README|Create New Request]]
 - [[Knowledge/Portals/README|Manage Portals]]
 - [[docs/ExoFrame_User_Guide|User Guide]]
-```
 
+````
 **TDD Approach:**
 
 ```typescript
@@ -2353,7 +2361,7 @@ target: src/main.ts
   
   await Deno.remove(testDir, { recursive: true });
 });
-```
+````
 
 **CLI Support:**
 
@@ -2366,6 +2374,7 @@ exoctl scaffold --dashboard --force
 ```
 
 **Success Criteria:**
+
 - [ ] Dashboard.md created at Knowledge/Dashboard.md
 - [ ] All 4 Dataview queries are syntactically valid
 - [ ] Queries reference correct ExoFrame folders
@@ -2384,6 +2393,7 @@ exoctl scaffold --dashboard --force
 **Manual Test Procedure:**
 
 1. Create a test request:
+
 ```bash
 echo "---
 title: Integration Test
@@ -2401,6 +2411,7 @@ Please verify Obsidian integration is working.
 3. Verify new entry appears in "Current Tasks" or "Recent Plans" table
 
 4. Clean up test file:
+
 ```bash
 rm /ExoFrame/Inbox/Requests/integration-test.md
 ```
@@ -2409,27 +2420,27 @@ rm /ExoFrame/Inbox/Requests/integration-test.md
 
 ```typescript
 // tests/obsidian/integration_test.ts
-import { assertEquals, assertStringIncludes, assert } from "@std/assert";
+import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import { exists } from "@std/fs";
 
 Deno.test("End-to-end: Request to Dashboard visibility", async (t) => {
   const testWorkspace = await Deno.makeTempDir();
-  
+
   // Setup workspace structure
   await t.step("setup workspace", async () => {
     const dirs = [
       "Inbox/Requests",
-      "Inbox/Plans", 
+      "Inbox/Plans",
       "System/Active",
       "Knowledge/Reports",
-      "Knowledge/Portals"
+      "Knowledge/Portals",
     ];
-    
+
     for (const dir of dirs) {
       await Deno.mkdir(`${testWorkspace}/${dir}`, { recursive: true });
     }
   });
-  
+
   await t.step("create request file", async () => {
     const requestContent = `---
 title: Test Integration Request
@@ -2442,29 +2453,29 @@ status: pending
 
 This tests the Obsidian integration.
 `;
-    
+
     await Deno.writeTextFile(
       `${testWorkspace}/Inbox/Requests/test-request.md`,
-      requestContent
+      requestContent,
     );
-    
+
     // Verify file exists
     const fileExists = await exists(`${testWorkspace}/Inbox/Requests/test-request.md`);
     assert(fileExists, "Request file should be created");
   });
-  
+
   await t.step("verify frontmatter is Dataview-compatible", async () => {
     const content = await Deno.readTextFile(
-      `${testWorkspace}/Inbox/Requests/test-request.md`
+      `${testWorkspace}/Inbox/Requests/test-request.md`,
     );
-    
+
     // Dataview requires valid YAML frontmatter
     assert(content.startsWith("---"), "File should have frontmatter");
     assertStringIncludes(content, "title:");
     assertStringIncludes(content, "status:");
     assertStringIncludes(content, "created:");
   });
-  
+
   await t.step("simulate plan creation", async () => {
     const planContent = `---
 title: Test Integration Request
@@ -2483,23 +2494,23 @@ source: Inbox/Requests/test-request.md
 ## Files to Modify
 - src/main.ts
 `;
-    
+
     await Deno.writeTextFile(
       `${testWorkspace}/Inbox/Plans/test-request.md`,
-      planContent
+      planContent,
     );
   });
-  
+
   await t.step("verify plan has required Dataview fields", async () => {
     const plan = await Deno.readTextFile(
-      `${testWorkspace}/Inbox/Plans/test-request.md`
+      `${testWorkspace}/Inbox/Plans/test-request.md`,
     );
-    
+
     // These fields are queried by Dashboard
     assertStringIncludes(plan, "status: review");
     assertStringIncludes(plan, "created:");
   });
-  
+
   await t.step("simulate report generation", async () => {
     const reportContent = `---
 title: Mission Report - test-request
@@ -2522,45 +2533,45 @@ Integration test completed successfully.
 - Duration: 5s
 - Files: 1
 `;
-    
+
     await Deno.writeTextFile(
       `${testWorkspace}/Knowledge/Reports/trace-test-trace-123.md`,
-      reportContent
+      reportContent,
     );
   });
-  
+
   await t.step("verify report has required Dataview fields", async () => {
     const report = await Deno.readTextFile(
-      `${testWorkspace}/Knowledge/Reports/trace-test-trace-123.md`
+      `${testWorkspace}/Knowledge/Reports/trace-test-trace-123.md`,
     );
-    
+
     // These fields are queried by Dashboard
     assertStringIncludes(report, "status:");
     assertStringIncludes(report, "created:");
     assertStringIncludes(report, "agent:");
     assertStringIncludes(report, "target:");
   });
-  
+
   await t.step("verify all files follow naming conventions", async () => {
     // Reports should include trace ID in filename
     const reports = [];
     for await (const entry of Deno.readDir(`${testWorkspace}/Knowledge/Reports`)) {
       reports.push(entry.name);
     }
-    
+
     assert(
-      reports.some(r => r.includes("trace-")),
-      "Reports should include trace ID in filename"
+      reports.some((r) => r.includes("trace-")),
+      "Reports should include trace ID in filename",
     );
   });
-  
+
   // Cleanup
   await Deno.remove(testWorkspace, { recursive: true });
 });
 
 Deno.test("Dataview query simulation", async () => {
   // This test verifies the frontmatter structure matches what Dataview expects
-  
+
   const sampleFiles = {
     activeTask: {
       path: "System/Active/task-1.md",
@@ -2568,16 +2579,16 @@ Deno.test("Dataview query simulation", async () => {
         status: "running",
         agent: "copilot",
         created: new Date().toISOString(),
-        target: "src/main.ts"
-      }
+        target: "src/main.ts",
+      },
     },
     plan: {
       path: "Inbox/Plans/plan-1.md",
       frontmatter: {
         status: "review",
         created: new Date().toISOString(),
-        agent: "copilot"
-      }
+        agent: "copilot",
+      },
     },
     report: {
       path: "Knowledge/Reports/trace-abc.md",
@@ -2585,11 +2596,11 @@ Deno.test("Dataview query simulation", async () => {
         status: "success",
         created: new Date().toISOString(),
         agent: "copilot",
-        target: "src/main.ts"
-      }
-    }
+        target: "src/main.ts",
+      },
+    },
   };
-  
+
   // Verify all frontmatter keys are present
   for (const [type, file] of Object.entries(sampleFiles)) {
     assert(file.frontmatter.status, `${type} should have status`);
@@ -2599,14 +2610,14 @@ Deno.test("Dataview query simulation", async () => {
 
 Deno.test("Obsidian link format compatibility", () => {
   // Test that generated links work in Obsidian
-  
+
   const wikiLink = "[[Knowledge/Reports/trace-123|View Report]]";
   const markdownLink = "[View Report](Knowledge/Reports/trace-123.md)";
-  
+
   // Verify wiki link format
   assert(wikiLink.startsWith("[["), "Wiki link should start with [[");
   assert(wikiLink.endsWith("]]"), "Wiki link should end with ]]");
-  
+
   // Verify markdown link format
   assert(markdownLink.includes("]("), "Markdown link should have proper format");
   assert(markdownLink.endsWith(")"), "Markdown link should end with )");
@@ -2627,6 +2638,7 @@ exoctl scaffold --test
 ```
 
 **Success Criteria:**
+
 - [ ] Request files appear in Obsidian within 2 seconds of creation
 - [ ] Plan files have frontmatter queryable by Dataview
 - [ ] Report files have frontmatter queryable by Dataview
@@ -2861,7 +2873,7 @@ jobs:
         run: deno coverage cov_profile --lcov > coverage.lcov
 ```
 
-### Step 7.6: Manual QA Checklist
+### Step 6.6: Manual QA Checklist
 
 **Before each release, test on:**
 
@@ -2876,6 +2888,302 @@ jobs:
 - [ ] Corrupt database → Verify error message, recovery procedure (**T-DataLoss**)
 - [ ] Create request with invalid YAML → Verify validation error logged (**T-Input**)
 - [ ] Test with actual OpenAI/Anthropic API (not mock) (**T-Creds**)
+
+---
+
+## Phase 7: UX Improvements & UI Evaluation
+
+**Goal:** Reduce friction in the ExoFrame workflow while evaluating whether a dedicated UI is needed beyond Obsidian.
+
+### Context: ExoFrame vs IDE Agents
+
+ExoFrame's value proposition is **not** real-time coding assistance (IDE agents do that better). ExoFrame excels at:
+
+1. **Audit trail & traceability** — trace_id linking everything
+2. **Asynchronous workflows** — drop request, come back later
+3. **Explicit approval gates** — no accidental destructive changes
+4. **Multi-project context** — portals span multiple codebases
+
+However, the current "drop a markdown file" workflow has friction. This phase addresses that.
+
+### Step 7.1: Quick Request CLI Command
+
+**Problem:** Creating a markdown file in `/Inbox/Requests` is clunky compared to typing in an IDE chat.
+
+**Solution:** Add `exoctl request` command for rapid request creation.
+
+```bash
+# Quick request (auto-generates trace_id, timestamps)
+exoctl request "Implement user authentication for the API"
+
+# With options
+exoctl request "Add rate limiting" --agent senior_coder --priority high
+
+# From file
+exoctl request --file requirements.txt
+
+# Interactive mode (prompts for details)
+exoctl request -i
+```
+
+**Implementation:**
+
+```typescript
+// src/cli/request_commands.ts
+export class RequestCommands extends BaseCommand {
+  async create(description: string, options: RequestOptions): Promise<void> {
+    const traceId = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
+
+    const content = `---
+trace_id: ${traceId}
+created: ${timestamp}
+status: pending
+priority: ${options.priority || "normal"}
+agent: ${options.agent || "default"}
+---
+
+# Request
+
+${description}
+`;
+
+    const filename = `request-${traceId.slice(0, 8)}.md`;
+    const path = join(this.config.paths.inbox, "Requests", filename);
+
+    await Deno.writeTextFile(path, content);
+
+    console.log(`✓ Request created: ${filename}`);
+    console.log(`  Trace ID: ${traceId}`);
+    console.log(`  Path: ${path}`);
+    console.log(`  Next: Daemon will process this automatically`);
+
+    this.logActivity("request.created", { trace_id: traceId, description });
+  }
+}
+```
+
+**Tests:**
+
+- `exoctl request "test"` creates valid markdown file
+- Generated file has valid frontmatter (trace_id, timestamp)
+- File appears in correct directory
+- Activity journal logs creation
+
+**Success Criteria:**
+
+- [ ] `exoctl request "description"` creates request in < 1 second
+- [ ] Generated frontmatter passes Zod validation
+- [ ] Tests in `tests/cli/request_commands_test.ts` pass
+
+---
+
+### Step 7.2: UI Strategy Evaluation
+
+**Problem:** Obsidian with Dataview provides read-only dashboards, but lacks:
+
+- Real-time status updates
+- Interactive approval buttons
+- Diff viewing
+- Log streaming
+
+**Evaluation Matrix:**
+
+| Option                            | Pros                                   | Cons                                        | Effort |
+| --------------------------------- | -------------------------------------- | ------------------------------------------- | ------ |
+| **A. Obsidian + Dataview**        | Already integrated, no new deps        | Static, no interactivity, requires Obsidian | Low    |
+| **B. Obsidian Plugin**            | Native integration, familiar UI        | Requires Obsidian, plugin maintenance       | Medium |
+| **C. Web Dashboard (Fresh/Deno)** | Full interactivity, no Obsidian needed | New dependency, deployment complexity       | High   |
+| **D. TUI (Terminal UI)**          | No browser, fits CLI workflow          | Limited visualization, learning curve       | Medium |
+| **E. VS Code Extension**          | Integrated with dev workflow           | VS Code only, extension maintenance         | Medium |
+
+**Recommendation:** Start with **Option A** (Obsidian + Dataview) for MVP, evaluate **Option C** (Web Dashboard) for v2.0 if users request it.
+
+**Decision Criteria for Web UI:**
+
+- [ ] 50% of users don't use Obsidian
+- [ ] Users request real-time log streaming
+- [ ] Users need mobile/remote access
+- [ ] Complex approval workflows needed
+
+**If Web UI is chosen (Future):**
+
+```typescript
+// src/ui/server.ts (Future - not in MVP)
+import { Application, Router } from "jsr:@oak/oak";
+
+const app = new Application();
+const router = new Router();
+
+router.get("/api/plans", async (ctx) => {
+  const plans = await planService.list();
+  ctx.response.body = plans;
+});
+
+router.post("/api/plans/:id/approve", async (ctx) => {
+  await planService.approve(ctx.params.id);
+  ctx.response.body = { success: true };
+});
+
+// WebSocket for real-time updates
+router.get("/ws", (ctx) => {
+  const socket = ctx.upgrade();
+  activityJournal.subscribe((event) => {
+    socket.send(JSON.stringify(event));
+  });
+});
+```
+
+---
+
+### Step 7.3: Obsidian Dashboard Enhancement
+
+**Current State:** Basic Dataview queries exist but are underdeveloped.
+
+**Enhancements:**
+
+1. **Status Dashboard** (`Knowledge/Dashboard.md`)
+
+```markdown
+# ExoFrame Dashboard
+
+## Daemon Status
+
+\`\`\`dataview
+TABLE WITHOUT ID
+"🟢 Running" as Status,
+file.mtime as "Last Activity"
+FROM "System"
+WHERE file.name = "daemon.pid"
+\`\`\`
+
+## Pending Plans
+
+\`\`\`dataview
+TABLE status, created, agent
+FROM "Inbox/Plans"
+WHERE status = "review"
+SORT created DESC
+\`\`\`
+
+## Recent Activity
+
+\`\`\`dataview
+TABLE action_type, actor, target, timestamp
+FROM "System/activity_export.md"
+SORT timestamp DESC
+LIMIT 20
+\`\`\`
+
+## Active Portals
+
+\`\`\`dataview
+TABLE target, status
+FROM "Knowledge/Portals"
+SORT file.name ASC
+\`\`\`
+```
+
+2. **Activity Export Script** (for Dataview consumption)
+
+```typescript
+// scripts/export_activity.ts
+// Exports recent activity to markdown for Dataview queries
+
+const activities = await db.getRecentActivity(100);
+const markdown = activities.map((a) => `| ${a.action_type} | ${a.actor} | ${a.target} | ${a.timestamp} |`).join("\n");
+
+await Deno.writeTextFile(
+  "System/activity_export.md",
+  `
+# Activity Log
+
+| Action | Actor | Target | Time |
+|--------|-------|--------|------|
+${markdown}
+`,
+);
+```
+
+**Limitations Accepted:**
+
+- No real-time updates (must refresh)
+- No interactive buttons (use CLI for actions)
+- Requires Obsidian + Dataview plugin
+
+---
+
+### Step 7.4: VS Code Integration (Future Consideration)
+
+**If VS Code extension is prioritized:**
+
+```typescript
+// vscode-exoframe/src/extension.ts (Future)
+import * as vscode from "vscode";
+
+export function activate(context: vscode.ExtensionContext) {
+  // Command: Create Request
+  context.subscriptions.push(
+    vscode.commands.registerCommand("exoframe.createRequest", async () => {
+      const description = await vscode.window.showInputBox({
+        prompt: "What should the agent do?",
+        placeHolder: "Implement user authentication...",
+      });
+
+      if (description) {
+        const terminal = vscode.window.createTerminal("ExoFrame");
+        terminal.sendText(`exoctl request "${description}"`);
+      }
+    }),
+  );
+
+  // Status bar item
+  const statusBar = vscode.window.createStatusBarItem();
+  statusBar.text = "$(robot) ExoFrame";
+  statusBar.command = "exoframe.showStatus";
+  statusBar.show();
+}
+```
+
+**Decision:** Defer to v2.0 unless strong user demand.
+
+---
+
+### Step 7.5: Documentation Updates
+
+Update all docs to reflect new positioning:
+
+1. **White Paper:** ✅ Updated Executive Summary (v1.6.0)
+2. **User Guide:** Add quick request examples
+3. **README:** Clarify "when to use ExoFrame vs IDE agents"
+
+**README Update:**
+
+```markdown
+## When to Use ExoFrame
+
+| Scenario                          | Tool                           |
+| --------------------------------- | ------------------------------ |
+| Quick code fix while coding       | Use IDE agent (Copilot/Cursor) |
+| Interactive feature development   | Use IDE agent                  |
+| **Overnight batch processing**    | **ExoFrame**                   |
+| **Audit/compliance requirements** | **ExoFrame**                   |
+| **Multi-project refactoring**     | **ExoFrame**                   |
+| **Air-gapped environments**       | **ExoFrame**                   |
+
+ExoFrame is not competing with IDE agents for real-time assistance.
+It's an **auditable agent orchestration platform** for async workflows.
+```
+
+---
+
+### Phase 7 Exit Criteria
+
+- [ ] `exoctl request` command implemented and tested
+- [ ] UI evaluation document created with decision
+- [ ] Obsidian dashboard templates in `Knowledge/`
+- [ ] Documentation updated with clear positioning
+- [ ] User Guide includes quick request examples
 
 ## Bootstrap: Developer Workspace Setup
 

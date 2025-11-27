@@ -7,13 +7,7 @@
  * TDD: Tests written first, then implementation follows.
  */
 
-import {
-  assert,
-  assertEquals,
-  assertExists,
-  assertMatch,
-  assertStringIncludes,
-} from "jsr:@std/assert@^1.0.0";
+import { assert, assertEquals, assertExists, assertMatch, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { MissionReporter, type ReportConfig, type TraceData } from "../src/services/mission_reporter.ts";
 import { createMockConfig } from "./helpers/config.ts";
@@ -169,7 +163,11 @@ Deno.test("MissionReporter: includes git diff summary", async () => {
     await Deno.writeTextFile(join(tempDir, "src", "auth", "login.ts"), "export function login() {}");
     await Deno.writeTextFile(join(tempDir, "src", "auth", "middleware.ts"), "export function auth() {}");
     await runGitCommand(tempDir, ["add", "."]);
-    await runGitCommand(tempDir, ["commit", "-m", "Implement auth\n\n[ExoTrace: 550e8400-e29b-41d4-a716-446655440000]"]);
+    await runGitCommand(tempDir, [
+      "commit",
+      "-m",
+      "Implement auth\n\n[ExoTrace: 550e8400-e29b-41d4-a716-446655440000]",
+    ]);
 
     const config = createMockConfig(tempDir);
     const reportConfig: ReportConfig = {

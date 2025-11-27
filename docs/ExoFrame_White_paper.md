@@ -1,9 +1,9 @@
-# ExoFrame: The Sovereign Neuro-Symbolic Operating System
+# ExoFrame: Auditable Agent Orchestration Platform
 
 ### White Paper - Developer Tool Edition
 
-- **Date:** November 23, 2025
-- **Version:** 1.5.0
+- **Date:** November 27, 2025
+- **Version:** 1.6.0
 - **Status:** Development Specification
 - **Target Audience:** Solo Developers, Technical Power Users, System Architects
 
@@ -26,44 +26,80 @@
 
 ## 1. Executive Summary
 
-We are entering the "Agentic Era" of computing. However, the current landscape is fragmented. Users are forced to choose
-between siloed SaaS tools (Notion AI, ChatGPT Team) that trap data, or complex developer libraries (LangChain, AutoGen)
-that require writing code to perform simple tasks.
+Modern AI-enabled IDEs (Cursor, Copilot, Windsurf) excel at **interactive, real-time coding assistance**. ExoFrame does not compete with them for that use case.
 
-**ExoFrame** bridges this gap. It is a personal "Cognitive Exoskeleton"—a platform that turns a user's local file system
-into a highly structured, collaborative environment where Humans and AI Agents work together.
+**ExoFrame is an Auditable Agent Orchestration Platform** — designed for scenarios where you need:
 
-**The Core Proposition:**
+1. **Audit Trail & Traceability:** Every agent action is logged with trace IDs linking requests → plans → code changes → commits. Essential for compliance, team accountability, and understanding "why did this change happen?"
 
-1. **Sovereignty:** 100% Local-First. Data never leaves the user's control unless explicitly authorized.
-2. **Interoperability:** "Files as the API." Any tool (IDE, Note App, Agent) can interact with the system because the
-   interface is standard files (Markdown, Code).
-3. **Security:** **Runtime-Enforced Sandboxing.** ExoFrame leverages Deno's kernel-level permissions to strictly confine
-   agents to specific directories.
+2. **Asynchronous Workflows:** Drop a request, go to lunch, come back to a reviewed plan. Unlike chat-based agents that require constant supervision, ExoFrame operates as a background daemon.
+
+3. **Explicit Human Approval Gates:** Plans must be approved before execution. Code changes must be approved before merging. No "oops, the agent deleted my files" moments.
+
+4. **Multi-Project Context:** Portals link multiple codebases simultaneously. Agents can reference your API server while modifying your frontend — something single-workspace IDEs struggle with.
+
+5. **Data Sovereignty:** 100% local-first option with Ollama. Your code never leaves your machine unless you explicitly configure cloud APIs.
+
+**When to Use ExoFrame vs IDE Agents:**
+
+| Scenario                        | Recommendation |
+| ------------------------------- | -------------- |
+| Quick code fix while coding     | Use IDE agent  |
+| Interactive feature development | Use IDE agent  |
+| Overnight batch processing      | **ExoFrame**   |
+| Compliance/audit requirements   | **ExoFrame**   |
+| Multi-project refactoring       | **ExoFrame**   |
+| Air-gapped environments         | **ExoFrame**   |
+
+**The Core Architecture:**
+
+- **Daemon-based:** Watches `/Inbox/Requests` for new tasks
+- **File-driven:** "Files as API" — drop markdown, get results
+- **Secure:** Deno's permission system sandboxes all agent operations
+- **Traceable:** SQLite Activity Journal records everything
 
 ---
 
-## 2. Market Problem & Opportunity
+## 2. Market Position & Differentiation
 
-### The "Context Chasm"
+### What ExoFrame Is NOT
 
-Current AI tools suffer from severe context blindness.
+ExoFrame is **not** a replacement for IDE-integrated AI assistants. Tools like GitHub Copilot, Cursor, and Windsurf provide excellent real-time, interactive coding assistance. If you need help writing code _right now_, use those tools.
 
-- **The IDE Copilot** sees your code, but not your product requirements document in Notion.
-- **The User** becomes the "Copy-Paste Interface," manually moving context between tools.
+### What ExoFrame IS
 
-### The "Black Box" Trust Issue
+ExoFrame is an **agent orchestration layer** that provides:
 
-Power Users hesitate to deploy autonomous agents because they are opaque.
+| Capability                  | IDE Agents            | ExoFrame                 |
+| --------------------------- | --------------------- | ------------------------ |
+| Real-time code completion   | ✅ Excellent          | ❌ Not a focus           |
+| Interactive chat            | ✅ Native             | ❌ File-based            |
+| Audit trail                 | ❌ None               | ✅ Full trace_id linking |
+| Async background processing | ❌ Requires attention | ✅ Daemon-based          |
+| Multi-project context       | ⚠️ Single workspace   | ✅ Portal system         |
+| Human approval gates        | ⚠️ Implicit           | ✅ Explicit workflow     |
+| Local-only operation        | ⚠️ Cloud default      | ✅ Ollama support        |
+| Compliance/audit ready      | ❌ No logging         | ✅ Activity Journal      |
 
-- _Why did the agent change this code?_
-- _Who authorized this deletion?_
+### The "Background Agent" Workflow
 
-### The Solution: ExoFrame
+```
+Morning: Drop request → "Implement user authentication for the API"
+         ↓
+Daemon:  Generates plan, waits for approval
+         ↓
+Review:  exoctl plan show auth-impl → looks good
+         ↓
+Approve: exoctl plan approve auth-impl
+         ↓
+Execute: Agent creates branch, writes code, commits with trace_id
+         ↓
+Evening: exoctl changeset show auth-impl → review diff
+         ↓
+Merge:   exoctl changeset approve auth-impl → done
+```
 
-ExoFrame solves this by unifying **Context** (via a Universal File System) and **Control** (via strict Type-Safe
-Protocols). It creates a shared workspace where the Human defines the _Intent_, and the Swarm executes the _Labor_, with
-a rigorous activity journal connecting the two.
+This workflow is **impossible** with current IDE agents, which require continuous human attention.
 
 ---
 

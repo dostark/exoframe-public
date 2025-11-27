@@ -6,7 +6,7 @@
  * and provides an audit trail.
  */
 
-import { join, relative, basename } from "@std/path";
+import { basename, join, relative } from "@std/path";
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "./db.ts";
 
@@ -273,8 +273,7 @@ branch: "${traceData.branch}"
       }
     }
 
-    stats.totalFilesChanged =
-      stats.filesCreated.length + stats.filesModified.length + stats.filesDeleted.length;
+    stats.totalFilesChanged = stats.filesCreated.length + stats.filesModified.length + stats.filesDeleted.length;
 
     // Try to get insertion/deletion stats
     const summaryMatch = output.match(/(\d+) insertions?\(\+\)/);

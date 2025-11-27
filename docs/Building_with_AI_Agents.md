@@ -1352,20 +1352,20 @@ That's not just irony—it's validation.
 
 ### The Essential Patterns
 
-| Pattern                       | Command                                              | Result                                         |
-| ----------------------------- | ---------------------------------------------------- | ---------------------------------------------- |
-| **Design Review**             | "Review these docs. What's wrong?"                   | AI critiques design pre-implementation         |
-| **Refinement**                | "Refine Phase X steps with success criteria"         | Expands brief specs into detailed requirements |
-| **Walking Skeleton**          | "Build minimal end-to-end flow"                      | Demo-able system from day 1                    |
-| **TDD Feature**               | "Implement step X in TDD manner"                     | Tests first, implementation follows            |
-| **Coverage Target**           | "Implement in TDD manner. Achieve 70% branch coverage" | Measurable test quality                      |
-| **Performance Investigation** | "Why is X slow?"                                     | Measurement, not guessing                      |
-| **Configuration**             | "Make X configurable"                                | Replaces magic numbers with schema             |
-| **Security Audit**            | "What attacks could work on Y?"                      | AI proposes vulnerabilities to test            |
-| **Code Archaeology**          | "Is X actually used anywhere?"                       | Find zombie code                               |
-| **Test Deduplication**        | "Check if there are test duplications"               | Consolidate scattered tests                    |
-| **Activity Logging Audit**    | "Verify every CLI command is traced in activity log" | Complete audit trail                           |
-| **Full Verification**         | "Run all tests"                                      | Verify nothing broke                           |
+| Pattern                       | Command                                                | Result                                         |
+| ----------------------------- | ------------------------------------------------------ | ---------------------------------------------- |
+| **Design Review**             | "Review these docs. What's wrong?"                     | AI critiques design pre-implementation         |
+| **Refinement**                | "Refine Phase X steps with success criteria"           | Expands brief specs into detailed requirements |
+| **Walking Skeleton**          | "Build minimal end-to-end flow"                        | Demo-able system from day 1                    |
+| **TDD Feature**               | "Implement step X in TDD manner"                       | Tests first, implementation follows            |
+| **Coverage Target**           | "Implement in TDD manner. Achieve 70% branch coverage" | Measurable test quality                        |
+| **Performance Investigation** | "Why is X slow?"                                       | Measurement, not guessing                      |
+| **Configuration**             | "Make X configurable"                                  | Replaces magic numbers with schema             |
+| **Security Audit**            | "What attacks could work on Y?"                        | AI proposes vulnerabilities to test            |
+| **Code Archaeology**          | "Is X actually used anywhere?"                         | Find zombie code                               |
+| **Test Deduplication**        | "Check if there are test duplications"                 | Consolidate scattered tests                    |
+| **Activity Logging Audit**    | "Verify every CLI command is traced in activity log"   | Complete audit trail                           |
+| **Full Verification**         | "Run all tests"                                        | Verify nothing broke                           |
 
 ### The Question Templates
 
@@ -1525,12 +1525,14 @@ Agent: [creates comprehensive audit report]
 ## CLI Activity Logging Verification Report
 
 ### Commands with Complete Logging ✅
+
 | Command | Actions Logged |
 | plan create | plan.created |
 | portal add | portal.added |
 | changeset apply | changeset.applied |
 
 ### Commands Missing Logging ❌
+
 | Command | Issue |
 | daemon start | No logging |
 | daemon stop | No logging |
