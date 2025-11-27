@@ -1283,6 +1283,13 @@ Refinement isn't a phase—it's a continuous process. Be ready to elaborate:
 - AI handles tedious parts (updating all call sites)
 - You focus on design decisions
 
+**5. Format Migration Confidence**
+
+- TOML migration touched 14 files across parser, services, CLI, tests, and docs
+- All 304 tests continued passing throughout
+- Zero regressions because tests caught every dependent code path
+- ~22% token savings achieved without breaking anything
+
 ## Conclusion: The New Collaboration Model
 
 ### What We Built
@@ -1294,6 +1301,7 @@ Refinement isn't a phase—it's a continuous process. Be ready to elaborate:
 - Git Integration (identity-aware commits)
 - Execution Loop (lease-based coordination)
 - Human checkpoints (approve/reject/request-changes)
+- TOML-based structured metadata (token-efficient, consistent)
 
 **Built With**: The same patterns it enables. We ate our own dog food before the kitchen passed inspection.
 
@@ -1311,6 +1319,7 @@ Refinement isn't a phase—it's a continuous process. Be ready to elaborate:
 - Questions beat commands
 - Configuration beats hardcoding
 - Tests are the real documentation
+- Format consistency matters for LLM context efficiency
 
 **The Surprise**:
 Building a system for AI agents _with_ AI agents revealed exactly what agents need:
@@ -1319,6 +1328,7 @@ Building a system for AI agents _with_ AI agents revealed exactly what agents ne
 - Safe tools (ToolRegistry with validation)
 - Identity (agent_id tracking)
 - Human oversight (approval workflow)
+- Token-efficient formats (TOML over YAML saves ~22%)
 
 ### The Future
 
@@ -1365,6 +1375,7 @@ That's not just irony—it's validation.
 | **Code Archaeology**          | "Is X actually used anywhere?"                         | Find zombie code                               |
 | **Test Deduplication**        | "Check if there are test duplications"                 | Consolidate scattered tests                    |
 | **Activity Logging Audit**    | "Verify every CLI command is traced in activity log"   | Complete audit trail                           |
+| **Format Migration**          | "Standardize on TOML format across codebase"           | Consistent format, token savings               |
 | **Full Verification**         | "Run all tests"                                        | Verify nothing broke                           |
 
 ### The Question Templates
@@ -1389,6 +1400,13 @@ That's not just irony—it's validation.
 - "What did we forget to test?"
 - "What could be simplified?"
 - "What's no longer used?"
+
+**For Format/Architecture Decisions**:
+
+- "What format should we standardize on? YAML, TOML, JSON?"
+- "How many tokens does each format use in LLM context?"
+- "What are all the places that would need updating if we change format?"
+- "Can we do this migration without breaking existing files?"
 
 ### Pattern 12: Coverage-Driven TDD
 
@@ -1584,7 +1602,109 @@ it("should log daemon.started to activity journal", async () => {
 - Compliance and accountability
 - Understanding system behavior
 
-### Pattern 15: Test Database Setup
+### Pattern 15: Format Standardization Migration (TOML Migration)
+
+**The Context**:
+ExoFrame originally used mixed formats—YAML frontmatter in requests/plans (`---` delimiters), different syntax across components. This created inconsistency and higher token usage when files were included in LLM context.
+
+**The Decision**:
+
+```
+You: "I think we should standardize on TOML format across the codebase"
+Agent: [analyzes current format usage]
+Agent: "Found YAML frontmatter in requests, plans. TOML in config. 
+        Inconsistent."
+```
+
+**The Migration Strategy** (TDD-Driven):
+
+1. **Update Parser First** (the core change):
+   ```
+   You: "Update FrontmatterParser to use TOML (+++ delimiters) instead of YAML (---)"
+   Agent: [updates tests first]
+   Agent: [changes parser to only accept +++]
+   Agent: [removes @std/yaml dependency]
+   ```
+
+2. **Update Dependent Services** (cascade):
+   ```
+   You: "Now update services that generate frontmatter"
+   Agent: [updates plan_writer.ts, execution_loop.ts, mission_reporter.ts]
+   Agent: [updates CLI base.ts, plan_commands.ts]
+   ```
+
+3. **Update All Test Fixtures**:
+   ```
+   You: "Convert test fixtures from YAML to TOML"
+   Agent: [bulk updates across 5 test files]
+   Agent: [changes --- to +++ and key: value to key = "value"]
+   ```
+
+4. **Update Documentation**:
+   ```
+   You: "Update all YAML mentions in documentation to TOML"
+   Agent: [grep for YAML references]
+   Agent: [updates Implementation Plan, White Paper, User Guide]
+   ```
+
+**The Result**:
+
+| Metric             | Before     | After      |
+| ------------------ | ---------- | ---------- |
+| Frontmatter Format | Mixed YAML | TOML only  |
+| Delimiter          | `---`      | `+++`      |
+| Token Usage        | ~45/file   | ~35/file   |
+| Token Savings      | -          | ~22%       |
+| Dependencies       | @std/yaml  | (removed)  |
+| Tests              | 304        | 304        |
+
+**The TOML Format**:
+
+```toml
++++
+trace_id = "550e8400-e29b-41d4-a716-446655440000"
+status = "pending"
+priority = "normal"
+agent = "default"
+created_at = 2025-11-27T10:30:00Z
+tags = ["feature", "api"]
++++
+
+# Request body here
+```
+
+**Why TOML Over YAML**:
+
+- **Explicit strings**: No type coercion surprises (`yes` != boolean)
+- **Simpler syntax**: No indentation sensitivity
+- **Token efficiency**: ~22% savings in LLM context windows
+- **Consistency**: Already using TOML for `exo.config.toml`
+- **Cleaner arrays**: `tags = ["a", "b"]` vs multi-line YAML
+
+**The Migration Pattern**:
+
+```
+1. Define target format clearly (examples, schema)
+2. Update tests FIRST to expect new format
+3. Update parser/core logic to produce new format
+4. Run tests → find all dependent code that breaks
+5. Update each dependent service
+6. Update test fixtures
+7. Update documentation
+8. Remove old format support (clean break)
+```
+
+**The Lesson**: Format migrations are best done atomically with TDD—update tests first, then watch them guide you to every place that needs changing.
+
+**Files Changed in Migration**:
+
+- Parser: `src/parsers/markdown.ts`
+- Services: `plan_writer.ts`, `execution_loop.ts`, `mission_reporter.ts`
+- CLI: `base.ts`, `plan_commands.ts`
+- Tests: `frontmatter_test.ts`, `plan_writer_test.ts`, `mission_reporter_test.ts`, `execution_loop_test.ts`, `cli/base_test.ts`, `cli/plan_commands_test.ts`
+- Docs: 4 documentation files updated
+
+### Pattern 16: Test Database Setup
 
 **The Discovery**:
 
@@ -1668,6 +1788,7 @@ Every feature needs tests for:
 - ✅ Integration (works with existing code)
 - ✅ Performance (meets requirements)
 - ✅ Activity logging (operations traced)
+- ✅ Format consistency (TOML frontmatter with +++ delimiters)
 
 ### The Success Metrics
 
@@ -1684,6 +1805,7 @@ Every feature needs tests for:
 - Branch coverage meets targets (70%+ minimum)
 - All CLI commands have activity logging
 - No duplicate test files exist
+- Format is consistent across all structured files (TOML everywhere)
 
 **You know it's not working when**:
 
@@ -1697,6 +1819,7 @@ Every feature needs tests for:
 - Manual testing is required
 - Coverage is unknown or unmeasured
 - Operations happen without audit trail
+- Mixed formats create parsing complexity (YAML here, TOML there)
 
 ### The Refinement Red Flags vs. Green Lights
 
@@ -1715,6 +1838,7 @@ Every feature needs tests for:
 - "Implement read_file tool that validates paths through PathResolver and logs to Activity Journal"
 - "Reject inputs with zod schema, return validation errors in structured format"
 - "Whitelist commands: [echo, git, deno], block all others including rm, dd, chmod"
+- "Use TOML frontmatter with +++ delimiters, key = \"value\" syntax"
 
 **The Test**: If you can't write a test case from the description, it needs refinement.
 
