@@ -28,7 +28,6 @@
   "imports": {
     "@std/fs": "jsr:@std/fs@^0.221.0",
     "@std/path": "jsr:@std/path@^0.221.0",
-    "@std/yaml": "jsr:@std/yaml@^0.221.0",
     "@std/toml": "jsr:@std/toml@^0.221.0",
     "@std/crypto": "jsr:@std/crypto@^0.221.0",
     "@std/encoding": "jsr:@std/encoding@^0.221.0",

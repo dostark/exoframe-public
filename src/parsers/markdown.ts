@@ -1,4 +1,4 @@
-import { parse as parseYaml } from "@std/yaml";
+import { parse as parseToml } from "@std/toml";
 import { type Request, RequestSchema } from "../schemas/request.ts";
 import type { DatabaseService } from "../services/db.ts";
 
@@ -11,13 +11,15 @@ export interface ParsedRequest {
 }
 
 /**
- * FrontmatterParser - Extracts and validates YAML frontmatter from markdown files
+ * FrontmatterParser - Extracts and validates TOML frontmatter from markdown files
  *
  * Implements Step 2.2 of the Implementation Plan:
- * - Extracts frontmatter between --- delimiters
- * - Parses YAML to JavaScript object
+ * - Extracts TOML frontmatter between +++ delimiters
+ * - Parses TOML to JavaScript object
  * - Validates against RequestSchema using Zod
  * - Logs validation events to Activity Journal (if database provided)
+ *
+ * TOML format is used for token efficiency when files are embedded in LLM context.
  */
 export class FrontmatterParser {
   private db?: DatabaseService;
@@ -30,7 +32,7 @@ export class FrontmatterParser {
    * Parse markdown content and extract validated frontmatter
    */
   parse(markdown: string, filePath?: string): ParsedRequest {
-    // Stage 1: Extract frontmatter
+    // Stage 1: Extract TOML frontmatter
     const { frontmatter, body } = this.extractFrontmatter(markdown);
 
     // Stage 2: Validate with Zod
@@ -87,32 +89,31 @@ export class FrontmatterParser {
   }
 
   /**
-   * Extract frontmatter and body from markdown
+   * Extract TOML frontmatter and body from markdown
    */
   private extractFrontmatter(markdown: string): { frontmatter: Record<string, unknown>; body: string } {
-    // Match frontmatter between --- delimiters
-    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
-    const match = markdown.match(frontmatterRegex);
+    // Match TOML frontmatter between +++ delimiters
+    const tomlRegex = /^\+\+\+\n([\s\S]*?)\n\+\+\+\n?([\s\S]*)$/;
+    const match = markdown.match(tomlRegex);
 
     if (!match) {
-      throw new Error("No frontmatter found: markdown must start with --- and end with ---");
+      throw new Error("No frontmatter found: markdown must start with +++ and end with +++");
     }
 
-    const yamlContent = match[1];
+    const tomlContent = match[1];
     const body = match[2] || "";
 
     try {
-      // Parse YAML to JavaScript object
-      const frontmatter = parseYaml(yamlContent) as Record<string, unknown>;
+      const frontmatter = parseToml(tomlContent) as Record<string, unknown>;
 
       if (!frontmatter || typeof frontmatter !== "object") {
-        throw new Error("Frontmatter must be a YAML object");
+        throw new Error("Frontmatter must be a TOML object");
       }
 
       return { frontmatter, body };
     } catch (error) {
       if (error instanceof Error) {
-        throw new Error(`Failed to parse YAML frontmatter: ${error.message}`);
+        throw new Error(`Failed to parse TOML frontmatter: ${error.message}`);
       }
       throw error;
     }

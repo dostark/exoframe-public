@@ -12,6 +12,8 @@ import { initTestDbService } from "./helpers/db.ts";
  * - Test 3: Invalid enum value (status: "banana") → Throws error listing valid options
  * - Test 4: Extra fields in frontmatter → Ignored (Zod strips unknown keys by default)
  * - Test 5: No frontmatter delimiters → Throws "No frontmatter found" error
+ *
+ * Uses TOML frontmatter format (+++ delimiters) for token efficiency.
  */
 
 Deno.test("RequestSchema: valid frontmatter object passes validation", () => {
@@ -92,14 +94,14 @@ Deno.test("RequestSchema: strips unknown fields", () => {
   assertEquals(result.another_extra, undefined);
 });
 
-Deno.test("FrontmatterParser: valid markdown with frontmatter", () => {
-  const markdown = `---
-trace_id: "550e8400-e29b-41d4-a716-446655440000"
-agent_id: "coder-agent"
-status: "pending"
-priority: 8
-tags: ["feature", "ui"]
----
+Deno.test("FrontmatterParser: valid markdown with TOML frontmatter", () => {
+  const markdown = `+++
+trace_id = "550e8400-e29b-41d4-a716-446655440000"
+agent_id = "coder-agent"
+status = "pending"
+priority = 8
+tags = ["feature", "ui"]
++++
 
 # Implement Login Page
 
@@ -108,12 +110,14 @@ Create a modern login page with:
 - "Remember me" checkbox
 `;
 
-  const parser = new FrontmatterParser(); // No database
+  const parser = new FrontmatterParser();
   const result = parser.parse(markdown);
 
   assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
   assertEquals(result.request.agent_id, "coder-agent");
   assertEquals(result.request.status, "pending");
+  assertEquals(result.request.priority, 8);
+  assertEquals(result.request.tags, ["feature", "ui"]);
   assertEquals(result.body.includes("Implement Login Page"), true);
   assertEquals(result.body.includes("Email/password"), true);
 });
@@ -131,29 +135,28 @@ No frontmatter here!
   ) as Error;
 
   assertEquals(error.message.includes("No frontmatter found"), true);
+  assertEquals(error.message.includes("+++"), true);
 });
 
-Deno.test("FrontmatterParser: throws on invalid YAML syntax", () => {
-  const markdown = `---
-trace_id: "missing-closing-quote
-agent_id: coder-agent
----
+Deno.test("FrontmatterParser: throws on invalid TOML syntax", () => {
+  const markdown = `+++
+trace_id = "missing-closing-quote
+agent_id = "coder-agent"
++++
 
 Body content
 `;
 
   const parser = new FrontmatterParser();
 
-  assertThrows(
-    () => parser.parse(markdown),
-  );
+  assertThrows(() => parser.parse(markdown));
 });
 
 Deno.test("FrontmatterParser: throws on validation error with field details", () => {
-  const markdown = `---
-agent_id: "coder-agent"
-status: "pending"
----
+  const markdown = `+++
+agent_id = "coder-agent"
+status = "pending"
++++
 
 Missing trace_id field
 `;
@@ -169,11 +172,11 @@ Missing trace_id field
 });
 
 Deno.test("FrontmatterParser: handles empty body content", () => {
-  const markdown = `---
-trace_id: "550e8400-e29b-41d4-a716-446655440000"
-agent_id: "coder-agent"
-status: "pending"
----
+  const markdown = `+++
+trace_id = "550e8400-e29b-41d4-a716-446655440000"
+agent_id = "coder-agent"
+status = "pending"
++++
 `;
 
   const parser = new FrontmatterParser();
@@ -183,17 +186,58 @@ status: "pending"
   assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
 });
 
+Deno.test("FrontmatterParser: TOML with datetime parses correctly", () => {
+  const markdown = `+++
+trace_id = "550e8400-e29b-41d4-a716-446655440000"
+agent_id = "coder-agent"
+status = "pending"
+created_at = "2025-11-27T10:30:00Z"
++++
+
+Body content
+`;
+
+  const parser = new FrontmatterParser();
+  const result = parser.parse(markdown);
+
+  assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
+  assertEquals(result.request.created_at, "2025-11-27T10:30:00Z");
+});
+
+Deno.test("FrontmatterParser: handles special characters in strings", () => {
+  const markdown = `+++
+trace_id = "550e8400-e29b-41d4-a716-446655440000"
+agent_id = "coder-agent"
+status = "pending"
++++
+
+# Fix: Bug with colons and "quotes"
+
+Content with special chars: test = value
+`;
+
+  const parser = new FrontmatterParser();
+  const result = parser.parse(markdown);
+
+  assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
+  assertEquals(result.body.includes("Fix: Bug"), true);
+  assertEquals(result.body.includes("quotes"), true);
+});
+
 Deno.test("FrontmatterParser logs successful validation", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
     const parser = new FrontmatterParser(db);
-    const markdown = `---
-trace_id: "550e8400-e29b-41d4-a716-446655440000"
-agent_id: "coder-agent"
-status: "pending"
-priority: 8
-tags: ["feature", "ui"]
----\n\n# Test\n`;
+    const markdown = `+++
+trace_id = "550e8400-e29b-41d4-a716-446655440000"
+agent_id = "coder-agent"
+status = "pending"
+priority = 8
+tags = ["feature", "ui"]
++++
+
+# Test
+`;
     const result = parser.parse(markdown, "test.md");
     assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
 
@@ -217,10 +261,13 @@ Deno.test("FrontmatterParser logs validation failure", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
     const parser = new FrontmatterParser(db);
-    const markdown = `---
-agent_id: "coder-agent"
-status: "pending"
----\n\n# Bad\n`;
+    const markdown = `+++
+agent_id = "coder-agent"
+status = "pending"
++++
+
+# Bad
+`;
     let caught = false;
     try {
       parser.parse(markdown, "bad.md");

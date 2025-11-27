@@ -11,8 +11,8 @@ import { initTestDbService } from "./helpers/db.ts";
  * - Monitor /System/Active for approved plans
  * - Acquire lease to prevent concurrent execution
  * - Execute plan using Tool Registry and Git Service
- * - Handle success path: commit changes, generate report, archive plan
- * - Handle failure path: rollback git, generate failure report, move plan back
+ * - Handle success path = commit changes, generate report, archive plan
+ * - Handle failure path = rollback git, generate failure report, move plan back
  * - Release lease even on failure
  * - Log all execution steps to Activity Journal with trace_id and agent_id
  */
@@ -27,12 +27,12 @@ Deno.test("ExecutionLoop: processes approved plan from /System/Active", async ()
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
     // Create a simple plan file
-    const planContent = `---
-trace_id: "test-trace-001"
-request_id: "test-request"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-001"
+request_id = "test-request"
+status = "active"
+agent_id = "test-agent"
++++
 
 # Test Plan
 
@@ -77,12 +77,12 @@ Deno.test("ExecutionLoop: acquires lease to prevent concurrent execution", async
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-lease"
-request_id: "lease-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-lease"
+request_id = "lease-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # Lease Test Plan
 
@@ -134,12 +134,12 @@ Deno.test("ExecutionLoop: creates git branch and commits with trace_id", async (
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-git"
-request_id: "git-commit-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-git"
+request_id = "git-commit-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # Git Integration Test
 
@@ -198,12 +198,12 @@ Deno.test("ExecutionLoop: handles tool execution failure gracefully", async () =
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
     // Plan that will fail (path traversal attempt)
-    const planContent = `---
-trace_id: "test-trace-fail"
-request_id: "fail-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-fail"
+request_id = "fail-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # Failure Test Plan
 
@@ -252,12 +252,12 @@ Deno.test("ExecutionLoop: generates mission report on success", async () => {
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-report"
-request_id: "report-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-report"
+request_id = "report-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # Report Test Plan
 
@@ -298,12 +298,12 @@ Deno.test("ExecutionLoop: releases lease even on failure", async () => {
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-lease-release"
-request_id: "lease-release-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-lease-release"
+request_id = "lease-release-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # Lease Release Test
 
@@ -347,12 +347,12 @@ Deno.test("ExecutionLoop: logs all execution steps to Activity Journal", async (
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-logging"
-request_id: "logging-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-logging"
+request_id = "logging-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # Logging Test Plan
 
@@ -407,12 +407,12 @@ Deno.test("ExecutionLoop: parses plan frontmatter correctly", async () => {
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-parse"
-request_id: "parse-test"
-status: "active"
-agent_id: "senior-coder"
----
+    const planContent = `+++
+trace_id = "test-trace-parse"
+request_id = "parse-test"
+status = "active"
+agent_id = "senior-coder"
++++
 
 # Parse Test Plan
 `;
@@ -442,10 +442,10 @@ Deno.test("ExecutionLoop: rejects plan with missing required frontmatter", async
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
     // Plan missing trace_id
-    const planContent = `---
-request_id: "invalid-test"
-status: "active"
----
+    const planContent = `+++
+request_id = "invalid-test"
+status = "active"
++++
 
 # Invalid Plan
 `;
@@ -474,12 +474,12 @@ Deno.test("ExecutionLoop: handles git rollback on failure", async () => {
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-rollback"
-request_id: "rollback-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-rollback"
+request_id = "rollback-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # Rollback Test Plan
 
@@ -517,8 +517,8 @@ agent_id: "test-agent"
   }
 });
 
-Deno.test("ExecutionLoop: parses YAML action blocks from plan", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "exec-test-yaml-" });
+Deno.test("ExecutionLoop: parses TOML action blocks from plan", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "exec-test-toml-" });
   const { db, cleanup } = await initTestDbService();
 
   try {
@@ -526,35 +526,37 @@ Deno.test("ExecutionLoop: parses YAML action blocks from plan", async () => {
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-yaml"
-request_id: "yaml-actions"
-status: "active"
----
+    const planContent = `+++
+trace_id = "test-trace-toml"
+request_id = "toml-actions"
+status = "active"
++++
 
-# Test Plan with YAML Actions
+# Test Plan with TOML Actions
 
 ## Actions to Execute
 
-\`\`\`yaml
-tool: read_file
-params:
-  path: "test.txt"
-description: Read test file
+\`\`\`toml
+tool = "read_file"
+description = "Read test file"
+
+[params]
+path = "test.txt"
 \`\`\`
 
-\`\`\`yaml
-tool: write_file
-params:
-  path: "output.txt"
-  content: "test content"
-description: Write output file
+\`\`\`toml
+tool = "write_file"
+description = "Write output file"
+
+[params]
+path = "output.txt"
+content = "test content"
 \`\`\`
 
-This plan has two actions in YAML format.
+This plan has two actions in TOML format.
 `;
 
-    const planPath = join(systemActiveDir, "yaml-actions.md");
+    const planPath = join(systemActiveDir, "toml-actions.md");
     await Deno.writeTextFile(planPath, planContent);
 
     const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
@@ -564,7 +566,7 @@ This plan has two actions in YAML format.
 
     // Verify actions were logged
     await new Promise((resolve) => setTimeout(resolve, 150));
-    const activities = db.getActivitiesByTrace("test-trace-yaml");
+    const activities = db.getActivitiesByTrace("test-trace-toml");
 
     const actionStarted = activities.filter((a: any) => a.action_type === "execution.action_started");
     assertEquals(actionStarted.length, 2, "Should log 2 action starts");
@@ -574,8 +576,8 @@ This plan has two actions in YAML format.
   }
 });
 
-Deno.test("ExecutionLoop: parses JSON action blocks from plan", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "exec-test-json-" });
+Deno.test("ExecutionLoop: parses multiple TOML action blocks from plan", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "exec-test-multi-" });
   const { db, cleanup } = await initTestDbService();
 
   try {
@@ -583,28 +585,26 @@ Deno.test("ExecutionLoop: parses JSON action blocks from plan", async () => {
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-json"
-request_id: "json-actions"
-status: "active"
----
+    const planContent = `+++
+trace_id = "test-trace-multi"
+request_id = "multi-actions"
+status = "active"
++++
 
-# Test Plan with JSON Actions
+# Test Plan with Multiple TOML Actions
 
-\`\`\`json
-{
-  "tool": "read_file",
-  "params": {
-    "path": "data.json"
-  },
-  "description": "Read JSON data"
-}
+\`\`\`toml
+tool = "read_file"
+description = "Read data"
+
+[params]
+path = "data.txt"
 \`\`\`
 
-This plan has one action in JSON format.
+This plan has one action in TOML format.
 `;
 
-    const planPath = join(systemActiveDir, "json-actions.md");
+    const planPath = join(systemActiveDir, "multi-actions.md");
     await Deno.writeTextFile(planPath, planContent);
 
     const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
@@ -613,7 +613,7 @@ This plan has one action in JSON format.
     assertEquals(result.success, true);
 
     await new Promise((resolve) => setTimeout(resolve, 150));
-    const activities = db.getActivitiesByTrace("test-trace-json");
+    const activities = db.getActivitiesByTrace("test-trace-multi");
 
     const actionStarted = activities.filter((a: any) => a.action_type === "execution.action_started");
     assertEquals(actionStarted.length, 1, "Should log 1 action start");
@@ -632,11 +632,11 @@ Deno.test("ExecutionLoop: handles plans with no action blocks", async () => {
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-noactions"
-request_id: "no-actions"
-status: "active"
----
+    const planContent = `+++
+trace_id = "test-trace-noactions"
+request_id = "no-actions"
+status = "active"
++++
 
 # Plan Without Actions
 
@@ -671,26 +671,28 @@ Deno.test("ExecutionLoop: ignores malformed code blocks", async () => {
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-malformed"
-request_id: "malformed-blocks"
-status: "active"
----
+    const planContent = `+++
+trace_id = "test-trace-malformed"
+request_id = "malformed-blocks"
+status = "active"
++++
 
 # Plan with Malformed Blocks
 
-\`\`\`yaml
-this is not valid yaml: [unclosed
+\`\`\`toml
+this is not valid toml = [unclosed
 \`\`\`
 
-\`\`\`yaml
-tool: read_file
-params:
-  path: "valid.txt"
+\`\`\`toml
+tool = "read_file"
+
+[params]
+path = "valid.txt"
 \`\`\`
 
-\`\`\`json
-{ invalid json, no quotes }
+\`\`\`python
+# This is python, not TOML
+print("hello")
 \`\`\`
 
 Only the middle block should be parsed.
@@ -724,31 +726,30 @@ Deno.test("ExecutionLoop: ignores code blocks without tool field", async () => {
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-notool"
-request_id: "no-tool-field"
-status: "active"
----
+    const planContent = `+++
+trace_id = "test-trace-notool"
+request_id = "no-tool-field"
+status = "active"
++++
 
 # Plan with Non-Action Code Blocks
 
-\`\`\`yaml
+\`\`\`toml
 # This is just configuration, not an action
-database: postgres
-port: 5432
+database = "postgres"
+port = 5432
 \`\`\`
 
-\`\`\`yaml
-tool: read_file
-params:
-  path: "config.yml"
+\`\`\`toml
+tool = "read_file"
+
+[params]
+path = "config.toml"
 \`\`\`
 
-\`\`\`json
-{
-  "name": "example",
-  "version": "1.0.0"
-}
+\`\`\`python
+# Python code, not TOML
+name = "example"
 \`\`\`
 
 Only the middle block with 'tool' field should be treated as an action.
@@ -806,12 +807,12 @@ Deno.test("ExecutionLoop: handles commit with no changes gracefully", async () =
     }).output();
 
     // Create plan that makes no actual file changes
-    const planContent = `---
-trace_id: "test-trace-nochanges"
-request_id: "nochanges-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-nochanges"
+request_id = "nochanges-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # No Changes Plan
 
@@ -860,12 +861,12 @@ Deno.test("ExecutionLoop: lease mechanism prevents duplicate processing", async 
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-lease"
-request_id: "lease-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-lease"
+request_id = "lease-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # Lease Test
 `;
@@ -906,10 +907,10 @@ Deno.test("ExecutionLoop: handles plan without required frontmatter fields", asy
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
     // Plan missing trace_id
-    const planContent = `---
-request_id: "bad-plan"
-status: "active"
----
+    const planContent = `+++
+request_id = "bad-plan"
+status = "active"
++++
 
 # Bad Plan
 `;
@@ -939,9 +940,9 @@ Deno.test("ExecutionLoop: handles plan with malformed frontmatter", async () => 
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
     // Plan with invalid YAML
-    const planContent = `---
+    const planContent = `+++
 this is not: valid: yaml: format
----
++++
 
 # Malformed Plan
 `;
@@ -970,20 +971,21 @@ Deno.test("ExecutionLoop: handles unknown tool gracefully", async () => {
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
     // Plan with action using unknown tool
-    const planContent = `---
-trace_id: "test-trace-unknown"
-request_id: "unknown-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-unknown"
+request_id = "unknown-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # Unknown Tool Test
 
-\`\`\`yaml
-tool: nonexistent_tool
-params:
-  test: value
-description: Uses unknown tool
+\`\`\`toml
+tool = "nonexistent_tool"
+description = "Uses unknown tool"
+
+[params]
+test = "value"
 \`\`\`
 `;
 
@@ -1024,20 +1026,21 @@ Deno.test("ExecutionLoop: summarizeResult handles various result types", async (
     await Deno.writeTextFile(join(tempDir, "test-read.txt"), "a".repeat(200));
 
     // Plan with action that returns large result
-    const planContent = `---
-trace_id: "test-trace-summary"
-request_id: "summary-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-summary"
+request_id = "summary-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # Summary Test
 
-\`\`\`yaml
-tool: read_file
-params:
-  path: test-read.txt
-description: Read a large file
+\`\`\`toml
+tool = "read_file"
+description = "Read a large file"
+
+[params]
+path = "test-read.txt"
 \`\`\`
 `;
 
@@ -1068,12 +1071,12 @@ Deno.test("ExecutionLoop: failure report generation and plan status update", asy
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-failreport"
-request_id: "failreport-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-failreport"
+request_id = "failreport-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # Failure Report Test
 
@@ -1109,7 +1112,7 @@ Intentionally fail
     assert(planExists, "Failed plan should be moved back to Requests");
 
     const updatedPlan = await Deno.readTextFile(requestPath);
-    assertEquals(updatedPlan.includes('status: "error"'), true, "Plan status should be updated to error");
+    assertEquals(updatedPlan.includes('status = "error"'), true, "Plan status should be updated to error");
   } finally {
     await cleanup();
     await Deno.remove(tempDir, { recursive: true });
@@ -1148,12 +1151,12 @@ Deno.test("ExecutionLoop: handles git rollback on failure", async () => {
       cwd: tempDir,
     }).output();
 
-    const planContent = `---
-trace_id: "test-trace-rollback"
-request_id: "rollback-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-rollback"
+request_id = "rollback-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # Rollback Test
 
@@ -1194,12 +1197,12 @@ Deno.test("ExecutionLoop: logActivity handles missing database gracefully", asyn
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    const planContent = `---
-trace_id: "test-trace-nodb"
-request_id: "nodb-test"
-status: "active"
-agent_id: "test-agent"
----
+    const planContent = `+++
+trace_id = "test-trace-nodb"
+request_id = "nodb-test"
+status = "active"
+agent_id = "test-agent"
++++
 
 # No DB Test
 `;

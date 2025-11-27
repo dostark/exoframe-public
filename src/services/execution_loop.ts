@@ -4,7 +4,7 @@
  */
 
 import { join } from "@std/path";
-import { parse as parseYaml } from "@std/yaml";
+import { parse as parseToml } from "@std/toml";
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "./db.ts";
 import { GitService } from "./git_service.ts";
@@ -176,13 +176,13 @@ export class ExecutionLoop {
   private async parsePlan(planPath: string): Promise<PlanFrontmatter> {
     const content = await Deno.readTextFile(planPath);
 
-    // Extract frontmatter between --- markers
-    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    // Extract TOML frontmatter between +++ markers
+    const match = content.match(/^\+\+\+\n([\s\S]*?)\n\+\+\+/);
     if (!match) {
       throw new Error("Plan file missing frontmatter");
     }
 
-    const frontmatter = parseYaml(match[1]) as PlanFrontmatter;
+    const frontmatter = parseToml(match[1]) as unknown as PlanFrontmatter;
 
     // Validate required fields
     if (!frontmatter.trace_id) {
@@ -197,31 +197,31 @@ export class ExecutionLoop {
 
   /**
    * Parse action blocks from plan content
-   * Looks for code blocks with tool invocations in YAML or JSON format
+   * Looks for code blocks with tool invocations in TOML format
    */
   private parsePlanActions(planContent: string): PlanAction[] {
     const actions: PlanAction[] = [];
 
     // Match code blocks that contain action definitions
-    // Format: ```yaml or ```json blocks with tool and params fields
-    const codeBlockRegex = /```(?:yaml|json)\n([\s\S]*?)\n```/g;
+    // Format: ```toml blocks with tool and params fields
+    const codeBlockRegex = /```toml\n([\s\S]*?)\n```/g;
     let match;
 
     while ((match = codeBlockRegex.exec(planContent)) !== null) {
       try {
         const block = match[1];
-        const parsed = parseYaml(block) as any;
+        const parsed = parseToml(block) as Record<string, unknown>;
 
         // Check if this looks like an action (has tool field)
         if (parsed && typeof parsed === "object" && "tool" in parsed) {
           actions.push({
-            tool: parsed.tool,
-            params: parsed.params || {},
-            description: parsed.description,
+            tool: parsed.tool as string,
+            params: (parsed.params as Record<string, unknown>) || {},
+            description: parsed.description as string | undefined,
           });
         }
       } catch {
-        // Skip blocks that aren't valid YAML/JSON or don't match action format
+        // Skip blocks that aren't valid TOML or don't match action format
         continue;
       }
     }
@@ -388,11 +388,11 @@ export class ExecutionLoop {
     const planFileName = planPath.split("/").pop()!;
     const requestPath = join(requestsDir, planFileName);
 
-    // Read plan, update frontmatter status
+    // Read plan, update frontmatter status (TOML format)
     const content = await Deno.readTextFile(planPath);
     const updatedContent = content.replace(
-      /status: "active"/,
-      'status: "error"',
+      /status = "active"/,
+      'status = "error"',
     );
 
     await Deno.writeTextFile(requestPath, updatedContent);
