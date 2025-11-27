@@ -70,12 +70,12 @@ export abstract class BaseCommand {
   }
 
   /**
-   * Parse frontmatter from markdown file
+   * Parse frontmatter from markdown file (TOML format)
    * @param content File content
    * @returns Frontmatter object
    */
   protected extractFrontmatter(content: string): Record<string, string> {
-    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    const match = content.match(/^\+\+\+\n([\s\S]*?)\n\+\+\+/);
     if (!match) {
       return {};
     }
@@ -84,11 +84,11 @@ export abstract class BaseCommand {
     const lines = match[1].split("\n");
 
     for (const line of lines) {
-      const colonIndex = line.indexOf(":");
-      if (colonIndex === -1) continue;
+      const equalIndex = line.indexOf("=");
+      if (equalIndex === -1) continue;
 
-      const key = line.substring(0, colonIndex).trim();
-      let value = line.substring(colonIndex + 1).trim();
+      const key = line.substring(0, equalIndex).trim();
+      let value = line.substring(equalIndex + 1).trim();
 
       // Remove quotes if present
       if (
@@ -105,19 +105,17 @@ export abstract class BaseCommand {
   }
 
   /**
-   * Serialize frontmatter object back to YAML format
+   * Serialize frontmatter object back to TOML format
    * @param frontmatter Frontmatter object
-   * @returns YAML string
+   * @returns TOML string
    */
   protected serializeFrontmatter(frontmatter: Record<string, string>): string {
-    const lines = ["---"];
+    const lines = ["+++"];
     for (const [key, value] of Object.entries(frontmatter)) {
-      // Quote values that contain special characters or spaces
-      const needsQuotes = /[:#\[\]{}|>]/.test(value) || value.includes(" ");
-      const quotedValue = needsQuotes ? `"${value}"` : value;
-      lines.push(`${key}: ${quotedValue}`);
+      // Always quote string values in TOML
+      lines.push(`${key} = "${value}"`);
     }
-    lines.push("---");
+    lines.push("+++");
     return lines.join("\n");
   }
 
@@ -133,7 +131,7 @@ export abstract class BaseCommand {
   ): string {
     const frontmatter = this.extractFrontmatter(content);
     const updated = { ...frontmatter, ...updates };
-    const body = content.replace(/^---\n[\s\S]*?\n---\n?/, "");
+    const body = content.replace(/^\+\+\+\n[\s\S]*?\n\+\+\+\n?/, "");
     return this.serializeFrontmatter(updated) + "\n" + body;
   }
 

@@ -930,7 +930,7 @@ Me: "Why XML? This format wasn't used before at all."
 ```
 
 **The Surface Reaction**:
-"This seems inconsistent - ExoFrame uses YAML and Markdown everywhere."
+"This seems inconsistent - ExoFrame uses TOML and Markdown everywhere."
 
 **The Actual Context**:
 

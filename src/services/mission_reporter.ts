@@ -140,7 +140,7 @@ export class MissionReporter {
   private async buildReport(traceData: TraceData): Promise<string> {
     const sections: string[] = [];
 
-    // 1. YAML Frontmatter
+    // 1. TOML Frontmatter
     sections.push(this.buildFrontmatter(traceData));
 
     // 2. Title
@@ -169,19 +169,19 @@ export class MissionReporter {
   }
 
   /**
-   * Generate YAML frontmatter for the report
+   * Generate TOML frontmatter for the report
    */
   private buildFrontmatter(traceData: TraceData): string {
     const completedAt = traceData.completedAt.toISOString();
 
-    return `---
-trace_id: "${traceData.traceId}"
-request_id: "${traceData.requestId}"
-status: "${traceData.status}"
-completed_at: "${completedAt}"
-agent_id: "${traceData.agentId}"
-branch: "${traceData.branch}"
----
+    return `+++
+trace_id = "${traceData.traceId}"
+request_id = "${traceData.requestId}"
+status = "${traceData.status}"
+completed_at = "${completedAt}"
+agent_id = "${traceData.agentId}"
+branch = "${traceData.branch}"
++++
 
 `;
   }

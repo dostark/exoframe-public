@@ -294,11 +294,11 @@ Deno.test("MissionReporter: links to context files with wiki links", async () =>
 });
 
 // ============================================================================
-// Test: YAML Frontmatter
+// Test: TOML Frontmatter
 // ============================================================================
 
-Deno.test("MissionReporter: formats report with valid YAML frontmatter", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mission-reporter-yaml-" });
+Deno.test("MissionReporter: formats report with valid TOML frontmatter", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "mission-reporter-toml-" });
   const { db, cleanup } = await initTestDbService();
 
   try {
@@ -326,14 +326,14 @@ Deno.test("MissionReporter: formats report with valid YAML frontmatter", async (
     const result = await reporter.generate(traceData);
     const content = await Deno.readTextFile(result.reportPath);
 
-    // Verify YAML frontmatter structure
-    assert(content.startsWith("---\n"), "Should start with YAML delimiter");
-    assertStringIncludes(content, 'trace_id: "test-trace-12345"');
-    assertStringIncludes(content, 'request_id: "test-request"');
-    assertStringIncludes(content, 'status: "completed"');
-    assertStringIncludes(content, 'agent_id: "test-agent"');
-    assertStringIncludes(content, 'branch: "feat/test-branch"');
-    assertStringIncludes(content, "completed_at:");
+    // Verify TOML frontmatter structure
+    assert(content.startsWith("+++\n"), "Should start with TOML delimiter");
+    assertStringIncludes(content, 'trace_id = "test-trace-12345"');
+    assertStringIncludes(content, 'request_id = "test-request"');
+    assertStringIncludes(content, 'status = "completed"');
+    assertStringIncludes(content, 'agent_id = "test-agent"');
+    assertStringIncludes(content, 'branch = "feat/test-branch"');
+    assertStringIncludes(content, "completed_at =");
   } finally {
     await cleanup();
     await Deno.remove(tempDir, { recursive: true });
@@ -362,17 +362,17 @@ Deno.test("MissionReporter: frontmatter has all required fields", async () => {
     const content = await Deno.readTextFile(result.reportPath);
 
     // Extract frontmatter
-    const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    const frontmatterMatch = content.match(/^\+\+\+\n([\s\S]*?)\n\+\+\+/);
     assertExists(frontmatterMatch, "Should have frontmatter");
     const frontmatter = frontmatterMatch[1];
 
     // All required fields present
-    assertStringIncludes(frontmatter, "trace_id:");
-    assertStringIncludes(frontmatter, "request_id:");
-    assertStringIncludes(frontmatter, "status:");
-    assertStringIncludes(frontmatter, "completed_at:");
-    assertStringIncludes(frontmatter, "agent_id:");
-    assertStringIncludes(frontmatter, "branch:");
+    assertStringIncludes(frontmatter, "trace_id =");
+    assertStringIncludes(frontmatter, "request_id =");
+    assertStringIncludes(frontmatter, "status =");
+    assertStringIncludes(frontmatter, "completed_at =");
+    assertStringIncludes(frontmatter, "agent_id =");
+    assertStringIncludes(frontmatter, "branch =");
   } finally {
     await cleanup();
     await Deno.remove(tempDir, { recursive: true });
@@ -746,7 +746,7 @@ Deno.test("MissionReporter: detects current branch for git diff", async () => {
     const content = await Deno.readTextFile(result.reportPath);
 
     // Branch should be in frontmatter
-    assertStringIncludes(content, `branch: "${branchName}"`);
+    assertStringIncludes(content, `branch = "${branchName}"`);
   } finally {
     await cleanup();
     await Deno.remove(tempDir, { recursive: true });
@@ -825,7 +825,7 @@ Deno.test("MissionReporter: handles failed status in trace data", async () => {
     const content = await Deno.readTextFile(result.reportPath);
 
     // Should show failed status
-    assertStringIncludes(content, 'status: "failed"');
+    assertStringIncludes(content, 'status = "failed"');
     assertStringIncludes(content, "permission error");
   } finally {
     await cleanup();

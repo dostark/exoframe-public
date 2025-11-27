@@ -344,46 +344,50 @@ export class PlanCommands extends BaseCommand {
   }
 
   /**
-   * Serialize frontmatter and body back to markdown format
+   * Serialize frontmatter and body back to markdown format (TOML)
    */
   private serializePlan(frontmatter: Record<string, unknown>, body: string): string {
-    const yaml = Object.entries(frontmatter)
+    const toml = Object.entries(frontmatter)
       .map(([key, value]) => {
         if (value === null || value === undefined) {
           return null;
         }
-        return `${key}: ${value}`;
+        return `${key} = "${value}"`;
       })
       .filter((line) => line !== null)
       .join("\n");
 
-    return `---\n${yaml}\n---\n\n${body}`;
+    return `+++\n${toml}\n+++\n\n${body}`;
   }
 
   /**
-   * Extract frontmatter and body from markdown (specific to PlanCommands)
+   * Extract frontmatter and body from markdown (TOML format)
    * Returns both frontmatter and body, unlike base class version
    */
   private extractFrontmatterWithBody(markdown: string): { frontmatter: Record<string, unknown>; body: string } {
-    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
+    const frontmatterRegex = /^\+\+\+\n([\s\S]*?)\n\+\+\+\n?([\s\S]*)$/;
     const match = markdown.match(frontmatterRegex);
 
     if (!match) {
       throw new Error("No frontmatter found");
     }
 
-    const yamlContent = match[1];
+    const tomlContent = match[1];
     const body = match[2] || "";
 
-    // Simple YAML parsing for key-value pairs
+    // Simple TOML parsing for key-value pairs
     const frontmatter: Record<string, unknown> = {};
-    const lines = yamlContent.split("\n");
+    const lines = tomlContent.split("\n");
 
     for (const line of lines) {
-      const colonIndex = line.indexOf(":");
-      if (colonIndex > 0) {
-        const key = line.substring(0, colonIndex).trim();
-        const value = line.substring(colonIndex + 1).trim();
+      const equalIndex = line.indexOf("=");
+      if (equalIndex > 0) {
+        const key = line.substring(0, equalIndex).trim();
+        let value = line.substring(equalIndex + 1).trim();
+        // Remove quotes if present
+        if (value.startsWith('"') && value.endsWith('"')) {
+          value = value.slice(1, -1);
+        }
         frontmatter[key] = value;
       }
     }

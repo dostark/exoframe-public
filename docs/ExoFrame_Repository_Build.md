@@ -133,7 +133,6 @@ cat > deno.json <<'EOF'
   "imports": {
     "@std/fs": "jsr:@std/fs@^0.221.0",
     "@std/path": "jsr:@std/path@^0.221.0",
-    "@std/yaml": "jsr:@std/yaml@^0.221.0",
     "@std/toml": "jsr:@std/toml@^0.221.0",
     "@db/sqlite": "jsr:@db/sqlite@^0.11.0",
     "zod": "https://deno.land/x/zod@v3.22.4/mod.ts"

@@ -166,16 +166,16 @@ export class PlanWriter {
   }
 
   /**
-   * Generate YAML frontmatter
+   * Generate TOML frontmatter
    */
   private generateFrontmatter(metadata: RequestMetadata): string {
     return [
-      "---",
-      `trace_id: "${metadata.traceId}"`,
-      `request_id: "${metadata.requestId}"`,
-      `status: "review"`,
-      `created_at: "${metadata.createdAt.toISOString()}"`,
-      "---",
+      "+++",
+      `trace_id = "${metadata.traceId}"`,
+      `request_id = "${metadata.requestId}"`,
+      `status = "review"`,
+      `created_at = "${metadata.createdAt.toISOString()}"`,
+      "+++",
       "",
     ].join("\n");
   }

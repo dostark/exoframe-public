@@ -434,13 +434,13 @@ export class ExecutionLoop {
     const reportName = `${timestamp}_${shortTrace}_${requestId}.md`;
     const reportPath = join(reportsDir, reportName);
 
-    const report = `---
-trace_id: "${traceId}"
-request_id: "${requestId}"
-status: "completed"
-completed_at: "${new Date().toISOString()}"
-agent_id: "${this.agentId}"
----
+    const report = `+++
+trace_id = "${traceId}"
+request_id = "${requestId}"
+status = "completed"
+completed_at = "${new Date().toISOString()}"
+agent_id = "${this.agentId}"
++++
 
 # Mission Report: ${requestId}
 
@@ -488,13 +488,13 @@ Review changes in git branch and merge if approved.
     const reportName = `${timestamp}_${shortTrace}_${requestId}_failure.md`;
     const reportPath = join(reportsDir, reportName);
 
-    const report = `---
-trace_id: "${traceId}"
-request_id: "${requestId}"
-status: "failed"
-failed_at: "${new Date().toISOString()}"
-agent_id: "${this.agentId}"
----
+    const report = `+++
+trace_id = "${traceId}"
+request_id = "${requestId}"
+status = "failed"
+failed_at = "${new Date().toISOString()}"
+agent_id = "${this.agentId}"
++++
 
 # Failure Report: ${requestId}
 

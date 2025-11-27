@@ -29,7 +29,7 @@
 - **Trace ID:** UUID linking request → plan → execution → report
 - **Lease:** Exclusive lock on a file (stored in `leases` table)
 - **Actor:** Entity performing action (agent name, "system", or "user")
-- **Blueprint:** YAML definition of an agent (model, capabilities, prompt)
+- **Blueprint:** TOML definition of an agent (model, capabilities, prompt)
 
 ---
 
@@ -94,7 +94,6 @@ cat > deno.json <<'EOF'
   "imports": {
     "@std/fs": "jsr:@std/fs@^0.221.0",
     "@std/path": "jsr:@std/path@^0.221.0",
-    "@std/yaml": "jsr:@std/yaml@^0.221.0",
     "@std/toml": "jsr:@std/toml@^0.221.0",
     "@db/sqlite": "jsr:@db/sqlite@^0.11.0",
     "zod": "https://deno.land/x/zod@v3.22.4/mod.ts"
@@ -330,19 +329,19 @@ async function readFileWhenStable(path: string): Promise<string> {
 ### Step 2.2: The Zod Frontmatter Parser ✅
 
 - **Dependencies:** Step 2.1 (File Watcher) — **Rollback:** accept any markdown file, skip validation.
-- **Action:** Implement a parser to extract and validate YAML frontmatter from request markdown files using Zod schemas.
+- **Action:** Implement a parser to extract and validate TOML frontmatter from request markdown files using Zod schemas.
 
-**The Problem:** Request files (`.md` files in `/Inbox/Requests`) contain structured metadata in YAML frontmatter, but
+**The Problem:** Request files (`.md` files in `/Inbox/Requests`) contain structured metadata in TOML frontmatter, but
 arrive as plain text:
 
-1. Frontmatter may be malformed (invalid YAML syntax)
+1. Frontmatter may be malformed (invalid TOML syntax)
 2. Required fields may be missing (`trace_id`, `status`, `agent_id`)
 3. Field types may be wrong (string instead of number, etc.)
 4. If we process invalid requests, agents fail with cryptic errors
 
 **The Solution (Three-Stage Parsing):**
 
-**Stage 1: Extract Frontmatter** Split markdown into frontmatter (between `---` delimiters) and body content.
+**Stage 1: Extract Frontmatter** Split markdown into frontmatter (between `+++` delimiters) and body content.
 
 ```typescript
 interface ParsedMarkdown {
@@ -351,18 +350,18 @@ interface ParsedMarkdown {
 }
 
 function extractFrontmatter(markdown: string): ParsedMarkdown {
-  const frontmatterRegex = /^---\n([\s\S]*?)\n---\n([\s\S]*)$/;
+  const frontmatterRegex = /^\+\+\+\n([\s\S]*?)\n\+\+\+\n([\s\S]*)$/;
   const match = markdown.match(frontmatterRegex);
 
   if (!match) {
     throw new Error("No frontmatter found");
   }
 
-  const yamlContent = match[1];
+  const tomlContent = match[1];
   const body = match[2];
 
-  // Parse YAML to object
-  const frontmatter = parseYaml(yamlContent);
+  // Parse TOML to object
+  const frontmatter = parseToml(tomlContent);
 
   return { frontmatter, body };
 }
@@ -417,13 +416,13 @@ function parseRequest(markdown: string): { request: Request; body: string } {
 **Example Request File:**
 
 ```markdown
----
-trace_id: "550e8400-e29b-41d4-a716-446655440000"
-agent_id: "coder-agent"
-status: "pending"
-priority: 8
-tags: ["feature", "ui"]
----
++++
+trace_id = "550e8400-e29b-41d4-a716-446655440000"
+agent_id = "coder-agent"
+status = "pending"
+priority = 8
+tags = ["feature", "ui"]
++++
 
 # Implement Login Page
 
@@ -984,7 +983,7 @@ const result = await contextLoader.loadWithLimit(contextFiles);
 **The Solution:** The `PlanWriter` service:
 
 1. Takes an `AgentExecutionResult` and request metadata
-2. Formats the content into a structured plan document with YAML frontmatter
+2. Formats the content into a structured plan document with TOML frontmatter
 3. Generates Obsidian-compatible wiki links to context files
 4. Writes the plan to `/Inbox/Plans` with proper naming convention (`{requestId}_plan.md`)
 5. Logs the plan creation to Activity Journal for audit trail
@@ -993,7 +992,7 @@ const result = await contextLoader.loadWithLimit(contextFiles);
 
 Plans follow this standardized format with:
 
-- YAML frontmatter (trace_id, request_id, status, created_at)
+- TOML frontmatter (trace_id, request_id, status, created_at)
 - Title and Summary sections
 - Reasoning section (from `<thought>` tags)
 - Proposed Changes (main content)
@@ -1018,7 +1017,7 @@ See `tests/plan_writer_test.ts` for comprehensive test coverage (22 tests):
 
 - Filename generation: `{requestId}_plan.md` format
 - Wiki link generation: Obsidian `[[filename]]` format from context files
-- Frontmatter structure: Valid YAML with trace_id, request_id, status, created_at
+- Frontmatter structure: Valid TOML with trace_id, request_id, status, created_at
 - Reasoning section: Extracts and includes `<thought>` content
 - Context warnings: Includes truncation/skipping messages
 - Plan structure: Proper markdown sections (Summary, Reasoning, Proposed Changes, Context References, Next Steps)
@@ -1200,11 +1199,11 @@ Release lease
 2. **Reject Plan**
    - Action: Move file to `/Inbox/Rejected/{requestId}_rejected.md`
    - Add to frontmatter:
-     ```yaml
-     status: "rejected"
-     rejected_by: "user@example.com"
-     rejected_at: "2024-11-25T15:30:00Z"
-     rejection_reason: "Approach is too risky, use incremental strategy instead"
+     ```toml
+     status = "rejected"
+     rejected_by = "user@example.com"
+     rejected_at = "2024-11-25T15:30:00Z"
+     rejection_reason = "Approach is too risky, use incremental strategy instead"
      ```
    - Logging: Insert activity record with `action_type: 'plan.rejected'`, `actor: 'human'`, `metadata: {reason: "..."}`
 
@@ -1222,10 +1221,10 @@ Release lease
      - 💡 Consider adding rate limiting to prevent brute force
      ```
    - Update frontmatter:
-     ```yaml
-     status: "needs_revision"
-     reviewed_by: "user@example.com"
-     reviewed_at: "2024-11-25T15:30:00Z"
+     ```toml
+     status = "needs_revision"
+     reviewed_by = "user@example.com"
+     reviewed_at = "2024-11-25T15:30:00Z"
      ```
    - Logging: Insert activity record with `action_type: 'plan.revision_requested'`, `actor: 'human'`,
      `metadata: {comment_count: 4}`
@@ -1264,13 +1263,13 @@ WHERE action_type IN ('plan.approved', 'plan.rejected');
 **Failure Report Format:**
 
 ```markdown
----
-trace_id: "550e8400-e29b-41d4-a716-446655440000"
-request_id: "implement-auth"
-status: "failed"
-failed_at: "2024-11-25T12:00:00Z"
-error_type: "ToolExecutionError"
----
++++
+trace_id = "550e8400-e29b-41d4-a716-446655440000"
+request_id = "implement-auth"
+status = "failed"
+failed_at = "2024-11-25T12:00:00Z"
+error_type = "ToolExecutionError"
++++
 
 # Failure Report: Implement Authentication
 
@@ -1336,8 +1335,8 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 - `CommandContext` interface: `{ config: Config, db: DatabaseService }`
 - Shared methods available to all commands:
   - `getUserIdentity()`: Get user from git config or OS username
-  - `extractFrontmatter()`: Parse YAML frontmatter from markdown
-  - `serializeFrontmatter()`: Convert object back to YAML format
+  - `extractFrontmatter()`: Parse TOML frontmatter from markdown
+  - `serializeFrontmatter()`: Convert object back to TOML format
   - `updateFrontmatter()`: Merge updates into existing frontmatter
   - `validateFrontmatter()`: Ensure required fields exist
   - `formatTimestamp()`: Human-readable date formatting
@@ -1348,7 +1347,7 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 1. ✅ BaseCommand abstract class exists in `src/cli/base.ts`
 2. ✅ CommandContext interface properly typed (config + db)
 3. ✅ getUserIdentity() tries git config, falls back to OS username
-4. ✅ Frontmatter methods handle edge cases (missing delimiters, malformed YAML)
+4. ✅ Frontmatter methods handle edge cases (missing delimiters, malformed TOML)
 5. ✅ All utility methods have consistent error handling
 6. ✅ Base class is abstract (cannot be instantiated directly)
 
@@ -1572,14 +1571,14 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 **Report Structure:**
 
 ```markdown
----
-trace_id: "550e8400-e29b-41d4-a716-446655440000"
-request_id: "implement-auth"
-status: "completed"
-completed_at: "2024-11-25T14:30:00Z"
-agent_id: "senior-coder"
-branch: "feat/implement-auth-550e8400"
----
++++
+trace_id = "550e8400-e29b-41d4-a716-446655440000"
+request_id = "implement-auth"
+status = "completed"
+completed_at = "2024-11-25T14:30:00Z"
+agent_id = "senior-coder"
+branch = "feat/implement-auth-550e8400"
++++
 
 # Mission Report: Implement Authentication
 
@@ -1630,7 +1629,7 @@ Chose JWT over sessions for stateless authentication. Used bcrypt for password h
    - Integration with `GitService` for diff analysis and commit info
    - Integration with `DatabaseService` for Activity Journal logging
    - Integration with `PlanStore` for retrieving execution plan and reasoning
-   - Report template with YAML frontmatter and structured markdown sections
+   - Report template with TOML frontmatter and structured markdown sections
 
 2. **Report Generation Flow:**
    ```typescript
@@ -1686,8 +1685,8 @@ Deno.test("MissionReporter: handles missing trace data gracefully", async () => 
   // Tests error handling for incomplete traces
 });
 
-Deno.test("MissionReporter: formats report with valid YAML frontmatter", async () => {
-  // Validates YAML structure and required fields
+Deno.test("MissionReporter: formats report with valid TOML frontmatter", async () => {
+  // Validates TOML structure and required fields
 });
 ```
 
@@ -1718,7 +1717,7 @@ Deno.test("MissionReporter: formats report with valid YAML frontmatter", async (
 
    # Verify report structure
    cat Knowledge/Reports/2025-01-26_550e8400_implement-user-registration.md
-   # Expected: Valid YAML frontmatter, Summary, Changes Made, Git Summary, Context Used, Reasoning sections
+   # Expected: Valid TOML frontmatter, Summary, Changes Made, Git Summary, Context Used, Reasoning sections
    ```
 
 2. **Git Diff Summary Accuracy:**
@@ -1762,21 +1761,21 @@ Deno.test("MissionReporter: formats report with valid YAML frontmatter", async (
 
 5. **Frontmatter Validation:**
    ```bash
-   # Extract and validate YAML frontmatter
+   # Extract and validate TOML frontmatter
    head -10 Knowledge/Reports/2025-01-26_*.md
    # Expected output:
-   # ---
-   # trace_id: "550e8400-e29b-41d4-a716-446655440000"
-   # request_id: "implement-user-registration"
-   # status: "completed"
-   # completed_at: "2025-01-26T14:30:00Z"
-   # agent_id: "senior-coder"
-   # branch: "feat/implement-user-registration-550e8400"
-   # ---
+   # +++
+   # trace_id = "550e8400-e29b-41d4-a716-446655440000"
+   # request_id = "implement-user-registration"
+   # status = "completed"
+   # completed_at = "2025-01-26T14:30:00Z"
+   # agent_id = "senior-coder"
+   # branch = "feat/implement-user-registration-550e8400"
+   # +++
 
-   # Verify YAML is valid
-   deno eval "import {parse} from 'https://deno.land/std@0.208.0/yaml/mod.ts'; const text=Deno.readTextFileSync('Knowledge/Reports/2025-01-26_*.md'); const frontmatter = text.match(/^---\n([\s\S]*?)\n---/)?.[1]; console.log(parse(frontmatter));"
-   # Expected: Valid YAML object
+   # Verify TOML is valid
+   deno eval "import {parse} from '@std/toml'; const text=Deno.readTextFileSync('Knowledge/Reports/2025-01-26_*.md'); const frontmatter = text.match(/^\+\+\+\n([\s\S]*?)\n\+\+\+/)?.[1]; console.log(parse(frontmatter));"
+   # Expected: Valid TOML object
    ```
 
 6. **Report Searchability:**
@@ -2143,8 +2142,8 @@ Deno.test("Report files have Obsidian-compatible frontmatter", async () => {
 
   const content = await Deno.readTextFile(reportPath);
 
-  // Verify YAML frontmatter format
-  assert(content.startsWith("---"), "Report should start with frontmatter");
+  // Verify TOML frontmatter format
+  assert(content.startsWith("+++"), "Report should start with frontmatter");
   const parts = content.split("---");
   assert(parts.length >= 3, "Report should have complete frontmatter");
 
@@ -2307,10 +2306,10 @@ Deno.test("Dashboard queries reference correct folders", async () => {
   }
 });
 
-Deno.test("Dashboard frontmatter is valid YAML", async () => {
+Deno.test("Dashboard frontmatter is valid TOML", async () => {
   const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
   
-  assert(dashboard.startsWith("---"), "Dashboard should have frontmatter");
+  assert(dashboard.startsWith("+++"), "Dashboard should have frontmatter");
   
   const endIndex = dashboard.indexOf("---", 3);
   assert(endIndex > 0, "Frontmatter should be closed");
@@ -2469,8 +2468,8 @@ This tests the Obsidian integration.
       `${testWorkspace}/Inbox/Requests/test-request.md`,
     );
 
-    // Dataview requires valid YAML frontmatter
-    assert(content.startsWith("---"), "File should have frontmatter");
+    // Dataview requires valid TOML frontmatter
+    assert(content.startsWith("+++"), "File should have frontmatter");
     assertStringIncludes(content, "title:");
     assertStringIncludes(content, "status:");
     assertStringIncludes(content, "created:");
@@ -2681,7 +2680,7 @@ exoctl scaffold --test
 - **Coverage Target:** 70% for core logic (Engine, Security, Parser)
 - **Action:** Create tests for:
   - Path canonicalization and security checks
-  - Frontmatter YAML parsing (valid/invalid cases)
+  - Frontmatter TOML parsing (valid/invalid cases)
   - Lease acquisition/release with simulated concurrency
   - Context loading with token limits
   - Git operations (mocked subprocess calls)
@@ -2886,7 +2885,7 @@ jobs:
 - [ ] Fresh install → Setup → Mount portal → Create request → Approve → Verify execution (Happy path)
 - [ ] Force-kill daemon mid-execution → Restart → Verify lease expires (**T-Lease**)
 - [ ] Corrupt database → Verify error message, recovery procedure (**T-DataLoss**)
-- [ ] Create request with invalid YAML → Verify validation error logged (**T-Input**)
+- [ ] Create request with invalid TOML → Verify validation error logged (**T-Input**)
 - [ ] Test with actual OpenAI/Anthropic API (not mock) (**T-Creds**)
 
 ---
@@ -2911,13 +2910,13 @@ However, the current "drop a markdown file" workflow has friction. This phase ad
 - **Dependencies:** Steps 1.2 (Storage), 2.2 (Frontmatter Parser), 4.4 (CLI Architecture)
 - **Action:** Implement `exoctl request` as the **primary interface** for creating requests to ExoFrame agents.
 - **Requirement:** The CLI must be the recommended way to create requests, replacing manual file creation.
-- **Justification:** Manual file creation is error-prone (invalid YAML, missing fields, typos in paths). A CLI command ensures validation, proper frontmatter generation, and audit logging.
+- **Justification:** Manual file creation is error-prone (invalid TOML, missing fields, typos in paths). A CLI command ensures validation, proper frontmatter generation, and audit logging.
 
 **The Problem:**
 
 Manual request creation has several issues:
 
-- ❌ Users must remember correct YAML frontmatter format
+- ❌ Users must remember correct TOML frontmatter format
 - ❌ Users must generate UUIDs manually
 - ❌ Users must remember correct file path (`/Inbox/Requests/`)
 - ❌ No validation until daemon processes the file (late failure)
@@ -3619,15 +3618,15 @@ $ exoctl request "Implement user authentication for the API"
 
 # 2. Verify file content
 $ cat ~/ExoFrame/Inbox/Requests/request-a1b2c3d4.md
----
-trace_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-created: 2025-11-27T10:30:00.000Z
-status: pending
-priority: normal
-agent: default
-source: cli
-created_by: user@example.com
----
++++
+trace_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+created = "2025-11-27T10:30:00.000Z"
+status = "pending"
+priority = "normal"
+agent = "default"
+source = "cli"
+created_by = "user@example.com"
++++
 
 # Request
 
@@ -3787,7 +3786,7 @@ created_at = 2025-11-27T10:30:00Z
   assertEquals(result.request.tags, ["feature"]);
 });
 
-Deno.test("FrontmatterParser - backward compatible with YAML frontmatter", () => {
+Deno.test("FrontmatterParser - rejects YAML frontmatter (TOML-only)", () => {
   const markdown = `---
 trace_id: "550e8400-e29b-41d4-a716-446655440000"
 agent_id: coder
@@ -3797,27 +3796,29 @@ status: pending
 # Request body`;
 
   const parser = new FrontmatterParser();
-  const result = parser.parse(markdown);
 
-  assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
+  // Should throw - YAML format no longer supported
+  assertThrows(() => parser.parse(markdown));
 });
 
-Deno.test("FrontmatterParser - auto-detects format by delimiter", () => {
+Deno.test("FrontmatterParser - only accepts +++ delimiters", () => {
   const toml = `+++\ntrace_id = "abc"\n+++\nBody`;
   const yaml = `---\ntrace_id: abc\n---\nBody`;
 
   const parser = new FrontmatterParser();
 
-  // Should not throw - both formats work
+  // TOML with +++ works
   assertExists(parser.parse(toml));
-  assertExists(parser.parse(yaml));
+
+  // YAML with --- throws
+  assertThrows(() => parser.parse(yaml));
 });
 ```
 
 **Token Efficiency Rationale:**
 
 ```
-# YAML (45 tokens)
+# YAML (45 tokens) - No longer supported
 ---
 trace_id: "550e8400-e29b-41d4-a716-446655440000"
 agent_id: "senior_coder"
@@ -3828,7 +3829,7 @@ tags:
   - api
 ---
 
-# TOML (35 tokens)
+# TOML (35 tokens) - Preferred format
 +++
 trace_id = "550e8400-e29b-41d4-a716-446655440000"
 agent_id = "senior_coder"

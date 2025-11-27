@@ -93,11 +93,11 @@ describe("BaseCommand", () => {
 
   describe("extractFrontmatter", () => {
     it("should extract valid frontmatter from markdown", () => {
-      const markdown = `---
-title: Test Plan
-status: review
-trace_id: abc-123
----
+      const markdown = `+++
+title = "Test Plan"
+status = "review"
+trace_id = "abc-123"
++++
 
 # Plan Content
 
@@ -110,11 +110,11 @@ This is the body.`;
     });
 
     it("should handle quoted values", () => {
-      const markdown = `---
-title: "Quoted Title"
-status: 'single-quoted'
-description: "Value with: colon"
----
+      const markdown = `+++
+title = "Quoted Title"
+status = "single-quoted"
+description = "Value with: colon"
++++
 
 Body`;
 
@@ -134,8 +134,8 @@ No frontmatter here.`;
     });
 
     it("should handle empty frontmatter block", () => {
-      const markdown = `---
----
+      const markdown = `+++
++++
 
 Body`;
 
@@ -143,24 +143,24 @@ Body`;
       assertEquals(result, {});
     });
 
-    it("should skip lines without colons", () => {
-      const markdown = `---
-title: Valid
-invalid line without colon
-status: review
----
+    it("should skip lines without equals", () => {
+      const markdown = `+++
+title = "Valid"
+invalid line without equals
+status = "review"
++++
 
 Body`;
 
       const result = testCommand.testExtractFrontmatter(markdown);
       assertEquals(result.title, "Valid");
       assertEquals(result.status, "review");
-      assertEquals(result["invalid line without colon"], undefined);
+      assertEquals(result["invalid line without equals"], undefined);
     });
   });
 
   describe("serializeFrontmatter", () => {
-    it("should serialize frontmatter to YAML format", () => {
+    it("should serialize frontmatter to TOML format", () => {
       const frontmatter = {
         title: "Test",
         status: "review",
@@ -168,11 +168,11 @@ Body`;
       };
 
       const result = testCommand.testSerializeFrontmatter(frontmatter);
-      assertEquals(result.startsWith("---\n"), true);
-      assertEquals(result.endsWith("---"), true);
-      assertEquals(result.includes("title: Test"), true);
-      assertEquals(result.includes("status: review"), true);
-      assertEquals(result.includes("trace_id: abc-123"), true);
+      assertEquals(result.startsWith("+++\n"), true);
+      assertEquals(result.endsWith("+++"), true);
+      assertEquals(result.includes('title = "Test"'), true);
+      assertEquals(result.includes('status = "review"'), true);
+      assertEquals(result.includes('trace_id = "abc-123"'), true);
     });
 
     it("should quote values with special characters", () => {
@@ -183,23 +183,23 @@ Body`;
       };
 
       const result = testCommand.testSerializeFrontmatter(frontmatter);
-      assertEquals(result.includes('with_colon: "value: with colon"'), true);
-      assertEquals(result.includes('with_space: "value with spaces"'), true);
+      assertEquals(result.includes('with_colon = "value: with colon"'), true);
+      assertEquals(result.includes('with_space = "value with spaces"'), true);
     });
 
     it("should handle empty frontmatter", () => {
       const frontmatter = {};
       const result = testCommand.testSerializeFrontmatter(frontmatter);
-      assertEquals(result, "---\n---");
+      assertEquals(result, "+++\n+++");
     });
   });
 
   describe("updateFrontmatter", () => {
     it("should update existing frontmatter fields", () => {
-      const content = `---
-title: Original
-status: draft
----
+      const content = `+++
+title = "Original"
+status = "draft"
++++
 
 Body content`;
 
@@ -216,9 +216,9 @@ Body content`;
     });
 
     it("should preserve body content", () => {
-      const content = `---
-title: Test
----
+      const content = `+++
+title = "Test"
++++
 
 # Heading
 

@@ -20,7 +20,7 @@
 - **Trace ID:** UUID linking request → plan → execution → report
 - **Lease:** Exclusive lock on a file (stored in `leases` table)
 - **Actor:** Entity performing action (agent name, "system", or "user")
-- **Blueprint:** YAML definition of an agent (model, capabilities, prompt)
+- **Blueprint:** TOML definition of an agent (model, capabilities, prompt)
 
 ---
 
@@ -126,12 +126,12 @@ We reject the monolithic database approach in favor of a separation of concerns:
    - _Scaling:_ Default retention of 90 days (hot).
 2. **User Content:** **The File System**.
    - _Usage:_ Notes, Source Code.
-   - _Integrity:_ The file system is the source of truth. "Files as API" relies on strict YAML Frontmatter
+   - _Integrity:_ The file system is the source of truth. "Files as API" relies on strict TOML Frontmatter
      (Zod-validated).
 
 ### 3.3. Configuration: "Everything-as-Code" (EaC)
 
-- **The Standard:** Agents and workflows are defined in **YAML** blueprints.
+- **The Standard:** Agents and workflows are defined in **TOML** blueprints.
 - **Validation:** Blueprints support a "Dry Run" mode where agent logic is simulated deterministically.
 
 ### 3.4. Triple Agent Modes (Local, Federated, Hybrid)
@@ -232,7 +232,7 @@ This **reduces attack surface** significantly vs Node.js/Bun where any dependenc
 
 ### 5.4 Best Practices
 
-1. **Review blueprints before first use** (they're just YAML - easy to audit)
+1. **Review blueprints before first use** (they're just TOML - easy to audit)
 2. **Keep portals scoped** (don't mount `/` or `~`)
 3. **Use API key restrictions** (OpenAI: limit scope, rate limits)
 4. **Regular backups** (stop daemon, tar ExoFrame directory)
