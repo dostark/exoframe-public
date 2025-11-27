@@ -19,7 +19,7 @@
 - **Trace ID:** UUID linking request → plan → execution → report
 - **Lease:** Exclusive lock on a file (stored in `leases` table)
 - **Actor:** Entity performing action (agent name, "system", or "user")
-- **Blueprint:** YAML definition of an agent (model, capabilities, prompt)
+- **Blueprint:** TOML definition of an agent (model, capabilities, prompt)
 
 ---
 
@@ -45,14 +45,75 @@ permission governance across CLI, daemon, and agents.
 
 ## 2. Core Technical Stack
 
-| Component        | Technology          | Justification                                                     |
-| :--------------- | :------------------ | :---------------------------------------------------------------- |
-| **Runtime**      | **Deno** (v2.0+)    | Native TypeScript, Web Standards, and **Permission System**.      |
-| **Language**     | **TypeScript**      | No transpilation needed. Strict typing via Zod.                   |
-| **Config**       | **TOML** & **YAML** | TOML for System Config; YAML for Blueprints.                      |
-| **Journal**      | **SQLite**          | Accessible via `jsr:@db/sqlite` (WASM) or FFI for performance.    |
-| **Dependencies** | **ES Modules**      | No `node_modules`. Dependencies cached globally or in vendor dir. |
-| **Interface**    | **Obsidian**        | Viewer for Markdown files and Dashboard.                          |
+| Component        | Technology       | Justification                                                     |
+| :--------------- | :--------------- | :---------------------------------------------------------------- |
+| **Runtime**      | **Deno** (v2.0+) | Native TypeScript, Web Standards, and **Permission System**.      |
+| **Language**     | **TypeScript**   | No transpilation needed. Strict typing via Zod.                   |
+| **Config**       | **TOML**         | All config & metadata uses TOML. Token-efficient for LLM context. |
+| **Journal**      | **SQLite**       | Accessible via `jsr:@db/sqlite` (WASM) or FFI for performance.    |
+| **Dependencies** | **ES Modules**   | No `node_modules`. Dependencies cached globally or in vendor dir. |
+| **Interface**    | **Obsidian**     | Viewer for Markdown files and Dashboard.                          |
+
+---
+
+## 2.1. File Format Inventory
+
+ExoFrame standardizes on **TOML** for all structured metadata. This decision prioritizes:
+
+1. **Token Efficiency** — TOML uses fewer tokens than YAML/JSON when embedded in LLM context
+2. **Robustness** — No indentation sensitivity (unlike YAML), no trailing comma issues (unlike JSON)
+3. **Consistency** — One format to learn, one parser to maintain
+4. **Human Readability** — Clean syntax without excessive punctuation
+
+### Complete Format Reference
+
+| Category                 | Format                      | Extension | Location             | Purpose                                    |
+| ------------------------ | --------------------------- | --------- | -------------------- | ------------------------------------------ |
+| **System Config**        | TOML                        | `.toml`   | `exo.config.toml`    | Main configuration                         |
+| **Deno Config**          | JSON                        | `.json`   | `deno.json`          | Runtime, imports, tasks (Deno requirement) |
+| **Agent Blueprints**     | TOML                        | `.toml`   | `Blueprints/Agents/` | Agent definitions                          |
+| **Flow Definitions**     | TypeScript                  | `.ts`     | `Blueprints/Flows/`  | Orchestration logic                        |
+| **Requests**             | Markdown + TOML frontmatter | `.md`     | `Inbox/Requests/`    | User task requests                         |
+| **Plans**                | Markdown + TOML frontmatter | `.md`     | `Inbox/Plans/`       | Agent proposals                            |
+| **Knowledge**            | Markdown                    | `.md`     | `Knowledge/`         | Reference docs, reports                    |
+| **Portal Context Cards** | Markdown                    | `.md`     | `Knowledge/Portals/` | Auto-generated project context             |
+| **Activity Journal**     | SQLite                      | `.db`     | `System/activity.db` | Audit log & file locks                     |
+| **Migrations**           | SQL                         | `.sql`    | `migrations/`        | Database schema changes                    |
+
+### TOML Frontmatter Format
+
+Request and Plan files use TOML frontmatter (delimited by `+++`) instead of YAML frontmatter:
+
+```markdown
++++
+trace_id = "550e8400-e29b-41d4-a716-446655440000"
+agent_id = "senior_coder"
+status = "pending"
+priority = 5
+tags = ["feature", "api"]
+created_at = 2025-11-27T10:30:00Z
++++
+
+# Request Body
+
+Implement user authentication for the API...
+```
+
+**Why `+++` delimiters?**
+
+- Distinguishes TOML frontmatter from YAML (`---`)
+- Convention established by Hugo static site generator
+- Parsers can auto-detect format by delimiter
+
+### Token Comparison
+
+| Format | Tokens (typical request) | Notes                       |
+| ------ | ------------------------ | --------------------------- |
+| YAML   | ~45 tokens               | Quotes, colons, indentation |
+| JSON   | ~55 tokens               | Braces, quotes, commas      |
+| TOML   | ~35 tokens               | Minimal punctuation         |
+
+_~22% token savings vs YAML, ~36% vs JSON_
 
 ---
 
@@ -71,7 +132,7 @@ folders are treated as fatal errors during daemon startup so that watchers do no
 │   ├── /Active                 <-- Runtime State
 │   └── /Archive                <-- Completed task artifacts
 ├── /Blueprints                 <-- "Source Code" of the Swarm
-│   ├── /Agents                 <-- YAML definitions
+│   ├── /Agents                 <-- TOML definitions
 │   └── /Flows                  <-- TS logic
 ├── /Inbox                      <-- The Input Layer
 │   ├── /Requests               <-- User drops ideas here
@@ -581,25 +642,25 @@ All portal operations are logged to Activity Journal:
 
 ## 7. Agentic Architecture
 
-**Example Blueprint:** `/Blueprints/Agents/senior_coder.yaml`
+**Example Blueprint:** `/Blueprints/Agents/senior_coder.toml`
 
-```yaml
-name: "Senior Coder"
-runtime: "deno" # Explicitly marks runtime requirement
-model: "claude-3-5-sonnet"
+```toml
+name = "Senior Coder"
+runtime = "deno"  # Explicitly marks runtime requirement
+model = "claude-3-5-sonnet"
 
 # PERMISSIONS
 # Deno allows us to be very granular via sub-process flags
-capabilities:
-  filesystem:
-    allow_write: ["portal:*"]
-  shell:
-    allow: ["git", "npm"] # Mapped to --allow-run
+[capabilities.filesystem]
+allow_write = ["portal:*"]
+
+[capabilities.shell]
+allow = ["git", "npm"]  # Mapped to --allow-run
 ```
 
 ### 7.1 Capability Enforcement Pipeline
 
-1. **Blueprint Parsing:** `BlueprintService` validates YAML against Zod schema and resolves macros (e.g., `portal:*`).
+1. **Blueprint Parsing:** `BlueprintService` validates TOML against Zod schema and resolves macros (e.g., `portal:*`).
 2. **Permission Compilation:** At agent launch, requested capabilities are intersected with daemon-wide policy,
    producing concrete Deno flags (`--allow-read`, `--allow-run`, `--allow-net`) plus internal guards (tool registry
    filters, command allowlist).

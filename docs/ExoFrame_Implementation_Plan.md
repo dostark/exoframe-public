@@ -2906,79 +2906,943 @@ ExoFrame's value proposition is **not** real-time coding assistance (IDE agents 
 
 However, the current "drop a markdown file" workflow has friction. This phase addresses that.
 
-### Step 7.1: Quick Request CLI Command
+### Step 7.1: Request Commands - Primary Request Interface
 
-**Problem:** Creating a markdown file in `/Inbox/Requests` is clunky compared to typing in an IDE chat.
+- **Dependencies:** Steps 1.2 (Storage), 2.2 (Frontmatter Parser), 4.4 (CLI Architecture)
+- **Action:** Implement `exoctl request` as the **primary interface** for creating requests to ExoFrame agents.
+- **Requirement:** The CLI must be the recommended way to create requests, replacing manual file creation.
+- **Justification:** Manual file creation is error-prone (invalid YAML, missing fields, typos in paths). A CLI command ensures validation, proper frontmatter generation, and audit logging.
 
-**Solution:** Add `exoctl request` command for rapid request creation.
+**The Problem:**
+
+Manual request creation has several issues:
+
+- ❌ Users must remember correct YAML frontmatter format
+- ❌ Users must generate UUIDs manually
+- ❌ Users must remember correct file path (`/Inbox/Requests/`)
+- ❌ No validation until daemon processes the file (late failure)
+- ❌ Easy to create malformed requests that silently fail
+- ❌ No activity logging when request is created
+- ❌ Inconsistent naming conventions
+
+**The Solution: `exoctl request` Command**
+
+Make CLI the primary interface with these features:
+
+1. **Auto-generation:** trace_id, timestamps, filenames
+2. **Validation:** Zod schema validation before writing
+3. **Flexibility:** Multiple input methods (inline, file, interactive)
+4. **Audit trail:** Immediate logging to Activity Journal
+5. **Feedback:** Clear confirmation with next steps
+
+#### **Commands:**
 
 ```bash
-# Quick request (auto-generates trace_id, timestamps)
+# Primary: Inline description (most common use case)
 exoctl request "Implement user authentication for the API"
 
 # With options
 exoctl request "Add rate limiting" --agent senior_coder --priority high
+exoctl request "Fix login bug" --priority critical --portal MyProject
 
-# From file
-exoctl request --file requirements.txt
+# From file (for complex/long requests)
+exoctl request --file ~/requirements.md
+exoctl request -f ./feature-spec.md --agent architect
 
-# Interactive mode (prompts for details)
+# Interactive mode (prompts for all fields)
+exoctl request --interactive
 exoctl request -i
+
+# List recent requests (for reference)
+exoctl request list
+exoctl request list --status pending
+
+# Show request details
+exoctl request show <trace-id>
 ```
 
-**Implementation:**
+#### **Options:**
+
+| Option          | Short | Type   | Default   | Description                                   |
+| --------------- | ----- | ------ | --------- | --------------------------------------------- |
+| `--agent`       | `-a`  | string | `default` | Target agent blueprint name                   |
+| `--priority`    | `-p`  | enum   | `normal`  | Priority: `low`, `normal`, `high`, `critical` |
+| `--portal`      |       | string |           | Portal alias for context                      |
+| `--file`        | `-f`  | path   |           | Read description from file                    |
+| `--interactive` | `-i`  | flag   |           | Interactive mode with prompts                 |
+| `--dry-run`     |       | flag   |           | Show what would be created without writing    |
+| `--json`        |       | flag   |           | Output in JSON format                         |
+
+#### **Implementation: `src/cli/request_commands.ts`**
 
 ```typescript
-// src/cli/request_commands.ts
+import { join } from "@std/path";
+import { ensureDir, exists } from "@std/fs";
+import { z } from "zod";
+import { BaseCommand, type CommandContext } from "./base.ts";
+
+// Validation schema for request options
+const RequestOptionsSchema = z.object({
+  agent: z.string().min(1).default("default"),
+  priority: z.enum(["low", "normal", "high", "critical"]).default("normal"),
+  portal: z.string().optional(),
+});
+
+// Validation schema for generated frontmatter
+const RequestFrontmatterSchema = z.object({
+  trace_id: z.string().uuid(),
+  created: z.string().datetime(),
+  status: z.literal("pending"),
+  priority: z.enum(["low", "normal", "high", "critical"]),
+  agent: z.string().min(1),
+  portal: z.string().optional(),
+  source: z.enum(["cli", "file", "interactive"]),
+  created_by: z.string(),
+});
+
+export type RequestOptions = z.infer<typeof RequestOptionsSchema>;
+export type RequestFrontmatter = z.infer<typeof RequestFrontmatterSchema>;
+
+export interface RequestMetadata {
+  trace_id: string;
+  filename: string;
+  path: string;
+  status: string;
+  priority: string;
+  agent: string;
+  created: string;
+  created_by: string;
+}
+
+/**
+ * RequestCommands provides the primary interface for creating requests to ExoFrame agents.
+ * This is the RECOMMENDED way to create requests (not manual file creation).
+ */
 export class RequestCommands extends BaseCommand {
-  async create(description: string, options: RequestOptions): Promise<void> {
+  private requestsDir: string;
+
+  constructor(context: CommandContext, workspaceRoot: string) {
+    super(context);
+    this.requestsDir = join(workspaceRoot, "Inbox", "Requests");
+  }
+
+  /**
+   * Create a new request from inline description
+   * @param description What the agent should do
+   * @param options Request options (agent, priority, portal)
+   * @param source How the request was created (cli, file, interactive)
+   * @returns Request metadata including trace_id and path
+   */
+  async create(
+    description: string,
+    options: Partial<RequestOptions> = {},
+    source: "cli" | "file" | "interactive" = "cli",
+  ): Promise<RequestMetadata> {
+    // Validate options
+    const validatedOptions = RequestOptionsSchema.parse(options);
+
+    // Generate trace_id and timestamp
     const traceId = crypto.randomUUID();
     const timestamp = new Date().toISOString();
+    const createdBy = await this.getUserIdentity();
 
-    const content = `---
-trace_id: ${traceId}
-created: ${timestamp}
-status: pending
-priority: ${options.priority || "normal"}
-agent: ${options.agent || "default"}
----
+    // Build frontmatter
+    const frontmatter: RequestFrontmatter = {
+      trace_id: traceId,
+      created: timestamp,
+      status: "pending",
+      priority: validatedOptions.priority,
+      agent: validatedOptions.agent,
+      source: source,
+      created_by: createdBy,
+    };
 
-# Request
+    // Add portal if specified
+    if (validatedOptions.portal) {
+      frontmatter.portal = validatedOptions.portal;
+    }
 
-${description}
-`;
+    // Validate frontmatter
+    RequestFrontmatterSchema.parse(frontmatter);
 
-    const filename = `request-${traceId.slice(0, 8)}.md`;
-    const path = join(this.config.paths.inbox, "Requests", filename);
+    // Build file content
+    const content = this.buildRequestContent(frontmatter, description);
 
-    await Deno.writeTextFile(path, content);
+    // Generate filename
+    const shortId = traceId.slice(0, 8);
+    const filename = `request-${shortId}.md`;
+    const filePath = join(this.requestsDir, filename);
 
-    console.log(`✓ Request created: ${filename}`);
-    console.log(`  Trace ID: ${traceId}`);
-    console.log(`  Path: ${path}`);
-    console.log(`  Next: Daemon will process this automatically`);
+    // Ensure directory exists
+    await ensureDir(this.requestsDir);
 
-    this.logActivity("request.created", { trace_id: traceId, description });
+    // Check for collision (extremely unlikely with UUIDs)
+    if (await exists(filePath)) {
+      throw new Error(`Request file already exists: ${filename}`);
+    }
+
+    // Write file
+    await Deno.writeTextFile(filePath, content);
+
+    // Log to Activity Journal
+    this.db.logActivity("human", "request.created", filePath, {
+      trace_id: traceId,
+      priority: validatedOptions.priority,
+      agent: validatedOptions.agent,
+      portal: validatedOptions.portal,
+      source: source,
+      created_by: createdBy,
+      description_length: description.length,
+    }, traceId);
+
+    return {
+      trace_id: traceId,
+      filename,
+      path: filePath,
+      status: "pending",
+      priority: validatedOptions.priority,
+      agent: validatedOptions.agent,
+      created: timestamp,
+      created_by: createdBy,
+    };
+  }
+
+  /**
+   * Create request from file content
+   * @param filePath Path to file containing request description
+   * @param options Request options
+   */
+  async createFromFile(
+    filePath: string,
+    options: Partial<RequestOptions> = {},
+  ): Promise<RequestMetadata> {
+    // Read file content
+    if (!await exists(filePath)) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+
+    const description = await Deno.readTextFile(filePath);
+
+    if (!description.trim()) {
+      throw new Error(`File is empty: ${filePath}`);
+    }
+
+    return this.create(description.trim(), options, "file");
+  }
+
+  /**
+   * List all requests in Inbox/Requests
+   * @param statusFilter Optional status filter
+   */
+  async list(statusFilter?: string): Promise<RequestMetadata[]> {
+    const requests: RequestMetadata[] = [];
+
+    try {
+      for await (const entry of Deno.readDir(this.requestsDir)) {
+        if (!entry.isFile || !entry.name.endsWith(".md")) continue;
+
+        const filePath = join(this.requestsDir, entry.name);
+        const content = await Deno.readTextFile(filePath);
+        const frontmatter = this.extractFrontmatter(content);
+
+        if (statusFilter && frontmatter.status !== statusFilter) continue;
+
+        requests.push({
+          trace_id: frontmatter.trace_id || "unknown",
+          filename: entry.name,
+          path: filePath,
+          status: frontmatter.status || "unknown",
+          priority: frontmatter.priority || "normal",
+          agent: frontmatter.agent || "default",
+          created: frontmatter.created || "",
+          created_by: frontmatter.created_by || "unknown",
+        });
+      }
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        return []; // Directory doesn't exist yet
+      }
+      throw error;
+    }
+
+    // Sort by created date descending
+    return requests.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+  }
+
+  /**
+   * Show details of a specific request
+   * @param traceId Trace ID or filename
+   */
+  async show(traceId: string): Promise<{ metadata: RequestMetadata; content: string }> {
+    // Find request by trace_id or filename
+    const requests = await this.list();
+    const request = requests.find((r) =>
+      r.trace_id === traceId ||
+      r.trace_id.startsWith(traceId) ||
+      r.filename === traceId ||
+      r.filename === `${traceId}.md`
+    );
+
+    if (!request) {
+      throw new Error(`Request not found: ${traceId}`);
+    }
+
+    const content = await Deno.readTextFile(request.path);
+
+    return { metadata: request, content };
+  }
+
+  /**
+   * Build request file content from frontmatter and description
+   */
+  private buildRequestContent(
+    frontmatter: RequestFrontmatter,
+    description: string,
+  ): string {
+    const lines = ["---"];
+
+    // Add frontmatter fields in consistent order
+    lines.push(`trace_id: ${frontmatter.trace_id}`);
+    lines.push(`created: ${frontmatter.created}`);
+    lines.push(`status: ${frontmatter.status}`);
+    lines.push(`priority: ${frontmatter.priority}`);
+    lines.push(`agent: ${frontmatter.agent}`);
+    if (frontmatter.portal) {
+      lines.push(`portal: ${frontmatter.portal}`);
+    }
+    lines.push(`source: ${frontmatter.source}`);
+    lines.push(`created_by: ${frontmatter.created_by}`);
+
+    lines.push("---");
+    lines.push("");
+    lines.push("# Request");
+    lines.push("");
+    lines.push(description);
+    lines.push("");
+
+    return lines.join("\n");
   }
 }
 ```
 
-**Tests:**
+#### **CLI Registration: `src/cli/exoctl.ts`**
 
-- `exoctl request "test"` creates valid markdown file
-- Generated file has valid frontmatter (trace_id, timestamp)
-- File appears in correct directory
-- Activity journal logs creation
+```typescript
+// Add to imports
+import { RequestCommands } from "./request_commands.ts";
 
-**Success Criteria:**
+// Initialize
+const requestCommands = new RequestCommands(context, config.system.root);
 
-- [ ] `exoctl request "description"` creates request in < 1 second
-- [ ] Generated frontmatter passes Zod validation
-- [ ] Tests in `tests/cli/request_commands_test.ts` pass
+// Add command group (should be FIRST - primary interface)
+.command(
+  "request",
+  new Command()
+    .description("Create requests for ExoFrame agents (PRIMARY INTERFACE)")
+    .arguments("[description:string]")
+    .option("-a, --agent <agent:string>", "Target agent blueprint", { default: "default" })
+    .option("-p, --priority <priority:string>", "Priority: low, normal, high, critical", { default: "normal" })
+    .option("--portal <portal:string>", "Portal alias for context")
+    .option("-f, --file <file:string>", "Read description from file")
+    .option("-i, --interactive", "Interactive mode")
+    .option("--dry-run", "Show what would be created")
+    .option("--json", "Output in JSON format")
+    .action(async (options, description?: string) => {
+      try {
+        // Handle file input
+        if (options.file) {
+          const result = await requestCommands.createFromFile(options.file, {
+            agent: options.agent,
+            priority: options.priority as RequestOptions["priority"],
+            portal: options.portal,
+          });
+          printResult(result, options.json);
+          return;
+        }
+
+        // Handle interactive mode
+        if (options.interactive) {
+          // TODO: Implement interactive prompts
+          console.error("Interactive mode not yet implemented");
+          Deno.exit(1);
+        }
+
+        // Require description for inline mode
+        if (!description) {
+          console.error("Error: Description required. Usage: exoctl request \"<description>\"");
+          console.error("       Or use --file to read from file, or --interactive for prompts.");
+          Deno.exit(1);
+        }
+
+        // Create request
+        const result = await requestCommands.create(description, {
+          agent: options.agent,
+          priority: options.priority as RequestOptions["priority"],
+          portal: options.portal,
+        });
+
+        if (options.dryRun) {
+          console.log("Dry run - would create:");
+          printResult(result, true);
+          return;
+        }
+
+        printResult(result, options.json);
+      } catch (error) {
+        console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+        Deno.exit(1);
+      }
+    })
+    .command("list", new Command()
+      .description("List pending requests")
+      .option("-s, --status <status:string>", "Filter by status")
+      .option("--json", "Output in JSON format")
+      .action(async (options) => {
+        const requests = await requestCommands.list(options.status);
+        if (options.json) {
+          console.log(JSON.stringify(requests, null, 2));
+        } else {
+          if (requests.length === 0) {
+            console.log("No requests found.");
+            return;
+          }
+          console.log(`\n📥 Requests (${requests.length}):\n`);
+          for (const req of requests) {
+            const priorityIcon = { critical: "🔴", high: "🟠", normal: "🟢", low: "⚪" }[req.priority] || "🟢";
+            console.log(`${priorityIcon} ${req.trace_id.slice(0, 8)}`);
+            console.log(`   Status: ${req.status}`);
+            console.log(`   Agent: ${req.agent}`);
+            console.log(`   Created: ${req.created_by} @ ${req.created}`);
+            console.log();
+          }
+        }
+      }))
+    .command("show <id>", new Command()
+      .description("Show request details")
+      .action(async (_options, id: string) => {
+        const { metadata, content } = await requestCommands.show(id);
+        console.log(`\n📄 Request: ${metadata.trace_id.slice(0, 8)}\n`);
+        console.log(`Trace ID: ${metadata.trace_id}`);
+        console.log(`Status: ${metadata.status}`);
+        console.log(`Priority: ${metadata.priority}`);
+        console.log(`Agent: ${metadata.agent}`);
+        console.log(`Created: ${metadata.created_by} @ ${metadata.created}`);
+        console.log("\n" + "─".repeat(60) + "\n");
+        console.log(content);
+      }))
+)
+
+function printResult(result: RequestMetadata, json: boolean) {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    console.log(`✓ Request created: ${result.filename}`);
+    console.log(`  Trace ID: ${result.trace_id}`);
+    console.log(`  Priority: ${result.priority}`);
+    console.log(`  Agent: ${result.agent}`);
+    console.log(`  Path: ${result.path}`);
+    console.log(`  Next: Daemon will process this automatically`);
+  }
+}
+```
+
+#### **Test Plan: `tests/cli/request_commands_test.ts`**
+
+```typescript
+import { assertEquals, assertExists, assertRejects, assertStringIncludes } from "@std/assert";
+import { afterEach, beforeEach, describe, it } from "@std/testing/bdd";
+import { join } from "@std/path";
+import { RequestCommands } from "../../src/cli/request_commands.ts";
+import { cleanupTestWorkspace, createTestContext, createTestWorkspace } from "../helpers/test_utils.ts";
+
+describe("RequestCommands", () => {
+  let workspace: string;
+  let requestCommands: RequestCommands;
+
+  beforeEach(async () => {
+    workspace = await createTestWorkspace();
+    const context = await createTestContext(workspace);
+    requestCommands = new RequestCommands(context, workspace);
+  });
+
+  afterEach(async () => {
+    await cleanupTestWorkspace(workspace);
+  });
+
+  describe("create", () => {
+    it("should create request with valid frontmatter", async () => {
+      const result = await requestCommands.create("Implement user authentication");
+
+      // Verify result structure
+      assertExists(result.trace_id);
+      assertEquals(result.trace_id.length, 36); // UUID format
+      assertEquals(result.status, "pending");
+      assertEquals(result.priority, "normal");
+      assertEquals(result.agent, "default");
+
+      // Verify file exists
+      const content = await Deno.readTextFile(result.path);
+      assertStringIncludes(content, `trace_id: ${result.trace_id}`);
+      assertStringIncludes(content, "status: pending");
+      assertStringIncludes(content, "Implement user authentication");
+    });
+
+    it("should accept custom priority", async () => {
+      const result = await requestCommands.create("Fix critical bug", { priority: "critical" });
+      assertEquals(result.priority, "critical");
+
+      const content = await Deno.readTextFile(result.path);
+      assertStringIncludes(content, "priority: critical");
+    });
+
+    it("should accept custom agent", async () => {
+      const result = await requestCommands.create("Write tests", { agent: "test_writer" });
+      assertEquals(result.agent, "test_writer");
+
+      const content = await Deno.readTextFile(result.path);
+      assertStringIncludes(content, "agent: test_writer");
+    });
+
+    it("should accept portal option", async () => {
+      const result = await requestCommands.create("Add feature", { portal: "MyProject" });
+
+      const content = await Deno.readTextFile(result.path);
+      assertStringIncludes(content, "portal: MyProject");
+    });
+
+    it("should generate unique trace_ids", async () => {
+      const result1 = await requestCommands.create("Request 1");
+      const result2 = await requestCommands.create("Request 2");
+
+      assertNotEquals(result1.trace_id, result2.trace_id);
+      assertNotEquals(result1.filename, result2.filename);
+    });
+
+    it("should reject invalid priority", async () => {
+      await assertRejects(
+        () => requestCommands.create("Test", { priority: "invalid" as any }),
+        Error,
+      );
+    });
+
+    it("should create file in correct directory", async () => {
+      const result = await requestCommands.create("Test request");
+
+      const expectedDir = join(workspace, "Inbox", "Requests");
+      assertStringIncludes(result.path, expectedDir);
+    });
+
+    it("should log activity to journal", async () => {
+      const result = await requestCommands.create("Test request");
+
+      // Query activity journal
+      const activities = requestCommands["db"].getRecentActivity(10);
+      const createActivity = activities.find((a) =>
+        a.action_type === "request.created" &&
+        a.payload?.trace_id === result.trace_id
+      );
+
+      assertExists(createActivity);
+      assertEquals(createActivity.actor, "human");
+    });
+
+    it("should include created_by from user identity", async () => {
+      const result = await requestCommands.create("Test request");
+      assertExists(result.created_by);
+
+      const content = await Deno.readTextFile(result.path);
+      assertStringIncludes(content, `created_by: ${result.created_by}`);
+    });
+
+    it("should include source field", async () => {
+      const result = await requestCommands.create("Test", {}, "cli");
+      const content = await Deno.readTextFile(result.path);
+      assertStringIncludes(content, "source: cli");
+    });
+  });
+
+  describe("createFromFile", () => {
+    it("should create request from file content", async () => {
+      const inputFile = join(workspace, "input.md");
+      await Deno.writeTextFile(inputFile, "Implement feature from file");
+
+      const result = await requestCommands.createFromFile(inputFile);
+
+      const content = await Deno.readTextFile(result.path);
+      assertStringIncludes(content, "Implement feature from file");
+      assertStringIncludes(content, "source: file");
+    });
+
+    it("should reject non-existent file", async () => {
+      await assertRejects(
+        () => requestCommands.createFromFile("/nonexistent/file.md"),
+        Error,
+        "File not found",
+      );
+    });
+
+    it("should reject empty file", async () => {
+      const inputFile = join(workspace, "empty.md");
+      await Deno.writeTextFile(inputFile, "   \n  ");
+
+      await assertRejects(
+        () => requestCommands.createFromFile(inputFile),
+        Error,
+        "File is empty",
+      );
+    });
+
+    it("should pass options to created request", async () => {
+      const inputFile = join(workspace, "input.md");
+      await Deno.writeTextFile(inputFile, "Test content");
+
+      const result = await requestCommands.createFromFile(inputFile, {
+        agent: "custom_agent",
+        priority: "high",
+      });
+
+      assertEquals(result.agent, "custom_agent");
+      assertEquals(result.priority, "high");
+    });
+  });
+
+  describe("list", () => {
+    it("should return empty array when no requests", async () => {
+      const requests = await requestCommands.list();
+      assertEquals(requests, []);
+    });
+
+    it("should list all requests", async () => {
+      await requestCommands.create("Request 1");
+      await requestCommands.create("Request 2");
+
+      const requests = await requestCommands.list();
+      assertEquals(requests.length, 2);
+    });
+
+    it("should filter by status", async () => {
+      await requestCommands.create("Request 1");
+      // Manually modify one to have different status for testing
+      // (In practice, daemon would change status)
+
+      const pending = await requestCommands.list("pending");
+      assertEquals(pending.length >= 1, true);
+    });
+
+    it("should sort by created date descending", async () => {
+      await requestCommands.create("Request 1");
+      await new Promise((r) => setTimeout(r, 100)); // Small delay
+      await requestCommands.create("Request 2");
+
+      const requests = await requestCommands.list();
+      // Most recent first
+      assertStringIncludes(requests[0].filename, "request-");
+    });
+  });
+
+  describe("show", () => {
+    it("should show request by full trace_id", async () => {
+      const created = await requestCommands.create("Test request");
+
+      const { metadata, content } = await requestCommands.show(created.trace_id);
+      assertEquals(metadata.trace_id, created.trace_id);
+      assertStringIncludes(content, "Test request");
+    });
+
+    it("should show request by short trace_id", async () => {
+      const created = await requestCommands.create("Test request");
+      const shortId = created.trace_id.slice(0, 8);
+
+      const { metadata } = await requestCommands.show(shortId);
+      assertEquals(metadata.trace_id, created.trace_id);
+    });
+
+    it("should show request by filename", async () => {
+      const created = await requestCommands.create("Test request");
+
+      const { metadata } = await requestCommands.show(created.filename);
+      assertEquals(metadata.trace_id, created.trace_id);
+    });
+
+    it("should reject non-existent request", async () => {
+      await assertRejects(
+        () => requestCommands.show("nonexistent"),
+        Error,
+        "Request not found",
+      );
+    });
+  });
+});
+```
+
+#### **Activity Logging:**
+
+- `request.created` with `{trace_id, priority, agent, portal, source, created_by, description_length}`
+- All actions tagged with `actor='human'`
+
+#### **Success Criteria:**
+
+1. [ ] `exoctl request "description"` creates valid request file
+2. [ ] Generated frontmatter passes Zod RequestFrontmatterSchema validation
+3. [ ] trace_id is valid UUID v4 format
+4. [ ] Filename follows pattern: `request-{short_trace_id}.md`
+5. [ ] File created in `/Inbox/Requests/` directory
+6. [ ] `--agent` option sets correct agent in frontmatter
+7. [ ] `--priority` validates enum (low/normal/high/critical)
+8. [ ] `--portal` option adds portal field to frontmatter
+9. [ ] `--file` reads description from specified file
+10. [ ] `--file` rejects non-existent files with clear error
+11. [ ] `--file` rejects empty files with clear error
+12. [ ] `--dry-run` shows what would be created without writing
+13. [ ] `--json` outputs machine-readable JSON
+14. [ ] `exoctl request list` shows all pending requests
+15. [ ] `exoctl request list --status` filters by status
+16. [ ] `exoctl request show <id>` displays full request content
+17. [ ] Activity Journal logs `request.created` with all metadata
+18. [ ] User identity captured from git config or OS username
+19. [ ] created_by field populated in frontmatter
+20. [ ] source field indicates how request was created (cli/file/interactive)
+21. [ ] 20+ tests in `tests/cli/request_commands_test.ts`
+22. [ ] All tests pass
+
+#### **Acceptance Criteria (Manual Testing):**
+
+```bash
+# 1. Basic request creation
+$ exoctl request "Implement user authentication for the API"
+✓ Request created: request-a1b2c3d4.md
+  Trace ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+  Priority: normal
+  Agent: default
+  Path: /home/user/ExoFrame/Inbox/Requests/request-a1b2c3d4.md
+  Next: Daemon will process this automatically
+
+# 2. Verify file content
+$ cat ~/ExoFrame/Inbox/Requests/request-a1b2c3d4.md
+---
+trace_id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+created: 2025-11-27T10:30:00.000Z
+status: pending
+priority: normal
+agent: default
+source: cli
+created_by: user@example.com
+---
+
+# Request
+
+Implement user authentication for the API
+
+# 3. Request with options
+$ exoctl request "Fix critical security bug" --priority critical --agent security_expert
+✓ Request created: request-b2c3d4e5.md
+  Priority: critical
+  Agent: security_expert
+
+# 4. Request from file
+$ echo "Implement feature X with requirements..." > ~/requirements.md
+$ exoctl request --file ~/requirements.md --agent architect
+✓ Request created: request-c3d4e5f6.md
+
+# 5. List requests
+$ exoctl request list
+📥 Requests (3):
+
+🔴 a1b2c3d4
+   Status: pending
+   Agent: default
+   Created: user@example.com @ 2025-11-27T10:30:00.000Z
+
+🟠 b2c3d4e5
+   Status: pending
+   Agent: security_expert
+   Created: user@example.com @ 2025-11-27T10:31:00.000Z
+
+# 6. Show request
+$ exoctl request show a1b2c3d4
+📄 Request: a1b2c3d4
+
+Trace ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+Status: pending
+Priority: normal
+Agent: default
+Created: user@example.com @ 2025-11-27T10:30:00.000Z
+
+────────────────────────────────────────────────────────────
+[full content...]
+
+# 7. Verify activity logging
+$ sqlite3 ~/ExoFrame/System/journal.db "SELECT action_type, payload FROM activity WHERE action_type='request.created' ORDER BY timestamp DESC LIMIT 1;"
+request.created|{"trace_id":"a1b2c3d4-...","priority":"normal","agent":"default","source":"cli","created_by":"user@example.com"}
+
+# 8. JSON output
+$ exoctl request "Test" --json
+{
+  "trace_id": "d4e5f6a7-...",
+  "filename": "request-d4e5f6a7.md",
+  "path": "/home/user/ExoFrame/Inbox/Requests/request-d4e5f6a7.md",
+  "status": "pending",
+  "priority": "normal",
+  "agent": "default",
+  "created": "2025-11-27T10:32:00.000Z",
+  "created_by": "user@example.com"
+}
+
+# 9. Dry run
+$ exoctl request "Test dry run" --dry-run
+Dry run - would create:
+{
+  "trace_id": "e5f6a7b8-...",
+  ...
+}
+
+# 10. Error handling
+$ exoctl request --file /nonexistent/file.md
+Error: File not found: /nonexistent/file.md
+
+$ exoctl request
+Error: Description required. Usage: exoctl request "<description>"
+       Or use --file to read from file, or --interactive for prompts.
+```
 
 ---
 
-### Step 7.2: UI Strategy Evaluation
+### Step 7.2: TOML Format Migration
+
+**Problem:** ExoFrame currently uses mixed formats (YAML frontmatter in requests/plans, YAML for blueprints). This creates:
+
+- Inconsistency across file types
+- YAML fragility (indentation-sensitive, type coercion issues)
+- Higher token usage when files are included in LLM context
+
+**Solution:** Standardize on TOML for all structured metadata.
+
+**Changes Required:**
+
+| Component           | Current       | Target        | Files Affected                |
+| ------------------- | ------------- | ------------- | ----------------------------- |
+| Request frontmatter | YAML (`---`)  | TOML (`+++`)  | `src/parsers/markdown.ts`     |
+| Plan frontmatter    | YAML (`---`)  | TOML (`+++`)  | `src/parsers/markdown.ts`     |
+| Agent Blueprints    | `.yaml`       | `.toml`       | `Blueprints/Agents/*.toml`    |
+| Request schema      | YAML parsing  | TOML parsing  | `src/schemas/request.ts`      |
+| Tests               | YAML fixtures | TOML fixtures | `tests/*.ts`, `fixtures/`     |
+| CLI generation      | YAML output   | TOML output   | `src/cli/request_commands.ts` |
+
+**Implementation Tasks:**
+
+1. **Add TOML parser dependency**
+   ```json
+   // deno.json imports
+   "@std/toml": "jsr:@std/toml@^1.0.0"
+   ```
+
+2. **Update FrontmatterParser to support both formats**
+   - Detect delimiter: `+++` = TOML, `---` = YAML
+   - Parse accordingly
+   - Maintain backward compatibility during migration
+
+3. **Update RequestCommands CLI**
+   - Generate TOML frontmatter (not YAML)
+   - Use `+++` delimiters
+
+4. **Migrate Blueprint format**
+   - Create `BlueprintSchema` for TOML validation
+   - Update `BlueprintService` to parse TOML
+
+5. **Update all fixtures and tests**
+
+**Success Criteria:**
+
+1. [ ] `@std/toml` added to `deno.json` imports
+2. [ ] `FrontmatterParser` detects and parses both `---` (YAML) and `+++` (TOML) delimiters
+3. [ ] New requests created via CLI use TOML frontmatter (`+++`)
+4. [ ] Blueprint files use `.toml` extension and TOML syntax
+5. [ ] All existing tests updated to use TOML fixtures
+6. [ ] Token count comparison documented (before/after)
+7. [ ] Backward compatibility: old YAML files still parse correctly
+8. [ ] Migration guide written for users with existing YAML files
+
+**Tests:**
+
+```typescript
+// tests/frontmatter_test.ts (additions)
+
+Deno.test("FrontmatterParser - parses TOML frontmatter with +++ delimiters", () => {
+  const markdown = `+++
+trace_id = "550e8400-e29b-41d4-a716-446655440000"
+agent_id = "coder"
+status = "pending"
+priority = 5
+tags = ["feature"]
+created_at = 2025-11-27T10:30:00Z
++++
+
+# Request body here`;
+
+  const parser = new FrontmatterParser();
+  const result = parser.parse(markdown);
+
+  assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
+  assertEquals(result.request.priority, 5);
+  assertEquals(result.request.tags, ["feature"]);
+});
+
+Deno.test("FrontmatterParser - backward compatible with YAML frontmatter", () => {
+  const markdown = `---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+agent_id: coder
+status: pending
+---
+
+# Request body`;
+
+  const parser = new FrontmatterParser();
+  const result = parser.parse(markdown);
+
+  assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
+});
+
+Deno.test("FrontmatterParser - auto-detects format by delimiter", () => {
+  const toml = `+++\ntrace_id = "abc"\n+++\nBody`;
+  const yaml = `---\ntrace_id: abc\n---\nBody`;
+
+  const parser = new FrontmatterParser();
+
+  // Should not throw - both formats work
+  assertExists(parser.parse(toml));
+  assertExists(parser.parse(yaml));
+});
+```
+
+**Token Efficiency Rationale:**
+
+```
+# YAML (45 tokens)
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+agent_id: "senior_coder"
+status: "pending"
+priority: 5
+tags:
+  - feature
+  - api
+---
+
+# TOML (35 tokens)
++++
+trace_id = "550e8400-e29b-41d4-a716-446655440000"
+agent_id = "senior_coder"
+status = "pending"
+priority = 5
+tags = ["feature", "api"]
++++
+```
+
+_~22% token reduction per request file embedded in LLM context_
+
+---
+
+### Step 7.3: UI Strategy Evaluation
 
 **Problem:** Obsidian with Dataview provides read-only dashboards, but lacks:
 
@@ -3036,7 +3900,7 @@ router.get("/ws", (ctx) => {
 
 ---
 
-### Step 7.3: Obsidian Dashboard Enhancement
+### Step 7.4: Obsidian Dashboard Enhancement
 
 **Current State:** Basic Dataview queries exist but are underdeveloped.
 

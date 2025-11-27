@@ -173,51 +173,93 @@ exoctl <command>
 ````
 ### 4.2 Command Groups
 
-ExoFrame CLI is organized into five main command groups:
+ExoFrame CLI is organized into six main command groups:
 
-#### **Request Commands** - Create new requests quickly
+#### **Request Commands** - Primary Interface for Creating Requests
 
-Instead of manually creating markdown files, use the CLI for rapid request creation:
+> **⚠️ RECOMMENDED:** Use `exoctl request` to create requests. Do NOT manually create files in `/Inbox/Requests/` — this is error-prone and bypasses validation.
+
+The `exoctl request` command is the **primary interface** for submitting work to ExoFrame agents:
 
 ```bash
-# Quick request (auto-generates trace_id, timestamps, frontmatter)
+# Basic usage - just describe what you want
 exoctl request "Implement user authentication for the API"
 
 # With options
 exoctl request "Add rate limiting" --agent senior_coder --priority high
+exoctl request "Fix security bug" --priority critical --portal MyProject
 
-# From file (reads description from file)
-exoctl request --file requirements.txt
+# From file (for complex/long requests)
+exoctl request --file ~/requirements.md
+exoctl request -f ./feature-spec.md --agent architect
 
-# Interactive mode (prompts for details)
-exoctl request -i
+# List pending requests
+exoctl request list
+exoctl request list --status pending
+
+# Show request details
+exoctl request show <trace-id>
+exoctl request show a1b2c3d4
+
+# Dry run (see what would be created)
+exoctl request "Test" --dry-run
+
+# JSON output (for scripting)
+exoctl request "Test" --json
 ````
+
+**Options:**
+
+| Option          | Short | Description                                   |
+| --------------- | ----- | --------------------------------------------- |
+| `--agent`       | `-a`  | Target agent blueprint (default: `default`)   |
+| `--priority`    | `-p`  | Priority: `low`, `normal`, `high`, `critical` |
+| `--portal`      |       | Portal alias for project context              |
+| `--file`        | `-f`  | Read description from file                    |
+| `--interactive` | `-i`  | Interactive mode with prompts                 |
+| `--dry-run`     |       | Preview without creating                      |
+| `--json`        |       | Machine-readable output                       |
 
 **Example workflow:**
 
 ```bash
-# Create a request with one command
+# 1. Create a request with one command
 $ exoctl request "Add input validation to all API endpoints"
 ✓ Request created: request-a1b2c3d4.md
   Trace ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+  Priority: normal
+  Agent: default
   Path: /home/user/ExoFrame/Inbox/Requests/request-a1b2c3d4.md
   Next: Daemon will process this automatically
 
-# Check status
+# 2. Check if plan was generated
 $ exoctl plan list
 📋 Plans (1):
 
 🔍 add-validation-a1b2c3d4
    Status: review
    Trace: a1b2c3d4...
+
+# 3. List your requests
+$ exoctl request list
+📥 Requests (1):
+
+🟢 a1b2c3d4
+   Status: pending
+   Agent: default
+   Created: user@example.com @ 2025-11-27T10:30:00.000Z
 ```
 
-**Why use this instead of creating files manually?**
+**Why CLI instead of manual files?**
 
-- Auto-generates valid frontmatter (trace_id, timestamps)
-- Validates input before creating file
-- Logs creation to Activity Journal
-- Faster than opening editor, writing YAML, saving
+| Aspect         | Manual File Creation     | `exoctl request`           |
+| -------------- | ------------------------ | -------------------------- |
+| Frontmatter    | Must write TOML manually | Auto-generated             |
+| Trace ID       | Must generate UUID       | Auto-generated             |
+| Validation     | None until daemon reads  | Immediate                  |
+| Audit trail    | Not logged               | Logged to Activity Journal |
+| Error handling | Silent failures          | Clear error messages       |
+| Speed          | ~30 seconds              | ~2 seconds                 |
 
 #### **Plan Commands** - Review AI-generated plans
 
