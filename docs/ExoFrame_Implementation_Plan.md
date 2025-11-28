@@ -2675,6 +2675,7 @@ exoctl scaffold --test
 | Context overflow    | Step 3.3 context loader  | `tests/context/context_loader_test.ts` |
 | Git identity drift  | Step 4.2 Git service     | `tests/git/git_service_test.ts`        |
 | Watcher instability | Step 2.1 watcher         | `tests/watcher/stability_test.ts`      |
+| Doc drift           | Step 6.7 doc tests       | `tests/docs/user_guide_test.ts`        |
 
 ### Step 6.1: Heartbeat & Leases
 
@@ -2904,6 +2905,79 @@ jobs:
 - [ ] Corrupt database → Verify error message, recovery procedure (**T-DataLoss**)
 - [ ] Create request with invalid TOML → Verify validation error logged (**T-Input**)
 - [ ] Test with actual OpenAI/Anthropic API (not mock) (**T-Creds**)
+
+### Step 6.7: Documentation Structure Tests
+
+- **Dependencies:** Phase 5 (Documentation) — **Rollback:** revert test files
+- **Action:** Create automated tests to verify documentation completeness and structure.
+- **Justification:** Documentation drifts out of sync with code. Automated tests catch missing sections, broken examples, and incomplete guides.
+
+**Test Location:** `tests/docs/`
+
+**Implementation:**
+
+```typescript
+// tests/docs/helpers.ts
+export async function readUserGuide(): Promise<string> {
+  return await Deno.readTextFile("docs/ExoFrame_User_Guide.md");
+}
+
+export async function readKnowledgeReadme(): Promise<string> {
+  return await Deno.readTextFile("templates/Knowledge_README.md");
+}
+```
+
+**User Guide Tests (`tests/docs/user_guide_test.ts`):**
+
+```typescript
+// Verify User Guide has required sections
+Deno.test("User Guide has main sections", async () => {
+  const guide = await readUserGuide();
+  assertStringIncludes(guide, "## 1."); // Introduction
+  assertStringIncludes(guide, "## 2."); // Installation
+  assertStringIncludes(guide, "## 3."); // Workspace
+  assertStringIncludes(guide, "## 4."); // CLI Reference
+});
+
+// Verify CLI commands are documented
+Deno.test("User Guide documents exoctl commands", async () => {
+  const guide = await readUserGuide();
+  assertStringIncludes(guide, "exoctl");
+  assertStringIncludes(guide, "daemon start");
+  assertStringIncludes(guide, "plan approve");
+});
+
+// Verify Obsidian integration is documented
+Deno.test("User Guide documents Obsidian setup", async () => {
+  const guide = await readUserGuide();
+  assertStringIncludes(guide, "Dataview");
+  assertStringIncludes(guide, "Community Plugins");
+});
+```
+
+**Knowledge README Tests (`tests/docs/knowledge_readme_test.ts`):**
+
+```typescript
+Deno.test("Knowledge README documents vault structure", async () => {
+  const readme = await readKnowledgeReadme();
+  assertStringIncludes(readme, "Dashboard");
+  assertStringIncludes(readme, "Portals");
+  assertStringIncludes(readme, "Reports");
+});
+```
+
+**Success Criteria:**
+
+- [x] `tests/docs/` folder created with documentation tests
+- [x] User Guide tests verify all major sections exist
+- [x] Knowledge README tests verify vault structure docs
+- [x] Tests run as part of CI pipeline
+
+✅ **COMPLETED** (2025-11-28): Documentation test infrastructure implemented.
+- Created `tests/docs/helpers.ts` with shared functions
+- Created `tests/docs/user_guide_test.ts` (17 tests)
+- Created `tests/docs/knowledge_readme_test.ts` (5 tests)
+- All 352 tests pass
 
 ---
 
