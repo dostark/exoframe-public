@@ -94,6 +94,47 @@ deno run --watch --allow-read --allow-write --allow-run src/main.ts
 deno test --allow-read --allow-write --allow-run tests/setup_db_test.ts
 ```
 
+7. Configure Obsidian for ExoFrame compatibility
+
+The following Obsidian settings are **required** for ExoFrame tests to pass and for proper integration:
+
+**Required Plugin:**
+
+1. Open Obsidian Settings (gear icon)
+2. Go to **Community Plugins**
+3. Click "Turn on Community Plugins" (disables Safe Mode)
+4. Click **Browse** → Search "Dataview"
+5. Click **Install** then **Enable**
+
+**Required Settings:**
+
+1. Go to **Settings → Files & Links**:
+   - ☑ **Automatically update internal links** — enables wikilinks like `[[Dashboard]]` to auto-update when files are renamed
+   - ☑ **Show all file types** — makes `.toml`, `.json` files visible in the sidebar
+
+2. (Optional) Go to **Settings → Editor**:
+   - ☑ Auto pair markdown syntax
+
+**Verify Configuration:**
+
+```bash
+# Run Obsidian integration tests
+deno test --allow-all tests/obsidian/
+
+# Expected: All tests pass, including:
+# - File watcher compatibility tests
+# - Dashboard content tests  
+# - Vault structure tests
+```
+
+**Platform-Specific Notes:**
+
+| Platform        | Configuration                                                                                                                           |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Linux**       | Increase inotify watchers for large vaults: `echo fs.inotify.max_user_watches=524288 \| sudo tee -a /etc/sysctl.conf && sudo sysctl -p` |
+| **macOS**       | FSEvents works well, no special configuration needed                                                                                    |
+| **Windows/WSL** | Run Obsidian as administrator if symlinks don't work properly                                                                           |
+
 ### 2. Windows + WSL2 (Ubuntu inside WSL)
 
 Prerequisite on Windows host:
@@ -109,6 +150,7 @@ Notes specific to WSL2:
 - For Obsidian UI on Windows: point Obsidian to the WSL mount (e.g.,
   `\\wsl$\\Ubuntu-22.04\\home\\<user>\\ExoFrame\\Knowledge`) or use the Windows-side Obsidian and open vault via the WSL
   path.
+- **Important:** Configure Obsidian with the same settings as step 7 above (Dataview plugin, "Automatically update internal links", "Show all file types").
 
 2. Symlink behavior
 

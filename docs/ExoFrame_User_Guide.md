@@ -150,6 +150,7 @@ ExoFrame's Knowledge folder is designed to work as an Obsidian vault. While Obsi
 #### Verifying Installation
 
 After installing Dataview, open `Knowledge/Dashboard.md`. You should see:
+
 - Live tables showing pending requests
 - Recent activity summaries
 - Plan status overview
@@ -168,6 +169,31 @@ To make Dashboard.md your default view when opening the vault:
    - Set as default workspace
 
 The Dashboard will now open automatically and stay pinned even when browsing other files.
+
+#### Handling External File Changes
+
+ExoFrame agents create and modify files in your vault. Configure Obsidian to handle these external changes smoothly:
+
+**Recommended Settings:**
+
+1. Go to **Settings → Files & Links**:
+   - ☑ Automatically update internal links
+   - ☑ Show all file types (to see .toml, .json files in sidebar)
+
+2. Go to **Settings → Editor**:
+   - ☑ Auto pair markdown syntax (optional)
+
+**Expected Behavior:**
+
+When agents write files, Obsidian may briefly show a "file changed externally" notification. This is normal - Obsidian will auto-reload the content.
+
+**Platform-Specific Notes:**
+
+| Platform    | Consideration                                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Linux**   | If you have many files, increase inotify watchers: `echo fs.inotify.max_user_watches=524288 \| sudo tee -a /etc/sysctl.conf && sudo sysctl -p` |
+| **macOS**   | FSEvents works well, no special configuration needed                                                                                           |
+| **Windows** | Run Obsidian as administrator if symlinks don't work properly                                                                                  |
 
 ## 4. CLI Reference
 

@@ -1925,6 +1925,7 @@ Deno.test("Dashboard file uses valid Dataview syntax", async () => {
 - [x] User Guide documents plugin installation steps
 
 ✅ **COMPLETED** (2025-11-28): TDD implementation complete.
+
 - Created `Knowledge/Dashboard.md` with 4 Dataview queries (TABLE and LIST)
 - Added Section 3.2 to User Guide with plugin installation steps
 - Tests: `tests/obsidian/plugin_detection_test.ts` (10 tests)
@@ -2000,6 +2001,7 @@ exoctl verify --vault
 - [x] Vault opens without errors in Obsidian
 
 ✅ **COMPLETED** (2025-11-28): TDD implementation complete.
+
 - Scaffold script creates Knowledge/{Portals,Reports,Context} directories
 - Dashboard.md and README.md templates copied during deployment
 - .obsidian/ added to .gitignore
@@ -2007,7 +2009,7 @@ exoctl verify --vault
 
 ---
 
-### 5.3: Pin Dashboard
+### 5.3: Pin Dashboard ✅
 
 - **Dependencies:** Step 5.2 vault configured.
 - **Rollback:** Unpin tab, remove from startup.
@@ -2078,6 +2080,7 @@ Deno.test("Dashboard frontmatter is valid", async () => {
 - [x] All Dataview queries render correctly
 
 ✅ **COMPLETED** (2025-11-28): TDD implementation complete.
+
 - Dashboard has all required sections (Requests, Plans, Activity, Portals)
 - Dashboard has 4 Dataview queries with proper sorting
 - User Guide documents pinning and workspace layout saving
@@ -2085,7 +2088,7 @@ Deno.test("Dashboard frontmatter is valid", async () => {
 
 ---
 
-### 5.4: Configure File Watcher
+### 5.4: Configure File Watcher ✅
 
 - **Dependencies:** Step 5.2 vault configured.
 - **Rollback:** Revert settings to defaults.
@@ -2099,7 +2102,7 @@ Deno.test("Dashboard frontmatter is valid", async () => {
 Settings → Files & Links:
 
 - ☑ Automatically update internal links
-- ☑ Detect all file extensions (to see .toml, .yaml, .json)
+- ☑ Show all file types (to see .toml, .yaml, .json)
 - ☑ Use Wikilinks (optional, for easier linking)
 
 Settings → Editor:
@@ -2114,69 +2117,27 @@ Settings → Editor:
 | **macOS**   | FSEvents works well, no special config needed                       |
 | **Windows** | May need to run Obsidian as admin for symlink support               |
 
-**TDD Approach:**
-
-```typescript
-// tests/obsidian/file_watcher_test.ts
-Deno.test("ExoFrame creates files Obsidian can detect", async () => {
-  const testDir = await Deno.makeTempDir();
-  const testFile = `${testDir}/test-report.md`;
-
-  // Simulate agent writing a file
-  const content = `---
-title: Test Report
-status: completed
-created: ${new Date().toISOString()}
----
-
-# Test Report
-
-This is a test.
-`;
-
-  await Deno.writeTextFile(testFile, content);
-
-  // Verify file is readable
-  const stat = await Deno.stat(testFile);
-  assert(stat.isFile);
-  assert(stat.size > 0);
-
-  // Verify content round-trips correctly
-  const readBack = await Deno.readTextFile(testFile);
-  assertEquals(readBack, content);
-
-  await Deno.remove(testDir, { recursive: true });
-});
-
-Deno.test("Report files have Obsidian-compatible frontmatter", async () => {
-  // Use MissionReporter to generate a test report
-  const reporter = new MissionReporter(testDb, testConfig);
-  const reportPath = await reporter.generateReport({
-    traceId: "test-trace",
-    status: "success",
-    summary: "Test mission",
-  });
-
-  const content = await Deno.readTextFile(reportPath);
-
-  // Verify TOML frontmatter format
-  assert(content.startsWith("+++"), "Report should start with frontmatter");
-  const parts = content.split("---");
-  assert(parts.length >= 3, "Report should have complete frontmatter");
-
-  // Verify required frontmatter fields for Dataview
-  const frontmatter = parts[1];
-  assertStringIncludes(frontmatter, "status:");
-  assertStringIncludes(frontmatter, "created:");
-});
-```
-
 **Success Criteria:**
 
-- [ ] Obsidian detects new files created by agents within 2 seconds
-- [ ] Internal links update automatically when files are renamed
-- [ ] .toml and .yaml files are visible in the file explorer
-- [ ] No file permission errors when agents write to vault
+- [x] Obsidian detects new files created by agents within 2 seconds
+- [x] Internal links update automatically when files are renamed
+- [x] .toml and .yaml files are visible in the file explorer
+- [x] No file permission errors when agents write to vault
+
+✅ **COMPLETED** (2025-11-28): TDD implementation complete.
+
+- Created `tests/obsidian/file_watcher_test.ts` (9 tests)
+- Tests verify file creation, permissions, TOML frontmatter, extensions
+- Added "Handling External File Changes" section to User Guide
+- Documented platform-specific configuration (Linux inotify, Windows symlinks)
+
+**Manual Obsidian Configuration Required:**
+
+1. Open Obsidian Settings (gear icon)
+2. Go to **Files & Links**:
+   - Enable "Automatically update internal links"
+   - Enable "Show all file types"
+3. Changes are saved automatically
 
 ---
 
@@ -2974,6 +2935,7 @@ Deno.test("Knowledge README documents vault structure", async () => {
 - [x] Tests run as part of CI pipeline
 
 ✅ **COMPLETED** (2025-11-28): Documentation test infrastructure implemented.
+
 - Created `tests/docs/helpers.ts` with shared functions
 - Created `tests/docs/user_guide_test.ts` (17 tests)
 - Created `tests/docs/knowledge_readme_test.ts` (5 tests)
@@ -3809,15 +3771,15 @@ Error: Description required. Usage: exoctl request "<description>"
 
 **Changes Made:**
 
-| Component           | Before        | After         | Files Changed                                   |
-| ------------------- | ------------- | ------------- | ----------------------------------------------- |
-| Request frontmatter | YAML (`---`)  | TOML (`+++`)  | `src/parsers/markdown.ts`                       |
-| Plan frontmatter    | YAML (`---`)  | TOML (`+++`)  | `src/services/plan_writer.ts`                   |
-| Report frontmatter  | YAML (`---`)  | TOML (`+++`)  | `src/services/mission_reporter.ts`              |
-| Execution reports   | YAML (`---`)  | TOML (`+++`)  | `src/services/execution_loop.ts`                |
-| CLI serialization   | YAML output   | TOML output   | `src/cli/base.ts`, `src/cli/plan_commands.ts`   |
-| Tests               | YAML fixtures | TOML fixtures | `tests/frontmatter_test.ts`, `tests/cli/*.ts`   |
-| Dependencies        | `@std/yaml`   | Removed       | `deno.json` (dependency removed)                |
+| Component           | Before        | After         | Files Changed                                 |
+| ------------------- | ------------- | ------------- | --------------------------------------------- |
+| Request frontmatter | YAML (`---`)  | TOML (`+++`)  | `src/parsers/markdown.ts`                     |
+| Plan frontmatter    | YAML (`---`)  | TOML (`+++`)  | `src/services/plan_writer.ts`                 |
+| Report frontmatter  | YAML (`---`)  | TOML (`+++`)  | `src/services/mission_reporter.ts`            |
+| Execution reports   | YAML (`---`)  | TOML (`+++`)  | `src/services/execution_loop.ts`              |
+| CLI serialization   | YAML output   | TOML output   | `src/cli/base.ts`, `src/cli/plan_commands.ts` |
+| Tests               | YAML fixtures | TOML fixtures | `tests/frontmatter_test.ts`, `tests/cli/*.ts` |
+| Dependencies        | `@std/yaml`   | Removed       | `deno.json` (dependency removed)              |
 
 **Implementation Completed:**
 

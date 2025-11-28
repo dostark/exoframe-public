@@ -1649,14 +1649,14 @@ Agent: "Found YAML frontmatter in requests, plans. TOML in config.
 
 **The Result**:
 
-| Metric             | Before     | After      |
-| ------------------ | ---------- | ---------- |
-| Frontmatter Format | Mixed YAML | TOML only  |
-| Delimiter          | `---`      | `+++`      |
-| Token Usage        | ~45/file   | ~35/file   |
-| Token Savings      | -          | ~22%       |
-| Dependencies       | @std/yaml  | (removed)  |
-| Tests              | 304        | 304        |
+| Metric             | Before     | After     |
+| ------------------ | ---------- | --------- |
+| Frontmatter Format | Mixed YAML | TOML only |
+| Delimiter          | `---`      | `+++`     |
+| Token Usage        | ~45/file   | ~35/file  |
+| Token Savings      | -          | ~22%      |
+| Dependencies       | @std/yaml  | (removed) |
+| Tests              | 304        | 304       |
 
 **The TOML Format**:
 

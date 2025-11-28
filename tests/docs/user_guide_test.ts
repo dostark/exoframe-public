@@ -158,3 +158,39 @@ Deno.test("User Guide documents deno task commands", async () => {
 
   assertStringIncludes(guide, "deno task");
 });
+
+// ============================================================================
+// File Watcher Documentation Tests (Step 5.4)
+// ============================================================================
+
+Deno.test("User Guide documents file watcher configuration", async () => {
+  const guide = await readUserGuide();
+  const lower = guide.toLowerCase();
+
+  // Should mention external file changes
+  const hasFileChanges = lower.includes("external") ||
+    lower.includes("file change") ||
+    lower.includes("auto-reload") ||
+    lower.includes("watcher");
+
+  assert(
+    hasFileChanges,
+    "User Guide should document external file change handling",
+  );
+});
+
+Deno.test("User Guide documents platform-specific notes", async () => {
+  const guide = await readUserGuide();
+  const lower = guide.toLowerCase();
+
+  // Should mention at least one platform consideration
+  const hasPlatformNotes = lower.includes("linux") ||
+    lower.includes("macos") ||
+    lower.includes("windows") ||
+    lower.includes("inotify");
+
+  assert(
+    hasPlatformNotes,
+    "User Guide should have platform-specific notes",
+  );
+});
