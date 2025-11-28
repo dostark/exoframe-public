@@ -1865,7 +1865,7 @@ Deno.test("MissionReporter: formats report with valid TOML frontmatter", async (
 > **Platform note:** Maintainers must document OS-specific instructions (Windows symlink prerequisites, macOS sandbox
 > prompts, Linux desktop watchers) before marking each sub-step complete.
 
-### 5.1: Install Required Plugins
+### 5.1: Install Required Plugins ✅
 
 - **Dependencies:** Obsidian installed on user system.
 - **Rollback:** Uninstall plugins via Community Plugins settings.
@@ -1994,10 +1994,16 @@ exoctl verify --vault
 
 **Success Criteria:**
 
-- [ ] Knowledge/ directory contains required subdirectories
-- [ ] Dashboard.md exists at Knowledge/Dashboard.md
-- [ ] .obsidian/ directory is gitignored
-- [ ] Vault opens without errors in Obsidian
+- [x] Knowledge/ directory contains required subdirectories
+- [x] Dashboard.md exists at Knowledge/Dashboard.md
+- [x] .obsidian/ directory is gitignored
+- [x] Vault opens without errors in Obsidian
+
+✅ **COMPLETED** (2025-11-28): TDD implementation complete.
+- Scaffold script creates Knowledge/{Portals,Reports,Context} directories
+- Dashboard.md and README.md templates copied during deployment
+- .obsidian/ added to .gitignore
+- Tests: `tests/obsidian/vault_structure_test.ts` (12 tests)
 
 ---
 

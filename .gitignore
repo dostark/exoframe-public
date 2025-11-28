@@ -2,6 +2,10 @@
 node_modules/
 dist/
 .vscode/
+
+# Obsidian vault config (user-specific)
+.obsidian/
+
 # runtime / user data (do not commit runtime DBs or user content)
 /System/*.db*
 /Knowledge/
