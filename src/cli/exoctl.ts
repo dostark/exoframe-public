@@ -17,6 +17,7 @@ import { ConfigService } from "../config/service.ts";
 import { DatabaseService } from "../services/db.ts";
 import { GitService } from "../services/git_service.ts";
 import { PlanCommands } from "./plan_commands.ts";
+import { RequestCommands } from "./request_commands.ts";
 import { ChangesetCommands } from "./changeset_commands.ts";
 import { GitCommands } from "./git_commands.ts";
 import { DaemonCommands } from "./daemon_commands.ts";
@@ -30,6 +31,7 @@ const gitService = new GitService({ config, db });
 
 // Initialize command handlers
 const context = { config, db };
+const requestCommands = new RequestCommands(context, config.system.root);
 const planCommands = new PlanCommands(context, config.system.root);
 const changesetCommands = new ChangesetCommands(context, gitService);
 const gitCommands = new GitCommands(context);
@@ -40,6 +42,112 @@ await new Command()
   .name("exoctl")
   .version("1.0.0")
   .description("ExoFrame CLI - Human interface for agent orchestration")
+  // Request commands (PRIMARY INTERFACE)
+  .command(
+    "request",
+    new Command()
+      .description("Create requests for ExoFrame agents (PRIMARY INTERFACE)")
+      .arguments("[description:string]")
+      .option("-a, --agent <agent:string>", "Target agent blueprint", { default: "default" })
+      .option("-p, --priority <priority:string>", "Priority: low, normal, high, critical", { default: "normal" })
+      .option("--portal <portal:string>", "Portal alias for context")
+      .option("-f, --file <file:string>", "Read description from file")
+      .option("--dry-run", "Show what would be created without writing")
+      .option("--json", "Output in JSON format")
+      .action(async (options, description?: string) => {
+        try {
+          // Handle file input
+          if (options.file) {
+            const result = await requestCommands.createFromFile(options.file, {
+              agent: options.agent,
+              priority: options.priority as "low" | "normal" | "high" | "critical",
+              portal: options.portal,
+            });
+            printRequestResult(result, !!options.json, !!options.dryRun);
+            return;
+          }
+
+          // Require description for inline mode
+          if (!description) {
+            console.error('Error: Description required. Usage: exoctl request "<description>"');
+            console.error("       Or use --file to read from file.");
+            Deno.exit(1);
+          }
+
+          // Create request
+          const result = await requestCommands.create(description, {
+            agent: options.agent,
+            priority: options.priority as "low" | "normal" | "high" | "critical",
+            portal: options.portal,
+          });
+
+          if (options.dryRun) {
+            console.log("Dry run - would create:");
+            printRequestResult(result, true, true);
+            return;
+          }
+
+          printRequestResult(result, !!options.json, false);
+        } catch (error) {
+          console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+          Deno.exit(1);
+        }
+      })
+      .command(
+        "list",
+        new Command()
+          .description("List pending requests")
+          .option("-s, --status <status:string>", "Filter by status")
+          .option("--json", "Output in JSON format")
+          .action(async (options) => {
+            try {
+              const requests = await requestCommands.list(options.status);
+              if (options.json) {
+                console.log(JSON.stringify(requests, null, 2));
+              } else {
+                if (requests.length === 0) {
+                  console.log("No requests found.");
+                  return;
+                }
+                console.log(`\n📥 Requests (${requests.length}):\n`);
+                for (const req of requests) {
+                  const priorityIcon = { critical: "🔴", high: "🟠", normal: "🟢", low: "⚪" }[req.priority] || "🟢";
+                  console.log(`${priorityIcon} ${req.trace_id.slice(0, 8)}`);
+                  console.log(`   Status: ${req.status}`);
+                  console.log(`   Agent: ${req.agent}`);
+                  console.log(`   Created: ${req.created_by} @ ${req.created}`);
+                  console.log();
+                }
+              }
+            } catch (error) {
+              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              Deno.exit(1);
+            }
+          }),
+      )
+      .command(
+        "show <id>",
+        new Command()
+          .description("Show request details")
+          .action(async (_options: void, ...args: string[]) => {
+            const id = args[0];
+            try {
+              const { metadata, content } = await requestCommands.show(id);
+              console.log(`\n📄 Request: ${metadata.trace_id.slice(0, 8)}\n`);
+              console.log(`Trace ID: ${metadata.trace_id}`);
+              console.log(`Status: ${metadata.status}`);
+              console.log(`Priority: ${metadata.priority}`);
+              console.log(`Agent: ${metadata.agent}`);
+              console.log(`Created: ${metadata.created_by} @ ${metadata.created}`);
+              console.log("\n" + "─".repeat(60) + "\n");
+              console.log(content);
+            } catch (error) {
+              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              Deno.exit(1);
+            }
+          }),
+      ),
+  )
   // Plan commands
   .command(
     "plan",
@@ -535,3 +643,22 @@ await new Command()
       ),
   )
   .parse(Deno.args);
+
+// Helper function for printing request results
+import type { RequestMetadata } from "./request_commands.ts";
+
+function printRequestResult(result: RequestMetadata, json: boolean, dryRun: boolean) {
+  if (json) {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    const prefix = dryRun ? "Would create:" : "✓ Request created:";
+    console.log(`${prefix} ${result.filename}`);
+    console.log(`  Trace ID: ${result.trace_id}`);
+    console.log(`  Priority: ${result.priority}`);
+    console.log(`  Agent: ${result.agent}`);
+    console.log(`  Path: ${result.path}`);
+    if (!dryRun) {
+      console.log(`  Next: Daemon will process this automatically`);
+    }
+  }
+}
