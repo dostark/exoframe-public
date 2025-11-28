@@ -156,6 +156,19 @@ After installing Dataview, open `Knowledge/Dashboard.md`. You should see:
 
 If you see raw code blocks instead of tables, Dataview is not enabled.
 
+#### Pinning the Dashboard
+
+To make Dashboard.md your default view when opening the vault:
+
+1. Open `Knowledge/Dashboard.md`
+2. Right-click the tab → **Pin**
+3. (Optional) Save workspace layout:
+   - Press `Ctrl/Cmd + P` → "Manage workspaces"
+   - Save current layout as "ExoFrame"
+   - Set as default workspace
+
+The Dashboard will now open automatically and stay pinned even when browsing other files.
+
 ## 4. CLI Reference
 
 ### 4.1 Installation
