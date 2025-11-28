@@ -6,9 +6,37 @@
  * 1. RED: These tests will fail initially (missing docs/Dashboard.md, incomplete User Guide)
  * 2. GREEN: Create Dashboard.md with valid Dataview queries, update User Guide
  * 3. REFACTOR: Improve Dataview queries and documentation as needed
+ *
+ * Note: Dashboard.md template is in templates/Knowledge_Dashboard.md (Knowledge/ is gitignored)
+ * The scaffold script copies it to Knowledge/Dashboard.md during deployment.
  */
 
 import { assert, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
+
+// Dashboard can be in either location depending on environment
+async function readDashboard(): Promise<string> {
+  // Try Knowledge folder first (deployed workspace)
+  try {
+    return await Deno.readTextFile("Knowledge/Dashboard.md");
+  } catch {
+    // Fall back to templates (dev environment)
+    return await Deno.readTextFile("templates/Knowledge_Dashboard.md");
+  }
+}
+
+async function dashboardExists(): Promise<boolean> {
+  try {
+    await Deno.stat("Knowledge/Dashboard.md");
+    return true;
+  } catch {
+    try {
+      await Deno.stat("templates/Knowledge_Dashboard.md");
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
 
 // ============================================================================
 // User Guide Documentation Tests
@@ -44,13 +72,13 @@ Deno.test("User Guide should list required vs optional plugins", async () => {
 // Dashboard Dataview Syntax Tests
 // ============================================================================
 
-Deno.test("Dashboard.md should exist in Knowledge folder", async () => {
-  const stat = await Deno.stat("Knowledge/Dashboard.md");
-  assert(stat.isFile, "Dashboard.md should exist as a file");
+Deno.test("Dashboard.md should exist (template or Knowledge folder)", async () => {
+  const exists = await dashboardExists();
+  assert(exists, "Dashboard.md should exist in Knowledge/ or templates/");
 });
 
 Deno.test("Dashboard should have at least 3 Dataview queries", async () => {
-  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
+  const dashboard = await readDashboard();
 
   const dataviewBlocks = dashboard.match(/```dataview[\s\S]*?```/g) ?? [];
   assert(
@@ -60,7 +88,7 @@ Deno.test("Dashboard should have at least 3 Dataview queries", async () => {
 });
 
 Deno.test("Dashboard should use valid Dataview query types", async () => {
-  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
+  const dashboard = await readDashboard();
 
   const dataviewBlocks = dashboard.match(/```dataview[\s\S]*?```/g) ?? [];
 
@@ -78,7 +106,7 @@ Deno.test("Dashboard should use valid Dataview query types", async () => {
 });
 
 Deno.test("Dashboard should query Inbox/Requests for pending requests", async () => {
-  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
+  const dashboard = await readDashboard();
 
   // Dashboard should have a query for pending requests
   assertStringIncludes(dashboard, "Inbox/Requests");
@@ -86,7 +114,7 @@ Deno.test("Dashboard should query Inbox/Requests for pending requests", async ()
 });
 
 Deno.test("Dashboard should have properly closed code blocks", async () => {
-  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
+  const dashboard = await readDashboard();
 
   const openBlocks = (dashboard.match(/```dataview/g) ?? []).length;
 
@@ -104,7 +132,7 @@ Deno.test("Dashboard should have properly closed code blocks", async () => {
 // ============================================================================
 
 Deno.test("Dashboard should have a title and sections", async () => {
-  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
+  const dashboard = await readDashboard();
 
   // Should have a title
   assert(
@@ -121,7 +149,7 @@ Deno.test("Dashboard should have a title and sections", async () => {
 });
 
 Deno.test("Dashboard should include sections for requests, plans, and activity", async () => {
-  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
+  const dashboard = await readDashboard();
   const lowerDashboard = dashboard.toLowerCase();
 
   // Should cover key ExoFrame concepts
