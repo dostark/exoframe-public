@@ -2352,11 +2352,11 @@ exoctl scaffold --dashboard --force
 
 **Success Criteria:**
 
-- [ ] Dashboard.md created at Knowledge/Dashboard.md
-- [ ] All 4 Dataview queries are syntactically valid
-- [ ] Queries reference correct ExoFrame folders
+- [x] Dashboard.md created at Knowledge/Dashboard.md
+- [x] All 4 Dataview queries are syntactically valid
+- [x] Queries reference correct ExoFrame folders
 - [ ] Dashboard displays live data when Dataview plugin is active
-- [ ] Template exists at templates/Dashboard.md
+- [x] Template exists at templates/Dashboard.md
 
 ---
 
