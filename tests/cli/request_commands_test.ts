@@ -24,9 +24,9 @@ describe("RequestCommands", () => {
     tempDir = await Deno.makeTempDir({ prefix: "request_commands_test_" });
     inboxRequestsDir = join(tempDir, "Inbox", "Requests");
     systemDir = join(tempDir, "System");
-    
+
     await ensureDir(inboxRequestsDir);
-    await ensureDir(systemDir);  // Required for DatabaseService
+    await ensureDir(systemDir); // Required for DatabaseService
 
     // Initialize database with config
     const config = createMockConfig(tempDir);
@@ -356,9 +356,264 @@ describe("RequestCommands", () => {
 
     for (const priority of validPriorities) {
       it(`should accept valid priority: ${priority}`, async () => {
-        const result = await requestCommands.create("Test", { priority: priority as "low" | "normal" | "high" | "critical" });
+        const result = await requestCommands.create("Test", {
+          priority: priority as "low" | "normal" | "high" | "critical",
+        });
         assertEquals(result.priority, priority);
       });
     }
+  });
+
+  describe("list edge cases", () => {
+    it("should skip non-.md files in directory", async () => {
+      // Create a valid request
+      await requestCommands.create("Valid request");
+
+      // Create non-.md files that should be ignored
+      await Deno.writeTextFile(join(inboxRequestsDir, "readme.txt"), "Some text");
+      await Deno.writeTextFile(join(inboxRequestsDir, "config.json"), "{}");
+      await Deno.writeTextFile(join(inboxRequestsDir, ".hidden"), "hidden");
+
+      const requests = await requestCommands.list();
+      assertEquals(requests.length, 1); // Only the valid request
+    });
+
+    it("should skip directories in inbox", async () => {
+      await requestCommands.create("Valid request");
+
+      // Create a subdirectory that should be ignored
+      await ensureDir(join(inboxRequestsDir, "subdir"));
+      await Deno.writeTextFile(join(inboxRequestsDir, "subdir", "nested.md"), "nested");
+
+      const requests = await requestCommands.list();
+      assertEquals(requests.length, 1); // Only the valid request
+    });
+
+    it("should handle requests with minimal frontmatter", async () => {
+      // Create a file with minimal frontmatter (missing some fields)
+      const minimalContent = `+++
+trace_id = "minimal-trace-id-123"
++++
+
+Minimal request`;
+      await Deno.writeTextFile(join(inboxRequestsDir, "request-minimal.md"), minimalContent);
+
+      const requests = await requestCommands.list();
+      assertEquals(requests.length, 1);
+      assertEquals(requests[0].trace_id, "minimal-trace-id-123");
+      assertEquals(requests[0].status, "unknown"); // Default when missing
+      assertEquals(requests[0].priority, "normal"); // Default when missing
+      assertEquals(requests[0].agent, "default"); // Default when missing
+      assertEquals(requests[0].created_by, "unknown"); // Default when missing
+      assertEquals(requests[0].source, "unknown"); // Default when missing
+    });
+
+    it("should return empty array when Inbox/Requests directory does not exist", async () => {
+      // Create a fresh RequestCommands with non-existent directory
+      const emptyDir = join(tempDir, "empty_workspace");
+      const emptyCommands = new RequestCommands(
+        { config: createMockConfig(tempDir), db },
+        emptyDir,
+      );
+
+      const requests = await emptyCommands.list();
+      assertEquals(requests, []);
+    });
+  });
+
+  describe("show edge cases", () => {
+    it("should throw error for ambiguous short ID", async () => {
+      // Create two requests - we'll manually modify one to have a similar prefix
+      const request1 = await requestCommands.create("Request 1");
+
+      // Create another request and modify its trace_id to share prefix
+      const request2 = await requestCommands.create("Request 2");
+      const content2 = await Deno.readTextFile(request2.path);
+      // Use same first 8 characters as request1
+      const sharedPrefix = request1.trace_id.slice(0, 8);
+      const fakeTraceId = `${sharedPrefix}-fake-uuid-different`;
+      const updated2 = content2.replace(request2.trace_id, fakeTraceId);
+      await Deno.writeTextFile(request2.path, updated2);
+
+      // Now searching by the shared 8-char prefix should be ambiguous
+      await assertRejects(
+        async () => await requestCommands.show(sharedPrefix),
+        Error,
+        "Ambiguous request ID",
+      );
+    });
+
+    it("should handle request with minimal frontmatter in show", async () => {
+      // Create a file with minimal frontmatter
+      const minimalContent = `+++
+trace_id = "show-minimal-123"
++++
+
+Minimal content for show`;
+      await Deno.writeTextFile(join(inboxRequestsDir, "request-showmin.md"), minimalContent);
+
+      const { metadata, content } = await requestCommands.show("show-minimal-123");
+      assertEquals(metadata.trace_id, "show-minimal-123");
+      assertEquals(metadata.status, "unknown");
+      assertEquals(metadata.priority, "normal");
+      assertEquals(metadata.agent, "default");
+      assertEquals(metadata.created, "");
+      assertEquals(metadata.created_by, "unknown");
+      assertEquals(metadata.source, "unknown");
+      assertStringIncludes(content, "Minimal content for show");
+    });
+
+    it("should throw error when directory does not exist", async () => {
+      // Create a fresh RequestCommands with non-existent directory
+      const emptyDir = join(tempDir, "nonexistent_workspace");
+      const emptyCommands = new RequestCommands(
+        { config: createMockConfig(tempDir), db },
+        emptyDir,
+      );
+
+      await assertRejects(
+        async () => await emptyCommands.show("any-id"),
+        Error,
+        "Request not found",
+      );
+    });
+
+    it("should skip non-.md files when searching", async () => {
+      await requestCommands.create("Valid request");
+
+      // Create a .txt file with content that might match
+      await Deno.writeTextFile(
+        join(inboxRequestsDir, "not-a-request.txt"),
+        'trace_id = "fake-trace-id"',
+      );
+
+      // Should not find the txt file
+      await assertRejects(
+        async () => await requestCommands.show("fake-trace-id"),
+        Error,
+        "Request not found",
+      );
+    });
+
+    it("should skip directories when searching", async () => {
+      await requestCommands.create("Valid request");
+
+      // Create a subdirectory
+      const subdir = join(inboxRequestsDir, "subdir");
+      await ensureDir(subdir);
+
+      // Should not throw when directory exists
+      const requests = await requestCommands.list();
+      assertEquals(requests.length, 1);
+    });
+  });
+
+  describe("create edge cases", () => {
+    it("should handle description with special TOML characters", async () => {
+      const description = 'Test with "quotes" and \\backslashes\\ and\nnewlines';
+      const result = await requestCommands.create(description);
+
+      // File should be created and readable
+      const content = await Deno.readTextFile(result.path);
+      assertStringIncludes(content, "+++");
+      assertExists(result.trace_id);
+    });
+
+    it("should handle very long descriptions", async () => {
+      const description = "A".repeat(10000); // 10KB description
+      const result = await requestCommands.create(description);
+
+      const content = await Deno.readTextFile(result.path);
+      assertStringIncludes(content, "A".repeat(100)); // Just check some content exists
+      assertEquals(result.status, "pending");
+    });
+
+    it("should handle unicode in description", async () => {
+      const description = "Implement 日本語 support with émojis 🚀";
+      const result = await requestCommands.create(description);
+
+      const content = await Deno.readTextFile(result.path);
+      assertStringIncludes(content, "日本語");
+      assertStringIncludes(content, "🚀");
+    });
+
+    it("should create directory if Inbox/Requests does not exist", async () => {
+      // Create a fresh workspace without the Requests dir
+      const freshDir = join(tempDir, "fresh_workspace");
+      await ensureDir(join(freshDir, "System")); // Need System for db
+      const freshCommands = new RequestCommands(
+        { config: createMockConfig(tempDir), db },
+        freshDir,
+      );
+
+      // This should create the directory automatically
+      const result = await freshCommands.create("Test auto-create dir");
+      assertExists(result.trace_id);
+
+      // Verify directory was created
+      const dirExists = await Deno.stat(join(freshDir, "Inbox", "Requests")).catch(() => null);
+      assertExists(dirExists);
+    });
+
+    it("should log activity with correct payload fields", async () => {
+      const result = await requestCommands.create("Test activity payload", {
+        priority: "high",
+        agent: "special_agent",
+        portal: "TestPortal",
+      });
+
+      await db.waitForFlush();
+
+      const activities = db.getRecentActivity(10);
+      const activity = activities.find((a) => a.trace_id === result.trace_id);
+
+      assertExists(activity);
+      assertEquals(activity.action_type, "request.created");
+      assertEquals(activity.actor, "human");
+      assertExists(activity.payload);
+      assertEquals(activity.payload.priority, "high");
+      assertEquals(activity.payload.agent, "special_agent");
+      assertEquals(activity.payload.portal, "TestPortal");
+      assertEquals(activity.payload.source, "cli");
+      assertEquals(typeof activity.payload.description_length, "number");
+    });
+
+    it("should set portal to null in activity when not provided", async () => {
+      const result = await requestCommands.create("Test without portal");
+
+      await db.waitForFlush();
+
+      const activities = db.getRecentActivity(10);
+      const activity = activities.find((a) => a.trace_id === result.trace_id);
+
+      assertExists(activity);
+      assertEquals(activity.payload.portal, null);
+    });
+  });
+
+  describe("createFromFile edge cases", () => {
+    it("should handle file with only whitespace and newlines", async () => {
+      const inputFile = join(tempDir, "whitespace.md");
+      await Deno.writeTextFile(inputFile, "   \n\t\n   ");
+
+      await assertRejects(
+        async () => await requestCommands.createFromFile(inputFile),
+        Error,
+        "File is empty",
+      );
+    });
+
+    it("should handle file with portal option", async () => {
+      const inputFile = join(tempDir, "portal_test.md");
+      await Deno.writeTextFile(inputFile, "Request with portal context");
+
+      const result = await requestCommands.createFromFile(inputFile, {
+        portal: "MyPortal",
+      });
+
+      assertEquals(result.portal, "MyPortal");
+      const content = await Deno.readTextFile(result.path);
+      assertStringIncludes(content, 'portal = "MyPortal"');
+    });
   });
 });

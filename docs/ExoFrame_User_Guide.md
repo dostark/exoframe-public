@@ -147,6 +147,31 @@ ExoFrame's Knowledge folder is designed to work as an Obsidian vault. While Obsi
 7. Click "Install" then "Enable"
 8. Repeat for optional plugins (Templater, File Tree Alternative)
 
+#### Configuring Dataview Settings
+
+After installing Dataview, configure these important settings:
+
+1. Go to **Settings → Community Plugins → Dataview** (click the gear icon)
+2. Configure the following options:
+
+**Required Settings:**
+
+| Setting                              | Value | Purpose                                       |
+| ------------------------------------ | ----- | --------------------------------------------- |
+| **Enable JavaScript Queries**        | ☑ ON  | Required for `dataviewjs` blocks in Dashboard |
+| **Enable Inline JavaScript Queries** | ☑ ON  | Allows inline JS expressions                  |
+
+**Recommended Settings:**
+
+| Setting                       | Value              | Purpose                        |
+| ----------------------------- | ------------------ | ------------------------------ |
+| **Automatic View Refreshing** | ☑ ON               | Auto-refresh when files change |
+| **Refresh Interval**          | 2500 ms            | How often to refresh queries   |
+| **Date Format**               | `yyyy-MM-dd`       | Consistent date display        |
+| **Date + Time Format**        | `yyyy-MM-dd HH:mm` | Include time in timestamps     |
+
+**Important:** Without "Enable JavaScript Queries" turned ON, the Dashboard's `dataviewjs` code blocks will not execute, and you'll see raw code instead of live tables.
+
 #### Verifying Installation
 
 After installing Dataview, open `Knowledge/Dashboard.md`. You should see:
@@ -155,7 +180,14 @@ After installing Dataview, open `Knowledge/Dashboard.md`. You should see:
 - Recent activity summaries
 - Plan status overview
 
-If you see raw code blocks instead of tables, Dataview is not enabled.
+**Troubleshooting Dashboard Display Issues:**
+
+| Symptom                           | Cause                              | Solution                                         |
+| --------------------------------- | ---------------------------------- | ------------------------------------------------ |
+| Raw code blocks instead of tables | Dataview not installed or disabled | Enable Dataview in Community Plugins             |
+| `dataviewjs` blocks show errors   | JavaScript Queries disabled        | Enable in Dataview settings → JavaScript Queries |
+| Tables show stale data            | Refresh interval too long          | Lower refresh interval in Dataview settings      |
+| Inline fields not rendering       | Inline Queries disabled            | Enable in Dataview settings                      |
 
 #### Pinning the Dashboard
 

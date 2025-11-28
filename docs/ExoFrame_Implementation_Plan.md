@@ -2262,7 +2262,6 @@ exoctl request show <trace-id>
 | `--dry-run`     |       | flag   |           | Show what would be created without writing    |
 | `--json`        |       | flag   |           | Output in JSON format                         |
 
-
 #### **Activity Logging:**
 
 - `request.created` with `{trace_id, priority, agent, portal, source, created_by, description_length}`
@@ -2419,6 +2418,7 @@ exoctl request "Integration Test - verify Obsidian integration" --priority low
 ```bash
 rm ~/ExoFrame/Inbox/Requests/request-<trace_id>.md
 ```
+
 ---
 
 ## Phase 6: Testing & Quality Assurance
@@ -2433,7 +2433,6 @@ rm ~/ExoFrame/Inbox/Requests/request-<trace_id>.md
 | Git identity drift  | Step 4.2 Git service     | `tests/git/git_service_test.ts`        |
 | Watcher instability | Step 2.1 watcher         | `tests/watcher/stability_test.ts`      |
 | Doc drift           | Step 6.7 doc tests       | `tests/docs/user_guide_test.ts`        |
-
 
 **CLI Verification Commands:**
 
@@ -2456,8 +2455,6 @@ exoctl scaffold --test
 - [ ] Dashboard queries return expected results
 - [ ] No broken links in generated files
 - [ ] All integration tests pass: `deno test tests/obsidian/`
-
-
 
 ### Step 6.1: Heartbeat & Leases
 
@@ -2778,7 +2775,6 @@ ExoFrame's value proposition is **not** real-time coding assistance (IDE agents 
 4. **Multi-project context** — portals span multiple codebases
 
 However, the current "drop a markdown file" workflow has friction. This phase addresses that.
-
 
 ### Step 7.2: TOML Format Migration ✅ COMPLETED
 
