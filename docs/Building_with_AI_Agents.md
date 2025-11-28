@@ -1375,7 +1375,7 @@ That's not just irony—it's validation.
 | **Code Archaeology**          | "Is X actually used anywhere?"                         | Find zombie code                               |
 | **Test Deduplication**        | "Check if there are test duplications"                 | Consolidate scattered tests                    |
 | **Activity Logging Audit**    | "Verify every CLI command is traced in activity log"   | Complete audit trail                           |
-| **Format Migration**          | "Standardize on TOML format across codebase"           | Consistent format, token savings               |
+| **Format Migration**          | "Migrate frontmatter to YAML for Dataview"             | Consistent format, ecosystem compatibility     |
 | **Full Verification**         | "Run all tests"                                        | Verify nothing broke                           |
 
 ### The Question Templates
@@ -1788,7 +1788,7 @@ Every feature needs tests for:
 - ✅ Integration (works with existing code)
 - ✅ Performance (meets requirements)
 - ✅ Activity logging (operations traced)
-- ✅ Format consistency (TOML frontmatter with +++ delimiters)
+- ✅ Format consistency (YAML frontmatter with --- delimiters for Dataview compatibility)
 
 ### The Success Metrics
 
@@ -1805,7 +1805,7 @@ Every feature needs tests for:
 - Branch coverage meets targets (70%+ minimum)
 - All CLI commands have activity logging
 - No duplicate test files exist
-- Format is consistent across all structured files (TOML everywhere)
+- Format is consistent across all structured files (YAML frontmatter for Dataview compatibility)
 
 **You know it's not working when**:
 
@@ -1838,9 +1838,173 @@ Every feature needs tests for:
 - "Implement read_file tool that validates paths through PathResolver and logs to Activity Journal"
 - "Reject inputs with zod schema, return validation errors in structured format"
 - "Whitelist commands: [echo, git, deno], block all others including rm, dd, chmod"
-- "Use TOML frontmatter with +++ delimiters, key = \"value\" syntax"
+- "Use YAML frontmatter with --- delimiters, key: value syntax (for Dataview compatibility)"
 
 **The Test**: If you can't write a test case from the description, it needs refinement.
+
+---
+
+## Part X: The Great YAML Migration (November 28, 2025)
+
+### The Plot Twist Nobody Asked For
+
+**The Setup**: ExoFrame was happily using TOML frontmatter (`+++` delimiters). Everything worked. Tests passed. Life was good.
+
+**The Problem**: Obsidian's Dataview plugin—the cornerstone of our beautiful Dashboard—silently judged our TOML choices. Every query returned `-` for metadata fields. The Dashboard was technically functional but metaphorically blind.
+
+```markdown
+| File | Status | Priority |
+|------|--------|----------|
+| request-1.md | - | - |
+| request-2.md | - | - |
+```
+
+_Narrator: The Dataview plugin only speaks YAML._
+
+### The Irony Is Delicious
+
+**The Documentation Said**: "Use TOML for token efficiency! ~22% savings!"
+
+**Reality Said**: "Cool story. Your Dashboard is useless."
+
+**The Lesson**: A 22% token savings means nothing if your primary UI doesn't render metadata.
+
+### The Migration: A Comedy in Three Acts
+
+**Act I: The Scope Creep**
+
+```
+Me: "Implement step 5.7 in TDD"
+Agent: "Let me check... this touches 21 files."
+Me: "..."
+Agent: "Should I proceed?"
+Me: "...yes"
+```
+
+**Act II: The Regex Rodeo**
+
+Every parser, serializer, and test fixture suddenly needed updating:
+
+| Pattern | Before | After |
+|---------|--------|-------|
+| Delimiter | `+++` | `---` |
+| Key-value | `key = "value"` | `key: value` |
+| Status | `status = "pending"` | `status: pending` |
+| Arrays | `tags = ["a", "b"]` | `tags: [a, b]` |
+
+The agent updated 21 files. The tests caught every edge case. The sed commands flew like poetry.
+
+**Act III: The Victory Lap**
+
+```
+running 390 tests
+...
+ok | 390 passed | 0 failed (1m7s)
+```
+
+_Confetti._
+
+### What We Actually Changed
+
+**Parser Updates** (the boring but critical stuff):
+- `src/cli/base.ts`: `extractFrontmatter()` and `serializeFrontmatter()` now speak YAML
+- `src/parsers/markdown.ts`: Regex swap from `^\+\+\+` to `^---`
+- `src/services/execution_loop.ts`: Parse YAML, but kept `parseToml` for action blocks (because `\`\`\`toml` code blocks in plans are still TOML—we're not monsters)
+
+**Generator Updates** (anything that creates files):
+- `src/services/plan_writer.ts`: YAML frontmatter in plans
+- `src/services/mission_reporter.ts`: YAML frontmatter in reports
+
+**Test Fixture Updates** (the bulk of the work):
+- 14 test files converted from TOML to YAML fixtures
+- sed commands for the win: `sed -i 's/status = "pending"/status: pending/g'`
+
+### The Moment of Truth
+
+**Before** (Dashboard in Obsidian):
+```
+| Request | Status | Priority |
+|---------|--------|----------|
+| implement-auth | - | - |
+| fix-bug-123 | - | - |
+```
+
+**After** (Dashboard actually works):
+```
+| Request | Status | Priority |
+|---------|--------|----------|
+| implement-auth | pending | normal |
+| fix-bug-123 | pending | high |
+```
+
+_The Dataview plugin smiled for the first time._
+
+### The Meta-Lesson
+
+**Sometimes the "better" format isn't the right format.**
+
+TOML was technically superior for our use case:
+- More explicit strings (no type coercion)
+- Cleaner array syntax
+- Token efficient
+
+But YAML won because:
+- Obsidian Dataview only speaks YAML
+- The Dashboard is the primary UI
+- A working UI beats theoretical efficiency
+
+**The Rule**: When choosing formats, consider the entire ecosystem—not just your code.
+
+### The Documentation Update Paradox
+
+The document you're reading (yes, this one) previously celebrated TOML as the superior choice. Pattern 15 proudly proclaimed "TOML Migration" and showed ~22% token savings.
+
+Today we migrated... back to YAML.
+
+**Should we delete Pattern 15?**
+
+No. It's a perfect example of learning in public:
+1. We analyzed the options
+2. We chose TOML for valid reasons
+3. We implemented it thoroughly
+4. Reality showed us a critical gap
+5. We adapted
+
+**The Pattern That Emerged**: Format decisions aren't permanent. Good TDD makes migrations survivable.
+
+### Pattern 17: The Pragmatic Reversal
+
+**When to Reverse a Decision**:
+- ✅ External integration requirements change the equation
+- ✅ Primary UI depends on a specific format
+- ✅ You have comprehensive tests to catch regressions
+- ❌ "I changed my mind" without new information
+
+**How to Reverse Safely**:
+1. Identify ALL affected files (agent searched entire codebase)
+2. Update tests FIRST to expect new format
+3. Update parsers/generators
+4. Run full suite after each major change
+5. Update documentation (including admitting you changed direction)
+
+**The Migration Stats**:
+- Files changed: 21
+- Tests updated: ~60 assertions
+- Time: ~45 minutes
+- Regressions: 0
+- Dashboard: Finally works
+
+### The Final Irony
+
+Pattern 15 in this document (TOML Migration) now coexists with Pattern 17 (YAML Migration back).
+
+This isn't inconsistency—it's documentation of real engineering decisions:
+- We thought TOML was better (it was, for some metrics)
+- We discovered Dataview needed YAML (reality check)
+- We migrated back with full test coverage (pragmatism)
+- We documented both (honesty)
+
+**The Real Pattern**: Good engineering isn't about making perfect decisions. It's about making reversible decisions with good test coverage.
 
 ---
 
