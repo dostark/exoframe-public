@@ -113,6 +113,49 @@ deno task start
 - **System/**: Database and logs (do not touch manually).
 - **Portals/**: Symlinks to your projects.
 
+### 3.2 Obsidian Integration
+
+ExoFrame's Knowledge folder is designed to work as an Obsidian vault. While Obsidian is optional, it provides the best experience for viewing dashboards and navigating your workspace.
+
+#### Required Plugins
+
+1. **Dataview** (required for dashboards)
+   - Enables live queries for dashboard tables
+   - Open Obsidian Settings → Community Plugins
+   - Disable Safe Mode if prompted
+   - Browse → Search "Dataview"
+   - Install and Enable
+
+#### Optional Plugins
+
+2. **Templater** (optional)
+   - Enables template-based file creation
+   - Useful for creating new requests with consistent frontmatter
+
+3. **File Tree Alternative** (optional)
+   - Better folder structure visibility
+   - Enables sidebar navigation of ExoFrame folders
+
+#### Plugin Installation Steps
+
+1. Open Obsidian and open the Knowledge folder as a vault
+2. Go to Obsidian Settings (gear icon)
+3. Select "Community Plugins" in the left sidebar
+4. Click "Turn on Community Plugins" (disables Safe Mode)
+5. Click "Browse" to open the plugin marketplace
+6. Search for "Dataview"
+7. Click "Install" then "Enable"
+8. Repeat for optional plugins (Templater, File Tree Alternative)
+
+#### Verifying Installation
+
+After installing Dataview, open `Knowledge/Dashboard.md`. You should see:
+- Live tables showing pending requests
+- Recent activity summaries
+- Plan status overview
+
+If you see raw code blocks instead of tables, Dataview is not enabled.
+
 ## 4. CLI Reference
 
 ### 4.1 Installation

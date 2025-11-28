@@ -1920,9 +1920,14 @@ Deno.test("Dashboard file uses valid Dataview syntax", async () => {
 
 **Success Criteria:**
 
-- [ ] Dataview plugin installed and enabled
-- [ ] Dashboard.md renders without Dataview errors
-- [ ] User Guide documents plugin installation steps
+- [x] Dataview plugin installed and enabled
+- [x] Dashboard.md renders without Dataview errors
+- [x] User Guide documents plugin installation steps
+
+✅ **COMPLETED** (2025-11-28): TDD implementation complete.
+- Created `Knowledge/Dashboard.md` with 4 Dataview queries (TABLE and LIST)
+- Added Section 3.2 to User Guide with plugin installation steps
+- Tests: `tests/obsidian/plugin_detection_test.ts` (10 tests)
 
 ---
 
