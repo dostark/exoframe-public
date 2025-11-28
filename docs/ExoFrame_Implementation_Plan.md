@@ -2141,7 +2141,7 @@ Settings → Editor:
 
 ---
 
-### 5.5: The Obsidian Dashboard
+### 5.5: The Obsidian Dashboard ✅
 
 - **Dependencies:** Phase 4, Steps 5.1-5.4 — **Rollback:** provide plain Markdown summary.
 - **Action:** Create `/Knowledge/Dashboard.md` with Dataview queries.
@@ -2237,109 +2237,6 @@ LIMIT 5
 - [[Knowledge/Portals/README|Manage Portals]]
 - [[docs/ExoFrame_User_Guide|User Guide]]
 
-````
-**TDD Approach:**
-
-```typescript
-// tests/obsidian/dashboard_test.ts
-import { assertEquals, assertStringIncludes, assert } from "@std/assert";
-
-Deno.test("Dashboard template exists", async () => {
-  const templatePath = "./templates/Dashboard.md";
-  const stat = await Deno.stat(templatePath);
-  assert(stat.isFile, "Dashboard template should exist");
-});
-
-Deno.test("Dashboard has valid Dataview queries", async () => {
-  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
-  
-  // Extract all dataview blocks
-  const dataviewRegex = /```dataview\n([\s\S]*?)```/g;
-  const matches = [...dashboard.matchAll(dataviewRegex)];
-  
-  assert(matches.length >= 4, "Dashboard should have at least 4 Dataview queries");
-  
-  // Verify each query has required clauses
-  for (const match of matches) {
-    const query = match[1];
-    assert(
-      query.includes("FROM") || query.includes("from"),
-      "Each query should have a FROM clause"
-    );
-  }
-});
-
-Deno.test("Dashboard queries reference correct folders", async () => {
-  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
-  
-  // Verify queries reference ExoFrame folders
-  const expectedFolders = [
-    "System/Active",
-    "Inbox/Plans", 
-    "Knowledge/Reports"
-  ];
-  
-  for (const folder of expectedFolders) {
-    assertStringIncludes(dashboard, folder, `Dashboard should query ${folder}`);
-  }
-});
-
-Deno.test("Dashboard frontmatter is valid TOML", async () => {
-  const dashboard = await Deno.readTextFile("Knowledge/Dashboard.md");
-  
-  assert(dashboard.startsWith("+++"), "Dashboard should have frontmatter");
-  
-  const endIndex = dashboard.indexOf("---", 3);
-  assert(endIndex > 0, "Frontmatter should be closed");
-  
-  const frontmatter = dashboard.slice(4, endIndex);
-  
-  // Verify required fields
-  assertStringIncludes(frontmatter, "title:");
-});
-
-// Integration test: verify dashboard works with real data
-Deno.test("Dashboard renders with sample data", async (t) => {
-  const testDir = await Deno.makeTempDir();
-  
-  await t.step("create sample active task", async () => {
-    await Deno.mkdir(`${testDir}/System/Active`, { recursive: true });
-    await Deno.writeTextFile(`${testDir}/System/Active/test-task.md`, `---
-status: running
-agent: copilot
-created: ${new Date().toISOString()}
-target: src/main.ts
----
-
-# Test Task
-`);
-  });
-  
-  await t.step("create sample report", async () => {
-    await Deno.mkdir(`${testDir}/Knowledge/Reports`, { recursive: true });
-    await Deno.writeTextFile(`${testDir}/Knowledge/Reports/trace-123.md`, `---
-status: success
-created: ${new Date().toISOString()}
-agent: copilot
-target: src/main.ts
----
-
-# Mission Report
-`);
-  });
-  
-  await t.step("verify files have correct frontmatter", async () => {
-    const task = await Deno.readTextFile(`${testDir}/System/Active/test-task.md`);
-    assertStringIncludes(task, "status: running");
-    
-    const report = await Deno.readTextFile(`${testDir}/Knowledge/Reports/trace-123.md`);
-    assertStringIncludes(report, "status: success");
-  });
-  
-  await Deno.remove(testDir, { recursive: true });
-});
-````
-
 **CLI Support:**
 
 ```bash
@@ -2355,7 +2252,7 @@ exoctl scaffold --dashboard --force
 - [x] Dashboard.md created at Knowledge/Dashboard.md
 - [x] All 4 Dataview queries are syntactically valid
 - [x] Queries reference correct ExoFrame folders
-- [ ] Dashboard displays live data when Dataview plugin is active
+- [x] Dashboard displays live data when Dataview plugin is active
 - [x] Template exists at templates/Dashboard.md
 
 ---

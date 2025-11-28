@@ -9,11 +9,7 @@
  * - Template exists and matches deployed Dashboard
  */
 
-import {
-  assert,
-  assertEquals,
-  assertStringIncludes,
-} from "jsr:@std/assert@^1.0.0";
+import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { dashboardExists, readDashboard, templateExists } from "./helpers.ts";
 
 // ============================================================================
@@ -167,8 +163,7 @@ Deno.test("Dashboard query 4: Uses LIST or TABLE format", async () => {
 
   // Find query related to portals or failed
   const relevantQuery = queries.find(
-    (q) =>
-      q.toLowerCase().includes("portal") || q.toLowerCase().includes("failed"),
+    (q) => q.toLowerCase().includes("portal") || q.toLowerCase().includes("failed"),
   );
 
   if (relevantQuery) {
@@ -267,9 +262,7 @@ Deno.test("Dashboard queries have LIMIT for performance", async () => {
   const queries = dashboard.match(/```dataview[\s\S]*?```/g) ?? [];
 
   // At least some queries should have LIMIT
-  const queriesWithLimit = queries.filter((q) =>
-    q.toUpperCase().includes("LIMIT")
-  );
+  const queriesWithLimit = queries.filter((q) => q.toUpperCase().includes("LIMIT"));
 
   assert(
     queriesWithLimit.length >= 2,
