@@ -49,12 +49,12 @@ Each step lists **Dependencies**, **Rollback/Contingency**, and updated success 
 
 ---
 
-## Phase 1: The Iron Skeleton (Runtime & Storage)
+## Phase 1: The Iron Skeleton (Runtime & Storage) ✅ COMPLETED
 
 **Goal:** A running Deno daemon that can write to the database, read configuration, and establish the physical storage
 structure.
 
-### Step 1.1: Project Scaffold & Deno Configuration ✅
+### Step 1.1: Project Scaffold & Deno Configuration ✅ COMPLETED
 
 - **Dependencies:** none — **Rollback:** delete generated config files.
 - **Action:** Initialize repository. Create `deno.json` with strict tasks (e.g., `deno task start`) and record a
@@ -150,7 +150,7 @@ deno task test
 
 Add a `deno.json` `test` task for convenience so contributors can run `deno task test` without remembering flags.
 
-### Step 1.2: The Activity Journal (SQLite) ✅
+### Step 1.2: The Activity Journal (SQLite) ✅ COMPLETED
 
 - **Dependencies:** Step 1.1 — **Rollback:** drop `journal.db`, run `deno task migrate down`.
 - **Action:** Implement Database Service using `jsr:@db/sqlite`. Create migration scripts for `activity` and `leases`
@@ -197,7 +197,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
   INSERT INTO schema_version (version) VALUES (1);
   ```
 
-### Step 1.3: Configuration Loader (TOML + Zod) ✅
+### Step 1.3: Configuration Loader (TOML + Zod) ✅ COMPLETED
 
 - **Dependencies:** Step 1.2 — **Rollback:** revert config schema, restore previous TOML.
 - **Action:** Create `ConfigService`. Define Zod schemas for `exo.config.toml`. Include config checksum in Activity
@@ -207,7 +207,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
   - System loads config on startup.
   - System throws a readable error if `exo.config.toml` is malformed or missing keys.
 
-### Step 1.4: The Knowledge Vault Scaffold ✅
+### Step 1.4: The Knowledge Vault Scaffold ✅ COMPLETED
 
 - **Dependencies:** Step 1.3 — **Rollback:** remove created folders/files (idempotent).
 - **Action:** Create rigid directory structure for the Obsidian Vault:
@@ -225,7 +225,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 
 **Goal:** The system reacts to file changes securely and reliably.
 
-### Step 2.1: The File Watcher (Stable Read) ✅
+### Step 2.1: The File Watcher (Stable Read) ✅ COMPLETED
 
 - **Dependencies:** Phase 1 exit — **Rollback:** disable watcher service flag, fall back to manual trigger script.
 - **Action:** Implement a robust file watcher using `Deno.watchFs` to monitor `/Inbox/Requests` for new request files.
@@ -247,69 +247,6 @@ multiple times due to rapid-fire events.
 > using network drives or cloud storage. The stability verification (Stage 2) acts as a safety net if debouncing alone
 > is insufficient.
 
-```typescript
-// Simplified debounce logic
-let timeoutId: number | null = null;
-
-for await (const event of Deno.watchFs("/Inbox/Requests")) {
-  if (timeoutId) clearTimeout(timeoutId);
-
-  timeoutId = setTimeout(() => {
-    processFile(event.paths[0]); // Now process after events settle
-  }, 200);
-}
-```
-
-**Stage 2: Stability Verification** Even after debouncing, the file might still be growing (e.g., large uploads). Use
-exponential backoff to wait until the file size stops changing:
-
-```typescript
-async function readFileWhenStable(path: string): Promise<string> {
-  const maxAttempts = 5;
-  const backoffMs = [50, 100, 200, 500, 1000];
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    try {
-      // Get initial size
-      const stat1 = await Deno.stat(path);
-
-      // Wait for stability
-      await new Promise((resolve) => setTimeout(resolve, backoffMs[attempt]));
-
-      // Check if size changed
-      const stat2 = await Deno.stat(path);
-
-      if (stat1.size === stat2.size && stat2.size > 0) {
-        // File appears stable, try to read
-        const content = await Deno.readTextFile(path);
-
-        // Validate it's not empty or corrupted
-        if (content.trim().length > 0) {
-          return content;
-        }
-      }
-
-      // File still changing, retry with longer wait
-      continue;
-    } catch (error) {
-      if (error instanceof Deno.errors.NotFound) {
-        // File deleted between stat and read
-        throw new Error(`File disappeared: ${path}`);
-      }
-
-      if (attempt === maxAttempts - 1) {
-        throw error;
-      }
-
-      // Retry on other errors
-      continue;
-    }
-  }
-
-  throw new Error(`File never stabilized: ${path}`);
-}
-```
-
 **Implementation Checklist:**
 
 1. Set up `Deno.watchFs` on `/Inbox/Requests`
@@ -326,7 +263,7 @@ async function readFileWhenStable(path: string): Promise<string> {
     arrives before processing
   - Test 3: Delete a file immediately after creating it → Watcher handles `NotFound` error gracefully
 
-### Step 2.2: The Zod Frontmatter Parser ✅
+### Step 2.2: The Zod Frontmatter Parser ✅ COMPLETED
 
 - **Dependencies:** Step 2.1 (File Watcher) — **Rollback:** accept any markdown file, skip validation.
 - **Action:** Implement a parser to extract and validate TOML frontmatter from request markdown files using Zod schemas.
@@ -442,7 +379,7 @@ Create a modern login page with:
   - Test 4: Extra fields in frontmatter → Ignored (Zod strips unknown keys by default)
   - Test 5: No frontmatter delimiters → Throws "No frontmatter found" error
 
-### Step 2.3: The Path Security & Portal Resolver ✅
+### Step 2.3: The Path Security & Portal Resolver ✅ COMPLETED
 
 - **Dependencies:** Step 1.3 (Config) — **Rollback:** Disable security checks (dangerous, dev-only).
 - **Action:** Implement a `PathResolver` service that maps "Portal Aliases" (e.g., `@MyApp`) to physical paths and
@@ -484,7 +421,7 @@ const unsafePath = resolver.resolve("@Blueprints/../../secret.txt");
   - Test 4: Unknown alias (`@Unknown/file.txt`) → Throws error.
   - Test 5: Root path itself is valid (`@Portal/`) → Returns portal root path.
 
-### Step 2.4: The Context Card Generator ✅
+### Step 2.4: The Context Card Generator ✅ COMPLETED
 
 - **Dependencies:** Step 1.3 (Config).
 - **Action:** Implement `ContextCardGenerator` service.
@@ -531,7 +468,7 @@ await generator.generate({
 > hybrid) and apply the correct constraints automatically. Hybrid mode requires explicit data-sharing policies logged
 > per hop.
 
-### Step 3.1: The Model Adapter (Mocked & Real) ✅
+### Step 3.1: The Model Adapter (Mocked & Real) ✅ COMPLETED
 
 - **Dependencies:** Step 1.3 (Config).
 - **Action:** Create `IModelProvider` interface and implement `MockProvider` and `OllamaProvider`.
@@ -563,7 +500,7 @@ export interface IModelProvider {
   - Test 3: `ModelFactory` returns correct provider based on config string ("mock" vs "ollama").
   - Test 4: Provider handles connection errors gracefully (throws typed error).
 
-### Step 3.2: The Agent Runtime (Stateless Execution) ✅
+### Step 3.2: The Agent Runtime (Stateless Execution) ✅ COMPLETED
 
 - **Dependencies:** Step 3.1 (Model Adapter).
 - **Action:** Implement `AgentRunner` service.
@@ -613,7 +550,7 @@ console.log(result.content); // "Here is the plan..."
   - Test 4: `AgentRunner` handles malformed responses (fallback to treating whole string as content).
   - Test 5: Handles empty blueprints or requests gracefully.
 
-### Step 3.3: The Context Injector (Token Safe) ✅
+### Step 3.3: The Context Injector (Token Safe) ✅ COMPLETED
 
 - **Dependencies:** Steps 3.1–3.2 — **Rollback:** disable loader and manually attach context bundle.
 - **Action:** Implement `ContextLoader` service with configurable truncation, per-file cap overrides, and logging of
@@ -970,7 +907,7 @@ const result = await contextLoader.loadWithLimit(contextFiles);
 // All loading events are automatically logged to Activity Journal
 ```
 
-### Step 3.4: The Plan Writer (Drafting) ✅
+### Step 3.4: The Plan Writer (Drafting) ✅ COMPLETED
 
 - **Dependencies:** Steps 3.1–3.3 (Model Adapter, Agent Runner, Context Loader) — **Rollback:** output to stdout instead
   of file.
@@ -1025,11 +962,11 @@ See `tests/plan_writer_test.ts` for comprehensive test coverage (22 tests):
 
 ---
 
-## Phase 4: The Hands (Tools & Git)
+## Phase 4: The Hands (Tools & Git) ✅ COMPLETED
 
 **Goal:** Agents execute actions securely and robustly.
 
-### Step 4.1: The Tool Registry ✅
+### Step 4.1: The Tool Registry ✅ COMPLETED
 
 - **Dependencies:** Steps 3.1-3.4 (Model Adapter, Agent Runner, Context Loader, Plan Writer)
 - **Action:** Implement tool registry that maps LLM function calls (JSON) to safe Deno operations (`read_file`,
@@ -1067,7 +1004,7 @@ See `tests/plan_writer_test.ts` for comprehensive test coverage (22 tests):
 - Tool execution logged to Activity Journal with trace_id
 - Restricted commands (`rm -rf /`) are blocked
 
-### Step 4.2: Git Integration (Identity Aware) ✅
+### Step 4.2: Git Integration (Identity Aware) ✅ COMPLETED
 
 - **Dependencies:** Step 4.1 (Tool Registry)
 - **Action:** Implement `GitService` class for managing agent-created branches and commits.
@@ -1117,7 +1054,7 @@ Created login handler, JWT tokens, and user session management.
 - Commit message includes trace_id footer for audit
 - All git operations logged to Activity Journal
 
-### Step 4.3: The Execution Loop (Resilient) ✅
+### Step 4.3: The Execution Loop (Resilient) ✅ COMPLETED
 
 - **Dependencies:** Steps 4.1–4.2 (Tool Registry, Git Integration) — **Rollback:** pause queue processing through config
   and replay from last clean snapshot.
@@ -1300,7 +1237,7 @@ PermissionDenied: write access to /etc/passwd is not allowed at PathResolver.val
 
 ---
 
-### Step 4.4: CLI Architecture & Human Review Interface ✅
+### Step 4.4: CLI Architecture & Human Review Interface ✅ COMPLETED
 
 - **Dependencies:** Steps 2.1 (Database Service), 4.2 (Git Integration), 4.3 (Execution Loop)
 - **Action:** Design and implement a comprehensive CLI with higher-level abstraction pattern for all human interactions with the ExoFrame system.
@@ -1544,7 +1481,7 @@ Build a comprehensive CLI (`exoctl`) with four command groups, all extending a s
 
 ---
 
-### Step 4.5: The Mission Reporter (Episodic Memory) ✅
+### Step 4.5: The Mission Reporter (Episodic Memory) ✅ COMPLETED
 
 - **Dependencies:** Step 4.3 (Execution Loop) — **Rollback:** rerun reporter for trace or regenerate from Activity
   Journal.
@@ -1865,7 +1802,7 @@ Deno.test("MissionReporter: formats report with valid TOML frontmatter", async (
 > **Platform note:** Maintainers must document OS-specific instructions (Windows symlink prerequisites, macOS sandbox
 > prompts, Linux desktop watchers) before marking each sub-step complete.
 
-### 5.1: Install Required Plugins ✅
+### 5.1: Install Required Plugins ✅ COMPLETED
 
 - **Dependencies:** Obsidian installed on user system.
 - **Rollback:** Uninstall plugins via Community Plugins settings.
@@ -1932,7 +1869,7 @@ Deno.test("Dashboard file uses valid Dataview syntax", async () => {
 
 ---
 
-### 5.2: Configure Obsidian Vault ✅
+### 5.2: Configure Obsidian Vault ✅ COMPLETED
 
 - **Dependencies:** Step 5.1 plugins installed.
 - **Rollback:** Close vault, reopen original vault.
@@ -2009,7 +1946,7 @@ exoctl verify --vault
 
 ---
 
-### 5.3: Pin Dashboard ✅
+### 5.3: Pin Dashboard ✅ COMPLETED
 
 - **Dependencies:** Step 5.2 vault configured.
 - **Rollback:** Unpin tab, remove from startup.
@@ -2088,7 +2025,7 @@ Deno.test("Dashboard frontmatter is valid", async () => {
 
 ---
 
-### 5.4: Configure File Watcher ✅
+### 5.4: Configure File Watcher ✅ COMPLETED
 
 - **Dependencies:** Step 5.2 vault configured.
 - **Rollback:** Revert settings to defaults.
@@ -2141,7 +2078,7 @@ Settings → Editor:
 
 ---
 
-### 5.5: The Obsidian Dashboard ✅
+### 5.5: The Obsidian Dashboard ✅ COMPLETED
 
 - **Dependencies:** Phase 4, Steps 5.1-5.4 — **Rollback:** provide plain Markdown summary.
 - **Action:** Create `/Knowledge/Dashboard.md` with Dataview queries.
@@ -2456,287 +2393,6 @@ Error: Description required. Usage: exoctl request "<description>"
        Or use --file to read from file, or --interactive for prompts.
 ```
 
-#### **Implementation: `src/cli/request_commands.ts`**
-
-```typescript
-import { z } from "zod";
-import { join } from "@std/path";
-import { crypto } from "@std/crypto";
-import { Context } from "../context.ts";
-import { ActivityJournal } from "../storage/activity_journal.ts";
-
-// Schema for request options
-const RequestOptionsSchema = z.object({
-  agent: z.string().default("default"),
-  priority: z.enum(["low", "normal", "high", "critical"]).default("normal"),
-  portal: z.string().optional(),
-});
-
-export type RequestOptions = z.infer<typeof RequestOptionsSchema>;
-
-// Schema for request metadata (what gets returned)
-export interface RequestMetadata {
-  trace_id: string;
-  filename: string;
-  path: string;
-  status: "pending";
-  priority: RequestOptions["priority"];
-  agent: string;
-  portal?: string;
-  created: string;
-  created_by: string;
-  source: "cli" | "file" | "interactive";
-}
-
-export class RequestCommands {
-  private db: ActivityJournal;
-  private workspaceRoot: string;
-
-  constructor(context: Context, workspaceRoot: string) {
-    this.db = context.activityJournal;
-    this.workspaceRoot = workspaceRoot;
-  }
-
-  async create(
-    description: string,
-    options: Partial<RequestOptions> = {},
-    source: RequestMetadata["source"] = "cli"
-  ): Promise<RequestMetadata> {
-    const validated = RequestOptionsSchema.parse(options);
-    
-    // Generate unique trace_id
-    const trace_id = crypto.randomUUID();
-    const shortId = trace_id.slice(0, 8);
-    const filename = `request-${shortId}.md`;
-    const path = join(this.workspaceRoot, "Inbox", "Requests", filename);
-    
-    // Get user identity
-    const created_by = await this.getUserIdentity();
-    const created = new Date().toISOString();
-    
-    // Build TOML frontmatter
-    const frontmatter = this.buildFrontmatter({
-      trace_id,
-      created,
-      status: "pending",
-      priority: validated.priority,
-      agent: validated.agent,
-      portal: validated.portal,
-      source,
-      created_by,
-    });
-    
-    // Build file content
-    const content = `${frontmatter}\n# Request\n\n${description}\n`;
-    
-    // Write file
-    await Deno.writeTextFile(path, content);
-    
-    // Log activity
-    this.db.log({
-      action_type: "request.created",
-      actor: "human",
-      payload: {
-        trace_id,
-        priority: validated.priority,
-        agent: validated.agent,
-        portal: validated.portal,
-        source,
-        created_by,
-        description_length: description.length,
-      },
-    });
-    
-    return {
-      trace_id,
-      filename,
-      path,
-      status: "pending",
-      priority: validated.priority,
-      agent: validated.agent,
-      portal: validated.portal,
-      created,
-      created_by,
-      source,
-    };
-  }
-
-  async createFromFile(
-    filePath: string,
-    options: Partial<RequestOptions> = {}
-  ): Promise<RequestMetadata> {
-    // Check file exists
-    try {
-      await Deno.stat(filePath);
-    } catch {
-      throw new Error(`File not found: ${filePath}`);
-    }
-    
-    // Read and validate content
-    const content = await Deno.readTextFile(filePath);
-    if (!content.trim()) {
-      throw new Error("File is empty");
-    }
-    
-    return this.create(content.trim(), options, "file");
-  }
-
-  async list(status?: string): Promise<RequestMetadata[]> {
-    // Implementation: scan Inbox/Requests, parse frontmatter, filter by status
-    // Returns array sorted by created date descending
-  }
-
-  async show(idOrFilename: string): Promise<{ metadata: RequestMetadata; content: string }> {
-    // Implementation: find by trace_id (full or short) or filename
-    // Parse frontmatter and return both metadata and body content
-  }
-
-  private buildFrontmatter(data: Record<string, unknown>): string {
-    const lines = ["+++"];
-    for (const [key, value] of Object.entries(data)) {
-      if (value !== undefined) {
-        lines.push(`${key} = ${JSON.stringify(value)}`);
-      }
-    }
-    lines.push("+++");
-    return lines.join("\n");
-  }
-
-  private async getUserIdentity(): Promise<string> {
-    // Try git config first
-    try {
-      const cmd = new Deno.Command("git", {
-        args: ["config", "user.email"],
-        stdout: "piped",
-      });
-      const { stdout } = await cmd.output();
-      const email = new TextDecoder().decode(stdout).trim();
-      if (email) return email;
-    } catch { /* fall through */ }
-    
-    // Fall back to OS username
-    return Deno.env.get("USER") || Deno.env.get("USERNAME") || "unknown";
-  }
-}
-```
-
-#### **Test Plan: `tests/cli/request_commands_test.ts`**
-
-```typescript
-import { assertEquals, assertExists, assertRejects, assertStringIncludes } from "@std/assert";
-import { afterEach, beforeEach, describe, it } from "@std/testing/bdd";
-import { join } from "@std/path";
-import { RequestCommands } from "../../src/cli/request_commands.ts";
-
-describe("RequestCommands", () => {
-  let workspace: string;
-  let requestCommands: RequestCommands;
-
-  beforeEach(async () => {
-    workspace = await Deno.makeTempDir();
-    await Deno.mkdir(join(workspace, "Inbox", "Requests"), { recursive: true });
-    // Initialize with mock context
-    requestCommands = new RequestCommands(mockContext, workspace);
-  });
-
-  afterEach(async () => {
-    await Deno.remove(workspace, { recursive: true });
-  });
-
-  describe("create", () => {
-    it("should create request with valid TOML frontmatter", async () => {
-      const result = await requestCommands.create("Implement user auth");
-      
-      assertExists(result.trace_id);
-      assertEquals(result.trace_id.length, 36); // UUID format
-      assertEquals(result.status, "pending");
-      assertEquals(result.priority, "normal");
-      
-      const content = await Deno.readTextFile(result.path);
-      assertStringIncludes(content, "+++"); // TOML delimiters
-      assertStringIncludes(content, `trace_id = "${result.trace_id}"`);
-    });
-
-    it("should accept custom priority", async () => {
-      const result = await requestCommands.create("Fix bug", { priority: "critical" });
-      assertEquals(result.priority, "critical");
-    });
-
-    it("should reject invalid priority", async () => {
-      await assertRejects(
-        () => requestCommands.create("Test", { priority: "invalid" as any }),
-        Error,
-      );
-    });
-
-    it("should log activity to journal", async () => {
-      const result = await requestCommands.create("Test request");
-      // Verify activity was logged with correct payload
-    });
-  });
-
-  describe("createFromFile", () => {
-    it("should create request from file content", async () => {
-      const inputFile = join(workspace, "input.md");
-      await Deno.writeTextFile(inputFile, "Implement feature from file");
-      
-      const result = await requestCommands.createFromFile(inputFile);
-      assertEquals(result.source, "file");
-    });
-
-    it("should reject non-existent file", async () => {
-      await assertRejects(
-        () => requestCommands.createFromFile("/nonexistent/file.md"),
-        Error,
-        "File not found",
-      );
-    });
-
-    it("should reject empty file", async () => {
-      const emptyFile = join(workspace, "empty.md");
-      await Deno.writeTextFile(emptyFile, "   \n  ");
-      
-      await assertRejects(
-        () => requestCommands.createFromFile(emptyFile),
-        Error,
-        "File is empty",
-      );
-    });
-  });
-
-  describe("list", () => {
-    it("should return empty array when no requests", async () => {
-      const requests = await requestCommands.list();
-      assertEquals(requests, []);
-    });
-
-    it("should filter by status", async () => {
-      await requestCommands.create("Request 1");
-      const pending = await requestCommands.list("pending");
-      assertEquals(pending.length, 1);
-    });
-  });
-
-  describe("show", () => {
-    it("should show request by short trace_id", async () => {
-      const created = await requestCommands.create("Test request");
-      const shortId = created.trace_id.slice(0, 8);
-      
-      const { metadata } = await requestCommands.show(shortId);
-      assertEquals(metadata.trace_id, created.trace_id);
-    });
-
-    it("should reject non-existent request", async () => {
-      await assertRejects(
-        () => requestCommands.show("nonexistent"),
-        Error,
-        "Request not found",
-      );
-    });
-  });
-});
-```
-
 ---
 
 ### 5.7: Test Integration
@@ -2763,214 +2419,21 @@ exoctl request "Integration Test - verify Obsidian integration" --priority low
 ```bash
 rm ~/ExoFrame/Inbox/Requests/request-<trace_id>.md
 ```
+---
 
-**TDD Approach:**
+## Phase 6: Testing & Quality Assurance
 
-```typescript
-// tests/obsidian/integration_test.ts
-import { assert, assertEquals, assertStringIncludes } from "@std/assert";
-import { exists } from "@std/fs";
+### Risk-to-Test Traceability
 
-Deno.test("End-to-end: Request to Dashboard visibility", async (t) => {
-  const testWorkspace = await Deno.makeTempDir();
+| Threat / Risk       | Mitigation Step          | Automated Test                         |
+| ------------------- | ------------------------ | -------------------------------------- |
+| Path traversal      | Step 2.3 security checks | `tests/security_test.ts`               |
+| Lease starvation    | Step 6.1 heartbeat loop  | `tests/leases/heartbeat_test.ts`       |
+| Context overflow    | Step 3.3 context loader  | `tests/context/context_loader_test.ts` |
+| Git identity drift  | Step 4.2 Git service     | `tests/git/git_service_test.ts`        |
+| Watcher instability | Step 2.1 watcher         | `tests/watcher/stability_test.ts`      |
+| Doc drift           | Step 6.7 doc tests       | `tests/docs/user_guide_test.ts`        |
 
-  // Setup workspace structure
-  await t.step("setup workspace", async () => {
-    const dirs = [
-      "Inbox/Requests",
-      "Inbox/Plans",
-      "System/Active",
-      "Knowledge/Reports",
-      "Knowledge/Portals",
-    ];
-
-    for (const dir of dirs) {
-      await Deno.mkdir(`${testWorkspace}/${dir}`, { recursive: true });
-    }
-  });
-
-  await t.step("create request file", async () => {
-    const requestContent = `+++
-title = "Test Integration Request"
-priority = "medium"
-created = "${new Date().toISOString()}"
-status = "pending"
-+++
-
-# Test Request
-
-This tests the Obsidian integration.
-`;
-
-    await Deno.writeTextFile(
-      `${testWorkspace}/Inbox/Requests/test-request.md`,
-      requestContent,
-    );
-
-    // Verify file exists
-    const fileExists = await exists(`${testWorkspace}/Inbox/Requests/test-request.md`);
-    assert(fileExists, "Request file should be created");
-  });
-
-  await t.step("verify frontmatter is Dataview-compatible", async () => {
-    const content = await Deno.readTextFile(
-      `${testWorkspace}/Inbox/Requests/test-request.md`,
-    );
-
-    // Dataview requires valid TOML frontmatter
-    assert(content.startsWith("+++"), "File should have TOML frontmatter");
-    assertStringIncludes(content, 'title = ');
-    assertStringIncludes(content, 'status = ');
-    assertStringIncludes(content, 'created = ');
-  });
-
-  await t.step("simulate plan creation", async () => {
-    const planContent = `+++
-title = "Test Integration Request"
-status = "review"
-created = "${new Date().toISOString()}"
-agent = "test-agent"
-source = "Inbox/Requests/test-request.md"
-+++
-
-# Proposed Plan
-
-## Steps
-1. Step one
-2. Step two
-
-## Files to Modify
-- src/main.ts
-`;
-
-    await Deno.writeTextFile(
-      `${testWorkspace}/Inbox/Plans/test-request.md`,
-      planContent,
-    );
-  });
-
-  await t.step("verify plan has required Dataview fields", async () => {
-    const plan = await Deno.readTextFile(
-      `${testWorkspace}/Inbox/Plans/test-request.md`,
-    );
-
-    // These fields are queried by Dashboard
-    assertStringIncludes(plan, 'status = "review"');
-    assertStringIncludes(plan, 'created = ');
-  });
-
-  await t.step("simulate report generation", async () => {
-    const reportContent = `+++
-title = "Mission Report - test-request"
-status = "success"
-created = "${new Date().toISOString()}"
-agent = "test-agent"
-target = "src/main.ts"
-trace_id = "test-trace-123"
-+++
-
-# Mission Report
-
-## Summary
-Integration test completed successfully.
-
-## Changes Made
-- Modified src/main.ts
-
-## Metrics
-- Duration: 5s
-- Files: 1
-`;
-
-    await Deno.writeTextFile(
-      `${testWorkspace}/Knowledge/Reports/trace-test-trace-123.md`,
-      reportContent,
-    );
-  });
-
-  await t.step("verify report has required Dataview fields", async () => {
-    const report = await Deno.readTextFile(
-      `${testWorkspace}/Knowledge/Reports/trace-test-trace-123.md`,
-    );
-
-    // These fields are queried by Dashboard (TOML format)
-    assertStringIncludes(report, 'status = ');
-    assertStringIncludes(report, 'created = ');
-    assertStringIncludes(report, 'agent = ');
-    assertStringIncludes(report, 'target = ');
-  });
-
-  await t.step("verify all files follow naming conventions", async () => {
-    // Reports should include trace ID in filename
-    const reports = [];
-    for await (const entry of Deno.readDir(`${testWorkspace}/Knowledge/Reports`)) {
-      reports.push(entry.name);
-    }
-
-    assert(
-      reports.some((r) => r.includes("trace-")),
-      "Reports should include trace ID in filename",
-    );
-  });
-
-  // Cleanup
-  await Deno.remove(testWorkspace, { recursive: true });
-});
-
-Deno.test("Dataview query simulation", async () => {
-  // This test verifies the frontmatter structure matches what Dataview expects
-
-  const sampleFiles = {
-    activeTask: {
-      path: "System/Active/task-1.md",
-      frontmatter: {
-        status: "running",
-        agent: "copilot",
-        created: new Date().toISOString(),
-        target: "src/main.ts",
-      },
-    },
-    plan: {
-      path: "Inbox/Plans/plan-1.md",
-      frontmatter: {
-        status: "review",
-        created: new Date().toISOString(),
-        agent: "copilot",
-      },
-    },
-    report: {
-      path: "Knowledge/Reports/trace-abc.md",
-      frontmatter: {
-        status: "success",
-        created: new Date().toISOString(),
-        agent: "copilot",
-        target: "src/main.ts",
-      },
-    },
-  };
-
-  // Verify all frontmatter keys are present
-  for (const [type, file] of Object.entries(sampleFiles)) {
-    assert(file.frontmatter.status, `${type} should have status`);
-    assert(file.frontmatter.created, `${type} should have created`);
-  }
-});
-
-Deno.test("Obsidian link format compatibility", () => {
-  // Test that generated links work in Obsidian
-
-  const wikiLink = "[[Knowledge/Reports/trace-123|View Report]]";
-  const markdownLink = "[View Report](Knowledge/Reports/trace-123.md)";
-
-  // Verify wiki link format
-  assert(wikiLink.startsWith("[["), "Wiki link should start with [[");
-  assert(wikiLink.endsWith("]]"), "Wiki link should end with ]]");
-
-  // Verify markdown link format
-  assert(markdownLink.includes("]("), "Markdown link should have proper format");
-  assert(markdownLink.endsWith(")"), "Markdown link should end with )");
-});
-```
 
 **CLI Verification Commands:**
 
@@ -2994,20 +2457,7 @@ exoctl scaffold --test
 - [ ] No broken links in generated files
 - [ ] All integration tests pass: `deno test tests/obsidian/`
 
----
 
-## Phase 6: Testing & Quality Assurance
-
-### Risk-to-Test Traceability
-
-| Threat / Risk       | Mitigation Step          | Automated Test                         |
-| ------------------- | ------------------------ | -------------------------------------- |
-| Path traversal      | Step 2.3 security checks | `tests/security_test.ts`               |
-| Lease starvation    | Step 6.1 heartbeat loop  | `tests/leases/heartbeat_test.ts`       |
-| Context overflow    | Step 3.3 context loader  | `tests/context/context_loader_test.ts` |
-| Git identity drift  | Step 4.2 Git service     | `tests/git/git_service_test.ts`        |
-| Watcher instability | Step 2.1 watcher         | `tests/watcher/stability_test.ts`      |
-| Doc drift           | Step 6.7 doc tests       | `tests/docs/user_guide_test.ts`        |
 
 ### Step 6.1: Heartbeat & Leases
 
