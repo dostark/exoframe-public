@@ -58,12 +58,19 @@ permission governance across CLI, daemon, and agents.
 
 ## 2.1. File Format Inventory
 
-ExoFrame standardizes on **TOML** for all structured metadata. This decision prioritizes:
+ExoFrame uses a **hybrid format strategy** optimized for different use cases:
 
-1. **Token Efficiency** — TOML uses fewer tokens than YAML/JSON when embedded in LLM context
-2. **Robustness** — No indentation sensitivity (unlike YAML), no trailing comma issues (unlike JSON)
-3. **Consistency** — One format to learn, one parser to maintain
-4. **Human Readability** — Clean syntax without excessive punctuation
+- **TOML** for system configuration and agent blueprints (token-efficient, robust)
+- **YAML** for markdown frontmatter (Dataview compatibility in Obsidian)
+
+### Format Selection Rationale
+
+| Use Case             | Format | Reason                                                     |
+| -------------------- | ------ | ---------------------------------------------------------- |
+| System config        | TOML   | Token-efficient for LLM context, no indentation bugs       |
+| Agent blueprints     | TOML   | Complex nested structures, explicit typing                 |
+| Markdown frontmatter | YAML   | **Dataview plugin compatibility** (required for Dashboard) |
+| Deno configuration   | JSON   | Deno runtime requirement                                   |
 
 ### Complete Format Reference
 
@@ -73,39 +80,79 @@ ExoFrame standardizes on **TOML** for all structured metadata. This decision pri
 | **Deno Config**          | JSON                        | `.json`   | `deno.json`          | Runtime, imports, tasks (Deno requirement) |
 | **Agent Blueprints**     | TOML                        | `.toml`   | `Blueprints/Agents/` | Agent definitions                          |
 | **Flow Definitions**     | TypeScript                  | `.ts`     | `Blueprints/Flows/`  | Orchestration logic                        |
-| **Requests**             | Markdown + TOML frontmatter | `.md`     | `Inbox/Requests/`    | User task requests                         |
-| **Plans**                | Markdown + TOML frontmatter | `.md`     | `Inbox/Plans/`       | Agent proposals                            |
-| **Knowledge**            | Markdown                    | `.md`     | `Knowledge/`         | Reference docs, reports                    |
+| **Requests**             | Markdown + YAML frontmatter | `.md`     | `Inbox/Requests/`    | User task requests                         |
+| **Plans**                | Markdown + YAML frontmatter | `.md`     | `Inbox/Plans/`       | Agent proposals                            |
+| **Reports**              | Markdown + YAML frontmatter | `.md`     | `Knowledge/Reports/` | Mission completion reports                 |
+| **Knowledge**            | Markdown                    | `.md`     | `Knowledge/`         | Reference docs                             |
 | **Portal Context Cards** | Markdown                    | `.md`     | `Knowledge/Portals/` | Auto-generated project context             |
-| **Activity Journal**     | SQLite                      | `.db`     | `System/activity.db` | Audit log & file locks                     |
+| **Activity Journal**     | SQLite                      | `.db`     | `System/exo.db`      | Audit log & file locks                     |
 | **Migrations**           | SQL                         | `.sql`    | `migrations/`        | Database schema changes                    |
 
-### TOML Frontmatter Format
+### YAML Frontmatter Format (Requests, Plans, Reports)
 
-Request and Plan files use TOML frontmatter (delimited by `+++`) instead of YAML frontmatter:
+Request, Plan, and Report files use **YAML frontmatter** (delimited by `---`) for Obsidian Dataview compatibility:
 
 ```markdown
-+++
-trace_id = "550e8400-e29b-41d4-a716-446655440000"
-agent_id = "senior_coder"
-status = "pending"
-priority = 5
-tags = ["feature", "api"]
-created_at = 2025-11-27T10:30:00Z
-+++
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+created: 2025-11-28T10:30:00.000Z
+status: pending
+priority: normal
+agent: default
+source: cli
+created_by: user@example.com
+tags: [feature, api]
+---
 
-# Request Body
+# Request
 
 Implement user authentication for the API...
 ```
 
-**Why `+++` delimiters?**
+**Why YAML for frontmatter?**
 
-- Distinguishes TOML frontmatter from YAML (`---`)
-- Convention established by Hugo static site generator
-- Parsers can auto-detect format by delimiter
+- **Dataview compatibility**: Obsidian's Dataview plugin only parses YAML frontmatter natively
+- **Dashboard functionality**: Enables live TABLE queries with filtering and sorting
+- **Standard format**: Most markdown tools expect YAML frontmatter (`---` delimiters)
 
-### Token Comparison
+**YAML Frontmatter Rules:**
+
+| Rule                       | Example                                        |
+| -------------------------- | ---------------------------------------------- |
+| Delimiters                 | `---` (three hyphens) on separate lines        |
+| Key-value syntax           | `key: value` (colon + space)                   |
+| Strings with special chars | `trace_id: "550e8400-e29b-41d4-..."` (quoted)  |
+| Simple strings             | `status: pending` (no quotes needed)           |
+| Arrays                     | `tags: [feature, api]` (inline format)         |
+| Dates                      | `created: 2025-11-28T10:30:00.000Z` (ISO 8601) |
+| Booleans                   | `approved: true` (lowercase)                   |
+
+### TOML Format (Config & Blueprints)
+
+System configuration and agent blueprints use **TOML** for robustness and token efficiency:
+
+```toml
+# exo.config.toml
+[system]
+root = "/home/user/ExoFrame"
+log_level = "info"
+
+[watcher]
+debounce_ms = 200
+extensions = ["md"]
+
+[models.default]
+provider = "ollama"
+model = "llama3.2"
+```
+
+**Why TOML for config/blueprints?**
+
+- **Token efficiency**: ~22% fewer tokens than YAML when embedded in LLM context
+- **Robustness**: No indentation sensitivity, no type coercion surprises
+- **Explicit typing**: Clear distinction between strings, numbers, arrays
+
+### Token Comparison (for reference)
 
 | Format | Tokens (typical request) | Notes                       |
 | ------ | ------------------------ | --------------------------- |
@@ -113,7 +160,7 @@ Implement user authentication for the API...
 | JSON   | ~55 tokens               | Braces, quotes, commas      |
 | TOML   | ~35 tokens               | Minimal punctuation         |
 
-_~22% token savings vs YAML, ~36% vs JSON_
+_Note: YAML is used for frontmatter despite token overhead because Dataview compatibility is essential for the Dashboard UI._
 
 ---
 

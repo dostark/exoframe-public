@@ -56,12 +56,12 @@ describe("PlanCommands", () => {
     it("should approve a plan and move it to /System/Active", async () => {
       // Create a plan file with status='review'
       const planId = "test-plan-001";
-      const planContent = `+++
-trace_id = "trace-123"
-agent_id = "agent-456"
-status = "review"
-created_at = "2025-11-25T10:00:00Z"
-+++
+      const planContent = `---
+trace_id: "trace-123"
+agent_id: agent-456
+status: review
+created_at: "2025-11-25T10:00:00Z"
+---
 
 # Test Plan
 
@@ -90,9 +90,9 @@ created_at = "2025-11-25T10:00:00Z"
 
       // Verify frontmatter updated
       const updatedContent = await Deno.readTextFile(activePlanPath);
-      assertEquals(updatedContent.includes('status = "approved"'), true, "Status should be 'approved'");
-      assertEquals(updatedContent.includes("approved_by ="), true, "Should have approved_by field");
-      assertEquals(updatedContent.includes("approved_at ="), true, "Should have approved_at field");
+      assertEquals(updatedContent.includes("status: approved"), true, "Status should be 'approved'");
+      assertEquals(updatedContent.includes("approved_by:"), true, "Should have approved_by field");
+      assertEquals(updatedContent.includes("approved_at:"), true, "Should have approved_at field");
 
       // Verify activity logged
       const activities = db.getRecentActivity(10);
@@ -114,10 +114,10 @@ created_at = "2025-11-25T10:00:00Z"
 
     it("should reject approval if plan status is not 'review'", async () => {
       const planId = "test-plan-002";
-      const planContent = `+++
-trace_id = "trace-456"
-status = "needs_revision"
-+++
+      const planContent = `---
+trace_id: "trace-456"
+status: needs_revision
+---
 
 # Test Plan
 `;
@@ -132,10 +132,10 @@ status = "needs_revision"
 
     it("should reject approval if target path already exists", async () => {
       const planId = "test-plan-003";
-      const planContent = `+++
-trace_id = "trace-789"
-status = "review"
-+++
+      const planContent = `---
+trace_id: "trace-789"
+status: review
+---
 
 # Test Plan
 `;
@@ -153,11 +153,11 @@ status = "review"
   describe("reject", () => {
     it("should reject a plan with reason and move to /Inbox/Rejected", async () => {
       const planId = "test-plan-004";
-      const planContent = `+++
-trace_id = "trace-abc"
-agent_id = "agent-xyz"
-status = "review"
-+++
+      const planContent = `---
+trace_id: "trace-abc"
+agent_id: agent-xyz
+status: review
+---
 
 # Test Plan
 `;
@@ -178,10 +178,10 @@ status = "review"
 
       // Verify frontmatter updated
       const rejectedContent = await Deno.readTextFile(rejectedPath);
-      assertEquals(rejectedContent.includes('status = "rejected"'), true);
-      assertEquals(rejectedContent.includes("rejected_by ="), true);
-      assertEquals(rejectedContent.includes("rejected_at ="), true);
-      assertEquals(rejectedContent.includes(`rejection_reason = "${reason}"`), true);
+      assertEquals(rejectedContent.includes("status: rejected"), true);
+      assertEquals(rejectedContent.includes("rejected_by:"), true);
+      assertEquals(rejectedContent.includes("rejected_at:"), true);
+      assertEquals(rejectedContent.includes(`rejection_reason: ${reason}`), true);
 
       // Verify activity logged
       const activities = db.getRecentActivity(10);
@@ -212,10 +212,10 @@ status = "review"
   describe("revise", () => {
     it("should request revision with single comment", async () => {
       const planId = "test-plan-006";
-      const planContent = `+++
-trace_id = "trace-def"
-status = "review"
-+++
+      const planContent = `---
+trace_id: "trace-def"
+status: review
+---
 
 # Test Plan
 
@@ -234,9 +234,9 @@ Some actions here
 
       // Verify content updated
       const updatedContent = await Deno.readTextFile(planPath);
-      assertEquals(updatedContent.includes('status = "needs_revision"'), true);
-      assertEquals(updatedContent.includes("reviewed_by ="), true);
-      assertEquals(updatedContent.includes("reviewed_at ="), true);
+      assertEquals(updatedContent.includes("status: needs_revision"), true);
+      assertEquals(updatedContent.includes("reviewed_by:"), true);
+      assertEquals(updatedContent.includes("reviewed_at:"), true);
       assertEquals(updatedContent.includes("## Review Comments"), true);
       assertEquals(updatedContent.includes(`⚠️ ${comment}`), true);
 
@@ -249,10 +249,10 @@ Some actions here
 
     it("should request revision with multiple comments", async () => {
       const planId = "test-plan-007";
-      const planContent = `+++
-trace_id = "trace-ghi"
-status = "review"
-+++
+      const planContent = `---
+trace_id: "trace-ghi"
+status: review
+---
 
 # Test Plan
 `;
@@ -296,12 +296,12 @@ status = "review"
 
     it("should append to existing review comments section", async () => {
       const planId = "test-plan-009";
-      const planContent = `+++
-trace_id = "trace-jkl"
-status = "needs_revision"
-reviewed_by = "user1"
-reviewed_at = "2025-11-25T10:00:00Z"
-+++
+      const planContent = `---
+trace_id: "trace-jkl"
+status: needs_revision
+reviewed_by: user1
+reviewed_at: "2025-11-25T10:00:00Z"
+---
 
 # Test Plan
 
@@ -327,33 +327,33 @@ Some actions
       // Create multiple plans
       await Deno.writeTextFile(
         join(inboxPlansDir, "plan-001.md"),
-        `+++
-trace_id = "trace-001"
-status = "review"
-created_at = "2025-11-25T10:00:00Z"
-+++
+        `---
+trace_id: "trace-001"
+status: review
+created_at: "2025-11-25T10:00:00Z"
+---
 # Plan 1
 `,
       );
 
       await Deno.writeTextFile(
         join(inboxPlansDir, "plan-002.md"),
-        `+++
-trace_id = "trace-002"
-status = "needs_revision"
-created_at = "2025-11-25T11:00:00Z"
-+++
+        `---
+trace_id: "trace-002"
+status: needs_revision
+created_at: "2025-11-25T11:00:00Z"
+---
 # Plan 2
 `,
       );
 
       await Deno.writeTextFile(
         join(inboxPlansDir, "plan-003.md"),
-        `+++
-trace_id = "trace-003"
-status = "review"
-created_at = "2025-11-25T12:00:00Z"
-+++
+        `---
+trace_id: "trace-003"
+status: review
+created_at: "2025-11-25T12:00:00Z"
+---
 # Plan 3
 `,
       );
@@ -372,18 +372,18 @@ created_at = "2025-11-25T12:00:00Z"
     it("should filter plans by status", async () => {
       await Deno.writeTextFile(
         join(inboxPlansDir, "plan-004.md"),
-        `+++
-status = "review"
-+++
+        `---
+status: review
+---
 # Plan 4
 `,
       );
 
       await Deno.writeTextFile(
         join(inboxPlansDir, "plan-005.md"),
-        `+++
-status = "needs_revision"
-+++
+        `---
+status: needs_revision
+---
 # Plan 5
 `,
       );
@@ -418,12 +418,12 @@ status = "needs_revision"
   describe("show", () => {
     it("should display plan content with frontmatter", async () => {
       const planId = "test-plan-010";
-      const planContent = `+++
-trace_id = "trace-show-001"
-status = "review"
-agent_id = "agent-123"
-created_at = "2025-11-25T10:00:00Z"
-+++
+      const planContent = `---
+trace_id: "trace-show-001"
+status: review
+agent_id: agent-123
+created_at: "2025-11-25T10:00:00Z"
+---
 
 # Test Plan
 
@@ -476,10 +476,10 @@ Just some content.
       const planId = "test-plan-012";
       await Deno.writeTextFile(
         join(inboxPlansDir, `${planId}.md`),
-        `+++
-trace_id = "trace-identity"
-status = "review"
-+++
+        `---
+trace_id: "trace-identity"
+status: review
+---
 # Plan
 `,
       );

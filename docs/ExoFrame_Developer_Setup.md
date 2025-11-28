@@ -167,7 +167,7 @@ Notes specific to WSL2:
 
 - Verify Deno version: `deno --version` (should match project `deno.json` expectations)
 - Verify git config: `git config --list` (ensure `user.name` and `user.email` set)
-- Verify DB exists: `ls -la System/*.db` or run `sqlite3 System/activity.db 'SELECT count(*) FROM activity;'`
+- Verify DB exists: `ls -la System/*.db` or run `sqlite3 System/exo.db 'SELECT count(*) FROM activity;'`
 - Run smoke test: `deno test --allow-read --allow-write` and confirm core tests pass.
 - Create a test portal and verify watcher triggers:
 
@@ -177,7 +177,93 @@ echo "# Test Request" > ~/ExoFrame/Inbox/Requests/test.md
 # Observe daemon logs / Obsidian Dashboard
 ```
 
-### 4. Automation & recommended improvements
+### 4. File Format Standards (Developer Reference)
+
+ExoFrame uses a **hybrid format strategy**:
+
+| File Type                | Format   | Reason                            |
+| ------------------------ | -------- | --------------------------------- |
+| System config            | TOML     | Token-efficient for LLM context   |
+| Agent blueprints         | TOML     | Complex nested structures         |
+| **Markdown frontmatter** | **YAML** | **Dataview plugin compatibility** |
+| Deno config              | JSON     | Runtime requirement               |
+
+#### YAML Frontmatter (Requests, Plans, Reports)
+
+All markdown files with metadata use **YAML frontmatter** (`---` delimiters):
+
+```markdown
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+created: 2025-11-28T10:30:00.000Z
+status: pending
+priority: normal
+agent: default
+source: cli
+created_by: user@example.com
+---
+
+# Request Body
+```
+
+**Why YAML for frontmatter?**
+
+- Obsidian's **Dataview plugin only parses YAML** frontmatter natively
+- Standard Dataview `TABLE` queries work without custom JavaScript
+- Dashboard shows proper field values (not `-` placeholders)
+
+#### Test Fixture Format
+
+When writing tests, use YAML frontmatter in test fixtures:
+
+```typescript
+// tests/cli/request_commands_test.ts
+
+// ✅ CORRECT - YAML frontmatter
+const testContent = `---
+trace_id: "test-uuid-1234"
+status: pending
+priority: normal
+agent: default
+---
+
+# Test Request`;
+
+// ❌ WRONG - TOML frontmatter (won't work with Dataview)
+const badContent = `+++
+trace_id = "test-uuid-1234"
+status = "pending"
++++`;
+```
+
+#### Parser Methods
+
+The `BaseCommand` class provides frontmatter utilities:
+
+```typescript
+// src/cli/base.ts
+
+// Extract YAML frontmatter from markdown
+protected extractFrontmatter(content: string): Record<string, string>
+
+// Serialize object to YAML frontmatter
+protected serializeFrontmatter(frontmatter: Record<string, string>): string
+
+// Update frontmatter while preserving body
+protected updateFrontmatter(content: string, updates: Record<string, string>): string
+```
+
+**Frontmatter Regex Pattern:**
+
+```typescript
+// Match YAML frontmatter (--- delimiters)
+const yamlMatch = content.match(/^---\n([\s\S]*?)\n---/);
+
+// NOT TOML (+++ delimiters) - deprecated
+// const tomlMatch = content.match(/^\+\+\+\n([\s\S]*?)\n\+\+\+/);
+```
+
+### 5. Automation & recommended improvements
 
 - Provide automated installer scripts for each platform: `scripts/bootstrap_ubuntu.sh` and `scripts/bootstrap_wsl.sh` to
   replicate these steps.

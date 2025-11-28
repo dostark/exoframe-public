@@ -344,46 +344,52 @@ export class PlanCommands extends BaseCommand {
   }
 
   /**
-   * Serialize frontmatter and body back to markdown format (TOML)
+   * Serialize frontmatter and body back to markdown format (YAML)
    */
   private serializePlan(frontmatter: Record<string, unknown>, body: string): string {
-    const toml = Object.entries(frontmatter)
-      .map(([key, value]) => {
-        if (value === null || value === undefined) {
-          return null;
-        }
-        return `${key} = "${value}"`;
-      })
-      .filter((line) => line !== null)
-      .join("\n");
+    const lines: string[] = [];
+    for (const [key, value] of Object.entries(frontmatter)) {
+      if (value === null || value === undefined) {
+        continue;
+      }
+      const strValue = String(value);
+      // Quote values with colons or UUIDs
+      const needsQuotes = strValue.includes(":") ||
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(strValue);
+      if (needsQuotes) {
+        lines.push(`${key}: "${strValue}"`);
+      } else {
+        lines.push(`${key}: ${strValue}`);
+      }
+    }
 
-    return `+++\n${toml}\n+++\n\n${body}`;
+    return `---\n${lines.join("\n")}\n---\n\n${body}`;
   }
 
   /**
-   * Extract frontmatter and body from markdown (TOML format)
+   * Extract frontmatter and body from markdown (YAML format)
    * Returns both frontmatter and body, unlike base class version
    */
   private extractFrontmatterWithBody(markdown: string): { frontmatter: Record<string, unknown>; body: string } {
-    const frontmatterRegex = /^\+\+\+\n([\s\S]*?)\n\+\+\+\n?([\s\S]*)$/;
+    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
     const match = markdown.match(frontmatterRegex);
 
     if (!match) {
       throw new Error("No frontmatter found");
     }
 
-    const tomlContent = match[1];
+    const yamlContent = match[1];
     const body = match[2] || "";
 
-    // Simple TOML parsing for key-value pairs
+    // Simple YAML parsing for key-value pairs
     const frontmatter: Record<string, unknown> = {};
-    const lines = tomlContent.split("\n");
+    const lines = yamlContent.split("\n");
 
     for (const line of lines) {
-      const equalIndex = line.indexOf("=");
-      if (equalIndex > 0) {
-        const key = line.substring(0, equalIndex).trim();
-        let value = line.substring(equalIndex + 1).trim();
+      const colonIndex = line.indexOf(":");
+      if (colonIndex > 0) {
+        const key = line.substring(0, colonIndex).trim();
+        let value = line.substring(colonIndex + 1).trim();
         // Remove quotes if present
         if (value.startsWith('"') && value.endsWith('"')) {
           value = value.slice(1, -1);

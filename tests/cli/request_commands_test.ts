@@ -56,7 +56,7 @@ describe("RequestCommands", () => {
   });
 
   describe("create", () => {
-    it("should create request with valid TOML frontmatter", async () => {
+    it("should create request with valid YAML frontmatter", async () => {
       const result = await requestCommands.create("Implement user authentication");
 
       // Verify result structure
@@ -68,11 +68,11 @@ describe("RequestCommands", () => {
 
       // Verify file exists
       const content = await Deno.readTextFile(result.path);
-      assertStringIncludes(content, "+++"); // TOML delimiters
-      assertStringIncludes(content, `trace_id = "${result.trace_id}"`);
-      assertStringIncludes(content, 'status = "pending"');
-      assertStringIncludes(content, 'priority = "normal"');
-      assertStringIncludes(content, 'agent = "default"');
+      assertStringIncludes(content, "---"); // YAML delimiters
+      assertStringIncludes(content, `trace_id: "${result.trace_id}"`);
+      assertStringIncludes(content, "status: pending");
+      assertStringIncludes(content, "priority: normal");
+      assertStringIncludes(content, "agent: default");
       assertStringIncludes(content, "Implement user authentication");
     });
 
@@ -81,7 +81,7 @@ describe("RequestCommands", () => {
       assertEquals(result.priority, "critical");
 
       const content = await Deno.readTextFile(result.path);
-      assertStringIncludes(content, 'priority = "critical"');
+      assertStringIncludes(content, "priority: critical");
     });
 
     it("should accept custom agent", async () => {
@@ -89,14 +89,14 @@ describe("RequestCommands", () => {
       assertEquals(result.agent, "test_writer");
 
       const content = await Deno.readTextFile(result.path);
-      assertStringIncludes(content, 'agent = "test_writer"');
+      assertStringIncludes(content, "agent: test_writer");
     });
 
     it("should accept portal option", async () => {
       const result = await requestCommands.create("Add feature", { portal: "MyProject" });
 
       const content = await Deno.readTextFile(result.path);
-      assertStringIncludes(content, 'portal = "MyProject"');
+      assertStringIncludes(content, "portal: MyProject");
     });
 
     it("should generate unique trace_ids", async () => {
@@ -152,7 +152,7 @@ describe("RequestCommands", () => {
       assertExists(result.created_by);
 
       const content = await Deno.readTextFile(result.path);
-      assertStringIncludes(content, `created_by = "${result.created_by}"`);
+      assertStringIncludes(content, `created_by: ${result.created_by}`);
     });
 
     it("should include source field", async () => {
@@ -160,7 +160,7 @@ describe("RequestCommands", () => {
       assertEquals(result.source, "cli");
 
       const content = await Deno.readTextFile(result.path);
-      assertStringIncludes(content, 'source = "cli"');
+      assertStringIncludes(content, "source: cli");
     });
 
     it("should include created timestamp in ISO format", async () => {
@@ -199,7 +199,7 @@ describe("RequestCommands", () => {
       const content = await Deno.readTextFile(result.path);
       assertStringIncludes(content, "Implement feature from file");
       assertEquals(result.source, "file");
-      assertStringIncludes(content, 'source = "file"');
+      assertStringIncludes(content, "source: file");
     });
 
     it("should reject non-existent file", async () => {
@@ -264,7 +264,7 @@ describe("RequestCommands", () => {
       // Create another request and manually modify its status
       const result2 = await requestCommands.create("Request 2");
       const content = await Deno.readTextFile(result2.path);
-      const updated = content.replace('status = "pending"', 'status = "processing"');
+      const updated = content.replace("status: pending", "status: processing");
       await Deno.writeTextFile(result2.path, updated);
 
       const pending = await requestCommands.list("pending");
@@ -391,9 +391,9 @@ describe("RequestCommands", () => {
 
     it("should handle requests with minimal frontmatter", async () => {
       // Create a file with minimal frontmatter (missing some fields)
-      const minimalContent = `+++
-trace_id = "minimal-trace-id-123"
-+++
+      const minimalContent = `---
+trace_id: "minimal-trace-id-123"
+---
 
 Minimal request`;
       await Deno.writeTextFile(join(inboxRequestsDir, "request-minimal.md"), minimalContent);
@@ -445,9 +445,9 @@ Minimal request`;
 
     it("should handle request with minimal frontmatter in show", async () => {
       // Create a file with minimal frontmatter
-      const minimalContent = `+++
-trace_id = "show-minimal-123"
-+++
+      const minimalContent = `---
+trace_id: "show-minimal-123"
+---
 
 Minimal content for show`;
       await Deno.writeTextFile(join(inboxRequestsDir, "request-showmin.md"), minimalContent);
@@ -484,7 +484,7 @@ Minimal content for show`;
       // Create a .txt file with content that might match
       await Deno.writeTextFile(
         join(inboxRequestsDir, "not-a-request.txt"),
-        'trace_id = "fake-trace-id"',
+        'trace_id: "fake-trace-id"',
       );
 
       // Should not find the txt file
@@ -515,7 +515,7 @@ Minimal content for show`;
 
       // File should be created and readable
       const content = await Deno.readTextFile(result.path);
-      assertStringIncludes(content, "+++");
+      assertStringIncludes(content, "---");
       assertExists(result.trace_id);
     });
 
@@ -613,7 +613,7 @@ Minimal content for show`;
 
       assertEquals(result.portal, "MyPortal");
       const content = await Deno.readTextFile(result.path);
-      assertStringIncludes(content, 'portal = "MyPortal"');
+      assertStringIncludes(content, "portal: MyPortal");
     });
   });
 });

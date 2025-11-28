@@ -136,8 +136,7 @@ Deno.test("Dashboard has main title", async () => {
   const dashboard = await readDashboard();
 
   assert(
-    dashboard.startsWith("# ") || dashboard.match(/^---[\s\S]*?---\s*\n# /) ||
-      dashboard.match(/^\+\+\+[\s\S]*?\+\+\+\s*\n# /),
+    dashboard.startsWith("# ") || dashboard.match(/^---[\s\S]*?---\s*\n# /),
     "Dashboard should have a main title",
   );
 });
@@ -182,20 +181,8 @@ Deno.test("Dashboard has Quick Links or Tips section", async () => {
 Deno.test("Dashboard frontmatter is valid if present", async () => {
   const dashboard = await readDashboard();
 
-  // TOML frontmatter (+++)
-  if (dashboard.startsWith("+++")) {
-    const endIndex = dashboard.indexOf("+++", 3);
-    assert(endIndex > 3, "TOML frontmatter should be properly closed");
-
-    const frontmatter = dashboard.substring(3, endIndex).trim();
-    if (frontmatter.length > 0) {
-      assert(
-        frontmatter.includes("=") || frontmatter.includes("["),
-        "TOML frontmatter should have valid syntax",
-      );
-    }
-  } // YAML frontmatter (---)
-  else if (dashboard.startsWith("---")) {
+  // YAML frontmatter (---)
+  if (dashboard.startsWith("---")) {
     const endIndex = dashboard.indexOf("---", 3);
     assert(endIndex > 3, "YAML frontmatter should be properly closed");
   }

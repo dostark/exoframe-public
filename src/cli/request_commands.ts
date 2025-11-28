@@ -138,7 +138,7 @@ export class RequestCommands extends BaseCommand {
       frontmatterFields.portal = portal;
     }
 
-    // Build file content with TOML frontmatter
+    // Build file content with YAML frontmatter
     const frontmatter = this.serializeFrontmatter(frontmatterFields);
     const content = `${frontmatter}\n\n# Request\n\n${trimmedDescription}\n`;
 
@@ -319,8 +319,8 @@ export class RequestCommands extends BaseCommand {
     // Read full content
     const fullContent = await Deno.readTextFile(matchingFile);
 
-    // Extract body (content after frontmatter)
-    const body = fullContent.replace(/^\+\+\+\n[\s\S]*?\n\+\+\+\n?/, "").trim();
+    // Extract body (content after YAML frontmatter)
+    const body = fullContent.replace(/^---\n[\s\S]*?\n---\n?/, "").trim();
 
     return {
       metadata: {

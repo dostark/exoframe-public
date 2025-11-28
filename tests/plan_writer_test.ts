@@ -5,7 +5,7 @@
  * Success Criteria:
  * 1. Filename Generation: "implement-auth.md" → "implement-auth_plan.md"
  * 2. Wiki Link Generation: Context files generate Obsidian [[wiki links]]
- * 3. Frontmatter Structure: Plan includes valid TOML frontmatter
+ * 3. Frontmatter Structure: Plan includes valid YAML frontmatter
  * 4. Reasoning Section: Includes thought content from <thought> tags
  * 5. Context Warnings: Context warnings are included in plan
  */
@@ -163,7 +163,7 @@ describe("PlanWriter", () => {
   });
 
   describe("Frontmatter Structure", () => {
-    it("should include valid TOML frontmatter", async () => {
+    it("should include valid YAML frontmatter", async () => {
       const agentResult: AgentExecutionResult = {
         thought: "Planning auth",
         content: "# Auth Implementation",
@@ -181,16 +181,16 @@ describe("PlanWriter", () => {
       const result = await planWriter.writePlan(agentResult, metadata);
 
       // Check frontmatter delimiters
-      assertStringIncludes(result.content, "+++");
+      assert(result.content.startsWith("---\n"));
 
       // Check required frontmatter fields
       assertStringIncludes(
         result.content,
-        'trace_id = "550e8400-e29b-41d4-a716-446655440000"',
+        'trace_id: "550e8400-e29b-41d4-a716-446655440000"',
       );
-      assertStringIncludes(result.content, 'request_id = "implement-auth"');
-      assertStringIncludes(result.content, 'status = "review"');
-      assertStringIncludes(result.content, 'created_at = "2024-11-25T10:30:00');
+      assertStringIncludes(result.content, 'request_id: "implement-auth"');
+      assertStringIncludes(result.content, 'status: review');
+      assertStringIncludes(result.content, 'created_at: 2024-11-25T10:30:00');
     });
 
     it("should place frontmatter at the beginning of the file", async () => {
@@ -211,7 +211,7 @@ describe("PlanWriter", () => {
       const result = await planWriter.writePlan(agentResult, metadata);
 
       // Frontmatter should start at the beginning
-      assert(result.content.startsWith("+++\n"));
+      assert(result.content.startsWith("---\n"));
     });
   });
 

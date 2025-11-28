@@ -3,7 +3,7 @@
  * Covers all shared utilities used by command handlers
  */
 
-import { assertEquals, assertExists, assertThrows } from "jsr:@std/assert@^1.0.0";
+import { assertEquals, assertExists, assertStringIncludes, assertThrows } from "jsr:@std/assert@^1.0.0";
 import { afterEach, beforeEach, describe, it } from "jsr:@std/testing@^1.0.0/bdd";
 import { join } from "@std/path";
 import { ensureDir } from "@std/fs";
@@ -92,12 +92,12 @@ describe("BaseCommand", () => {
   });
 
   describe("extractFrontmatter", () => {
-    it("should extract valid frontmatter from markdown", () => {
-      const markdown = `+++
-title = "Test Plan"
-status = "review"
-trace_id = "abc-123"
-+++
+    it("should extract valid YAML frontmatter from markdown", () => {
+      const markdown = `---
+title: Test Plan
+status: review
+trace_id: abc-123
+---
 
 # Plan Content
 
@@ -109,12 +109,12 @@ This is the body.`;
       assertEquals(result.trace_id, "abc-123");
     });
 
-    it("should handle quoted values", () => {
-      const markdown = `+++
-title = "Quoted Title"
-status = "single-quoted"
-description = "Value with: colon"
-+++
+    it("should handle quoted values in YAML", () => {
+      const markdown = `---
+title: "Quoted Title"
+status: single-quoted
+description: "Value with: colon"
+---
 
 Body`;
 
@@ -134,8 +134,8 @@ No frontmatter here.`;
     });
 
     it("should handle empty frontmatter block", () => {
-      const markdown = `+++
-+++
+      const markdown = `---
+---
 
 Body`;
 
@@ -143,24 +143,37 @@ Body`;
       assertEquals(result, {});
     });
 
-    it("should skip lines without equals", () => {
-      const markdown = `+++
-title = "Valid"
-invalid line without equals
-status = "review"
-+++
+    it("should handle complex YAML values", () => {
+      const markdown = `---
+title: Valid
+tags: [feature, api]
+nested: value
+---
 
 Body`;
 
       const result = testCommand.testExtractFrontmatter(markdown);
       assertEquals(result.title, "Valid");
-      assertEquals(result.status, "review");
-      assertEquals(result["invalid line without equals"], undefined);
+      assertEquals(result.tags, "[feature, api]");
+      assertEquals(result.nested, "value");
+    });
+
+    it("should handle UUIDs with hyphens", () => {
+      const markdown = `---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+status: pending
+---
+
+Body`;
+
+      const result = testCommand.testExtractFrontmatter(markdown);
+      assertEquals(result.trace_id, "550e8400-e29b-41d4-a716-446655440000");
+      assertEquals(result.status, "pending");
     });
   });
 
   describe("serializeFrontmatter", () => {
-    it("should serialize frontmatter to TOML format", () => {
+    it("should serialize frontmatter to YAML format", () => {
       const frontmatter = {
         title: "Test",
         status: "review",
@@ -168,11 +181,11 @@ Body`;
       };
 
       const result = testCommand.testSerializeFrontmatter(frontmatter);
-      assertEquals(result.startsWith("+++\n"), true);
-      assertEquals(result.endsWith("+++"), true);
-      assertEquals(result.includes('title = "Test"'), true);
-      assertEquals(result.includes('status = "review"'), true);
-      assertEquals(result.includes('trace_id = "abc-123"'), true);
+      assertEquals(result.startsWith("---\n"), true);
+      assertEquals(result.endsWith("---"), true);
+      assertStringIncludes(result, "title: Test");
+      assertStringIncludes(result, "status: review");
+      assertStringIncludes(result, "trace_id: abc-123");
     });
 
     it("should quote values with special characters", () => {
@@ -183,23 +196,42 @@ Body`;
       };
 
       const result = testCommand.testSerializeFrontmatter(frontmatter);
-      assertEquals(result.includes('with_colon = "value: with colon"'), true);
-      assertEquals(result.includes('with_space = "value with spaces"'), true);
+      assertStringIncludes(result, 'with_colon: "value: with colon"');
+      assertStringIncludes(result, "with_space: value with spaces");
     });
 
     it("should handle empty frontmatter", () => {
       const frontmatter = {};
       const result = testCommand.testSerializeFrontmatter(frontmatter);
-      assertEquals(result, "+++\n+++");
+      assertEquals(result, "---\n---");
+    });
+
+    it("should quote UUIDs with hyphens", () => {
+      const frontmatter = {
+        trace_id: "550e8400-e29b-41d4-a716-446655440000",
+      };
+
+      const result = testCommand.testSerializeFrontmatter(frontmatter);
+      assertStringIncludes(result, 'trace_id: "550e8400-e29b-41d4-a716-446655440000"');
+    });
+
+    it("should not quote ISO timestamps", () => {
+      const frontmatter = {
+        created: "2025-11-28T10:30:00.000Z",
+      };
+
+      const result = testCommand.testSerializeFrontmatter(frontmatter);
+      // ISO timestamps contain colons, so they will be quoted
+      assertStringIncludes(result, 'created: "2025-11-28T10:30:00.000Z"');
     });
   });
 
   describe("updateFrontmatter", () => {
     it("should update existing frontmatter fields", () => {
-      const content = `+++
-title = "Original"
-status = "draft"
-+++
+      const content = `---
+title: Original
+status: draft
+---
 
 Body content`;
 
@@ -212,13 +244,13 @@ Body content`;
       assertEquals(frontmatter.title, "Original");
       assertEquals(frontmatter.status, "review");
       assertEquals(frontmatter.author, "TestUser");
-      assertEquals(updated.includes("Body content"), true);
+      assertStringIncludes(updated, "Body content");
     });
 
     it("should preserve body content", () => {
-      const content = `+++
-title = "Test"
-+++
+      const content = `---
+title: Test
+---
 
 # Heading
 
@@ -230,9 +262,9 @@ Paragraph 2`;
         status: "approved",
       });
 
-      assertEquals(updated.includes("# Heading"), true);
-      assertEquals(updated.includes("Paragraph 1"), true);
-      assertEquals(updated.includes("Paragraph 2"), true);
+      assertStringIncludes(updated, "# Heading");
+      assertStringIncludes(updated, "Paragraph 1");
+      assertStringIncludes(updated, "Paragraph 2");
     });
 
     it("should handle content without frontmatter", () => {
@@ -244,7 +276,7 @@ Paragraph 2`;
 
       const frontmatter = testCommand.testExtractFrontmatter(updated);
       assertEquals(frontmatter.status, "new");
-      assertEquals(updated.includes("Just content"), true);
+      assertStringIncludes(updated, "Just content");
     });
   });
 

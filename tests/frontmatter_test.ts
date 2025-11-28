@@ -13,7 +13,7 @@ import { initTestDbService } from "./helpers/db.ts";
  * - Test 4: Extra fields in frontmatter → Ignored (Zod strips unknown keys by default)
  * - Test 5: No frontmatter delimiters → Throws "No frontmatter found" error
  *
- * Uses TOML frontmatter format (+++ delimiters) for token efficiency.
+ * Uses YAML frontmatter format (--- delimiters) for Dataview compatibility.
  */
 
 Deno.test("RequestSchema: valid frontmatter object passes validation", () => {
@@ -94,14 +94,14 @@ Deno.test("RequestSchema: strips unknown fields", () => {
   assertEquals(result.another_extra, undefined);
 });
 
-Deno.test("FrontmatterParser: valid markdown with TOML frontmatter", () => {
-  const markdown = `+++
-trace_id = "550e8400-e29b-41d4-a716-446655440000"
-agent_id = "coder-agent"
-status = "pending"
-priority = 8
-tags = ["feature", "ui"]
-+++
+Deno.test("FrontmatterParser: valid markdown with YAML frontmatter", () => {
+  const markdown = `---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+agent_id: coder-agent
+status: pending
+priority: 8
+tags: [feature, ui]
+---
 
 # Implement Login Page
 
@@ -135,14 +135,14 @@ No frontmatter here!
   ) as Error;
 
   assertEquals(error.message.includes("No frontmatter found"), true);
-  assertEquals(error.message.includes("+++"), true);
+  assertEquals(error.message.includes("---"), true);
 });
 
-Deno.test("FrontmatterParser: throws on invalid TOML syntax", () => {
-  const markdown = `+++
-trace_id = "missing-closing-quote
-agent_id = "coder-agent"
-+++
+Deno.test("FrontmatterParser: throws on invalid YAML syntax", () => {
+  const markdown = `---
+trace_id: "missing-closing-quote
+agent_id: coder-agent
+---
 
 Body content
 `;
@@ -153,10 +153,10 @@ Body content
 });
 
 Deno.test("FrontmatterParser: throws on validation error with field details", () => {
-  const markdown = `+++
-agent_id = "coder-agent"
-status = "pending"
-+++
+  const markdown = `---
+agent_id: coder-agent
+status: pending
+---
 
 Missing trace_id field
 `;
@@ -172,11 +172,11 @@ Missing trace_id field
 });
 
 Deno.test("FrontmatterParser: handles empty body content", () => {
-  const markdown = `+++
-trace_id = "550e8400-e29b-41d4-a716-446655440000"
-agent_id = "coder-agent"
-status = "pending"
-+++
+  const markdown = `---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+agent_id: coder-agent
+status: pending
+---
 `;
 
   const parser = new FrontmatterParser();
@@ -186,13 +186,13 @@ status = "pending"
   assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
 });
 
-Deno.test("FrontmatterParser: TOML with datetime parses correctly", () => {
-  const markdown = `+++
-trace_id = "550e8400-e29b-41d4-a716-446655440000"
-agent_id = "coder-agent"
-status = "pending"
-created_at = "2025-11-27T10:30:00Z"
-+++
+Deno.test("FrontmatterParser: YAML with datetime parses correctly", () => {
+  const markdown = `---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+agent_id: coder-agent
+status: pending
+created_at: "2025-11-27T10:30:00Z"
+---
 
 Body content
 `;
@@ -205,11 +205,11 @@ Body content
 });
 
 Deno.test("FrontmatterParser: handles special characters in strings", () => {
-  const markdown = `+++
-trace_id = "550e8400-e29b-41d4-a716-446655440000"
-agent_id = "coder-agent"
-status = "pending"
-+++
+  const markdown = `---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+agent_id: coder-agent
+status: pending
+---
 
 # Fix: Bug with colons and "quotes"
 
@@ -228,13 +228,13 @@ Deno.test("FrontmatterParser logs successful validation", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
     const parser = new FrontmatterParser(db);
-    const markdown = `+++
-trace_id = "550e8400-e29b-41d4-a716-446655440000"
-agent_id = "coder-agent"
-status = "pending"
-priority = 8
-tags = ["feature", "ui"]
-+++
+    const markdown = `---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+agent_id: coder-agent
+status: pending
+priority: 8
+tags: [feature, ui]
+---
 
 # Test
 `;
@@ -261,10 +261,10 @@ Deno.test("FrontmatterParser logs validation failure", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
     const parser = new FrontmatterParser(db);
-    const markdown = `+++
-agent_id = "coder-agent"
-status = "pending"
-+++
+    const markdown = `---
+agent_id: coder-agent
+status: pending
+---
 
 # Bad
 `;

@@ -70,12 +70,12 @@ export abstract class BaseCommand {
   }
 
   /**
-   * Parse frontmatter from markdown file (TOML format)
+   * Parse frontmatter from markdown file (YAML format)
    * @param content File content
    * @returns Frontmatter object
    */
   protected extractFrontmatter(content: string): Record<string, string> {
-    const match = content.match(/^\+\+\+\n([\s\S]*?)\n\+\+\+/);
+    const match = content.match(/^---\n([\s\S]*?)\n---/);
     if (!match) {
       return {};
     }
@@ -84,11 +84,11 @@ export abstract class BaseCommand {
     const lines = match[1].split("\n");
 
     for (const line of lines) {
-      const equalIndex = line.indexOf("=");
-      if (equalIndex === -1) continue;
+      const colonIndex = line.indexOf(":");
+      if (colonIndex === -1) continue;
 
-      const key = line.substring(0, equalIndex).trim();
-      let value = line.substring(equalIndex + 1).trim();
+      const key = line.substring(0, colonIndex).trim();
+      let value = line.substring(colonIndex + 1).trim();
 
       // Remove quotes if present
       if (
@@ -105,17 +105,24 @@ export abstract class BaseCommand {
   }
 
   /**
-   * Serialize frontmatter object back to TOML format
+   * Serialize frontmatter object back to YAML format
    * @param frontmatter Frontmatter object
-   * @returns TOML string
+   * @returns YAML string with --- delimiters
    */
   protected serializeFrontmatter(frontmatter: Record<string, string>): string {
-    const lines = ["+++"];
+    const lines = ["---"];
     for (const [key, value] of Object.entries(frontmatter)) {
-      // Always quote string values in TOML
-      lines.push(`${key} = "${value}"`);
+      // Quote values that contain colons, hyphens in UUIDs, or special chars
+      const needsQuotes = value.includes(":") ||
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
+      if (needsQuotes) {
+        lines.push(`${key}: "${value}"`);
+      } else {
+        lines.push(`${key}: ${value}`);
+      }
     }
-    lines.push("+++");
+    lines.push("---");
     return lines.join("\n");
   }
 
@@ -131,7 +138,7 @@ export abstract class BaseCommand {
   ): string {
     const frontmatter = this.extractFrontmatter(content);
     const updated = { ...frontmatter, ...updates };
-    const body = content.replace(/^\+\+\+\n[\s\S]*?\n\+\+\+\n?/, "");
+    const body = content.replace(/^---\n[\s\S]*?\n---\n?/, "");
     return this.serializeFrontmatter(updated) + "\n" + body;
   }
 

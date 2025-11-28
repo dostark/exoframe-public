@@ -2394,9 +2394,262 @@ Error: Description required. Usage: exoctl request "<description>"
 
 ---
 
-### 5.7: Test Integration
+### Step 5.7: YAML Frontmatter Migration (Dataview Compatibility) ✅ COMPLETED
 
-- **Dependencies:** Steps 5.1-5.6 completed.
+- **Dependencies:** Steps 5.1-5.6 completed, Dataview plugin integration.
+- **Rollback:** Revert frontmatter format to TOML, update Dashboard to use `dataviewjs`.
+
+**Problem Statement:**
+
+ExoFrame currently uses **TOML frontmatter** (`+++` delimiters) for all markdown files (requests, plans, reports). However, **Obsidian's Dataview plugin only supports YAML frontmatter** (`---` delimiters). This causes:
+
+- ❌ Dashboard queries show `-` (empty) for all frontmatter fields
+- ❌ Users cannot filter or sort by `status`, `priority`, `agent`, etc.
+- ❌ The primary UI (Obsidian Dashboard) is effectively broken for metadata display
+- ❌ Workaround requires complex `dataviewjs` blocks with custom TOML parsing
+
+**Root Cause:**
+
+- Dataview's DQL (Dataview Query Language) parses YAML frontmatter natively
+- TOML frontmatter (`+++`) is not recognized by Dataview
+- The `dataviewjs` workaround requires JavaScript Queries enabled and custom parsing code
+
+**Solution: Migrate from TOML to YAML Frontmatter**
+
+Convert all markdown frontmatter from TOML format to YAML format:
+
+| Before (TOML)                      | After (YAML)                    |
+| ---------------------------------- | ------------------------------- |
+| `+++`                              | `---`                           |
+| `trace_id = "550e8400-..."`        | `trace_id: "550e8400-..."`      |
+| `status = "pending"`               | `status: pending`               |
+| `priority = "normal"`              | `priority: normal`              |
+| `tags = ["feature", "api"]`        | `tags: [feature, api]`          |
+| `created = "2025-11-28T10:30:00Z"` | `created: 2025-11-28T10:30:00Z` |
+| `+++`                              | `---`                           |
+
+**Scope of Changes:**
+
+#### **1. Core Parser Updates**
+
+| File                               | Change Required                                                        |
+| ---------------------------------- | ---------------------------------------------------------------------- |
+| `src/cli/base.ts`                  | Update `extractFrontmatter()` and `serializeFrontmatter()` for YAML    |
+| `src/parsers/markdown.ts`          | Update regex from `^\+\+\+` to `^---`, use YAML parser instead of TOML |
+| `src/services/plan_writer.ts`      | Generate YAML frontmatter in plans                                     |
+| `src/services/mission_reporter.ts` | Generate YAML frontmatter in reports                                   |
+| `src/services/execution_loop.ts`   | Parse/generate YAML frontmatter in execution files                     |
+
+#### **2. CLI Command Updates**
+
+| File                          | Change Required                                       |
+| ----------------------------- | ----------------------------------------------------- |
+| `src/cli/request_commands.ts` | Update body extraction regex from `^\+\+\+` to `^---` |
+| `src/cli/plan_commands.ts`    | Update frontmatter parsing/serialization for YAML     |
+
+#### **3. Test Fixture Updates**
+
+| Directory    | Files Affected | Change Required                               |
+| ------------ | -------------- | --------------------------------------------- |
+| `tests/cli/` | ~10 files      | Update test fixtures from TOML to YAML format |
+| `tests/`     | ~5 files       | Update frontmatter assertions                 |
+
+#### **4. Template Updates**
+
+| File                               | Change Required                                       |
+| ---------------------------------- | ----------------------------------------------------- |
+| `templates/Knowledge_Dashboard.md` | Revert to simple `dataview` queries (no `dataviewjs`) |
+
+#### **5. Documentation Updates**
+
+| Document                          | Section to Update                            |
+| --------------------------------- | -------------------------------------------- |
+| `ExoFrame_Technical_Spec.md`      | Section 2.1 File Format Inventory            |
+| `ExoFrame_User_Guide.md`          | Request/Plan file format examples            |
+| `ExoFrame_Developer_Setup.md`     | Test fixture format notes                    |
+| `ExoFrame_Implementation_Plan.md` | Step 7.2 (update from TOML to YAML decision) |
+
+#### **6. Dependency Changes**
+
+| Change           | Reason                                            |
+| ---------------- | ------------------------------------------------- |
+| Add `@std/yaml`  | YAML parsing/serialization                        |
+| Keep `@std/toml` | Still needed for `exo.config.toml` and Blueprints |
+
+**Implementation Checklist:**
+
+1. [x] Add `@std/yaml` to `deno.json` imports
+2. [x] Update `src/cli/base.ts`:
+   - [x] `extractFrontmatter()`: Change regex from `^\+\+\+\n([\s\S]*?)\n\+\+\+` to `^---\n([\s\S]*?)\n---`
+   - [x] `extractFrontmatter()`: Replace TOML parsing with YAML parsing
+   - [x] `serializeFrontmatter()`: Generate `---` delimiters with `key: value` format
+   - [x] `updateFrontmatter()`: Update body extraction regex
+3. [x] Update `src/parsers/markdown.ts`:
+   - [x] Change TOML regex to YAML regex
+   - [x] Replace `@std/toml` parse with `@std/yaml` parse
+4. [x] Update `src/services/plan_writer.ts`:
+   - [x] `generateFrontmatter()`: Output YAML format
+5. [x] Update `src/services/mission_reporter.ts`:
+   - [x] `buildFrontmatter()`: Output YAML format
+6. [x] Update `src/services/execution_loop.ts`:
+   - [x] Parse YAML frontmatter in active task files
+7. [x] Update `src/cli/request_commands.ts`:
+   - [x] `show()` method: Update body extraction regex
+8. [x] Update `src/cli/plan_commands.ts`:
+   - [x] Frontmatter parsing/serialization for YAML
+9. [x] Convert all test fixtures:
+   - [x] `tests/cli/request_commands_test.ts`
+   - [x] `tests/cli/plan_commands_test.ts`
+   - [x] `tests/mission_reporter_test.ts`
+   - [x] `tests/plan_writer_test.ts`
+   - [x] Other affected test files
+10. [x] Update `templates/Knowledge_Dashboard.md`:
+    - [x] Dashboard uses simple `dataview` TABLE queries (already correct)
+    - [x] No `dataviewjs` blocks needed
+11. [x] Run full test suite and fix any failures
+12. [ ] Update documentation (see Section 5.7.5)
+
+**YAML Frontmatter Format Specification:**
+
+```markdown
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+created: 2025-11-28T10:30:00.000Z
+status: pending
+priority: normal
+agent: default
+source: cli
+created_by: user@example.com
+portal: MyProject
+tags: [feature, api]
+---
+
+# Request
+
+Your request description here...
+```
+
+**Key Format Rules:**
+
+1. Delimiters: `---` (three hyphens) on separate lines
+2. Key-value: `key: value` (colon + space)
+3. Strings: Quotes optional for simple values, required for UUIDs with hyphens
+4. Arrays: Inline `[item1, item2]` format preferred
+5. Dates: ISO 8601 format without quotes (YAML parses as timestamp)
+6. Booleans: `true`/`false` (lowercase, no quotes)
+
+**Dashboard Query Compatibility:**
+
+After migration, standard Dataview queries will work:
+
+```dataview
+TABLE 
+  status AS "Status",
+  priority AS "Priority",
+  agent AS "Agent",
+  created AS "Created"
+FROM "Inbox/Requests"
+WHERE status = "pending"
+SORT created DESC
+LIMIT 10
+```
+
+**Migration Notes:**
+
+- **BREAKING CHANGE**: Existing TOML frontmatter files will not be auto-converted
+- Users must manually convert existing files or use a migration script
+- New files created via `exoctl request` will use YAML format
+- Provide migration script: `scripts/migrate_toml_to_yaml.ts`
+
+**Migration Script (Planned):**
+
+```typescript
+// scripts/migrate_toml_to_yaml.ts
+// Converts all TOML frontmatter files to YAML format
+
+import { walk } from "@std/fs";
+import { parse as parseToml } from "@std/toml";
+import { stringify as stringifyYaml } from "@std/yaml";
+
+async function migrateFile(path: string): Promise<boolean> {
+  const content = await Deno.readTextFile(path);
+
+  // Check if file has TOML frontmatter
+  const tomlMatch = content.match(/^\+\+\+\n([\s\S]*?)\n\+\+\+\n([\s\S]*)$/);
+  if (!tomlMatch) return false;
+
+  const frontmatter = parseToml(tomlMatch[1]);
+  const body = tomlMatch[2];
+
+  // Convert to YAML format
+  const yamlFrontmatter = stringifyYaml(frontmatter);
+  const newContent = `---\n${yamlFrontmatter}---\n${body}`;
+
+  await Deno.writeTextFile(path, newContent);
+  return true;
+}
+
+// Usage: deno run --allow-read --allow-write scripts/migrate_toml_to_yaml.ts ~/ExoFrame
+```
+
+**Success Criteria:**
+
+1. [x] All frontmatter uses `---` YAML delimiters
+2. [x] Dataview queries in Dashboard show all fields correctly
+3. [x] `exoctl request list` displays proper status, priority, agent
+4. [x] `exoctl plan list` displays proper status, trace_id
+5. [x] All 390+ tests pass after migration
+6. [ ] Migration script successfully converts existing files
+7. [ ] Documentation updated to reflect YAML format
+8. [x] No `dataviewjs` blocks required in Dashboard
+
+**Acceptance Testing:**
+
+````bash
+# 1. Create request with new YAML format
+$ exoctl request "Test YAML format"
+✓ Request created: request-abc12345.md
+
+# 2. Verify YAML frontmatter
+$ head -10 ~/ExoFrame/Inbox/Requests/request-abc12345.md
+---
+trace_id: "abc12345-..."
+status: pending
+priority: normal
+...
+---
+
+# 3. Open Obsidian Dashboard
+# Verify all fields display correctly (not "-")
+
+# 4. Run Dataview query test
+# In Obsidian, create test note with:
+```dataview
+TABLE status, priority, agent FROM "Inbox/Requests" LIMIT 1
+````
+
+# Verify fields show actual values
+
+````
+**Timeline Estimate:**
+
+| Task                          | Effort    |
+| ----------------------------- | --------- |
+| Core parser updates           | 2 hours   |
+| CLI command updates           | 1 hour    |
+| Service updates               | 1 hour    |
+| Test fixture conversion       | 2 hours   |
+| Template updates              | 30 min    |
+| Documentation updates         | 1 hour    |
+| Migration script              | 1 hour    |
+| Full testing & fixes          | 2 hours   |
+| **Total**                     | **~10 hours** |
+
+---
+
+### 5.8: Test Integration
+
+- **Dependencies:** Steps 5.1-5.7 completed.
 - **Rollback:** Remove test files.
 
 **Action:** Verify end-to-end integration between ExoFrame and Obsidian.
@@ -2407,7 +2660,7 @@ Error: Description required. Usage: exoctl request "<description>"
 
 ```bash
 exoctl request "Integration Test - verify Obsidian integration" --priority low
-```
+````
 
 2. Watch Dashboard refresh (Ctrl+R to force refresh in Obsidian)
 
@@ -2477,7 +2730,7 @@ exoctl scaffold --test
 - **Coverage Target:** 70% for core logic (Engine, Security, Parser)
 - **Action:** Create tests for:
   - Path canonicalization and security checks
-  - Frontmatter TOML parsing (valid/invalid cases)
+  - Frontmatter YAML parsing (valid/invalid cases)
   - Lease acquisition/release with simulated concurrency
   - Context loading with token limits
   - Git operations (mocked subprocess calls)
@@ -2776,151 +3029,9 @@ ExoFrame's value proposition is **not** real-time coding assistance (IDE agents 
 
 However, the current "drop a markdown file" workflow has friction. This phase addresses that.
 
-### Step 7.2: TOML Format Migration ✅ COMPLETED
-
-**Problem:** ExoFrame originally used mixed formats (YAML frontmatter in requests/plans, YAML for blueprints). This created:
-
-- Inconsistency across file types
-- YAML fragility (indentation-sensitive, type coercion issues)
-- Higher token usage when files are included in LLM context
-
-**Solution:** Standardize on TOML for all structured metadata with a clean break (no backward compatibility).
-
-**Changes Made:**
-
-| Component           | Before        | After         | Files Changed                                 |
-| ------------------- | ------------- | ------------- | --------------------------------------------- |
-| Request frontmatter | YAML (`---`)  | TOML (`+++`)  | `src/parsers/markdown.ts`                     |
-| Plan frontmatter    | YAML (`---`)  | TOML (`+++`)  | `src/services/plan_writer.ts`                 |
-| Report frontmatter  | YAML (`---`)  | TOML (`+++`)  | `src/services/mission_reporter.ts`            |
-| Execution reports   | YAML (`---`)  | TOML (`+++`)  | `src/services/execution_loop.ts`              |
-| CLI serialization   | YAML output   | TOML output   | `src/cli/base.ts`, `src/cli/plan_commands.ts` |
-| Tests               | YAML fixtures | TOML fixtures | `tests/frontmatter_test.ts`, `tests/cli/*.ts` |
-| Dependencies        | `@std/yaml`   | Removed       | `deno.json` (dependency removed)              |
-
-**Implementation Completed:**
-
-1. ✅ **Parser Migration** (`src/parsers/markdown.ts`)
-   - Changed delimiter detection from `---` to `+++`
-   - Replaced YAML parsing with TOML parsing (`@std/toml`)
-   - Removed `@std/yaml` dependency completely
-
-2. ✅ **Service Updates** (5 files)
-   - `plan_writer.ts` - `generateFrontmatter()` outputs TOML
-   - `execution_loop.ts` - Reports use TOML frontmatter
-   - `mission_reporter.ts` - `buildFrontmatter()` uses TOML
-   - `base.ts` - `extractFrontmatter()`/`serializeFrontmatter()` updated
-   - `plan_commands.ts` - Plan serialization uses TOML
-
-3. ✅ **Test Fixture Conversion** (6 test files)
-   - All `---` delimiters changed to `+++`
-   - All `key: value` syntax changed to `key = "value"`
-   - All assertions updated to expect TOML format
-
-4. ✅ **Documentation Updates** (4 files)
-   - Implementation Plan, White Paper, User Guide, Building with AI Agents
-
-**Success Criteria (All Met):**
-
-1. ✅ `@std/toml` added to `deno.json` imports
-2. ✅ `FrontmatterParser` only accepts `+++` (TOML) delimiters
-3. ✅ All services generate TOML frontmatter (`+++`)
-4. ✅ All test fixtures converted to TOML format
-5. ✅ Token savings documented (~22% reduction)
-6. ✅ `@std/yaml` dependency removed (clean break)
-7. ✅ All 304 tests pass after migration
-8. ✅ BREAKING CHANGE documented (YAML no longer supported)
-
-**Tests:**
-
-```typescript
-// tests/frontmatter_test.ts
-
-Deno.test("FrontmatterParser - parses TOML frontmatter with +++ delimiters", () => {
-  const markdown = `+++
-trace_id = "550e8400-e29b-41d4-a716-446655440000"
-agent_id = "coder"
-status = "pending"
-priority = 5
-tags = ["feature"]
-created_at = 2025-11-27T10:30:00Z
-+++
-
-# Request body here`;
-
-  const parser = new FrontmatterParser();
-  const result = parser.parse(markdown);
-
-  assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
-  assertEquals(result.request.priority, 5);
-  assertEquals(result.request.tags, ["feature"]);
-});
-
-Deno.test("FrontmatterParser - rejects YAML frontmatter (TOML-only)", () => {
-  const markdown = `---
-trace_id: "550e8400-e29b-41d4-a716-446655440000"
-agent_id: coder
-status: pending
 ---
 
-# Request body`;
-
-  const parser = new FrontmatterParser();
-
-  // Should throw - YAML format no longer supported
-  assertThrows(() => parser.parse(markdown));
-});
-
-Deno.test("FrontmatterParser - only accepts +++ delimiters", () => {
-  const toml = `+++\ntrace_id = "abc"\n+++\nBody`;
-  const yaml = `---\ntrace_id: abc\n---\nBody`;
-
-  const parser = new FrontmatterParser();
-
-  // TOML with +++ works
-  assertExists(parser.parse(toml));
-
-  // YAML with --- throws
-  assertThrows(() => parser.parse(yaml));
-});
-```
-
-**Token Efficiency Results:**
-
-```
-# YAML (45 tokens) - No longer supported
----
-trace_id: "550e8400-e29b-41d4-a716-446655440000"
-agent_id: "senior_coder"
-status: "pending"
-priority: 5
-tags:
-  - feature
-  - api
----
-
-# TOML (35 tokens) - Current format
-+++
-trace_id = "550e8400-e29b-41d4-a716-446655440000"
-agent_id = "senior_coder"
-status = "pending"
-priority = 5
-tags = ["feature", "api"]
-+++
-```
-
-_~22% token reduction per request file embedded in LLM context_
-
-**Migration Notes:**
-
-- **BREAKING CHANGE**: YAML frontmatter (`---`) is no longer supported
-- Users with existing YAML files must convert to TOML format
-- Conversion: Change `---` to `+++`, change `key: value` to `key = "value"`
-- Arrays: Change multi-line YAML arrays to inline TOML arrays
-
----
-
-### Step 7.3: UI Strategy Evaluation
+### Step 7.1: UI Strategy Evaluation
 
 **Problem:** Obsidian with Dataview provides read-only dashboards, but lacks:
 
@@ -2978,7 +3089,7 @@ router.get("/ws", (ctx) => {
 
 ---
 
-### Step 7.4: Obsidian Dashboard Enhancement
+### Step 7.2: Obsidian Dashboard Enhancement
 
 **Current State:** Basic Dataview queries exist but are underdeveloped.
 
@@ -3055,7 +3166,7 @@ ${markdown}
 
 ---
 
-### Step 7.4: VS Code Integration (Future Consideration)
+### Step 7.3: VS Code Integration (Future Consideration)
 
 **If VS Code extension is prioritized:**
 
@@ -3091,7 +3202,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 ---
 
-### Step 7.5: Documentation Updates
+### Step 7.4: Documentation Updates
 
 Update all docs to reflect new positioning:
 

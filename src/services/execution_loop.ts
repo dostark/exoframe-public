@@ -5,6 +5,7 @@
 
 import { join } from "@std/path";
 import { parse as parseToml } from "@std/toml";
+import { parse as parseYaml } from "@std/yaml";
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "./db.ts";
 import { GitService } from "./git_service.ts";
@@ -176,13 +177,13 @@ export class ExecutionLoop {
   private async parsePlan(planPath: string): Promise<PlanFrontmatter> {
     const content = await Deno.readTextFile(planPath);
 
-    // Extract TOML frontmatter between +++ markers
-    const match = content.match(/^\+\+\+\n([\s\S]*?)\n\+\+\+/);
+    // Extract YAML frontmatter between --- markers
+    const match = content.match(/^---\n([\s\S]*?)\n---/);
     if (!match) {
       throw new Error("Plan file missing frontmatter");
     }
 
-    const frontmatter = parseToml(match[1]) as unknown as PlanFrontmatter;
+    const frontmatter = parseYaml(match[1]) as unknown as PlanFrontmatter;
 
     // Validate required fields
     if (!frontmatter.trace_id) {
@@ -388,11 +389,11 @@ export class ExecutionLoop {
     const planFileName = planPath.split("/").pop()!;
     const requestPath = join(requestsDir, planFileName);
 
-    // Read plan, update frontmatter status (TOML format)
+    // Read plan, update frontmatter status (YAML format)
     const content = await Deno.readTextFile(planPath);
     const updatedContent = content.replace(
-      /status = "active"/,
-      'status = "error"',
+      /status: active/,
+      "status: error",
     );
 
     await Deno.writeTextFile(requestPath, updatedContent);
@@ -434,13 +435,13 @@ export class ExecutionLoop {
     const reportName = `${timestamp}_${shortTrace}_${requestId}.md`;
     const reportPath = join(reportsDir, reportName);
 
-    const report = `+++
-trace_id = "${traceId}"
-request_id = "${requestId}"
-status = "completed"
-completed_at = "${new Date().toISOString()}"
-agent_id = "${this.agentId}"
-+++
+    const report = `---
+trace_id: "${traceId}"
+request_id: ${requestId}
+status: completed
+completed_at: "${new Date().toISOString()}"
+agent_id: ${this.agentId}
+---
 
 # Mission Report: ${requestId}
 
@@ -488,13 +489,13 @@ Review changes in git branch and merge if approved.
     const reportName = `${timestamp}_${shortTrace}_${requestId}_failure.md`;
     const reportPath = join(reportsDir, reportName);
 
-    const report = `+++
-trace_id = "${traceId}"
-request_id = "${requestId}"
-status = "failed"
-failed_at = "${new Date().toISOString()}"
-agent_id = "${this.agentId}"
-+++
+    const report = `---
+trace_id: "${traceId}"
+request_id: ${requestId}
+status: failed
+failed_at: "${new Date().toISOString()}"
+agent_id: ${this.agentId}
+---
 
 # Failure Report: ${requestId}
 

@@ -861,7 +861,117 @@ exoctl plan list
 exoctl plan list --json
 ```
 
-### 4.6 Bootstrap (Reference Implementation)
+### 4.6 File Format Reference
+
+ExoFrame uses **YAML frontmatter** for all markdown files (requests, plans, reports). This format is required for **Obsidian Dataview compatibility**.
+
+#### YAML Frontmatter Format
+
+Request, plan, and report files use `---` delimiters with YAML syntax:
+
+```markdown
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+created: 2025-11-28T10:30:00.000Z
+status: pending
+priority: normal
+agent: default
+source: cli
+created_by: user@example.com
+tags: [feature, api]
+---
+
+# Request
+
+Implement user authentication for the API...
+```
+
+#### Why YAML Frontmatter?
+
+| Benefit                    | Description                                               |
+| -------------------------- | --------------------------------------------------------- |
+| **Dataview compatibility** | Obsidian's Dataview plugin only parses YAML frontmatter   |
+| **Dashboard queries work** | TABLE queries can filter/sort by status, priority, agent  |
+| **Standard format**        | Most markdown tools expect YAML (`---` delimiters)        |
+| **Auto-generated**         | `exoctl request` creates proper frontmatter automatically |
+
+#### Frontmatter Fields Reference
+
+**Request Files** (`Inbox/Requests/request-*.md`):
+
+| Field        | Type     | Required | Example                                  |
+| ------------ | -------- | -------- | ---------------------------------------- |
+| `trace_id`   | string   | ✓        | `"550e8400-e29b-41d4-a716-446655440000"` |
+| `created`    | datetime | ✓        | `2025-11-28T10:30:00.000Z`               |
+| `status`     | string   | ✓        | `pending`, `processing`, `completed`     |
+| `priority`   | string   | ✓        | `low`, `normal`, `high`, `critical`      |
+| `agent`      | string   | ✓        | `default`, `senior_coder`, `architect`   |
+| `source`     | string   | ✓        | `cli`, `file`, `interactive`             |
+| `created_by` | string   | ✓        | `user@example.com`                       |
+| `portal`     | string   |          | `MyProject` (optional project context)   |
+| `tags`       | array    |          | `[feature, api]` (optional tags)         |
+
+**Plan Files** (`Inbox/Plans/*.md`):
+
+| Field        | Type     | Required | Example                                  |
+| ------------ | -------- | -------- | ---------------------------------------- |
+| `trace_id`   | string   | ✓        | `"550e8400-e29b-41d4-a716-446655440000"` |
+| `request_id` | string   | ✓        | `"implement-auth"`                       |
+| `status`     | string   | ✓        | `review`, `approved`, `rejected`         |
+| `created_at` | datetime | ✓        | `2025-11-28T10:35:00.000Z`               |
+| `agent_id`   | string   | ✓        | `senior_coder`                           |
+
+**Report Files** (`Knowledge/Reports/*.md`):
+
+| Field          | Type     | Required | Example                                  |
+| -------------- | -------- | -------- | ---------------------------------------- |
+| `trace_id`     | string   | ✓        | `"550e8400-e29b-41d4-a716-446655440000"` |
+| `request_id`   | string   | ✓        | `"implement-auth"`                       |
+| `status`       | string   | ✓        | `completed`, `failed`                    |
+| `completed_at` | datetime | ✓        | `2025-11-28T11:00:00.000Z`               |
+| `agent_id`     | string   | ✓        | `senior_coder`                           |
+| `branch`       | string   |          | `feat/implement-auth-550e8400`           |
+
+#### YAML Syntax Quick Reference
+
+```yaml
+# Strings (quotes optional for simple values)
+status: pending
+agent: default
+
+# Strings with special characters (quotes required)
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+created_by: "user@example.com"
+
+# Dates (ISO 8601 format)
+created: 2025-11-28T10:30:00.000Z
+
+# Arrays (inline format)
+tags: [feature, api, urgent]
+
+# Booleans
+approved: true
+```
+
+> **💡 TIP:** Use `exoctl request` to create requests with proper frontmatter automatically. Manual file creation is error-prone.
+
+#### Dataview Dashboard Queries
+
+With YAML frontmatter, Dataview queries work natively:
+
+```dataview
+TABLE 
+  status AS "Status",
+  priority AS "Priority",
+  agent AS "Agent",
+  created AS "Created"
+FROM "Inbox/Requests"
+WHERE status = "pending"
+SORT created DESC
+LIMIT 10
+```
+
+### 4.7 Bootstrap (Reference Implementation)
 
 ```bash
 # 1. Clone or deploy workspace

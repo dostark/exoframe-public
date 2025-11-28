@@ -3,10 +3,10 @@ import { z } from "zod";
 /**
  * Schema for ExoFrame request frontmatter
  *
- * Validates the TOML frontmatter structure in request markdown files
+ * Validates the YAML frontmatter structure in request markdown files
  * located in /Inbox/Requests
  *
- * Uses +++ delimiters for TOML (token-efficient for LLM context)
+ * Uses --- delimiters for YAML (Dataview compatible)
  */
 export const RequestSchema = z.object({
   trace_id: z.string().uuid("Invalid trace_id: must be a valid UUID"),
