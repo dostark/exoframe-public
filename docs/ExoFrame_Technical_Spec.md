@@ -55,6 +55,43 @@ permission governance across CLI, daemon, and agents.
 | **Dependencies** | **ES Modules**   | No `node_modules`. Dependencies cached globally or in vendor dir. |
 | **Interface**    | **Obsidian**     | Viewer for Markdown files and Dashboard.                          |
 
+### 2.0.1 Supported LLM Providers
+
+ExoFrame uses a provider-agnostic architecture via the `IModelProvider` interface. All providers implement the same
+contract, enabling seamless switching between local and cloud models.
+
+| Provider           | Status         | Models                                                                       | Context Window  |
+| ------------------ | -------------- | ---------------------------------------------------------------------------- | --------------- |
+| **Ollama** (Local) | ✅ Implemented | llama3.2, mistral, codellama, etc.                                           | Varies by model |
+| **Mock** (Testing) | ✅ Implemented | N/A                                                                          | N/A             |
+| **Anthropic**      | 📋 Planned     | claude-sonnet-4-20250514, claude-3-5-sonnet, claude-3-5-haiku, claude-3-opus | 200K            |
+| **OpenAI**         | 📋 Planned     | gpt-4o, gpt-4o-mini, gpt-4-turbo, o1, o1-mini, o3-mini                       | 128K–200K       |
+| **Google**         | 📋 Planned     | gemini-2.0-flash, gemini-2.0-flash-lite, gemini-1.5-pro, gemini-1.5-flash    | 1M–2M           |
+
+**Provider Selection (exo.config.toml):**
+
+```toml
+[models.default]
+provider = "anthropic"
+model = "claude-sonnet-4-20250514"
+
+[models.fast]
+provider = "openai"
+model = "gpt-4o-mini"
+
+[models.local]
+provider = "ollama"
+model = "llama3.2"
+```
+
+**Environment Variables:**
+
+| Variable            | Provider           |
+| ------------------- | ------------------ |
+| `ANTHROPIC_API_KEY` | Anthropic (Claude) |
+| `OPENAI_API_KEY`    | OpenAI (GPT)       |
+| `GOOGLE_API_KEY`    | Google (Gemini)    |
+
 ---
 
 ## 2.1. File Format Inventory
