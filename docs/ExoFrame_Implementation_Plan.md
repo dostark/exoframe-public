@@ -1795,7 +1795,7 @@ Deno.test("MissionReporter: formats report with valid TOML frontmatter", async (
 
 ---
 
-## Phase 5: Obsidian Setup
+## Phase 5: Obsidian Setup ✅ COMPLETED
 
 **Goal:** Configure Obsidian as the primary UI for ExoFrame, enabling users to view dashboards, manage tasks, and monitor agent activity without leaving their knowledge management environment.
 
@@ -2561,37 +2561,6 @@ LIMIT 10
 - New files created via `exoctl request` will use YAML format
 - Provide migration script: `scripts/migrate_toml_to_yaml.ts`
 
-**Migration Script (Planned):**
-
-```typescript
-// scripts/migrate_toml_to_yaml.ts
-// Converts all TOML frontmatter files to YAML format
-
-import { walk } from "@std/fs";
-import { parse as parseToml } from "@std/toml";
-import { stringify as stringifyYaml } from "@std/yaml";
-
-async function migrateFile(path: string): Promise<boolean> {
-  const content = await Deno.readTextFile(path);
-
-  // Check if file has TOML frontmatter
-  const tomlMatch = content.match(/^\+\+\+\n([\s\S]*?)\n\+\+\+\n([\s\S]*)$/);
-  if (!tomlMatch) return false;
-
-  const frontmatter = parseToml(tomlMatch[1]);
-  const body = tomlMatch[2];
-
-  // Convert to YAML format
-  const yamlFrontmatter = stringifyYaml(frontmatter);
-  const newContent = `---\n${yamlFrontmatter}---\n${body}`;
-
-  await Deno.writeTextFile(path, newContent);
-  return true;
-}
-
-// Usage: deno run --allow-read --allow-write scripts/migrate_toml_to_yaml.ts ~/ExoFrame
-```
-
 **Success Criteria:**
 
 1. [x] All frontmatter uses `---` YAML delimiters
@@ -2599,9 +2568,7 @@ async function migrateFile(path: string): Promise<boolean> {
 3. [x] `exoctl request list` displays proper status, priority, agent
 4. [x] `exoctl plan list` displays proper status, trace_id
 5. [x] All 390+ tests pass after migration
-6. [ ] Migration script successfully converts existing files
-7. [ ] Documentation updated to reflect YAML format
-8. [x] No `dataviewjs` blocks required in Dashboard
+6. [x] No `dataviewjs` blocks required in Dashboard
 
 **Acceptance Testing:**
 
@@ -2616,7 +2583,8 @@ $ head -10 ~/ExoFrame/Inbox/Requests/request-abc12345.md
 trace_id: "abc12345-..."
 status: pending
 priority: normal
-...
+```
+
 ---
 
 # 3. Open Obsidian Dashboard
@@ -2630,391 +2598,412 @@ TABLE status, priority, agent FROM "Inbox/Requests" LIMIT 1
 
 # Verify fields show actual values
 
-````
-**Timeline Estimate:**
-
-| Task                          | Effort    |
-| ----------------------------- | --------- |
-| Core parser updates           | 2 hours   |
-| CLI command updates           | 1 hour    |
-| Service updates               | 1 hour    |
-| Test fixture conversion       | 2 hours   |
-| Template updates              | 30 min    |
-| Documentation updates         | 1 hour    |
-| Migration script              | 1 hour    |
-| Full testing & fixes          | 2 hours   |
-| **Total**                     | **~10 hours** |
-
----
-
-### 5.8: Test Integration
-
-- **Dependencies:** Steps 5.1-5.7 completed.
-- **Rollback:** Remove test files.
-
-**Action:** Verify end-to-end integration between ExoFrame and Obsidian.
-
-**Manual Test Procedure:**
-
-1. Create a test request using CLI (Step 5.6):
-
-```bash
-exoctl request "Integration Test - verify Obsidian integration" --priority low
-````
-
-2. Watch Dashboard refresh (Ctrl+R to force refresh in Obsidian)
-
-3. Verify new entry appears in "Current Tasks" or "Recent Plans" table
-
-4. Clean up test file (get trace_id from step 1 output):
-
-```bash
-rm ~/ExoFrame/Inbox/Requests/request-<trace_id>.md
-```
-
 ---
 
 ## Phase 6: Testing & Quality Assurance
 
-### Risk-to-Test Traceability
-
-| Threat / Risk       | Mitigation Step          | Automated Test                         |
-| ------------------- | ------------------------ | -------------------------------------- |
-| Path traversal      | Step 2.3 security checks | `tests/security_test.ts`               |
-| Lease starvation    | Step 6.1 heartbeat loop  | `tests/leases/heartbeat_test.ts`       |
-| Context overflow    | Step 3.3 context loader  | `tests/context/context_loader_test.ts` |
-| Git identity drift  | Step 4.2 Git service     | `tests/git/git_service_test.ts`        |
-| Watcher instability | Step 2.1 watcher         | `tests/watcher/stability_test.ts`      |
-| Doc drift           | Step 6.7 doc tests       | `tests/docs/user_guide_test.ts`        |
-
-**CLI Verification Commands:**
-
-```bash
-# Verify workspace structure
-exoctl verify --workspace
-
-# Check all required directories exist
-exoctl verify --vault
-
-# Test file creation permissions
-exoctl scaffold --test
-```
-
-**Success Criteria:**
-
-- [ ] Request files appear in Obsidian within 2 seconds of creation
-- [ ] Plan files have frontmatter queryable by Dataview
-- [ ] Report files have frontmatter queryable by Dataview
-- [ ] Dashboard queries return expected results
-- [ ] No broken links in generated files
-- [ ] All integration tests pass: `deno test tests/obsidian/`
-
-### Step 6.1: Heartbeat & Leases
-
-- **Dependencies:** Step 1.2 — **Rollback:** disable loop, run manual `lease clean`.
-- **Action:** Implement background loop updating `leases` table.
-- **Justification:** Prevents deadlocks if Agent crashes.
-- **Success Criteria:**
-  - Simulate crash; verify lock expires after 60s and file becomes writable.
-
-### Step 6.2: The Dry Run (Integration Test)
-
-- **Dependencies:** Phases 1–4 — **Rollback:** keep script in `/scripts/experimental`.
-- **Action:** Create script running "Scenario A" (Software House of One) with Mock LLM.
-- **Success Criteria:**
-  - Script runs end-to-end without manual intervention.
-
-### Step 6.3: Unit Test Foundation
-
-- **Framework:** Deno's built-in test runner (`deno test`)
-- **Coverage Target:** 70% for core logic (Engine, Security, Parser)
-- **Action:** Create tests for:
-  - Path canonicalization and security checks
-  - Frontmatter YAML parsing (valid/invalid cases)
-  - Lease acquisition/release with simulated concurrency
-  - Context loading with token limits
-  - Git operations (mocked subprocess calls)
-
-**Example Test:**
-
-```typescript
-// tests/security_test.ts
-Deno.test("Path canonicalization prevents escapes", async () => {
-  const security = new SecurityService();
-
-  const maliciousPath = "/ExoFrame/Portals/MyApp/../../../etc/passwd";
-  const allowed = await security.isPathSafe(
-    maliciousPath,
-    "/ExoFrame/Portals/MyApp",
-  );
-
-  assertEquals(allowed, false);
-});
-```
-
-### Step 6.4: Mock LLM Provider
-
-- **Purpose:** Enable deterministic testing without API calls
-- **Implementation:** Record real LLM responses, replay during tests
-- **Storage:** `/tests/fixtures/llm_responses/`
-
-```typescript
-// tests/mocks/llm_provider.ts
-class MockLLMProvider implements IModelProvider {
-  private responses: Map<string, string>;
-
-  constructor() {
-    // Load pre-recorded responses
-    const json = Deno.readTextFileSync("tests/fixtures/llm_responses/default.json");
-    this.responses = new Map(JSON.parse(json));
-  }
-
-  async complete(prompt: string, config: ModelConfig): Promise<string> {
-    // Hash prompt to find matching response
-    const key = hashPrompt(prompt);
-    const response = this.responses.get(key);
-
-    if (!response) {
-      throw new Error(`No mock response for prompt hash: ${key}`);
-    }
-
-    return response;
-  }
-}
-```
-
-### Step 6.5: Integration Test Scenarios
-
-- **Goal:** Test complete workflows end-to-end
-- **Scenarios:**
-  1. **Happy Path:** Request → Plan → Approve → Execute → Report
-  2. **Failure Path:** Execute fails → Error Report → File moved to /Inbox/Requests
-  3. **Concurrency:** Two agents try same file → Second gets BUSY
-  4. **Context Overflow:** Request with 50 massive files → Truncation warning
-  5. **Git Conflict:** Agent modifies file, human modifies same file
-
-```typescript
-// tests/integration/happy_path_test.ts
-Deno.test("Complete workflow: Request to Report", async () => {
-  const testEnv = await setupTestEnvironment();
-  const mockLLM = new MockLLMProvider();
-  const engine = new Engine(testEnv.config, mockLLM);
-
-  // 1. Create request file
-  await testEnv.writeFile("/Inbox/Requests/test-task.md", requestContent);
-
-  // 2. Wait for engine to process
-  await engine.processOnce();
-
-  // 3. Verify plan was created
-  const plan = await testEnv.readFile("/Inbox/Plans/test-task.md");
-  assertStringIncludes(plan, "## Proposed Plan");
-
-  // 4. Approve by moving to Active
-  await testEnv.moveFile(
-    "/Inbox/Plans/test-task.md",
-    "/System/Active/test-task.md",
-  );
-
-  // 5. Wait for execution
-  await engine.processOnce();
-
-  // 6. Verify report created
-  const reports = await testEnv.listFiles("/Knowledge/Reports");
-  assertEquals(reports.length, 1);
-
-  // 7. Verify git branch created
-  const branches = await testEnv.gitBranches();
-  assert(branches.some((b) => b.includes("feat/test-task")));
-
-  await testEnv.cleanup();
-});
-```
-
-### Step 6.6: Security Validation Tests
-
-- **Purpose:** Verify Deno permissions are enforced
-- **Method:** Spawn subprocess with restricted permissions, try attacks
-
-```typescript
-// tests/security/permission_test.ts
-Deno.test("Agent cannot read outside allowed paths", async () => {
-  const command = new Deno.Command("deno", {
-    args: [
-      "run",
-      "--allow-read=/ExoFrame",
-      "tests/fixtures/malicious_agent.ts",
-    ],
-    stdout: "piped",
-    stderr: "piped",
-  });
-
-  const { code, stderr } = await command.output();
-  const error = new TextDecoder().decode(stderr);
-
-  // Should fail with PermissionDenied
-  assertNotEquals(code, 0);
-  assertStringIncludes(error, "PermissionDenied");
-});
-```
-
-### Step 7.5: Performance Benchmarks
-
-- **Purpose:** Catch performance regressions
-- **Method:** Benchmark critical paths, fail CI if regresses >20%
-
-```typescript
-// tests/benchmarks/cold_start_bench.ts
-Deno.bench("Cold start time", async () => {
-  const command = new Deno.Command("deno", {
-    args: ["run", "--allow-all", "src/main.ts", "--version"],
-  });
-
-  await command.output();
-});
-
-// tests/benchmarks/watcher_bench.ts
-Deno.bench("File watcher latency", async () => {
-  const watcher = new FileWatcher("/tmp/test");
-  let triggered = false;
-
-  watcher.on("change", () => {
-    triggered = true;
-  });
-
-  // Trigger file change
-  await Deno.writeTextFile("/tmp/test/file.md", "content");
-
-  // Wait for event
-  while (!triggered) {
-    await new Promise((r) => setTimeout(r, 10));
-  }
-});
-```
-
-**CI Integration (GitHub Actions):**
-
-```yaml
-# .github/workflows/test.yml
-name: Test & Benchmark
-
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: v2.x
-
-      - name: Run tests
-        run: deno test --allow-all
-
-      - name: Run benchmarks
-        run: deno bench --allow-all
-
-      - name: Check coverage
-        run: deno test --coverage=cov_profile
-
-      - name: Generate coverage report
-        run: deno coverage cov_profile --lcov > coverage.lcov
-```
-
-### Step 6.6: Manual QA Checklist
-
-**Before each release, test on:**
-
-- [ ] Fresh Ubuntu 24.04 VM (no prior Deno install)
-- [ ] macOS (Apple Silicon)
-- [ ] Windows 11 + WSL2
-
-**Test scenarios (map to Threat IDs):**
-
-- [ ] Fresh install → Setup → Mount portal → Create request → Approve → Verify execution (Happy path)
-- [ ] Force-kill daemon mid-execution → Restart → Verify lease expires (**T-Lease**)
-- [ ] Corrupt database → Verify error message, recovery procedure (**T-DataLoss**)
-- [ ] Create request with invalid TOML → Verify validation error logged (**T-Input**)
-- [ ] Test with actual OpenAI/Anthropic API (not mock) (**T-Creds**)
-
-### Step 6.7: Documentation Structure Tests
-
-- **Dependencies:** Phase 5 (Documentation) — **Rollback:** revert test files
-- **Action:** Create automated tests to verify documentation completeness and structure.
-- **Justification:** Documentation drifts out of sync with code. Automated tests catch missing sections, broken examples, and incomplete guides.
-
-**Test Location:** `tests/docs/`
-
-**Implementation:**
-
-```typescript
-// tests/docs/helpers.ts
-export async function readUserGuide(): Promise<string> {
-  return await Deno.readTextFile("docs/ExoFrame_User_Guide.md");
-}
-
-export async function readKnowledgeReadme(): Promise<string> {
-  return await Deno.readTextFile("templates/Knowledge_README.md");
-}
-```
-
-**User Guide Tests (`tests/docs/user_guide_test.ts`):**
-
-```typescript
-// Verify User Guide has required sections
-Deno.test("User Guide has main sections", async () => {
-  const guide = await readUserGuide();
-  assertStringIncludes(guide, "## 1."); // Introduction
-  assertStringIncludes(guide, "## 2."); // Installation
-  assertStringIncludes(guide, "## 3."); // Workspace
-  assertStringIncludes(guide, "## 4."); // CLI Reference
-});
-
-// Verify CLI commands are documented
-Deno.test("User Guide documents exoctl commands", async () => {
-  const guide = await readUserGuide();
-  assertStringIncludes(guide, "exoctl");
-  assertStringIncludes(guide, "daemon start");
-  assertStringIncludes(guide, "plan approve");
-});
-
-// Verify Obsidian integration is documented
-Deno.test("User Guide documents Obsidian setup", async () => {
-  const guide = await readUserGuide();
-  assertStringIncludes(guide, "Dataview");
-  assertStringIncludes(guide, "Community Plugins");
-});
-```
-
-**Knowledge README Tests (`tests/docs/knowledge_readme_test.ts`):**
-
-```typescript
-Deno.test("Knowledge README documents vault structure", async () => {
-  const readme = await readKnowledgeReadme();
-  assertStringIncludes(readme, "Dashboard");
-  assertStringIncludes(readme, "Portals");
-  assertStringIncludes(readme, "Reports");
-});
-```
-
-**Success Criteria:**
-
-- [x] `tests/docs/` folder created with documentation tests
-- [x] User Guide tests verify all major sections exist
-- [x] Knowledge README tests verify vault structure docs
-- [x] Tests run as part of CI pipeline
-
-✅ **COMPLETED** (2025-11-28): Documentation test infrastructure implemented.
-
-- Created `tests/docs/helpers.ts` with shared functions
-- Created `tests/docs/user_guide_test.ts` (17 tests)
-- Created `tests/docs/knowledge_readme_test.ts` (5 tests)
-- All 352 tests pass
+> **Status:** 📋 PLANNED\
+> **Prerequisites:** Phases 1–5 (Runtime, Events, Intelligence, Tools, Obsidian)\
+> **Goal:** Validate single-agent workflows end-to-end before adding multi-agent complexity.
+
+📄 **Full Documentation:** [`ExoFrame_Testing_Strategy.md`](./ExoFrame_Testing_Strategy.md)
+
+### Overview
+
+Phase 6 establishes the testing infrastructure needed to confidently ship ExoFrame. The comprehensive testing strategy is documented in a dedicated document that covers:
+
+- **Testing Pyramid** — Unit, Integration, E2E, Security, Performance, Manual QA
+- **Mock LLM Infrastructure** — Deterministic testing without API costs
+- **v1.0 Testing Scope** — What's included and excluded from initial release
+- **Pre-Release Checklist** — Sign-off template for each major release
+
+### Steps Summary
+
+| Step | Description                   | Location                           |
+| ---- | ----------------------------- | ---------------------------------- |
+| 6.1  | Heartbeat & Lease Management  | `src/services/lease_manager.ts`    |
+| 6.2  | End-to-End Dry Run Script     | `scripts/dry_run.ts`               |
+| 6.3  | Obsidian Integration Tests    | `tests/obsidian/`                  |
+| 6.4  | Mock LLM Provider             | `tests/mocks/mock_llm_provider.ts` |
+| 6.5  | Integration Test Scenarios    | `tests/integration/`               |
+| 6.6  | Security Validation Tests     | `tests/security/`                  |
+| 6.7  | Performance Benchmarks        | `tests/benchmarks/`                |
+| 6.8  | Manual QA Checklist           | Testing Strategy §7                |
+| 6.9  | Documentation Structure Tests | `tests/docs/`                      |
+
+### Exit Criteria
+
+- [ ] Heartbeat loop prevents lease starvation
+- [ ] Dry run script completes without intervention
+- [ ] Obsidian integration verified (Dataview queries work)
+- [ ] Mock LLM enables deterministic testing
+- [ ] All 10 integration scenarios pass
+- [ ] Security tests verify Deno permission enforcement
+- [ ] Performance benchmarks meet targets
+- [ ] Manual QA passes on all target platforms
+- [ ] Documentation tests prevent doc drift
+- [ ] All tests run automatically on PR in CI/CD
 
 ---
 
-## Phase 7: UX Improvements & UI Evaluation
+## Phase 7: Flow Orchestration (Multi-Agent Coordination)
+
+> **Status:** 📋 PLANNED\
+> **Prerequisites:** Phases 1–6 (Core system validated via Testing & QA)\
+> **Goal:** Enable declarative multi-agent workflows with dependency resolution, parallel execution, and result aggregation.
+
+### Overview
+
+Currently, ExoFrame supports **single-agent execution** via `AgentRunner`. Phase 7 introduces **Flows** — TypeScript-defined orchestrations that coordinate multiple agents working together on complex tasks.
+
+**Use Cases:**
+
+| Flow Pattern       | Example                                       | Execution Model          |
+| ------------------ | --------------------------------------------- | ------------------------ |
+| **Pipeline**       | Lint → Security → Review → Summary            | Sequential with handoffs |
+| **Fan-Out/Fan-In** | Multiple researchers → Synthesizer            | Parallel then merge      |
+| **Staged**         | Architect → Implementer → Tester              | Sequential with gates    |
+| **Hybrid**         | Analyzer + Transformer (parallel) → Validator | Mixed                    |
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      FlowRunner                             │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │ Flow Parser │  │ Dependency  │  │ Parallel Executor   │  │
+│  │ (TypeScript)│  │ Resolver    │  │ (Semaphore-limited) │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│                    AgentRunner (existing)                   │
+├─────────────────────────────────────────────────────────────┤
+│                    Activity Journal                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Key Components:**
+
+- **FlowRunner** — Orchestrates multi-step execution, manages state
+- **DependencyResolver** — Topological sort, cycle detection, wave grouping
+- **AgentRunner** — Existing single-agent executor (reused per step)
+- **Activity Journal** — Logs all flow/step events for audit trail
+
+---
+
+### Step 7.1: Flow Definition Schema
+
+- **Dependencies:** Step 3.1 (Blueprint Service)
+- **Rollback:** Feature flag `ENABLE_FLOWS=false`
+- **Action:** Define Zod schemas for `FlowStep` and `Flow` types
+- **Location:** `src/schemas/flow.ts`
+
+**FlowStep Fields:**
+
+| Field               | Type     | Required | Description                                    |
+| ------------------- | -------- | -------- | ---------------------------------------------- |
+| `id`                | string   | ✓        | Unique step identifier                         |
+| `name`              | string   | ✓        | Human-readable name                            |
+| `agent`             | string   | ✓        | Blueprint reference from `/Blueprints/Agents/` |
+| `dependsOn`         | string[] |          | Steps that must complete first                 |
+| `input.source`      | enum     |          | `"request"`, `"step"`, or `"aggregate"`        |
+| `input.stepId`      | string   |          | Source step for `"step"` source                |
+| `input.transform`   | string   |          | Transform function name                        |
+| `condition`         | string   |          | Skip step if evaluates false                   |
+| `timeout`           | number   |          | Step timeout in ms                             |
+| `retry.maxAttempts` | number   |          | Retry count (default: 1)                       |
+| `retry.backoffMs`   | number   |          | Backoff delay (default: 1000)                  |
+
+**Flow Fields:**
+
+| Field                     | Type            | Required | Description                           |
+| ------------------------- | --------------- | -------- | ------------------------------------- |
+| `id`                      | string          | ✓        | Unique flow identifier                |
+| `name`                    | string          | ✓        | Human-readable name                   |
+| `description`             | string          | ✓        | What the flow accomplishes            |
+| `version`                 | string          |          | Semver (default: "1.0.0")             |
+| `steps`                   | FlowStep[]      | ✓        | Ordered step definitions              |
+| `output.from`             | string/string[] | ✓        | Which step(s) produce final output    |
+| `output.format`           | enum            |          | `"markdown"`, `"json"`, `"concat"`    |
+| `settings.maxParallelism` | number          |          | Max concurrent agents (default: 3)    |
+| `settings.failFast`       | boolean         |          | Stop on first failure (default: true) |
+| `settings.timeout`        | number          |          | Global flow timeout in ms             |
+
+**Success Criteria:**
+
+- [ ] FlowSchema validates example flows without errors
+- [ ] Invalid flows (circular deps, missing agents) rejected with clear errors
+- [ ] Schema exported and usable by FlowRunner
+
+---
+
+### Step 7.2: Flow File Format
+
+- **Dependencies:** Step 7.1
+- **Rollback:** N/A (file format only)
+- **Action:** Define TypeScript-based flow definitions in `/Blueprints/Flows/`
+- **Convention:** Files named `<flow-id>.flow.ts`
+
+**Why TypeScript (not TOML/YAML)?**
+
+| Benefit     | Explanation                                |
+| ----------- | ------------------------------------------ |
+| Type Safety | IDE autocomplete, compile-time validation  |
+| Flexibility | Conditional logic, dynamic step generation |
+| Transforms  | Functions not string DSL                   |
+| Consistency | Same language as codebase                  |
+
+**File Structure:**
+
+```
+/Blueprints/Flows/
+├── code_review.flow.ts
+├── feature_development.flow.ts
+├── documentation.flow.ts
+└── research.flow.ts
+```
+
+**Success Criteria:**
+
+- [ ] `defineFlow()` helper provides type safety
+- [ ] Flow files loadable via dynamic import
+- [ ] Example flows created for common patterns
+
+---
+
+### Step 7.3: Dependency Graph Resolver
+
+- **Dependencies:** Step 7.1
+- **Rollback:** Revert to sequential execution
+- **Action:** Implement topological sort and cycle detection
+- **Location:** `src/flows/dependency_resolver.ts`
+
+**Responsibilities:**
+
+1. **Cycle Detection** — DFS with visited/inStack tracking; throw `FlowValidationError` with cycle path
+2. **Topological Sort** — Kahn's algorithm for valid execution order
+3. **Wave Grouping** — Group steps by dependency depth for parallel execution
+
+**Wave Resolution Example:**
+
+```
+Input:                          Output Waves:
+  A (no deps)                     Wave 1: [A, B]  ← parallel
+  B (no deps)                     Wave 2: [C]     ← waits for wave 1
+  C (depends: A, B)               Wave 3: [D]     ← waits for wave 2
+  D (depends: C)
+```
+
+**Success Criteria:**
+
+- [ ] Cycle detection catches A→B→C→A patterns
+- [ ] Topological sort produces valid execution order
+- [ ] Parallel batches correctly grouped
+- [ ] Unit tests cover edge cases (single step, all parallel, all sequential)
+
+---
+
+### Step 7.4: FlowRunner Service
+
+- **Dependencies:** Steps 7.1–7.3, Step 3.2 (AgentRunner)
+- **Rollback:** Disable flow execution, fall back to single-agent mode
+- **Action:** Implement core flow execution engine
+- **Location:** `src/flows/flow_runner.ts`
+
+**Execution Algorithm:**
+
+1. Generate `flowRunId` (UUID)
+2. Log `flow.started` to Activity Journal
+3. Resolve step waves via DependencyResolver
+4. For each wave:
+   - Execute steps in parallel (semaphore-limited)
+   - Collect results into `Map<stepId, StepResult>`
+   - If `failFast` and any step failed → throw `FlowExecutionError`
+5. Aggregate output from designated step(s)
+6. Log `flow.completed` to Activity Journal
+7. Return `FlowResult` with all step results
+
+**Activity Journal Events:**
+
+| Event                 | Payload                                   |
+| --------------------- | ----------------------------------------- |
+| `flow.started`        | `{ flowRunId, stepCount }`                |
+| `flow.step.started`   | `{ flowRunId, agent }`                    |
+| `flow.step.completed` | `{ flowRunId, status, duration }`         |
+| `flow.completed`      | `{ flowRunId, duration, stepsCompleted }` |
+
+**Success Criteria:**
+
+- [ ] FlowRunner executes simple sequential flow
+- [ ] Parallel steps execute concurrently (verified via timing)
+- [ ] Step failures handled according to `failFast` setting
+- [ ] All flow/step events logged to Activity Journal
+- [ ] Integration with existing AgentRunner
+
+---
+
+### Step 7.5: Flow CLI Commands
+
+- **Dependencies:** Step 7.4
+- **Rollback:** Remove commands from CLI
+- **Action:** Add `exoctl flow` subcommands
+- **Location:** `src/cli/flow_commands.ts`
+
+**Commands:**
+
+| Command                                    | Description                             |
+| ------------------------------------------ | --------------------------------------- |
+| `exoctl flow list`                         | List all flows in `/Blueprints/Flows/`  |
+| `exoctl flow show <id>`                    | Display flow steps and dependency graph |
+| `exoctl flow run <id> --request <req-id>`  | Execute flow for a request              |
+| `exoctl flow plan <id> --request <req-id>` | Dry-run: show execution plan            |
+| `exoctl flow history <id>`                 | Show past executions                    |
+| `exoctl flow validate <file>`              | Validate flow definition                |
+
+**Success Criteria:**
+
+- [ ] `exoctl flow list` shows all flows with step counts
+- [ ] `exoctl flow show` displays step graph with dependencies
+- [ ] `exoctl flow plan` shows execution waves without running
+- [ ] `exoctl flow run` executes flow and creates report
+- [ ] `exoctl flow validate` catches schema errors
+
+---
+
+### Step 7.6: Flow-Aware Request Routing
+
+- **Dependencies:** Steps 7.4, 7.5
+- **Rollback:** Ignore `flow` field in requests
+- **Action:** Enable requests to specify `flow:` field for multi-agent execution
+- **Location:** `src/services/request_router.ts`
+
+**Routing Logic:**
+
+| Request Field | Behavior                        |
+| ------------- | ------------------------------- |
+| `flow: <id>`  | Route to FlowRunner             |
+| `agent: <id>` | Route to AgentRunner (existing) |
+| Neither       | Use default agent               |
+
+**Request Frontmatter Example:**
+
+```yaml
+---
+trace_id: "550e8400-..."
+status: pending
+flow: code-review
+tags: [review, pr-42]
+---
+```
+
+**Success Criteria:**
+
+- [ ] Requests with `flow:` field routed to FlowRunner
+- [ ] Requests with `agent:` field use existing AgentRunner
+- [ ] Default behavior unchanged for requests without flow/agent
+- [ ] Flow not found → clear error message
+
+---
+
+### Step 7.7: Inter-Step Communication
+
+- **Dependencies:** Step 7.4
+- **Rollback:** Steps only receive original request
+- **Action:** Implement input/output passing between flow steps
+- **Location:** `src/flows/transforms.ts`
+
+**Built-in Transforms:**
+
+| Transform         | Description                                   |
+| ----------------- | --------------------------------------------- |
+| `passthrough`     | Pass output directly (default)                |
+| `mergeAsContext`  | Combine multiple outputs as markdown sections |
+| `extractSection`  | Extract specific `## Section` from output     |
+| `appendToRequest` | Combine original request with step output     |
+
+**Custom Transforms:** Flows can define inline transform functions in their TypeScript definition.
+
+**Success Criteria:**
+
+- [ ] Step outputs accessible to dependent steps
+- [ ] Built-in transforms cover common patterns
+- [ ] Custom transforms work in flow definitions
+- [ ] Transform errors produce clear messages
+
+---
+
+### Step 7.8: Flow Reports
+
+- **Dependencies:** Steps 7.4, Step 3.4 (Mission Reporter)
+- **Rollback:** Generate simple report without flow details
+- **Action:** Generate detailed reports for flow executions
+- **Location:** `src/services/flow_reporter.ts`
+
+**Report Frontmatter Fields:**
+
+| Field             | Description              |
+| ----------------- | ------------------------ |
+| `type`            | `"flow_report"`          |
+| `flow`            | Flow ID                  |
+| `flow_run_id`     | Execution UUID           |
+| `duration_ms`     | Total execution time     |
+| `steps_completed` | Count of completed steps |
+| `steps_failed`    | Count of failed steps    |
+
+**Report Body Sections:**
+
+1. **Execution Summary** — Table of steps with status and duration
+2. **Step Outputs** — Each step's output as subsection
+3. **Dependency Graph** — ASCII visualization of flow structure
+
+**Success Criteria:**
+
+- [ ] Flow reports include all step results
+- [ ] Failed steps show error details
+- [ ] Duration tracked per step and total
+- [ ] Report queryable via Dataview
+
+---
+
+### Step 7.9: Example Flows
+
+- **Dependencies:** Steps 7.1–7.8
+- **Rollback:** N/A (example files only)
+- **Action:** Create example flows demonstrating common patterns
+
+**Included Examples:**
+
+| Flow                          | Pattern        | Steps                                   |
+| ----------------------------- | -------------- | --------------------------------------- |
+| `code_review.flow.ts`         | Pipeline       | Lint → Security → Review → Summary      |
+| `feature_development.flow.ts` | Staged         | Architect → Implement → Test → Document |
+| `documentation.flow.ts`       | Pipeline       | Analyze → Draft → Review → Format       |
+| `research.flow.ts`            | Fan-Out/Fan-In | Researchers (×3) → Synthesizer          |
+
+**Success Criteria:**
+
+- [ ] Each example flow runs successfully with mock agents
+- [ ] Examples documented with use cases
+- [ ] Examples serve as templates for custom flows
+
+---
+
+### Phase 7 Exit Criteria
+
+- [ ] `FlowSchema` validates flow definitions
+- [ ] `DependencyResolver` correctly orders steps and detects cycles
+- [ ] `FlowRunner` executes parallel and sequential flows
+- [ ] CLI commands (`flow list/show/run/plan/validate`) working
+- [ ] Requests can specify `flow:` instead of `agent:`
+- [ ] Inter-step data passing works via transforms
+- [ ] Flow reports generated with step details
+- [ ] Example flows demonstrate all patterns
+- [ ] All tests pass: `deno test tests/flows/`
+- [ ] Documentation updated with Flow usage guide
+
+---
+
+## Phase 8: UX Improvements & UI Evaluation
 
 **Goal:** Reduce friction in the ExoFrame workflow while evaluating whether a dedicated UI is needed beyond Obsidian.
 
@@ -3031,7 +3020,7 @@ However, the current "drop a markdown file" workflow has friction. This phase ad
 
 ---
 
-### Step 7.1: UI Strategy Evaluation
+### Step 8.1: UI Strategy Evaluation
 
 **Problem:** Obsidian with Dataview provides read-only dashboards, but lacks:
 
@@ -3089,7 +3078,7 @@ router.get("/ws", (ctx) => {
 
 ---
 
-### Step 7.2: Obsidian Dashboard Enhancement
+### Step 8.2: Obsidian Dashboard Enhancement
 
 **Current State:** Basic Dataview queries exist but are underdeveloped.
 
@@ -3166,7 +3155,7 @@ ${markdown}
 
 ---
 
-### Step 7.3: VS Code Integration (Future Consideration)
+### Step 8.3: VS Code Integration (Future Consideration)
 
 **If VS Code extension is prioritized:**
 
@@ -3202,7 +3191,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 ---
 
-### Step 7.4: Documentation Updates
+### Step 8.4: Documentation Updates
 
 Update all docs to reflect new positioning:
 
@@ -3230,20 +3219,13 @@ It's an **auditable agent orchestration platform** for async workflows.
 
 ---
 
-### Phase 7 Exit Criteria
+### Phase 8 Exit Criteria
 
 - [ ] `exoctl request` command implemented and tested
 - [ ] UI evaluation document created with decision
 - [ ] Obsidian dashboard templates in `Knowledge/`
 - [ ] Documentation updated with clear positioning
 - [ ] User Guide includes quick request examples
-
-## Bootstrap: Developer Workspace Setup
-
-> **Moved to separate document:** [ExoFrame Developer Setup](./ExoFrame_Developer_Setup.md)
-
-Please refer to the setup guide for instructions on how to bootstrap a local development workspace on Ubuntu or Windows
-(WSL2).
 
 ---
 

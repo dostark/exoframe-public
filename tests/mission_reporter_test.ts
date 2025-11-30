@@ -330,7 +330,7 @@ Deno.test("MissionReporter: formats report with valid YAML frontmatter", async (
     assert(content.startsWith("---\n"), "Should start with YAML delimiter");
     assertStringIncludes(content, 'trace_id: "test-trace-12345"');
     assertStringIncludes(content, 'request_id: "test-request"');
-    assertStringIncludes(content, 'status: completed');
+    assertStringIncludes(content, "status: completed");
     assertStringIncludes(content, 'agent_id: "test-agent"');
     assertStringIncludes(content, 'branch: "feat/test-branch"');
     assertStringIncludes(content, "completed_at:");
@@ -825,7 +825,7 @@ Deno.test("MissionReporter: handles failed status in trace data", async () => {
     const content = await Deno.readTextFile(result.reportPath);
 
     // Should show failed status
-    assertStringIncludes(content, 'status: failed');
+    assertStringIncludes(content, "status: failed");
     assertStringIncludes(content, "permission error");
   } finally {
     await cleanup();

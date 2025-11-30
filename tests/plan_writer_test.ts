@@ -189,8 +189,8 @@ describe("PlanWriter", () => {
         'trace_id: "550e8400-e29b-41d4-a716-446655440000"',
       );
       assertStringIncludes(result.content, 'request_id: "implement-auth"');
-      assertStringIncludes(result.content, 'status: review');
-      assertStringIncludes(result.content, 'created_at: 2024-11-25T10:30:00');
+      assertStringIncludes(result.content, "status: review");
+      assertStringIncludes(result.content, "created_at: 2024-11-25T10:30:00");
     });
 
     it("should place frontmatter at the beginning of the file", async () => {

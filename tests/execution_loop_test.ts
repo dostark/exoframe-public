@@ -1112,7 +1112,7 @@ Intentionally fail
     assert(planExists, "Failed plan should be moved back to Requests");
 
     const updatedPlan = await Deno.readTextFile(requestPath);
-    assertEquals(updatedPlan.includes('status: error'), true, "Plan status should be updated to error");
+    assertEquals(updatedPlan.includes("status: error"), true, "Plan status should be updated to error");
   } finally {
     await cleanup();
     await Deno.remove(tempDir, { recursive: true });

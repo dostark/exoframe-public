@@ -20,6 +20,7 @@
 - **Lease:** Exclusive lock on a file (stored in `leases` table)
 - **Actor:** Entity performing action (agent name, "system", or "user")
 - **Blueprint:** TOML definition of an agent (model, capabilities, prompt)
+- **Flow:** TypeScript orchestration defining multi-agent workflows (planned Phase 8)
 
 ---
 

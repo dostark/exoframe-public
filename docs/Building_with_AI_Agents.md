@@ -1853,10 +1853,10 @@ Every feature needs tests for:
 **The Problem**: Obsidian's Dataview plugin—the cornerstone of our beautiful Dashboard—silently judged our TOML choices. Every query returned `-` for metadata fields. The Dashboard was technically functional but metaphorically blind.
 
 ```markdown
-| File | Status | Priority |
-|------|--------|----------|
-| request-1.md | - | - |
-| request-2.md | - | - |
+| File         | Status | Priority |
+| ------------ | ------ | -------- |
+| request-1.md | -      | -        |
+| request-2.md | -      | -        |
 ```
 
 _Narrator: The Dataview plugin only speaks YAML._
@@ -1885,57 +1885,14 @@ Me: "...yes"
 
 Every parser, serializer, and test fixture suddenly needed updating:
 
-| Pattern | Before | After |
-|---------|--------|-------|
-| Delimiter | `+++` | `---` |
-| Key-value | `key = "value"` | `key: value` |
-| Status | `status = "pending"` | `status: pending` |
-| Arrays | `tags = ["a", "b"]` | `tags: [a, b]` |
+| Pattern   | Before               | After             |
+| --------- | -------------------- | ----------------- |
+| Delimiter | `+++`                | `---`             |
+| Key-value | `key = "value"`      | `key: value`      |
+| Status    | `status = "pending"` | `status: pending` |
+| Arrays    | `tags = ["a", "b"]`  | `tags: [a, b]`    |
 
 The agent updated 21 files. The tests caught every edge case. The sed commands flew like poetry.
-
-**Act III: The Victory Lap**
-
-```
-running 390 tests
-...
-ok | 390 passed | 0 failed (1m7s)
-```
-
-_Confetti._
-
-### What We Actually Changed
-
-**Parser Updates** (the boring but critical stuff):
-- `src/cli/base.ts`: `extractFrontmatter()` and `serializeFrontmatter()` now speak YAML
-- `src/parsers/markdown.ts`: Regex swap from `^\+\+\+` to `^---`
-- `src/services/execution_loop.ts`: Parse YAML, but kept `parseToml` for action blocks (because `\`\`\`toml` code blocks in plans are still TOML—we're not monsters)
-
-**Generator Updates** (anything that creates files):
-- `src/services/plan_writer.ts`: YAML frontmatter in plans
-- `src/services/mission_reporter.ts`: YAML frontmatter in reports
-
-**Test Fixture Updates** (the bulk of the work):
-- 14 test files converted from TOML to YAML fixtures
-- sed commands for the win: `sed -i 's/status = "pending"/status: pending/g'`
-
-### The Moment of Truth
-
-**Before** (Dashboard in Obsidian):
-```
-| Request | Status | Priority |
-|---------|--------|----------|
-| implement-auth | - | - |
-| fix-bug-123 | - | - |
-```
-
-**After** (Dashboard actually works):
-```
-| Request | Status | Priority |
-|---------|--------|----------|
-| implement-auth | pending | normal |
-| fix-bug-123 | pending | high |
-```
 
 _The Dataview plugin smiled for the first time._
 
@@ -1944,11 +1901,13 @@ _The Dataview plugin smiled for the first time._
 **Sometimes the "better" format isn't the right format.**
 
 TOML was technically superior for our use case:
+
 - More explicit strings (no type coercion)
 - Cleaner array syntax
 - Token efficient
 
 But YAML won because:
+
 - Obsidian Dataview only speaks YAML
 - The Dashboard is the primary UI
 - A working UI beats theoretical efficiency
@@ -1964,6 +1923,7 @@ Today we migrated... back to YAML.
 **Should we delete Pattern 15?**
 
 No. It's a perfect example of learning in public:
+
 1. We analyzed the options
 2. We chose TOML for valid reasons
 3. We implemented it thoroughly
@@ -1975,12 +1935,14 @@ No. It's a perfect example of learning in public:
 ### Pattern 17: The Pragmatic Reversal
 
 **When to Reverse a Decision**:
+
 - ✅ External integration requirements change the equation
 - ✅ Primary UI depends on a specific format
 - ✅ You have comprehensive tests to catch regressions
 - ❌ "I changed my mind" without new information
 
 **How to Reverse Safely**:
+
 1. Identify ALL affected files (agent searched entire codebase)
 2. Update tests FIRST to expect new format
 3. Update parsers/generators
@@ -1988,6 +1950,7 @@ No. It's a perfect example of learning in public:
 5. Update documentation (including admitting you changed direction)
 
 **The Migration Stats**:
+
 - Files changed: 21
 - Tests updated: ~60 assertions
 - Time: ~45 minutes
@@ -1999,6 +1962,7 @@ No. It's a perfect example of learning in public:
 Pattern 15 in this document (TOML Migration) now coexists with Pattern 17 (YAML Migration back).
 
 This isn't inconsistency—it's documentation of real engineering decisions:
+
 - We thought TOML was better (it was, for some metrics)
 - We discovered Dataview needed YAML (reality check)
 - We migrated back with full test coverage (pragmatism)
