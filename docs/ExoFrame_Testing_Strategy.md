@@ -74,15 +74,25 @@ ExoFrame follows a **test pyramid** approach:
 
 ```bash
 # Run all unit tests
-deno test
+deno task test
 
-# Run with coverage
-deno test --coverage=cov_profile
-deno coverage cov_profile --lcov > coverage.lcov
+# Run with coverage collection (clears stale data automatically)
+deno task test:coverage
+
+# View coverage results (run after test:coverage)
+deno task coverage        # Terminal summary (line/branch %)
+deno task coverage:html   # HTML report → coverage/html/index.html
+deno task coverage:lcov   # LCOV format → coverage/lcov.info (for CI)
 
 # Run specific module
-deno test tests/security_test.ts
+deno test --allow-all tests/config_test.ts
+
+# Watch mode (re-runs on file changes)
+deno task test:watch
 ```
+
+**Note:** The coverage tasks filter to `src/` files only, excluding test files and
+temporary directories created during daemon tests.
 
 ---
 

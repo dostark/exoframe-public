@@ -158,7 +158,7 @@ export class TestEnvironment {
       actions?: Array<{ tool: string; params: Record<string, unknown> }>;
     } = {},
   ): Promise<string> {
-    const shortId = traceId.substring(0, 8);
+    const _shortId = traceId.substring(0, 8);
     const fileName = `${requestId}_plan.md`;
     const filePath = join(this.tempDir, "Inbox", "Plans", fileName);
 
@@ -177,9 +177,7 @@ export class TestEnvironment {
     ].join("\n");
 
     const actionsYaml = actions.map((a) =>
-      `- tool: ${a.tool}\n  params:\n${
-        Object.entries(a.params).map(([k, v]) => `    ${k}: "${v}"`).join("\n")
-      }`
+      `- tool: ${a.tool}\n  params:\n${Object.entries(a.params).map(([k, v]) => `    ${k}: "${v}"`).join("\n")}`
     ).join("\n");
 
     const content = `${frontmatter}

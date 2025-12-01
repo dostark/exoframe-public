@@ -12,13 +12,8 @@
  * - Test 7: Resource contention handled gracefully (no deadlocks)
  */
 
-import {
-  assert,
-  assertEquals,
-  assertExists,
-  assertNotEquals,
-} from "jsr:@std/assert@^1.0.0";
-import { join } from "@std/path";
+import { assert, assertEquals, assertExists, assertNotEquals as _assertNotEquals } from "jsr:@std/assert@^1.0.0";
+import { join as _join } from "@std/path";
 import { TestEnvironment } from "./helpers/test_environment.ts";
 import { ExecutionLoop } from "../../src/services/execution_loop.ts";
 
@@ -114,20 +109,20 @@ Deno.test("Integration: Concurrent Requests - Multiple requests in parallel", as
     // ========================================================================
     // Test 3: Each request maintains own trace_id chain
     // ========================================================================
-    await t.step("Test 3: Each request maintains own trace_id chain", async () => {
+    await t.step("Test 3: Each request maintains own trace_id chain", () => {
       // Each request has its own trace_id
       for (const request of requests) {
         assertExists(request.traceId, "Request should have trace_id");
-        
+
         // Trace IDs should be unique UUIDs
         assert(
           /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(request.traceId),
-          "Trace ID should be a valid UUID"
+          "Trace ID should be a valid UUID",
         );
       }
 
       // No two requests should share the same trace_id
-      const traceIds = requests.map(r => r.traceId);
+      const traceIds = requests.map((r) => r.traceId);
       const uniqueTraceIds = new Set(traceIds);
       assertEquals(uniqueTraceIds.size, requests.length, "All trace_ids should be unique");
     });
@@ -153,7 +148,7 @@ Deno.test("Integration: Concurrent Requests - Multiple requests in parallel", as
           }),
       );
 
-      const execResults = await Promise.allSettled(
+      const _execResults = await Promise.allSettled(
         activePaths.map((path, i) => loops[i].processTask(path)),
       );
 
@@ -188,7 +183,7 @@ Deno.test("Integration: Concurrent Requests - Multiple requests in parallel", as
     // ========================================================================
     // Test 6: Activity log correctly attributes actions
     // ========================================================================
-    await t.step("Test 6: Activity log correctly attributes to trace_ids", async () => {
+    await t.step("Test 6: Activity log correctly attributes to trace_ids", () => {
       for (const request of requests) {
         const activities = env.getActivityLog(request.traceId);
 

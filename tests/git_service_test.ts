@@ -606,9 +606,7 @@ Deno.test("GitService: checkoutBranch - logs checkout failure", async () => {
 
     // Verify failure was logged
     const logs = db.getActivitiesByTrace("checkout-fail-trace");
-    const failLogs = logs.filter((log) =>
-      log.action_type === "git.checkout.failed" || log.action_type === "error"
-    );
+    const failLogs = logs.filter((log) => log.action_type === "git.checkout.failed" || log.action_type === "error");
 
     // At minimum, the operation should be tracked even if it failed
     assertEquals(logs.length >= 1, true);

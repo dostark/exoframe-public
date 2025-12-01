@@ -12,13 +12,8 @@
  * - Test 7: System returns to healthy state after recovery
  */
 
-import {
-  assert,
-  assertEquals,
-  assertExists,
-  assertStringIncludes,
-} from "jsr:@std/assert@^1.0.0";
-import { join } from "@std/path";
+import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
+import { join as _join } from "@std/path";
 import { TestEnvironment } from "./helpers/test_environment.ts";
 import { ExecutionLoop } from "../../src/services/execution_loop.ts";
 
@@ -34,44 +29,44 @@ class RecoveryService {
     this.leaseTimeoutMs = options.leaseTimeoutMs ?? 30000;
   }
 
-  async detectOrphanedPlans(): Promise<string[]> {
-    return [];
+  detectOrphanedPlans(): Promise<string[]> {
+    return Promise.resolve([]);
   }
 
-  async cleanupStaleLeases(): Promise<number> {
-    return 0;
+  cleanupStaleLeases(): Promise<number> {
+    return Promise.resolve(0);
   }
 
   async restoreGitState(): Promise<void> {
     // Reset to main branch
   }
 
-  async getRecoverablePlans(): Promise<string[]> {
-    return [];
+  getRecoverablePlans(): Promise<string[]> {
+    return Promise.resolve([]);
   }
 
-  async canResumePlan(_plan: string): Promise<boolean> {
-    return true;
+  canResumePlan(_plan: string): Promise<boolean> {
+    return Promise.resolve(true);
   }
 
-  async canRequeuePlan(_plan: string): Promise<boolean> {
-    return true;
+  canRequeuePlan(_plan: string): Promise<boolean> {
+    return Promise.resolve(true);
   }
 
-  async recoverPlan(_planPath: string): Promise<{ success: boolean }> {
-    return { success: true };
+  recoverPlan(_planPath: string): Promise<{ success: boolean }> {
+    return Promise.resolve({ success: true });
   }
 
-  async recoverAllOrphans(): Promise<{ recovered: number; failed: number; skipped: number }> {
-    return { recovered: 0, failed: 0, skipped: 0 };
+  recoverAllOrphans(): Promise<{ recovered: number; failed: number; skipped: number }> {
+    return Promise.resolve({ recovered: 0, failed: 0, skipped: 0 });
   }
 
-  async checkDatabaseIntegrity(): Promise<boolean> {
-    return true;
+  checkDatabaseIntegrity(): Promise<boolean> {
+    return Promise.resolve(true);
   }
 
-  async findStaleLeases(): Promise<string[]> {
-    return [];
+  findStaleLeases(): Promise<string[]> {
+    return Promise.resolve([]);
   }
 }
 
@@ -104,12 +99,15 @@ Deno.test("Integration: System Recovery - Recover from crash mid-execution", asy
       await env.writeFile("step1.txt", "step1");
 
       // Create stale lease file to simulate crash
-      await env.writeFile(".locks/crash-test.lock", JSON.stringify({
-        agentId: "crashed-agent",
-        pid: 99999, // Non-existent PID
-        startedAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-        planPath: activePlanPath,
-      }));
+      await env.writeFile(
+        ".locks/crash-test.lock",
+        JSON.stringify({
+          agentId: "crashed-agent",
+          pid: 99999, // Non-existent PID
+          startedAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+          planPath: activePlanPath,
+        }),
+      );
 
       // Log pre-crash activity
       env.db.logActivity(
@@ -164,11 +162,11 @@ Deno.test("Integration: System Recovery - Recover from crash mid-execution", asy
       });
 
       // Clean up stale leases
-      const cleanedCount = await recovery.cleanupStaleLeases();
+      const _cleanedCount = await recovery.cleanupStaleLeases();
 
       // Our stale lease should be cleaned
       // (PID 99999 doesn't exist)
-      const lockExists = await env.fileExists(".locks/crash-test.lock");
+      const _lockExists = await env.fileExists(".locks/crash-test.lock");
 
       // Either cleaned up or lease mechanism different
       // Main point: shouldn't prevent new execution
@@ -266,13 +264,13 @@ Deno.test("Integration: System Recovery - Recover from crash mid-execution", asy
       });
 
       // Try to process the same plan
-      const result = await loop.processTask(activePlanPath);
+      const _result = await loop.processTask(activePlanPath);
 
       // Count how many times step2.txt was written
       // (if partial state preserved, should only run remaining steps)
       const step1Exists = await env.fileExists("step1.txt");
-      const step2Exists = await env.fileExists("step2.txt");
-      const step3Exists = await env.fileExists("step3.txt");
+      const _step2Exists = await env.fileExists("step2.txt");
+      const _step3Exists = await env.fileExists("step3.txt");
 
       // Step1 existed from before crash
       assertEquals(step1Exists, true, "step1 should exist from before crash");
@@ -352,7 +350,7 @@ Deno.test("Integration: System Recovery - Multiple orphaned plans", async () => 
     // All should be accounted for (mock returns 0s, which is valid)
     assert(
       results.recovered >= 0 && results.failed >= 0 && results.skipped >= 0,
-      "Recovery results should have valid counts"
+      "Recovery results should have valid counts",
     );
   } finally {
     await env.cleanup();
@@ -434,7 +432,7 @@ Deno.test("Integration: System Recovery - Concurrent recovery attempts", async (
     ]);
 
     // At least one should succeed
-    const successes = results.filter(
+    const _successes = results.filter(
       (r) => r.status === "fulfilled" && r.value.success,
     );
 
@@ -456,11 +454,14 @@ Deno.test("Integration: System Recovery - Lease timeout", async () => {
     // Create lease that should timeout
     const LEASE_TIMEOUT_MS = 1000; // 1 second for test
 
-    await env.writeFile(".locks/timeout-test.lock", JSON.stringify({
-      agentId: "slow-agent",
-      pid: Deno.pid, // Valid PID but old
-      startedAt: new Date(Date.now() - LEASE_TIMEOUT_MS - 1000).toISOString(),
-    }));
+    await env.writeFile(
+      ".locks/timeout-test.lock",
+      JSON.stringify({
+        agentId: "slow-agent",
+        pid: Deno.pid, // Valid PID but old
+        startedAt: new Date(Date.now() - LEASE_TIMEOUT_MS - 1000).toISOString(),
+      }),
+    );
 
     // Wait for lease to be considered stale
     await new Promise((r) => setTimeout(r, 100));

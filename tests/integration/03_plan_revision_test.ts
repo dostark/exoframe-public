@@ -12,20 +12,15 @@
  * - Test 7: Plan can be approved after revision (normal flow continues)
  */
 
-import {
-  assert,
-  assertEquals,
-  assertExists,
-  assertStringIncludes,
-} from "jsr:@std/assert@^1.0.0";
-import { join } from "@std/path";
+import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
+import { join as _join } from "@std/path";
 import { TestEnvironment } from "./helpers/test_environment.ts";
 
 /**
  * Helper to add revision comments to a plan
  */
 async function revisePlan(
-  env: TestEnvironment,
+  _env: TestEnvironment,
   planPath: string,
   comments: string,
 ): Promise<string> {
@@ -184,9 +179,7 @@ Deno.test("Integration: Plan Revision - Request to Revised Plan", async (t) => {
 
       const activities = env.getActivityLog(traceId);
 
-      const revisionActivity = activities.find((a) =>
-        a.action_type === "plan.revision_requested"
-      );
+      const revisionActivity = activities.find((a) => a.action_type === "plan.revision_requested");
       assertExists(revisionActivity, "Should have revision activity");
 
       const payload = JSON.parse(revisionActivity.payload);
@@ -251,7 +244,7 @@ Deno.test("Integration: Plan Revision - Revision preserves plan structure", asyn
     // Frontmatter intact
     assertStringIncludes(content, "---");
     assertStringIncludes(content, `trace_id: "${traceId}"`);
-    assertStringIncludes(content, "request_id: \"structure-test\"");
+    assertStringIncludes(content, 'request_id: "structure-test"');
   } finally {
     await env.cleanup();
   }
@@ -329,7 +322,7 @@ Deno.test("Integration: Plan Revision - Can reject after revision", async () => 
 
   try {
     const { traceId } = await env.createRequest("Test reject after revision");
-    let planPath = await env.createPlan(traceId, "reject-after-revise", { status: "review" });
+    const planPath = await env.createPlan(traceId, "reject-after-revise", { status: "review" });
 
     // Add revision
     await revisePlan(env, planPath, "Please fix the security issue.");

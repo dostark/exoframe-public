@@ -12,13 +12,8 @@
  * - Test 7: Original request is not affected by execution failure
  */
 
-import {
-  assert,
-  assertEquals,
-  assertExists,
-  assertStringIncludes,
-} from "jsr:@std/assert@^1.0.0";
-import { join } from "@std/path";
+import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
+import { join as _join } from "@std/path";
 import { TestEnvironment } from "./helpers/test_environment.ts";
 import { ExecutionLoop } from "../../src/services/execution_loop.ts";
 
@@ -94,7 +89,7 @@ Deno.test("Integration: Execution Failure - Plan fails during execution", async 
         stdout: "piped",
       });
       const { stdout } = await branchCmd.output();
-      const currentBranch = new TextDecoder().decode(stdout).trim();
+      const _currentBranch = new TextDecoder().decode(stdout).trim();
 
       // Should be back on main (not stuck on feature branch)
       // Or the feature branch should exist but not be merged
@@ -142,7 +137,7 @@ Deno.test("Integration: Execution Failure - Plan fails during execution", async 
       const inFailed = await env.fileExists("System/Failed/failing-task_plan.md");
 
       // Should be in one of these locations
-      const planExists = inPlans || inActive || inArchive || inFailed;
+      const _planExists = inPlans || inActive || inArchive || inFailed;
       // If not found, the execution might have cleaned it up - that's also valid
       assert(true, "Plan handling after failure verified");
 
@@ -193,14 +188,14 @@ Deno.test("Integration: Execution Failure - Plan fails during execution", async 
     // ========================================================================
     // Test 6: Failure logged to Activity Journal
     // ========================================================================
-    await t.step("Test 6: All failure steps logged with trace_id", async () => {
+    await t.step("Test 6: All failure steps logged with trace_id", () => {
       const activities = env.getActivityLog(traceId);
 
       // Should have multiple activities for the trace
       assert(activities.length >= 1, "Should have logged activities");
 
       // Check for execution-related activities
-      const hasExecutionActivity = activities.some((a) =>
+      const _hasExecutionActivity = activities.some((a) =>
         a.action_type.includes("execution") ||
         a.action_type.includes("git")
       );

@@ -12,13 +12,8 @@
  * - Test 7: Rejected plan preserves original trace_id for correlation
  */
 
-import {
-  assert,
-  assertEquals,
-  assertExists,
-  assertStringIncludes,
-} from "jsr:@std/assert@^1.0.0";
-import { join } from "@std/path";
+import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
+import { join as _join } from "@std/path";
 import { TestEnvironment } from "./helpers/test_environment.ts";
 
 Deno.test("Integration: Plan Rejection - Request to Archive", async (t) => {
@@ -29,7 +24,8 @@ Deno.test("Integration: Plan Rejection - Request to Archive", async (t) => {
     let requestPath: string;
     let planPath: string;
     let rejectedPath: string;
-    const rejectionReason = "The proposed implementation does not follow our coding standards. Please use async/await instead of callbacks.";
+    const rejectionReason =
+      "The proposed implementation does not follow our coding standards. Please use async/await instead of callbacks.";
 
     // Setup: Create request and plan
     await t.step("Setup: Create request and plan", async () => {

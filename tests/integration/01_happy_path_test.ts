@@ -12,13 +12,8 @@
  * - Test 7: All operations are logged to Activity Journal with trace_id correlation
  */
 
-import {
-  assert,
-  assertEquals,
-  assertExists,
-  assertStringIncludes,
-} from "jsr:@std/assert@^1.0.0";
-import { join } from "@std/path";
+import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
+import { join as _join } from "@std/path";
 import { TestEnvironment } from "./helpers/test_environment.ts";
 import { ExecutionLoop } from "../../src/services/execution_loop.ts";
 import { MissionReporter } from "../../src/services/mission_reporter.ts";
@@ -93,7 +88,7 @@ Deno.test("Integration: Happy Path - Request to Report", async (t) => {
       // Verify plan content
       const content = await Deno.readTextFile(planPath);
       assertStringIncludes(content, `trace_id: "${traceId}"`);
-      assertStringIncludes(content, "request_id: \"implement-hello\"");
+      assertStringIncludes(content, 'request_id: "implement-hello"');
       assertStringIncludes(content, "status: review");
       assertStringIncludes(content, "write_file");
     });
@@ -136,9 +131,7 @@ Deno.test("Integration: Happy Path - Request to Report", async (t) => {
 
       // Verify git branch was created
       const branches = await env.getGitBranches();
-      const featureBranch = branches.find((b) =>
-        b.includes("feat/") && b.includes("implement-hello")
-      );
+      const featureBranch = branches.find((b) => b.includes("feat/") && b.includes("implement-hello"));
 
       // Branch should exist (created during execution)
       // May fail if tool execution fails, but branch should still be created
