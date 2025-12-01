@@ -530,3 +530,143 @@ system = "./System"`,
     }
   });
 });
+
+// ============================================================================
+// Security Tests - Use `deno test --filter "[security]"` to run only these
+// ============================================================================
+
+Deno.test("[security] Env Variable Access: EXO_ prefixed vars are accessible", () => {
+  // This test verifies the security model where only EXO_* env vars should be accessible
+  // In production, the daemon runs with --allow-env=EXO_,HOME,USER
+
+  // Set a test EXO_ variable
+  const testValue = "test-value-" + Date.now();
+  Deno.env.set("EXO_TEST_VAR", testValue);
+
+  try {
+    // EXO_ prefixed vars should be accessible
+    const value = Deno.env.get("EXO_TEST_VAR");
+    assertEquals(value, testValue, "EXO_ prefixed vars should be accessible");
+  } finally {
+    Deno.env.delete("EXO_TEST_VAR");
+  }
+});
+
+Deno.test("[security] Env Variable Access: HOME and USER are accessible for identity", () => {
+  // These are explicitly allowed for user identity detection
+  // The start:fg task allows: --allow-env=EXO_,HOME,USER
+
+  const home = Deno.env.get("HOME");
+  const user = Deno.env.get("USER");
+
+  // At least one should be available on most systems
+  assertEquals(
+    home !== undefined || user !== undefined,
+    true,
+    "HOME or USER should be accessible for identity detection",
+  );
+});
+
+Deno.test("[security] Env Variable Security: Verify sensitive env vars are not in config", () => {
+  // This test ensures the config system doesn't accidentally expose sensitive vars
+  // Config should never read API_KEY, AWS_SECRET_ACCESS_KEY, etc.
+
+  const sensitiveVars = [
+    "API_KEY",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_ACCESS_KEY_ID",
+    "DATABASE_PASSWORD",
+    "DB_PASSWORD",
+    "SECRET_KEY",
+    "PRIVATE_KEY",
+    "GITHUB_TOKEN",
+    "NPM_TOKEN",
+  ];
+
+  // Set dummy sensitive vars for testing
+  for (const varName of sensitiveVars) {
+    Deno.env.set(varName, "SENSITIVE_VALUE_" + varName);
+  }
+
+  try {
+    // Create a config and verify it doesn't contain sensitive values
+    const tempPath = join(Deno.cwd(), "test-security-config.toml");
+    Deno.writeTextFileSync(
+      tempPath,
+      `[system]
+log_level = "info"
+
+[paths]
+knowledge = "./Knowledge"
+blueprints = "./Blueprints"
+system = "./System"`,
+    );
+
+    try {
+      const service = new ConfigService("test-security-config.toml");
+      const config = service.get();
+      const configStr = JSON.stringify(config);
+
+      // Verify none of the sensitive values appear in config
+      for (const varName of sensitiveVars) {
+        assertEquals(
+          configStr.includes("SENSITIVE_VALUE_" + varName),
+          false,
+          `Config should not contain value of ${varName}`,
+        );
+      }
+    } finally {
+      Deno.removeSync(tempPath);
+    }
+  } finally {
+    // Clean up sensitive vars
+    for (const varName of sensitiveVars) {
+      Deno.env.delete(varName);
+    }
+  }
+});
+
+Deno.test("[security] Env Variable Security: Config doesn't expand env vars in paths", () => {
+  // Ensure path configuration doesn't expand environment variables
+  // which could lead to path injection attacks
+
+  Deno.env.set("MALICIOUS_PATH", "/etc/passwd");
+
+  const tempPath = join(Deno.cwd(), "test-path-injection.toml");
+  try {
+    // Create config with env var reference in path
+    Deno.writeTextFileSync(
+      tempPath,
+      `[system]
+log_level = "info"
+
+[paths]
+knowledge = "$MALICIOUS_PATH"
+blueprints = "./Blueprints"
+system = "./System"`,
+    );
+
+    const service = new ConfigService("test-path-injection.toml");
+    const config = service.get();
+
+    // Path should be literal "$MALICIOUS_PATH", not expanded to /etc/passwd
+    assertEquals(
+      config.paths.knowledge.includes("/etc/passwd"),
+      false,
+      "Env vars in paths should not be expanded",
+    );
+    assertEquals(
+      config.paths.knowledge.includes("$MALICIOUS_PATH") ||
+        config.paths.knowledge.includes("MALICIOUS_PATH"),
+      true,
+      "Path should contain literal string, not expanded value",
+    );
+  } finally {
+    Deno.env.delete("MALICIOUS_PATH");
+    try {
+      Deno.removeSync(tempPath);
+    } catch {
+      // Ignore
+    }
+  }
+});

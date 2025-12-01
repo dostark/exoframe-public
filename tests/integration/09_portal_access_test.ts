@@ -18,7 +18,7 @@ import { TestEnvironment } from "./helpers/test_environment.ts";
 import { ExecutionLoop } from "../../src/services/execution_loop.ts";
 import { ContextLoader } from "../../src/services/context_loader.ts";
 
-Deno.test("Integration: Portal Access - Security enforcement", async (t) => {
+Deno.test("[security] Integration: Portal Access - Security enforcement", async (t) => {
   const env = await TestEnvironment.create();
 
   try {
@@ -282,7 +282,7 @@ export function main() {
 
 // Additional portal tests
 
-Deno.test("Integration: Portal Access - Nested portal structure", async () => {
+Deno.test("[security] Integration: Portal Access - Nested portal structure", async () => {
   const env = await TestEnvironment.create();
 
   try {
@@ -301,7 +301,7 @@ Deno.test("Integration: Portal Access - Nested portal structure", async () => {
   }
 });
 
-Deno.test("Integration: Portal Access - Portal with dot files", async () => {
+Deno.test("[security] Integration: Portal Access - Portal with dot files", async () => {
   const env = await TestEnvironment.create();
 
   try {
@@ -344,7 +344,7 @@ Deno.test("Integration: Portal Access - Portal with dot files", async () => {
   }
 });
 
-Deno.test("Integration: Portal Access - Empty portal", async () => {
+Deno.test("[security] Integration: Portal Access - Empty portal", async () => {
   const env = await TestEnvironment.create();
 
   try {

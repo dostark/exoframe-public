@@ -13,6 +13,7 @@
     "migrate": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/migrate_db.ts",
     "cli": "deno run --allow-all src/cli/exoctl.ts",
     "test": "deno test --allow-all tests/",
+    "test:security": "deno test --allow-all --filter \"[security]\" tests/",
     "test:watch": "deno test --watch --allow-all tests/",
     "test:coverage": "rm -rf coverage && deno test --allow-all --coverage=coverage tests/",
     "coverage": "deno coverage coverage/ --include='^file://.*ExoFrame/src/' --exclude='test\\.(ts|js)$'",

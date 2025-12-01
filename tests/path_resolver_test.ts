@@ -33,7 +33,7 @@ Deno.test("PathResolver: resolves valid alias path", async () => {
   }
 });
 
-Deno.test("PathResolver: throws on path traversal attempt", async () => {
+Deno.test("[security] PathResolver: throws on path traversal attempt", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-traversal-" });
   try {
     const blueprintsDir = join(tempDir, "Blueprints");
@@ -57,7 +57,7 @@ Deno.test("PathResolver: throws on path traversal attempt", async () => {
   }
 });
 
-Deno.test("PathResolver: throws on accessing file outside allowed roots", async () => {
+Deno.test("[security] PathResolver: throws on accessing file outside allowed roots", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-outside-" });
   try {
     const blueprintsDir = join(tempDir, "Blueprints");
@@ -151,7 +151,7 @@ Deno.test("PathResolver: rejects path without @ alias", async () => {
   }
 });
 
-Deno.test("PathResolver: rejects absolute path attempt", async () => {
+Deno.test("[security] PathResolver: rejects absolute path attempt", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-absolute-" });
   try {
     const config = createMockConfig(tempDir);
@@ -170,7 +170,7 @@ Deno.test("PathResolver: rejects absolute path attempt", async () => {
   }
 });
 
-Deno.test("PathResolver: handles Windows-style path traversal", async () => {
+Deno.test("[security] PathResolver: handles Windows-style path traversal", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-windows-" });
   try {
     const blueprintsDir = join(tempDir, "Blueprints");
@@ -195,7 +195,7 @@ Deno.test("PathResolver: handles Windows-style path traversal", async () => {
   }
 });
 
-Deno.test("PathResolver: handles multiple path traversal attempts", async () => {
+Deno.test("[security] PathResolver: handles multiple path traversal attempts", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-multi-" });
   try {
     const blueprintsDir = join(tempDir, "Blueprints");
@@ -353,7 +353,7 @@ Deno.test("PathResolver: rejects empty path after alias", async () => {
 // Activity Logging Tests
 // ============================================================================
 
-Deno.test("PathResolver: logs security violations to console when no DB", async () => {
+Deno.test("[security] PathResolver: logs security violations to console when no DB", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-log-" });
   try {
     const config = createMockConfig(tempDir);
@@ -459,7 +459,7 @@ Deno.test("PathResolver: logs resolution failures to database", async () => {
   }
 });
 
-Deno.test("PathResolver: logs security violations to database", async () => {
+Deno.test("[security] PathResolver: logs security violations to database", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-db-security-" });
   const { db, cleanup } = await initTestDbService();
   try {
