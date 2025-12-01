@@ -2,6 +2,7 @@ import { ConfigService } from "./config/service.ts";
 import { FileWatcher } from "./services/watcher.ts";
 import { DatabaseService } from "./services/db.ts";
 import { ProviderFactory } from "./ai/provider_factory.ts";
+import { RequestProcessor } from "./services/request_processor.ts";
 import { ensureDir } from "@std/fs";
 import { join } from "@std/path";
 
@@ -43,12 +44,27 @@ if (import.meta.main) {
       null,
     );
 
-    // Ensure Inbox/Requests directory exists
-    const inboxPath = join(config.system.root, config.paths.inbox, "Requests");
-    await ensureDir(inboxPath);
+    // Ensure Inbox/Requests and Inbox/Plans directories exist
+    const requestsPath = join(config.system.root, config.paths.inbox, "Requests");
+    const plansPath = join(config.system.root, config.paths.inbox, "Plans");
+    await ensureDir(requestsPath);
+    await ensureDir(plansPath);
+
+    // Initialize Request Processor
+    const requestProcessor = new RequestProcessor(
+      config,
+      llmProvider,
+      dbService,
+      {
+        inboxPath: join(config.system.root, config.paths.inbox),
+        blueprintsPath: join(config.system.root, config.paths.blueprints, "Agents"),
+        includeReasoning: true,
+      },
+    );
+    console.log("✅ Request Processor initialized");
 
     // Start file watcher
-    const watcher = new FileWatcher(config, (event) => {
+    const watcher = new FileWatcher(config, async (event) => {
       console.log(`📥 New file ready: ${event.path}`);
       console.log(`   Content length: ${event.content.length} bytes`);
 
@@ -62,7 +78,17 @@ if (import.meta.main) {
         null,
       );
 
-      // TODO: Dispatch to request processor
+      // Process the request and generate a plan
+      try {
+        const planPath = await requestProcessor.process(event.path);
+        if (planPath) {
+          console.log(`✅ Plan generated: ${planPath}`);
+        } else {
+          console.log(`⚠️ Request skipped or failed: ${event.path}`);
+        }
+      } catch (error) {
+        console.error(`❌ Failed to process request: ${event.path}`, error);
+      }
     });
 
     // Handle graceful shutdown

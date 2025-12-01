@@ -18,7 +18,8 @@ import { join } from "@std/path";
 import { ensureDir, exists } from "@std/fs";
 import { DaemonCommands } from "../../src/cli/daemon_commands.ts";
 import { DatabaseService } from "../../src/services/db.ts";
-import { createMockConfig } from "../helpers/config.ts";
+import { initTestDbService } from "../helpers/db.ts";
+import type { Config } from "../../src/config/schema.ts";
 
 describe("DaemonCommands", {
   sanitizeResources: false, // Disable resource leak detection for daemon processes
@@ -30,15 +31,19 @@ describe("DaemonCommands", {
   let pidFile: string;
   let logFile: string;
   let mainScript: string;
+  let config: Config;
+  let testCleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    // Create temp directory structure
-    tempDir = await Deno.makeTempDir({ prefix: "daemon_commands_test_" });
-    const systemDir = join(tempDir, "System");
-    await ensureDir(systemDir);
+    // Initialize database with initTestDbService
+    const testDbResult = await initTestDbService();
+    tempDir = testDbResult.tempDir;
+    db = testDbResult.db;
+    config = testDbResult.config;
+    testCleanup = testDbResult.cleanup;
 
-    pidFile = join(systemDir, "daemon.pid");
-    logFile = join(systemDir, "daemon.log");
+    pidFile = join(tempDir, "System", "daemon.pid");
+    logFile = join(tempDir, "System", "daemon.log");
 
     // Create a mock main.ts script that simulates a daemon
     const srcDir = join(tempDir, "src");
@@ -62,26 +67,6 @@ await new Promise(() => {});
 `,
     );
 
-    // Initialize database
-    const config = createMockConfig(tempDir);
-    db = new DatabaseService(config);
-
-    // Initialize activity table for logging tests
-    db.instance.exec(`
-      CREATE TABLE IF NOT EXISTS activity (
-        id TEXT PRIMARY KEY,
-        trace_id TEXT NOT NULL,
-        actor TEXT NOT NULL,
-        agent_id TEXT,
-        action_type TEXT NOT NULL,
-        target TEXT,
-        payload TEXT NOT NULL,
-        timestamp DATETIME DEFAULT (datetime('now'))
-      );
-      CREATE INDEX IF NOT EXISTS idx_activity_trace ON activity(trace_id);
-      CREATE INDEX IF NOT EXISTS idx_activity_agent ON activity(agent_id);
-    `);
-
     daemonCommands = new DaemonCommands({ config, db });
   });
 
@@ -103,8 +88,7 @@ await new Promise(() => {});
       }
     }
 
-    await db.close();
-    await Deno.remove(tempDir, { recursive: true });
+    await testCleanup();
   });
 
   describe("start", () => {
@@ -545,21 +529,23 @@ describe("DaemonCommands - Edge Cases", () => {
   let db: DatabaseService;
   let daemonCommands: DaemonCommands;
   let pidFile: string;
+  let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    tempDir = await Deno.makeTempDir({ prefix: "daemon_edge_test_" });
-    const systemDir = join(tempDir, "System");
-    await ensureDir(systemDir);
-    pidFile = join(systemDir, "daemon.pid");
+    // Initialize database with initTestDbService
+    const testDbResult = await initTestDbService();
+    tempDir = testDbResult.tempDir;
+    db = testDbResult.db;
+    const config = testDbResult.config;
+    cleanup = testDbResult.cleanup;
 
-    const config = createMockConfig(tempDir);
-    db = new DatabaseService(config);
+    pidFile = join(tempDir, "System", "daemon.pid");
+
     daemonCommands = new DaemonCommands({ config, db });
   });
 
   afterEach(async () => {
-    await db.close();
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   });
 
   it("status() should return not running when PID file missing", async () => {

@@ -1,0 +1,449 @@
+/**
+ * Tests for RequestProcessor Service
+ * Implements Step 5.9 of the ExoFrame Implementation Plan
+ *
+ * TDD Test Cases:
+ * 1. Parses valid request file (TOML frontmatter + body)
+ * 2. Skips invalid frontmatter (logs error, returns null)
+ * 3. Generates plan with MockLLMProvider
+ * 4. Writes plan to Inbox/Plans/
+ * 5. Plan has correct frontmatter (trace_id, request_id, status)
+ * 6. Updates request status to "planned"
+ * 7. Logs activity to database
+ * 8. Handles LLM errors gracefully
+ */
+
+import { afterEach, beforeEach, describe, it } from "jsr:@std/testing@^1.0.0/bdd";
+import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@^1";
+import { join } from "@std/path";
+
+import { RequestProcessor, type RequestProcessorConfig } from "../src/services/request_processor.ts";
+import { MockLLMProvider } from "../src/ai/providers/mock_llm_provider.ts";
+import { DatabaseService } from "../src/services/db.ts";
+import { initTestDbService } from "./helpers/db.ts";
+import type { Config } from "../src/config/schema.ts";
+
+// ============================================================================
+// Test Utilities
+// ============================================================================
+
+/**
+ * Create a mock response with thought and content tags
+ */
+function createMockResponse(thought: string, content: string): string {
+  return `<thought>${thought}</thought>\n<content>${content}</content>`;
+}
+
+/**
+ * Create a request file with TOML frontmatter
+ */
+function createRequestContent(opts: {
+  traceId: string;
+  agent?: string;
+  status?: string;
+  priority?: string;
+  body: string;
+}): string {
+  return `+++
+trace_id = "${opts.traceId}"
+created = "${new Date().toISOString()}"
+status = "${opts.status || "pending"}"
+priority = "${opts.priority || "normal"}"
+agent = "${opts.agent || "default"}"
+source = "cli"
+created_by = "test@example.com"
++++
+
+# Request
+
+${opts.body}
+`;
+}
+
+/**
+ * Create a default agent blueprint file
+ */
+function createBlueprintContent(): string {
+  return `# Default Agent Blueprint
+
+You are a helpful coding assistant. When given a request, analyze it and create a detailed implementation plan.
+
+## Response Format
+
+Always respond with:
+1. <thought> tags containing your analysis
+2. <content> tags containing the implementation plan
+
+Example:
+<thought>Analyzing the request...</thought>
+<content>
+# Implementation Plan
+1. Step one
+2. Step two
+</content>
+`;
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+describe("RequestProcessor", () => {
+  let testDir: string;
+  let config: Config;
+  let db: DatabaseService;
+  let processorConfig: RequestProcessorConfig;
+  let cleanup: () => Promise<void>;
+
+  beforeEach(async () => {
+    // Initialize database with initTestDbService (creates temp dir with activity table)
+    const testDbResult = await initTestDbService();
+    testDir = testDbResult.tempDir;
+    db = testDbResult.db;
+    config = testDbResult.config;
+    cleanup = testDbResult.cleanup;
+
+    // Create additional required directories
+    await Deno.mkdir(join(testDir, "Inbox", "Requests"), { recursive: true });
+    await Deno.mkdir(join(testDir, "Inbox", "Plans"), { recursive: true });
+    await Deno.mkdir(join(testDir, "Blueprints", "Agents"), { recursive: true });
+
+    // Create default blueprint
+    await Deno.writeTextFile(
+      join(testDir, "Blueprints", "Agents", "default.md"),
+      createBlueprintContent(),
+    );
+
+    // Create processor config
+    processorConfig = {
+      inboxPath: join(testDir, "Inbox"),
+      blueprintsPath: join(testDir, "Blueprints", "Agents"),
+      includeReasoning: true,
+    };
+  });
+
+  afterEach(async () => {
+    // Use the cleanup function from initTestDbService
+    await cleanup();
+  });
+
+  describe("Request Parsing", () => {
+    it("should parse valid request file with TOML frontmatter", async () => {
+      const traceId = crypto.randomUUID();
+      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const requestContent = createRequestContent({
+        traceId,
+        agent: "default",
+        body: "Add a hello world function to utils.ts",
+      });
+
+      await Deno.writeTextFile(requestPath, requestContent);
+
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Analyzing request", "# Plan\n\nImplementation plan here")],
+      });
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      const result = await processor.process(requestPath);
+
+      assert(result !== null, "Result should not be null for valid request");
+      assertStringIncludes(result!, "_plan.md");
+    });
+
+    it("should return null for invalid TOML frontmatter", async () => {
+      const requestPath = join(testDir, "Inbox", "Requests", "invalid-request.md");
+      const invalidContent = `---
+this is yaml not toml
+---
+
+# Request
+
+Do something
+`;
+
+      await Deno.writeTextFile(requestPath, invalidContent);
+
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Test", "Content")],
+      });
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      const result = await processor.process(requestPath);
+
+      assertEquals(result, null, "Should return null for invalid frontmatter");
+    });
+
+    it("should return null for request missing trace_id", async () => {
+      const requestPath = join(testDir, "Inbox", "Requests", "missing-trace.md");
+      const invalidContent = `+++
+status = "pending"
+agent = "default"
++++
+
+# Request
+
+Do something
+`;
+
+      await Deno.writeTextFile(requestPath, invalidContent);
+
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Test", "Content")],
+      });
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      const result = await processor.process(requestPath);
+
+      assertEquals(result, null, "Should return null for missing trace_id");
+    });
+  });
+
+  describe("Plan Generation", () => {
+    it("should generate plan using MockLLMProvider", async () => {
+      const traceId = crypto.randomUUID();
+      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const requestContent = createRequestContent({
+        traceId,
+        body: "Create a user authentication system",
+      });
+
+      await Deno.writeTextFile(requestPath, requestContent);
+
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Analyzing auth requirements", "# Auth Implementation Plan")],
+      });
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      const planPath = await processor.process(requestPath);
+
+      assert(planPath !== null, "Plan path should not be null");
+
+      // Verify plan file was created
+      const planContent = await Deno.readTextFile(planPath!);
+      assert(planContent.length > 0, "Plan content should not be empty");
+    });
+
+    it("should write plan to Inbox/Plans/ directory", async () => {
+      const traceId = crypto.randomUUID();
+      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const requestContent = createRequestContent({
+        traceId,
+        body: "Add logging to the service layer",
+      });
+
+      await Deno.writeTextFile(requestPath, requestContent);
+
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Logging analysis", "# Logging Plan")],
+      });
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      const planPath = await processor.process(requestPath);
+
+      assert(planPath !== null);
+      assertStringIncludes(planPath!, join(testDir, "Inbox", "Plans"));
+    });
+
+    it("should create plan with correct frontmatter", async () => {
+      const traceId = crypto.randomUUID();
+      const requestId = `request-${traceId.slice(0, 8)}`;
+      const requestPath = join(testDir, "Inbox", "Requests", `${requestId}.md`);
+      const requestContent = createRequestContent({
+        traceId,
+        body: "Implement error handling",
+      });
+
+      await Deno.writeTextFile(requestPath, requestContent);
+
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Error handling analysis", "# Error Handling Plan")],
+      });
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      const planPath = await processor.process(requestPath);
+      assert(planPath !== null);
+
+      const planContent = await Deno.readTextFile(planPath!);
+
+      // Verify frontmatter structure
+      assertStringIncludes(planContent, `trace_id: "${traceId}"`);
+      assertStringIncludes(planContent, `request_id: "${requestId}"`);
+      assertStringIncludes(planContent, "status: review");
+    });
+  });
+
+  describe("Request Status Update", () => {
+    it("should update request status to 'planned'", async () => {
+      const traceId = crypto.randomUUID();
+      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const requestContent = createRequestContent({
+        traceId,
+        status: "pending",
+        body: "Add unit tests",
+      });
+
+      await Deno.writeTextFile(requestPath, requestContent);
+
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Test analysis", "# Test Plan")],
+      });
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      await processor.process(requestPath);
+
+      // Re-read request file to check status update
+      const updatedContent = await Deno.readTextFile(requestPath);
+      assertStringIncludes(updatedContent, 'status = "planned"');
+    });
+  });
+
+  describe("Activity Logging", () => {
+    it("should log processing start and completion", async () => {
+      const traceId = crypto.randomUUID();
+      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const requestContent = createRequestContent({
+        traceId,
+        body: "Refactor the database layer",
+      });
+
+      await Deno.writeTextFile(requestPath, requestContent);
+
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Refactoring analysis", "# Refactor Plan")],
+      });
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      await processor.process(requestPath);
+
+      // Wait for activity logs to be flushed
+      await db.waitForFlush();
+
+      // Query activity log for this trace_id using the proper API
+      const activities = db.getActivitiesByTrace(traceId);
+
+      assert(activities.length >= 2, "Should have at least 2 activity entries");
+
+      const actionTypes = activities.map((a) => a.action_type);
+      assert(actionTypes.includes("request.processing"), "Should log processing start");
+      assert(actionTypes.includes("request.planned"), "Should log completion");
+    });
+  });
+
+  describe("Error Handling", () => {
+    it("should handle LLM errors gracefully", async () => {
+      const traceId = crypto.randomUUID();
+      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const requestContent = createRequestContent({
+        traceId,
+        body: "This will fail",
+      });
+
+      await Deno.writeTextFile(requestPath, requestContent);
+
+      // Use "failing" strategy to simulate LLM failure
+      const provider = new MockLLMProvider("failing", {
+        errorMessage: "Simulated LLM error",
+      });
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      const result = await processor.process(requestPath);
+
+      // Should return null on error (not throw)
+      assertEquals(result, null, "Should return null on LLM error");
+
+      // Check request status is updated to 'failed'
+      const updatedContent = await Deno.readTextFile(requestPath);
+      assertStringIncludes(updatedContent, 'status = "failed"');
+    });
+
+    it("should handle missing blueprint gracefully", async () => {
+      const traceId = crypto.randomUUID();
+      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const requestContent = createRequestContent({
+        traceId,
+        agent: "nonexistent-agent",
+        body: "Use a missing blueprint",
+      });
+
+      await Deno.writeTextFile(requestPath, requestContent);
+
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Test", "Content")],
+      });
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      const result = await processor.process(requestPath);
+
+      // Should return null when blueprint doesn't exist
+      assertEquals(result, null, "Should return null for missing blueprint");
+    });
+
+    it("should handle file read errors", async () => {
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Test", "Content")],
+      });
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      // Try to process a non-existent file
+      const result = await processor.process("/nonexistent/path/request.md");
+
+      assertEquals(result, null, "Should return null for non-existent file");
+    });
+  });
+
+  describe("Blueprint Loading", () => {
+    it("should load custom agent blueprint", async () => {
+      // Create a custom blueprint
+      await Deno.writeTextFile(
+        join(testDir, "Blueprints", "Agents", "code-reviewer.md"),
+        `# Code Reviewer Blueprint
+
+You are an expert code reviewer. Analyze code changes and provide feedback.
+
+<thought>Analyzing code...</thought>
+<content>Code review feedback here</content>
+`,
+      );
+
+      const traceId = crypto.randomUUID();
+      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const requestContent = createRequestContent({
+        traceId,
+        agent: "code-reviewer",
+        body: "Review my pull request",
+      });
+
+      await Deno.writeTextFile(requestPath, requestContent);
+
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Code review analysis", "# Code Review Feedback")],
+      });
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      const result = await processor.process(requestPath);
+
+      assert(result !== null, "Should successfully process with custom blueprint");
+    });
+
+    it("should use default blueprint when agent is 'default'", async () => {
+      const traceId = crypto.randomUUID();
+      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const requestContent = createRequestContent({
+        traceId,
+        agent: "default",
+        body: "Use the default blueprint",
+      });
+
+      await Deno.writeTextFile(requestPath, requestContent);
+
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Default analysis", "# Default Plan")],
+      });
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      const result = await processor.process(requestPath);
+
+      assert(result !== null, "Should work with default blueprint");
+    });
+  });
+});

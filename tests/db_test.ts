@@ -1,5 +1,5 @@
 import { assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
-import { initTestDbService } from "./helpers/db.ts";
+import { initActivityTableSchema, initTestDbService } from "./helpers/db.ts";
 import { DatabaseService } from "../src/services/db.ts";
 import { createMockConfig } from "./helpers/config.ts";
 
@@ -142,7 +142,7 @@ Deno.test("DatabaseService: prevents logging when closing", async () => {
 });
 
 Deno.test("DatabaseService: flushes pending logs on close", async () => {
-  const { db, tempDir, cleanup } = await initTestDbService();
+  const { db, tempDir, cleanup: _cleanup } = await initTestDbService();
   try {
     const traceId = crypto.randomUUID();
 
@@ -156,26 +156,20 @@ Deno.test("DatabaseService: flushes pending logs on close", async () => {
     // Create new connection to verify data was flushed
     const config2 = createMockConfig(tempDir);
     const db2 = new DatabaseService(config2);
-    // Initialize schema
-    db2.instance.exec(`
-      CREATE TABLE IF NOT EXISTS activity (
-        id TEXT PRIMARY KEY,
-        trace_id TEXT NOT NULL,
-        actor TEXT NOT NULL,
-        agent_id TEXT,
-        action_type TEXT NOT NULL,
-        target TEXT,
-        payload TEXT NOT NULL,
-        timestamp DATETIME DEFAULT (datetime('now'))
-      );
-    `);
+    // Initialize schema for second connection
+    initActivityTableSchema(db2);
 
     const activities = db2.getActivitiesByTrace(traceId);
     assertEquals(activities.length, 2);
 
     db2.close();
   } finally {
-    await cleanup();
+    // Note: cleanup() closes db, but db is already closed above, so just remove temp dir
+    try {
+      await Deno.remove(tempDir, { recursive: true });
+    } catch {
+      // Ignore cleanup errors
+    }
   }
 });
 
@@ -373,7 +367,7 @@ Deno.test("DatabaseService: auto-generates trace_id if not provided", async () =
 });
 
 Deno.test("DatabaseService: persists data across connections", async () => {
-  const { db: db1, tempDir, cleanup } = await initTestDbService();
+  const { db: db1, tempDir, cleanup: _cleanup } = await initTestDbService();
   try {
     const traceId = crypto.randomUUID();
 
@@ -386,25 +380,19 @@ Deno.test("DatabaseService: persists data across connections", async () => {
     const config = createMockConfig(tempDir);
     const db2 = new DatabaseService(config);
     // Initialize schema for second connection
-    db2.instance.exec(`
-      CREATE TABLE IF NOT EXISTS activity (
-        id TEXT PRIMARY KEY,
-        trace_id TEXT NOT NULL,
-        actor TEXT NOT NULL,
-        agent_id TEXT,
-        action_type TEXT NOT NULL,
-        target TEXT,
-        payload TEXT NOT NULL,
-        timestamp DATETIME DEFAULT (datetime('now'))
-      );
-    `);
+    initActivityTableSchema(db2);
 
     const activities = db2.getActivitiesByTrace(traceId);
     assertEquals(activities.length, 1);
     assertEquals(activities[0].action_type, "test.action");
     db2.close();
   } finally {
-    await cleanup();
+    // Note: cleanup() closes db, but db1 is already closed above, so just remove temp dir
+    try {
+      await Deno.remove(tempDir, { recursive: true });
+    } catch {
+      // Ignore cleanup errors
+    }
   }
 });
 

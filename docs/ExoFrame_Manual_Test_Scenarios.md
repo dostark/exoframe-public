@@ -136,7 +136,7 @@ exoctl --help
 cd ~/ExoFrame
 
 # Step 2: Start daemon in foreground (for visibility)
-deno task start:fg &
+exoctl daemon start
 
 # Step 3: Wait for startup (2-3 seconds)
 sleep 3
@@ -618,7 +618,7 @@ pgrep -f "exoframe" || echo "Daemon stopped"
 
 # Step 4: Restart daemon
 cd ~/ExoFrame
-deno task start:fg &
+exoctl daemon start
 sleep 3
 
 # Step 5: Check status
@@ -838,7 +838,7 @@ rm ~/ExoFrame/System/journal.db
 
 # Step 4: Start daemon
 cd ~/ExoFrame
-deno task start:fg &
+exoctl daemon start
 sleep 5
 
 # Step 5: Check status
@@ -1021,7 +1021,7 @@ rm ~/ExoFrame/Inbox/Requests/rapid-*.md
 ```bash
 # Step 1: Test default behavior (mock provider)
 cd ~/ExoFrame
-deno task start:fg &
+exoctl daemon start
 sleep 3
 
 # Step 2: Check startup logs for provider
@@ -1037,7 +1037,7 @@ grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
 exoctl daemon stop
 
 # Step 5: Test Ollama with custom model
-EXO_LLM_PROVIDER=ollama EXO_LLM_MODEL=codellama deno task start:fg &
+EXO_LLM_PROVIDER=ollama EXO_LLM_MODEL=codellama deno exoctl daemon start
 sleep 3
 grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
 exoctl daemon stop
@@ -1053,7 +1053,8 @@ cat >> ~/ExoFrame/exo.config.toml << 'EOF'
 provider = "ollama"
 model = "llama3.2"
 EOF
-deno task start:fg &
+
+exoctl daemon start
 sleep 3
 grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
 exoctl daemon stop

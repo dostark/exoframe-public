@@ -17,7 +17,7 @@ import { join } from "@std/path";
 import { PlanCommands } from "../../src/cli/plan_commands.ts";
 import { DatabaseService } from "../../src/services/db.ts";
 import { ensureDir } from "@std/fs";
-import { createMockConfig } from "../helpers/config.ts";
+import { initTestDbService } from "../helpers/db.ts";
 
 describe("PlanCommands", () => {
   let tempDir: string;
@@ -26,10 +26,17 @@ describe("PlanCommands", () => {
   let inboxPlansDir: string;
   let systemActiveDir: string;
   let inboxRejectedDir: string;
+  let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    // Create temp directory structure
-    tempDir = await Deno.makeTempDir({ prefix: "plan_commands_test_" });
+    // Initialize database with initTestDbService
+    const testDbResult = await initTestDbService();
+    tempDir = testDbResult.tempDir;
+    db = testDbResult.db;
+    cleanup = testDbResult.cleanup;
+    const config = testDbResult.config;
+
+    // Create additional directories
     inboxPlansDir = join(tempDir, "Inbox", "Plans");
     systemActiveDir = join(tempDir, "System", "Active");
     inboxRejectedDir = join(tempDir, "Inbox", "Rejected");
@@ -38,31 +45,12 @@ describe("PlanCommands", () => {
     await ensureDir(systemActiveDir);
     await ensureDir(inboxRejectedDir);
 
-    // Initialize database with config
-    const config = createMockConfig(tempDir);
-    db = new DatabaseService(config);
-
-    // Initialize activity table
-    db.instance.exec(`
-      CREATE TABLE IF NOT EXISTS activity (
-        id TEXT PRIMARY KEY,
-        trace_id TEXT NOT NULL,
-        actor TEXT NOT NULL,
-        agent_id TEXT,
-        action_type TEXT NOT NULL,
-        target TEXT,
-        payload TEXT NOT NULL,
-        timestamp DATETIME DEFAULT (datetime('now'))
-      );
-    `);
-
     // Initialize PlanCommands
     planCommands = new PlanCommands({ config, db }, tempDir);
   });
 
   afterEach(async () => {
-    await db.close();
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   });
 
   describe("approve", () => {

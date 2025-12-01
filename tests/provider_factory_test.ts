@@ -16,10 +16,9 @@
  * 10. EXO_LLM_TIMEOUT_MS correctly sets timeout
  */
 
-import { assert, assertEquals, assertExists, assertStringIncludes, assertThrows } from "jsr:@std/assert@^1.0.0";
+import { assertEquals, assertExists, assertStringIncludes, assertThrows } from "jsr:@std/assert@^1.0.0";
 import { ProviderFactory, ProviderFactoryError } from "../src/ai/provider_factory.ts";
-import { MockLLMProvider } from "../src/ai/providers/mock_llm_provider.ts";
-import { OllamaProvider } from "../src/ai/providers.ts";
+
 import { AiConfig, AiConfigSchema } from "../src/config/ai_config.ts";
 import { Config } from "../src/config/schema.ts";
 

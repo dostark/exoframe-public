@@ -24,6 +24,7 @@ import { join } from "@std/path";
 import { ensureDir } from "@std/fs";
 import { RequestCommands } from "../../src/cli/request_commands.ts";
 import { DatabaseService } from "../../src/services/db.ts";
+import { initTestDbService } from "../helpers/db.ts";
 import { createMockConfig } from "../helpers/config.ts";
 
 describe("RequestCommands", () => {
@@ -31,42 +32,28 @@ describe("RequestCommands", () => {
   let db: DatabaseService;
   let requestCommands: RequestCommands;
   let inboxRequestsDir: string;
-  let systemDir: string;
+  let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    // Create temp directory structure
-    tempDir = await Deno.makeTempDir({ prefix: "request_commands_test_" });
+    // Initialize database with initTestDbService
+    const testDbResult = await initTestDbService();
+    tempDir = testDbResult.tempDir;
+    db = testDbResult.db;
+    cleanup = testDbResult.cleanup;
+    const config = testDbResult.config;
+
+    // Create additional directories
     inboxRequestsDir = join(tempDir, "Inbox", "Requests");
-    systemDir = join(tempDir, "System");
 
     await ensureDir(inboxRequestsDir);
-    await ensureDir(systemDir); // Required for DatabaseService
-
-    // Initialize database with config
-    const config = createMockConfig(tempDir);
-    db = new DatabaseService(config);
-
-    // Initialize activity table
-    db.instance.exec(`
-      CREATE TABLE IF NOT EXISTS activity (
-        id TEXT PRIMARY KEY,
-        trace_id TEXT NOT NULL,
-        actor TEXT NOT NULL,
-        agent_id TEXT,
-        action_type TEXT NOT NULL,
-        target TEXT,
-        payload TEXT NOT NULL,
-        timestamp DATETIME DEFAULT (datetime('now'))
-      );
-    `);
+    // System dir already created by initTestDbService
 
     // Initialize RequestCommands
     requestCommands = new RequestCommands({ config, db }, tempDir);
   });
 
   afterEach(async () => {
-    await db.close();
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   });
 
   describe("create", () => {

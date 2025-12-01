@@ -14,23 +14,27 @@
 import { assertEquals, assertExists, assertRejects, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { afterEach, beforeEach, describe, it } from "jsr:@std/testing@^1.0.0/bdd";
 import { join } from "@std/path";
-import { ensureDir } from "@std/fs";
 import { ChangesetCommands } from "../../src/cli/changeset_commands.ts";
 import { DatabaseService } from "../../src/services/db.ts";
 import { GitService } from "../../src/services/git_service.ts";
-import { createMockConfig } from "../helpers/config.ts";
+import { initTestDbService } from "../helpers/db.ts";
+import type { Config } from "../../src/config/schema.ts";
 
 describe("ChangesetCommands", () => {
   let tempDir: string;
   let db: DatabaseService;
   let gitService: GitService;
   let changesetCommands: ChangesetCommands;
+  let config: Config;
+  let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    // Create temp directory structure
-    tempDir = await Deno.makeTempDir({ prefix: "changeset_commands_test_" });
-    const systemDir = join(tempDir, "System");
-    await ensureDir(systemDir);
+    // Initialize database with initTestDbService
+    const testDbResult = await initTestDbService();
+    tempDir = testDbResult.tempDir;
+    db = testDbResult.db;
+    config = testDbResult.config;
+    cleanup = testDbResult.cleanup;
 
     // Initialize git repository
     await runGitCommand(tempDir, ["init", "-b", "main"]);
@@ -42,31 +46,12 @@ describe("ChangesetCommands", () => {
     await runGitCommand(tempDir, ["add", "README.md"]);
     await runGitCommand(tempDir, ["commit", "-m", "Initial commit"]);
 
-    // Initialize database
-    const config = createMockConfig(tempDir);
-    db = new DatabaseService(config);
-
-    // Initialize activity table
-    db.instance.exec(`
-      CREATE TABLE IF NOT EXISTS activity (
-        id TEXT PRIMARY KEY,
-        trace_id TEXT NOT NULL,
-        actor TEXT NOT NULL,
-        agent_id TEXT,
-        action_type TEXT NOT NULL,
-        target TEXT,
-        payload TEXT NOT NULL,
-        timestamp DATETIME DEFAULT (datetime('now'))
-      );
-    `);
-
     gitService = new GitService({ config, db });
     changesetCommands = new ChangesetCommands({ config, db }, gitService);
   });
 
   afterEach(async () => {
-    await db.close();
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   });
 
   describe("list", () => {
@@ -349,11 +334,15 @@ describe("ChangesetCommands - Edge Cases", () => {
   let db: DatabaseService;
   let gitService: GitService;
   let changesetCommands: ChangesetCommands;
+  let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    tempDir = await Deno.makeTempDir({ prefix: "changeset_edge_test_" });
-    const systemDir = join(tempDir, "System");
-    await ensureDir(systemDir);
+    // Initialize database with initTestDbService
+    const testDbResult = await initTestDbService();
+    tempDir = testDbResult.tempDir;
+    db = testDbResult.db;
+    const config = testDbResult.config;
+    cleanup = testDbResult.cleanup;
 
     // Initialize git repository
     await runGitCommand(tempDir, ["init", "-b", "main"]);
@@ -365,29 +354,12 @@ describe("ChangesetCommands - Edge Cases", () => {
     await runGitCommand(tempDir, ["add", "README.md"]);
     await runGitCommand(tempDir, ["commit", "-m", "Initial commit"]);
 
-    const config = createMockConfig(tempDir);
-    db = new DatabaseService(config);
-
-    db.instance.exec(`
-      CREATE TABLE IF NOT EXISTS activity (
-        id TEXT PRIMARY KEY,
-        trace_id TEXT NOT NULL,
-        actor TEXT NOT NULL,
-        agent_id TEXT,
-        action_type TEXT NOT NULL,
-        target TEXT,
-        payload TEXT NOT NULL,
-        timestamp DATETIME DEFAULT (datetime('now'))
-      );
-    `);
-
     gitService = new GitService({ config, db });
     changesetCommands = new ChangesetCommands({ config, db }, gitService);
   });
 
   afterEach(async () => {
-    await db.close();
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   });
 
   it("list() should skip branches with invalid naming format", async () => {

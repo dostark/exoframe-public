@@ -9,6 +9,7 @@ import { join } from "@std/path";
 import { ensureDir, exists } from "@std/fs";
 import { DatabaseService } from "../../../src/services/db.ts";
 import { createMockConfig } from "../../helpers/config.ts";
+import { initActivityTableSchema } from "../../helpers/db.ts";
 import type { Config } from "../../../src/config/schema.ts";
 
 export interface TestEnvironmentOptions {
@@ -60,20 +61,7 @@ export class TestEnvironment {
 
     // Initialize database
     const db = new DatabaseService(config);
-    db.instance.exec(`
-      CREATE TABLE IF NOT EXISTS activity (
-        id TEXT PRIMARY KEY,
-        trace_id TEXT NOT NULL,
-        actor TEXT NOT NULL,
-        agent_id TEXT,
-        action_type TEXT NOT NULL,
-        target TEXT,
-        payload TEXT NOT NULL,
-        timestamp DATETIME DEFAULT (datetime('now'))
-      );
-      CREATE INDEX IF NOT EXISTS idx_activity_trace ON activity(trace_id);
-      CREATE INDEX IF NOT EXISTS idx_activity_agent ON activity(agent_id);
-    `);
+    initActivityTableSchema(db);
 
     // Initialize git if requested
     if (options.initGit !== false) {
