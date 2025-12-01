@@ -171,7 +171,7 @@ Content here.
   }
 });
 
-Deno.test("Report frontmatter has required Dataview fields", async () => {
+Deno.test("Report frontmatter has required Dataview fields", () => {
   // These are the fields Dataview queries in Dashboard.md expect
   const requiredFields = ["status", "created"];
   const optionalFields = ["trace_id", "title", "agent"];

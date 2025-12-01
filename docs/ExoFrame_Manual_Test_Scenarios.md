@@ -172,7 +172,7 @@ pgrep -f "exoframe" || ps aux | grep exoframe
 ls -la ~/ExoFrame/System/journal.db
 
 # Check log output
-tail -20 ~/ExoFrame/System/logs/daemon.log
+tail -20 ~/ExoFrame/System/daemon.log
 ```
 
 ### Cleanup
@@ -504,7 +504,7 @@ exoctl git branches --pattern "feat/*"
 # Should list the agent-created branch
 
 # Check daemon logs for execution
-tail -50 ~/ExoFrame/System/logs/daemon.log | grep -i "execution\|completed"
+tail -50 ~/ExoFrame/System/daemon.log | grep -i "execution\|completed"
 ```
 
 ### Pass Criteria
@@ -724,11 +724,11 @@ exoctl plan show <plan-id>
 # Plan should be more detailed than mock responses
 
 # Check daemon logs for token usage
-grep -i "token\|api" ~/ExoFrame/System/logs/daemon.log
+grep -i "token\|api" ~/ExoFrame/System/daemon.log
 # Should show non-zero token counts
 
 # Check API calls logged
-grep -i "anthropic\|openai" ~/ExoFrame/System/logs/daemon.log
+grep -i "anthropic\|openai" ~/ExoFrame/System/daemon.log
 ```
 
 ### Cleanup
@@ -778,7 +778,7 @@ sleep 5
 
 # Step 3: Check for error handling
 exoctl request list
-tail -20 ~/ExoFrame/System/logs/daemon.log
+tail -20 ~/ExoFrame/System/daemon.log
 ```
 
 ### Expected Results
@@ -793,7 +793,7 @@ tail -20 ~/ExoFrame/System/logs/daemon.log
 
 ```bash
 # Check error log
-grep -i "validation error\|parse error\|invalid" ~/ExoFrame/System/logs/daemon.log
+grep -i "validation error\|parse error\|invalid" ~/ExoFrame/System/daemon.log
 
 # Verify daemon still healthy
 exoctl daemon status
@@ -864,7 +864,7 @@ exoctl daemon status
 ls -la ~/ExoFrame/System/journal.db
 
 # Check log for recovery messages
-grep -i "database\|recovery\|init" ~/ExoFrame/System/logs/daemon.log
+grep -i "database\|recovery\|init" ~/ExoFrame/System/daemon.log
 ```
 
 ### Cleanup
@@ -934,7 +934,7 @@ exoctl request list | sort | uniq -d
 # Should output nothing (no duplicates)
 
 # Check logs for errors
-grep -i "error\|conflict\|race" ~/ExoFrame/System/logs/daemon.log
+grep -i "error\|conflict\|race" ~/ExoFrame/System/daemon.log
 ```
 
 ### Pass Criteria
@@ -973,7 +973,7 @@ done
 sleep 5
 
 # Step 4: Check detection
-tail -50 ~/ExoFrame/System/logs/daemon.log | grep -c "file\|detected\|changed"
+tail -50 ~/ExoFrame/System/daemon.log | grep -c "file\|detected\|changed"
 ```
 
 ### Expected Results
@@ -987,7 +987,7 @@ tail -50 ~/ExoFrame/System/logs/daemon.log | grep -c "file\|detected\|changed"
 
 ```bash
 # Check daemon logs for file detection
-tail -50 ~/ExoFrame/System/logs/daemon.log | grep -c "file\|detected\|changed"
+tail -50 ~/ExoFrame/System/daemon.log | grep -c "file\|detected\|changed"
 # Should show entries for file changes
 ```
 

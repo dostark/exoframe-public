@@ -341,7 +341,7 @@ See [Manual Test Scenarios](./ExoFrame_Manual_Test_Scenarios.md) for detailed te
 
 **Purpose:** Enable deterministic testing without API calls or costs.
 
-**Location:** `tests/mocks/mock_llm_provider.ts`
+**Location:** `src/ai/providers/mock_llm_provider.ts`
 
 **Mock Strategies:**
 
@@ -378,7 +378,7 @@ EXO_RECORD_LLM=true exoctl request "Test task"
 **Usage in Tests:**
 
 ```typescript
-import { MockLLMProvider } from "../mocks/mock_llm_provider.ts";
+import { MockLLMProvider } from "../src/ai/providers/mock_llm_provider.ts";
 
 Deno.test("Plan generation uses correct format", async () => {
   const mockLLM = new MockLLMProvider("recorded");

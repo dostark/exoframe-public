@@ -2630,7 +2630,7 @@ Phase 6 establishes the testing infrastructure needed to confidently ship ExoFra
 | 6.5  | Documentation Structure Tests | `tests/docs/`                      | ✅ Complete |
 | 6.6  | Security Validation Tests     | `tests/security/`                  | 🔲 Planned  |
 | 6.7  | Performance Benchmarks        | `tests/benchmarks/`                | 🔲 Planned  |
-| 6.8  | Mock LLM Provider             | `tests/mocks/mock_llm_provider.ts` | 🔲 Planned  |
+| 6.8  | Mock LLM Provider             | `src/ai/providers/mock_llm_provider.ts` | ✅ Complete |
 | 6.9  | Manual QA Checklist           | Testing Strategy §4                | 🔲 Planned  |
 
 **Note:** Lease management is integrated into `src/services/execution_loop.ts` (not a separate service).
@@ -2644,7 +2644,7 @@ Tests for lease acquisition/release are in `tests/execution_loop_test.ts`.
 - [x] Documentation tests prevent doc drift
 - [ ] Security tests verify Deno permission enforcement
 - [ ] Performance benchmarks meet targets
-- [ ] Mock LLM enables deterministic testing
+- [x] Mock LLM enables deterministic testing (30 tests, 5 strategies)
 - [ ] Manual QA passes on all target platforms
 - [ ] All tests run automatically on PR in CI/CD
 

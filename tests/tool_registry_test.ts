@@ -533,7 +533,7 @@ Deno.test("[security] ToolRegistry: write_file - blocks writing to System direct
     // Either the write fails or the path validation blocks it
     if (traversalResult.success) {
       // If write succeeded, verify it didn't overwrite the original
-      const content = await Deno.readTextFile(journalPath);
+      const _content = await Deno.readTextFile(journalPath);
       // Note: This is acceptable - the tool might write to a different resolved path
       // The key is that security-sensitive paths should be blocked
     } else {

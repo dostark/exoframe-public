@@ -1,0 +1,11 @@
+{
+  "promptHash": "00000000ffffffff",
+  "promptPreview": "You are a senior developer. Please analyze the following request and create a plan.",
+  "response": "## Proposed Plan\n\n### Overview\nI will analyze the request and create an implementation plan.\n\n### Steps\n1. **Understand Requirements** - Review the request carefully\n2. **Design Solution** - Plan the technical approach\n3. **Implement Changes** - Write the necessary code\n4. **Test Implementation** - Verify the changes work correctly\n5. **Document Changes** - Update relevant documentation\n\n### Files to Modify\n- src/feature.ts\n- tests/feature_test.ts\n\n### Expected Outcome\nThe requested feature will be implemented and tested.",
+  "model": "claude-3-5-sonnet-20241022",
+  "tokens": {
+    "input": 150,
+    "output": 200
+  },
+  "recordedAt": "2025-12-01T10:00:00.000Z"
+}
