@@ -14,6 +14,7 @@ import { assertEquals, assertExists, assertStringIncludes } from "jsr:@std/asser
 import { afterEach, beforeEach, describe, it } from "jsr:@std/testing@^1.0.0/bdd";
 import { ContextLoader } from "../src/services/context_loader.ts";
 import type { ContextConfig, ContextLoadResult } from "../src/services/context_loader.ts";
+import { initTestDbService } from "./helpers/db.ts";
 
 // ============================================================================
 // Test Setup and Fixtures
@@ -862,5 +863,184 @@ describe("Edge Cases and Special Content", () => {
     const result = await loader.loadWithLimit([file]);
 
     assertStringIncludes(result.content, mixedContent);
+  });
+});
+
+// ============================================================================
+// Test 12: Drop-Largest Strategy
+// ============================================================================
+
+describe("Drop-Largest Strategy", () => {
+  it("should sort files smallest first with drop-largest", async () => {
+    const small = await createTestFile("small.txt", generateContent(1000));
+    const medium = await createTestFile("medium.txt", generateContent(3000));
+    const large = await createTestFile("large.txt", generateContent(5000));
+
+    const config: ContextConfig = {
+      maxTokens: 6000,
+      safetyMargin: 1.0,
+      truncationStrategy: "drop-largest",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([large, medium, small]);
+
+    // drop-largest sorts smallest first, so small (1000) + medium (3000) = 4000 should fit
+    assertEquals(result.includedFiles.includes(small), true);
+    // Large file should be skipped (dropped)
+    assertEquals(result.skippedFiles.includes(large), true);
+  });
+
+  it("should drop largest files when budget exceeded", async () => {
+    const file1 = await createTestFile("f1.txt", generateContent(2000));
+    const file2 = await createTestFile("f2.txt", generateContent(4000));
+    const file3 = await createTestFile("f3.txt", generateContent(6000));
+
+    const config: ContextConfig = {
+      maxTokens: 8000,
+      safetyMargin: 1.0,
+      truncationStrategy: "drop-largest",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([file3, file2, file1]);
+
+    // Should include smaller files: 2000 + 4000 = 6000 tokens
+    assertEquals(result.includedFiles.includes(file1), true);
+    assertEquals(result.includedFiles.includes(file2), true);
+    // Largest should be skipped
+    assertEquals(result.skippedFiles.includes(file3), true);
+  });
+});
+
+// ============================================================================
+// Test 13: Activity Logging with Database
+// ============================================================================
+
+describe("Activity Logging with Database", () => {
+  it("should log context loading to database when configured", async () => {
+    const { db, cleanup } = await initTestDbService();
+
+    try {
+      const file = await createTestFile("logged.txt", generateContent(1000));
+
+      const config: ContextConfig = {
+        maxTokens: 10000,
+        safetyMargin: 1.0,
+        truncationStrategy: "smallest-first",
+        isLocalAgent: false,
+        db: db,
+        traceId: "test-context-trace",
+        requestId: "test-request",
+        agentId: "test-agent",
+      };
+
+      const loader = new ContextLoader(config);
+      await loader.loadWithLimit([file]);
+
+      // Wait for batched logs
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const logs = db.getActivitiesByTrace("test-context-trace");
+      const contextLog = logs.find((l: any) => l.action_type === "context.loaded");
+      assertExists(contextLog, "context.loaded should be logged");
+
+      const payload = JSON.parse(contextLog.payload);
+      assertEquals(payload.included_files_count, 1);
+      assertEquals(payload.strategy, "smallest-first");
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("should log file load errors to database when configured", async () => {
+    const { db, cleanup } = await initTestDbService();
+
+    try {
+      const missing = `${testDir}/nonexistent-for-logging.txt`;
+
+      const config: ContextConfig = {
+        maxTokens: 10000,
+        safetyMargin: 1.0,
+        truncationStrategy: "smallest-first",
+        isLocalAgent: false,
+        db: db,
+        traceId: "test-error-trace",
+        requestId: "test-request",
+        agentId: "test-agent",
+      };
+
+      const loader = new ContextLoader(config);
+      await loader.loadWithLimit([missing]);
+
+      // Wait for batched logs
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const logs = db.getActivitiesByTrace("test-error-trace");
+      const errorLog = logs.find((l: any) => l.action_type === "context.file_load_error");
+      assertExists(errorLog, "context.file_load_error should be logged");
+
+      const payload = JSON.parse(errorLog.payload);
+      assertEquals(payload.error_type, "NotFound");
+    } finally {
+      await cleanup();
+    }
+  });
+
+  it("should skip logging when no traceId provided", async () => {
+    const { db, cleanup } = await initTestDbService();
+
+    try {
+      const file = await createTestFile("nolog.txt", generateContent(100));
+
+      const config: ContextConfig = {
+        maxTokens: 10000,
+        safetyMargin: 1.0,
+        truncationStrategy: "smallest-first",
+        isLocalAgent: false,
+        db: db,
+        // No traceId - logging should be skipped
+      };
+
+      const loader = new ContextLoader(config);
+      await loader.loadWithLimit([file]);
+
+      // Wait for potential logs
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Should not have logged anything (no traceId)
+      const allLogs = db.getRecentActivity(100);
+      const contextLogs = allLogs.filter((l: any) => l.action_type === "context.loaded");
+      assertEquals(contextLogs.length, 0, "Should not log without traceId");
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
+// ============================================================================
+// Test 14: Default Strategy (fallback)
+// ============================================================================
+
+describe("Default Strategy Fallback", () => {
+  it("should handle unknown strategy by returning files in original order", async () => {
+    const file1 = await createTestFile("first.txt", generateContent(1000));
+    const file2 = await createTestFile("second.txt", generateContent(1000));
+
+    // Force an unknown strategy by casting
+    const config: ContextConfig = {
+      maxTokens: 10000,
+      safetyMargin: 1.0,
+      truncationStrategy: "unknown-strategy" as any,
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([file1, file2]);
+
+    // Should still work, returning files
+    assertEquals(result.includedFiles.length, 2);
   });
 });

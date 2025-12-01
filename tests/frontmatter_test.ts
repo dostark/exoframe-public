@@ -291,3 +291,130 @@ status: pending
     await cleanup();
   }
 });
+
+// ============================================================================
+// Additional Coverage Tests
+// ============================================================================
+
+Deno.test("FrontmatterParser: handles frontmatter that is not an object", () => {
+  // YAML that parses to a string instead of object
+  const markdown = `---
+just a string value
+---
+
+Body content
+`;
+
+  const parser = new FrontmatterParser();
+
+  const error = assertThrows(
+    () => parser.parse(markdown),
+  ) as Error;
+
+  assertEquals(error.message.includes("object") || error.message.includes("validation"), true);
+});
+
+Deno.test("FrontmatterParser: handles YAML array frontmatter", () => {
+  // YAML that parses to an array instead of object
+  const markdown = `---
+- item1
+- item2
+---
+
+Body content
+`;
+
+  const parser = new FrontmatterParser();
+
+  const error = assertThrows(
+    () => parser.parse(markdown),
+  ) as Error;
+
+  // Should fail validation since array is not expected schema
+  assertEquals(error.message.includes("validation") || error.message.includes("object"), true);
+});
+
+Deno.test("FrontmatterParser: handles null frontmatter", () => {
+  // Empty YAML block that parses to null
+  const markdown = `---
+---
+
+Body content
+`;
+
+  const parser = new FrontmatterParser();
+
+  const error = assertThrows(
+    () => parser.parse(markdown),
+  ) as Error;
+
+  assertEquals(error.message.includes("object") || error.message.includes("frontmatter"), true);
+});
+
+Deno.test("FrontmatterParser: logs activity without file_path", async () => {
+  const { db, cleanup } = await initTestDbService();
+  try {
+    const parser = new FrontmatterParser(db);
+    const markdown = `---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+agent_id: coder-agent
+status: pending
+---
+
+# Test
+`;
+    // Parse without providing filePath
+    const result = parser.parse(markdown);
+    assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
+
+    // Allow time for batched write
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const rows = db.getActivitiesByActionType("request.validated");
+    assertEquals(rows.length >= 1, true);
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("FrontmatterParser: handles YAML parsing exception gracefully", () => {
+  // Severely malformed YAML that might throw unexpected error
+  const markdown = `---
+key: value
+  bad indent: [unclosed
+another: "missing quote
+---
+
+Body
+`;
+
+  const parser = new FrontmatterParser();
+
+  assertThrows(
+    () => parser.parse(markdown),
+    Error,
+  );
+});
+
+Deno.test("FrontmatterParser: handles valid frontmatter with all optional fields", () => {
+  const markdown = `---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+agent_id: senior-coder
+status: in_progress
+priority: 10
+tags: [urgent, bug-fix, security]
+created_at: "2025-12-01T10:00:00Z"
+---
+
+Full content here
+`;
+
+  const parser = new FrontmatterParser();
+  const result = parser.parse(markdown);
+
+  assertEquals(result.request.trace_id, "550e8400-e29b-41d4-a716-446655440000");
+  assertEquals(result.request.status, "in_progress");
+  assertEquals(result.request.priority, 10);
+  assertEquals(result.request.tags?.length, 3);
+  assertEquals(result.request.created_at, "2025-12-01T10:00:00Z");
+});

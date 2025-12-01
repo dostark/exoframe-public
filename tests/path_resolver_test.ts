@@ -1,4 +1,4 @@
-import { assertEquals, assertRejects } from "jsr:@std/assert@^1.0.0";
+import { assertEquals, assertExists, assertRejects } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { PathResolver } from "../src/services/path_resolver.ts";
 import { createMockConfig } from "./helpers/config.ts";
@@ -387,6 +387,147 @@ Deno.test("PathResolver: logs security violations to console when no DB", async 
       console.warn = originalWarn;
     }
   } finally {
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+// ============================================================================
+// Activity Logging with Database Tests
+// ============================================================================
+
+import { initTestDbService } from "./helpers/db.ts";
+
+Deno.test("PathResolver: logs successful resolution to database", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-db-success-" });
+  const { db, cleanup } = await initTestDbService();
+  try {
+    const blueprintsDir = join(tempDir, "Blueprints");
+    await Deno.mkdir(blueprintsDir);
+    const testFile = join(blueprintsDir, "logged.md");
+    await Deno.writeTextFile(testFile, "content");
+
+    const config = createMockConfig(tempDir);
+    const resolver = new PathResolver(config, { db, traceId: "path-trace-123" });
+
+    const resolved = await resolver.resolve("@Blueprints/logged.md");
+    assertEquals(resolved, testFile);
+
+    // Wait for batched logs
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const logs = db.getActivitiesByTrace("path-trace-123");
+    const successLog = logs.find((l: any) => l.action_type === "path.resolved");
+    assertExists(successLog, "path.resolved should be logged");
+
+    const payload = JSON.parse(successLog!.payload);
+    assertEquals(payload.alias, "@Blueprints");
+    assertExists(payload.duration_ms);
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("PathResolver: logs resolution failures to database", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-db-fail-" });
+  const { db, cleanup } = await initTestDbService();
+  try {
+    const config = createMockConfig(tempDir);
+    const resolver = new PathResolver(config, { db, traceId: "path-fail-trace" });
+
+    await assertRejects(
+      async () => {
+        await resolver.resolve("@Unknown/file.txt");
+      },
+      Error,
+      "Unknown portal alias",
+    );
+
+    // Wait for batched logs
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const logs = db.getActivitiesByTrace("path-fail-trace");
+    const failLog = logs.find((l: any) => l.action_type === "path.resolution_failed");
+    assertExists(failLog, "path.resolution_failed should be logged");
+
+    const payload = JSON.parse(failLog!.payload);
+    assertEquals(payload.error_type, "Error");
+    assertExists(payload.error_message);
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("PathResolver: logs security violations to database", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-db-security-" });
+  const { db, cleanup } = await initTestDbService();
+  try {
+    const blueprintsDir = join(tempDir, "Blueprints");
+    await Deno.mkdir(blueprintsDir);
+    const secretFile = join(tempDir, "secret.txt");
+    await Deno.writeTextFile(secretFile, "secret");
+
+    const config = createMockConfig(tempDir);
+    const resolver = new PathResolver(config, { db, traceId: "security-trace" });
+
+    await assertRejects(
+      async () => {
+        await resolver.resolve("@Blueprints/../secret.txt");
+      },
+      Error,
+      "Access denied",
+    );
+
+    // Wait for batched logs
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const logs = db.getActivitiesByTrace("security-trace");
+    const securityLog = logs.find((l: any) => l.action_type === "path.access_denied");
+    assertExists(securityLog, "path.access_denied should be logged");
+
+    const payload = JSON.parse(securityLog!.payload);
+    assertEquals(payload.severity, "high");
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("PathResolver: handles database logging errors gracefully", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-db-error-" });
+  const { db, cleanup } = await initTestDbService();
+  try {
+    const blueprintsDir = join(tempDir, "Blueprints");
+    await Deno.mkdir(blueprintsDir);
+    const testFile = join(blueprintsDir, "test.md");
+    await Deno.writeTextFile(testFile, "content");
+
+    const config = createMockConfig(tempDir);
+
+    // Close DB to simulate logging failure
+    await db.close();
+
+    // Create resolver with closed DB - should not throw
+    const resolver = new PathResolver(config, { db, traceId: "error-trace" });
+
+    // Capture console.error
+    const originalError = console.error;
+    let errorLogged = false;
+    console.error = () => {
+      errorLogged = true;
+    };
+
+    try {
+      // This should still work even with DB errors
+      const resolved = await resolver.resolve("@Blueprints/test.md");
+      assertEquals(resolved, testFile);
+      // May or may not have logged error depending on timing
+    } finally {
+      console.error = originalError;
+    }
+  } finally {
+    await cleanup();
     await Deno.remove(tempDir, { recursive: true });
   }
 });

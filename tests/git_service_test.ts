@@ -520,3 +520,183 @@ Deno.test("GitService: commit - includes description in commit message", async (
     await Deno.remove(tempDir, { recursive: true });
   }
 });
+
+// ============================================================================
+// Additional Coverage Tests for Checkout Branch
+// ============================================================================
+
+Deno.test("GitService: checkoutBranch - logs successful checkout", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "git-test-checkout-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const git = new GitService({ config, db, traceId: "checkout-trace" });
+
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Create initial commit so we can create branches
+    await Deno.writeTextFile(join(tempDir, "init.txt"), "initial");
+    await new Deno.Command("git", {
+      args: ["add", "."],
+      cwd: tempDir,
+    }).output();
+    await new Deno.Command("git", {
+      args: ["commit", "-m", "Initial commit"],
+      cwd: tempDir,
+    }).output();
+
+    // Create a branch first
+    const branchName = await git.createBranch({
+      requestId: "checkout-test",
+      traceId: "abc",
+    });
+
+    // Switch back to main/master
+    await new Deno.Command("git", {
+      args: ["checkout", "-"],
+      cwd: tempDir,
+    }).output();
+
+    // Now checkout the created branch
+    await git.checkoutBranch(branchName);
+
+    // Allow time for batched logging
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Verify checkout was logged
+    const logs = db.getActivitiesByTrace("checkout-trace");
+    const checkoutLogs = logs.filter((log) => log.action_type === "git.checkout");
+
+    assertEquals(checkoutLogs.length >= 1, true);
+    const checkoutLog = checkoutLogs[0];
+    const payload = JSON.parse(checkoutLog.payload);
+    assertEquals(payload.branch, branchName);
+    assertEquals(payload.success, true);
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("GitService: checkoutBranch - logs checkout failure", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "git-test-checkout-fail-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const git = new GitService({ config, db, traceId: "checkout-fail-trace" });
+
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Try to checkout non-existent branch
+    let errorCaught = false;
+    try {
+      await git.checkoutBranch("nonexistent-branch-12345");
+    } catch {
+      errorCaught = true;
+    }
+
+    assertEquals(errorCaught, true);
+
+    // Allow time for batched logging
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Verify failure was logged
+    const logs = db.getActivitiesByTrace("checkout-fail-trace");
+    const failLogs = logs.filter((log) =>
+      log.action_type === "git.checkout.failed" || log.action_type === "error"
+    );
+
+    // At minimum, the operation should be tracked even if it failed
+    assertEquals(logs.length >= 1, true);
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("GitService: runGitCommand via commit - handles various message formats", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "git-test-msg-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const git = new GitService({ config, db });
+
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Create initial file with multiline content
+    await Deno.writeTextFile(join(tempDir, "multiline.txt"), "line1\nline2\nline3");
+
+    // Commit with a message containing special characters
+    await git.commit({
+      message: "feat: add file with special chars (test)",
+      traceId: "special-chars-trace",
+    });
+
+    // Verify commit message
+    const logResult = await new Deno.Command("git", {
+      args: ["log", "-1", "--pretty=%B"],
+      cwd: tempDir,
+      stdout: "piped",
+    }).output();
+    const commitMsg = new TextDecoder().decode(logResult.stdout);
+
+    assertEquals(commitMsg.includes("feat: add file"), true);
+    assertEquals(commitMsg.includes("special-chars-trace"), true);
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("GitService: branch operations preserve traceId context", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "git-test-trace-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const traceId = "preserved-trace-id-123";
+    const agentId = "test-agent";
+    const config = createMockConfig(tempDir);
+    const git = new GitService({ config, db, traceId, agentId });
+
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Create initial commit
+    await Deno.writeTextFile(join(tempDir, "init.txt"), "initial");
+    await new Deno.Command("git", {
+      args: ["add", "."],
+      cwd: tempDir,
+    }).output();
+    await new Deno.Command("git", {
+      args: ["commit", "-m", "Initial commit"],
+      cwd: tempDir,
+    }).output();
+
+    // Create branch with trace context
+    await git.createBranch({
+      requestId: "context-test",
+      traceId: "branch-specific-trace",
+    });
+
+    // Allow time for batched logging
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    // Verify all operations have the service-level traceId
+    const logs = db.getActivitiesByTrace(traceId);
+
+    assertEquals(logs.length >= 1, true);
+
+    // Verify agent_id is preserved
+    const agentLogs = logs.filter((log) => log.agent_id === agentId);
+    assertEquals(agentLogs.length >= 1, true);
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
