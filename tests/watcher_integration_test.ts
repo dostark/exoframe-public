@@ -1,12 +1,17 @@
+/**
+ * Integration Tests for File Watcher + Activity Journal
+ *
+ * Success Criteria:
+ * - Test 1: File watcher events (create, modify) are logged to Activity Journal
+ * - Test 2: Logs include trace context (trace_id, file path, event type)
+ * - Test 3: Watcher integrates with DatabaseService for persistence
+ */
+
 import { assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { FileWatcher } from "../src/services/watcher.ts";
 import { initTestDb } from "./helpers/db.ts";
 import { createMockConfig } from "./helpers/config.ts";
-
-/**
- * Integration test: File watcher events are logged to the Activity Journal
- */
 Deno.test("Watcher logs file events to Activity Journal", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "watcher-db-test-" });
 

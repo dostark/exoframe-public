@@ -1,3 +1,17 @@
+/**
+ * Tests for RequestCommands (CLI Request Management)
+ *
+ * Success Criteria:
+ * - Test 1: create generates valid request file with frontmatter
+ * - Test 2: create accepts priority, tags, and portal options
+ * - Test 3: createFromFile imports content from external file
+ * - Test 4: list returns requests sorted by created date
+ * - Test 5: show displays full request content by ID or short ID
+ * - Test 6: Commands log activity to Activity Journal
+ * - Test 7: Validates priority values (low, normal, high, critical)
+ * - Test 8: Creates Inbox/Requests directory if missing
+ */
+
 import {
   assertEquals,
   assertExists,

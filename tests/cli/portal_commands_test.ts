@@ -1,3 +1,16 @@
+/**
+ * Tests for PortalCommands (CLI Portal Management)
+ *
+ * Success Criteria:
+ * - Test 1: add command creates symlink and context card
+ * - Test 2: add command validates target directory exists
+ * - Test 3: list command returns all registered portals with metadata
+ * - Test 4: remove command removes symlink and optionally context card
+ * - Test 5: show command displays portal details and file structure
+ * - Test 6: Commands log activity to Activity Journal
+ * - Test 7: Handles special characters in portal names
+ */
+
 import { assertEquals, assertExists, assertRejects } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { PortalCommands } from "../../src/cli/portal_commands.ts";

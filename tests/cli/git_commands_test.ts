@@ -1,6 +1,14 @@
 /**
  * Tests for GitCommands
  * Covers listBranches, showBranch, status, logByTraceId, and diff operations
+ *
+ * Success Criteria:
+ * - Test 1: listBranches returns ExoFrame branches sorted by commit date
+ * - Test 2: listBranches extracts trace_id from commit messages
+ * - Test 3: showBranch returns branch details with commit history
+ * - Test 4: status categorizes files (modified, untracked, added, deleted)
+ * - Test 5: logByTraceId finds commits with ExoTrace footer
+ * - Test 6: diff generates unified diff between refs/commits
  */
 
 import { assertEquals, assertExists, assertRejects, assertStringIncludes } from "jsr:@std/assert@^1.0.0";

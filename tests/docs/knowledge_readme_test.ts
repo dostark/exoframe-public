@@ -1,10 +1,12 @@
 /**
  * Tests for Knowledge README template documentation.
  *
- * Tests verify:
- * - Knowledge README template exists
- * - Documents vault structure
- * - Documents Obsidian setup
+ * Success Criteria:
+ * - Test 1: Knowledge README template exists at templates/Knowledge_README.md
+ * - Test 2: Documents vault structure (Dashboard, Portals, Reports)
+ * - Test 3: Documents Obsidian setup and configuration
+ * - Test 4: Has descriptive main title
+ * - Test 5: Documents folder purposes and usage
  */
 
 import { assert, assertStringIncludes } from "jsr:@std/assert@^1.0.0";

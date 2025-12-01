@@ -4,6 +4,15 @@
  * Tests for the MissionReporter service that generates comprehensive
  * mission reports after successful task execution.
  *
+ * Success Criteria:
+ * - Test 1: Generates report with YAML frontmatter and correct structure
+ * - Test 2: Includes git diff summary in report
+ * - Test 3: Links context files using Obsidian wiki links
+ * - Test 4: Logs report generation to Activity Journal
+ * - Test 5: Includes reasoning section from agent thinking
+ * - Test 6: Handles errors gracefully (empty inputs, missing data)
+ * - Test 7: Reports are searchable in Obsidian (proper filename format)
+ *
  * TDD: Tests written first, then implementation follows.
  */
 

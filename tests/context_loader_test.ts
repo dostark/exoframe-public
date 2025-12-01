@@ -222,7 +222,60 @@ describe("Warning Block Generation", () => {
 });
 
 // ============================================================================
-// Test 3: Context Content Format
+// Test 3: Agent Receives Warning and Can Reference It
+// ============================================================================
+
+describe("Agent Warning Accessibility", () => {
+  it("should include warning in result that agent can parse", async () => {
+    const file1 = await createTestFile("small.txt", generateContent(10000));
+    const file2 = await createTestFile("huge.txt", generateContent(100000));
+
+    const config: ContextConfig = {
+      maxTokens: 50000,
+      safetyMargin: 0.8,
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([file1, file2]);
+
+    // Agent receives structured warning data in result object
+    assertExists(result.warnings);
+    assertEquals(result.warnings.length > 0, true);
+
+    // Warning content is in the main content block for agent visibility
+    assertStringIncludes(result.content, "[System Warning");
+
+    // Agent can reference the skipped file names from warnings
+    const warningText = result.warnings.join(" ");
+    assertStringIncludes(warningText.toLowerCase(), "huge.txt");
+  });
+
+  it("should provide actionable warning message for agent", async () => {
+    const file1 = await createTestFile("a.txt", generateContent(60000));
+    const file2 = await createTestFile("b.txt", generateContent(60000));
+
+    const config: ContextConfig = {
+      maxTokens: 100000,
+      safetyMargin: 0.8,
+      truncationStrategy: "smallest-first",
+      isLocalAgent: false,
+    };
+
+    const loader = new ContextLoader(config);
+    const result = await loader.loadWithLimit([file1, file2]);
+
+    // Warning should mention token budget so agent understands the constraint
+    assertStringIncludes(result.content, "Token Budget");
+
+    // Warning should list affected files so agent knows what's missing
+    assertStringIncludes(result.content, "Files Affected");
+  });
+});
+
+// ============================================================================
+// Test 3b: Context Content Format
 // ============================================================================
 
 describe("Context Content Format", () => {

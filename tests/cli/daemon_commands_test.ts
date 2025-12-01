@@ -1,6 +1,15 @@
 /**
  * Tests for DaemonCommands
  * Covers start, stop, restart, status, and logs operations
+ *
+ * Success Criteria:
+ * - Test 1: start command spawns daemon process and creates PID file
+ * - Test 2: stop command sends SIGTERM (graceful) and cleans up PID file
+ * - Test 3: restart command stops then starts daemon
+ * - Test 4: status command reports running/stopped state correctly
+ * - Test 5: logs command supports --lines and --follow options
+ * - Test 6: Commands log activity to Activity Journal
+ * - Test 7: Handles edge cases (already running, not running, stale PID)
  */
 
 import { assertEquals, assertExists, assertRejects, assertStringIncludes } from "jsr:@std/assert@^1.0.0";

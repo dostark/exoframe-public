@@ -1,3 +1,16 @@
+/**
+ * Tests for PlanCommands (CLI Plan Management)
+ *
+ * Success Criteria:
+ * - Test 1: approve moves plan to /System/Active and updates status
+ * - Test 2: reject moves plan to /Inbox/Rejected with reason
+ * - Test 3: revise appends review comments and keeps plan in review
+ * - Test 4: list returns all plans with status indicators
+ * - Test 5: show displays plan content and metadata
+ * - Test 6: Commands validate plan exists and has correct status
+ * - Test 7: Tracks user identity in approval/rejection actions
+ */
+
 import { assertEquals, assertExists, assertRejects } from "jsr:@std/assert@^1.0.0";
 import { afterEach, beforeEach, describe, it } from "jsr:@std/testing@^1.0.0/bdd";
 import { join } from "@std/path";

@@ -1,6 +1,15 @@
 /**
  * Tests for BaseCommand abstract class
  * Covers all shared utilities used by command handlers
+ *
+ * Success Criteria:
+ * - Test 1: getUserIdentity returns git user or falls back to OS username
+ * - Test 2: extractFrontmatter parses YAML frontmatter correctly
+ * - Test 3: serializeFrontmatter converts object to valid YAML format
+ * - Test 4: updateFrontmatter preserves existing fields while updating
+ * - Test 5: validateFrontmatter throws on missing required fields
+ * - Test 6: formatTimestamp converts ISO to readable format
+ * - Test 7: truncate handles strings correctly with ellipsis
  */
 
 import { assertEquals, assertExists, assertStringIncludes, assertThrows } from "jsr:@std/assert@^1.0.0";

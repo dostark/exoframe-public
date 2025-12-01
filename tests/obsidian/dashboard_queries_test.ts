@@ -1,16 +1,18 @@
 /**
  * Tests for Dashboard Dataview queries - Step 5.5: The Obsidian Dashboard
  *
- * Tests verify:
- * - Dashboard has exactly 4 Dataview queries as specified
- * - Each query references correct ExoFrame folders
- * - Queries have proper FROM clauses
- * - Queries use correct field names for frontmatter
- * - Template exists and matches deployed Dashboard
+ * Success Criteria:
+ * - Test 1: Dashboard template exists at templates/Knowledge_Dashboard.md
+ * - Test 2: Dashboard has exactly 4 Dataview queries as specified
+ * - Test 3: Each query references correct ExoFrame folders (Inbox, System)
+ * - Test 4: Queries have proper FROM clauses with folder paths
+ * - Test 5: Queries use correct frontmatter field names (status, priority, etc.)
+ * - Test 6: Template matches deployed Dashboard structure
+ * - Test 7: Dashboard has Quick Links and CLI documentation
  */
 
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
-import { dashboardExists, readDashboard, templateExists } from "./helpers.ts";
+import { readDashboard, templateExists } from "./helpers.ts";
 
 // ============================================================================
 // Step 5.5: Dashboard Template Tests

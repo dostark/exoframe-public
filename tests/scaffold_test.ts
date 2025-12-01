@@ -1,3 +1,15 @@
+/**
+ * Tests for scaffold.sh script (Step 1.1: Scaffold Directory Structure)
+ *
+ * Success Criteria:
+ * - Test 1: Creates required directory structure (Inbox, Blueprints, etc.)
+ * - Test 2: Creates .gitkeep files in empty directories
+ * - Test 3: Copies exo.config.sample.toml template
+ * - Test 4: Copies src/main.ts and Knowledge/README.md templates
+ * - Test 5: Does not overwrite existing config files (idempotent)
+ * - Test 6: Outputs completion message on success
+ */
+
 import { assert, assertStringIncludes } from "https://deno.land/std@0.201.0/testing/asserts.ts";
 import { dirname, fromFileUrl, join } from "https://deno.land/std@0.201.0/path/mod.ts";
 import { exists } from "https://deno.land/std@0.201.0/fs/mod.ts";

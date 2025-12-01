@@ -1,11 +1,13 @@
 /**
  * Tests for ExoFrame User Guide documentation structure and content.
  *
- * Tests verify:
- * - User Guide has required sections
- * - Obsidian plugin documentation is complete
- * - CLI documentation is present
- * - Installation instructions exist
+ * Success Criteria:
+ * - Test 1: User Guide has numbered main sections (1-4+)
+ * - Test 2: Has Introduction section
+ * - Test 3: Documents Obsidian plugin installation and configuration
+ * - Test 4: Documents exoctl CLI commands and usage
+ * - Test 5: Includes installation/deployment instructions
+ * - Test 6: Documents file watcher behavior
  */
 
 import { assert, assertStringIncludes } from "jsr:@std/assert@^1.0.0";

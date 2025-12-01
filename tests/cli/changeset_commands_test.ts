@@ -1,6 +1,14 @@
 /**
  * Tests for ChangesetCommands
  * Covers list, show, approve, and reject operations
+ *
+ * Success Criteria:
+ * - Test 1: list returns changesets sorted by creation date
+ * - Test 2: show displays changeset details (branch, commits, files)
+ * - Test 3: approve merges branch to main with --no-ff
+ * - Test 4: reject archives branch without merging
+ * - Test 5: Commands validate branch exists and is correct type
+ * - Test 6: Counts files changed in changeset listings
  */
 
 import { assertEquals, assertExists, assertRejects, assertStringIncludes } from "jsr:@std/assert@^1.0.0";

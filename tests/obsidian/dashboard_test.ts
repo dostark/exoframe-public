@@ -2,10 +2,14 @@
  * Tests for Dashboard content, Dataview queries, and structure.
  * Consolidates tests from Steps 5.1 and 5.3.
  *
- * Tests verify:
- * - Dashboard exists and has required sections
- * - Dataview queries are valid and well-formed
- * - Dashboard structure (title, separators, frontmatter)
+ * Success Criteria:
+ * - Test 1: Dashboard.md exists in Knowledge/ or templates/
+ * - Test 2: Dashboard has required sections (Requests, Plans, Activity, Reports)
+ * - Test 3: Dataview queries use valid query types (TABLE, LIST)
+ * - Test 4: Dashboard has main title and horizontal separators
+ * - Test 5: Dashboard has sorting (most recent first)
+ * - Test 6: Dashboard frontmatter is valid YAML if present
+ * - Test 7: Dashboard has Quick Links or Tips section
  */
 
 import { assert, assertStringIncludes } from "jsr:@std/assert@^1.0.0";

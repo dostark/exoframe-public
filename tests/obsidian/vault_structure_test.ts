@@ -2,10 +2,13 @@
  * Tests for Obsidian vault structure and scaffold configuration.
  * Part of Step 5.2: Configure Obsidian Vault
  *
- * Tests verify:
- * - Scaffold script creates required directories
- * - Scaffold copies templates during deployment
- * - Gitignore includes .obsidian and Knowledge
+ * Success Criteria:
+ * - Test 1: Scaffold creates Knowledge/Portals directory
+ * - Test 2: Scaffold creates Knowledge/Reports directory
+ * - Test 3: Scaffold creates Knowledge/Context directory
+ * - Test 4: Dashboard template exists and is copied during deployment
+ * - Test 5: Gitignore includes .obsidian directory
+ * - Test 6: Scaffold creates .gitkeep files for empty directories
  *
  * Note: Template content tests are in tests/docs/
  */
