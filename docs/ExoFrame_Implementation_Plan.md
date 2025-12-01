@@ -1803,16 +1803,17 @@ Deno.test("MissionReporter: formats report with valid TOML frontmatter", async (
 
 ### Steps Summary
 
-| Step | Description                  | Location                    | Status      |
-| ---- | ---------------------------- | --------------------------- | ----------- |
-| 5.1  | Install Required Plugins     | Obsidian Community Plugins  | ✅ Complete |
-| 5.2  | Configure Obsidian Vault     | Knowledge/ directory        | ✅ Complete |
-| 5.3  | Pin Dashboard                | Knowledge/Dashboard.md      | ✅ Complete |
-| 5.4  | Configure File Watcher       | Obsidian Settings           | ✅ Complete |
-| 5.5  | The Obsidian Dashboard       | Knowledge/Dashboard.md      | ✅ Complete |
-| 5.6  | Request Commands             | src/cli/request_commands.ts | ✅ Complete |
-| 5.7  | YAML Frontmatter Migration   | src/cli/base.ts + parsers   | ✅ Complete |
-| 5.8  | LLM Provider Selection Logic | src/ai/provider_factory.ts  | ✅ Complete |
+| Step | Description                  | Location                      | Status      |
+| ---- | ---------------------------- | ----------------------------- | ----------- |
+| 5.1  | Install Required Plugins     | Obsidian Community Plugins    | ✅ Complete |
+| 5.2  | Configure Obsidian Vault     | Knowledge/ directory          | ✅ Complete |
+| 5.3  | Pin Dashboard                | Knowledge/Dashboard.md        | ✅ Complete |
+| 5.4  | Configure File Watcher       | Obsidian Settings             | ✅ Complete |
+| 5.5  | The Obsidian Dashboard       | Knowledge/Dashboard.md        | ✅ Complete |
+| 5.6  | Request Commands             | src/cli/request_commands.ts   | ✅ Complete |
+| 5.7  | YAML Frontmatter Migration   | src/cli/base.ts + parsers     | ✅ Complete |
+| 5.8  | LLM Provider Selection Logic | src/ai/provider_factory.ts    | ✅ Complete |
+| 5.9  | Request Processor Pipeline   | src/services/request_processor.ts | 🔲 Planned |
 
 > **Platform note:** Maintainers must document OS-specific instructions (Windows symlink prerequisites, macOS sandbox
 > prompts, Linux desktop watchers) before marking each sub-step complete.
@@ -2662,6 +2663,110 @@ Step 5.8 has been implemented using TDD methodology:
 12. [x] All 23 unit tests pass in `tests/provider_factory_test.ts`
 13. [x] Integration test: daemon starts with each provider type
 14. [x] Manual test: See [MT-15: LLM Provider Selection](./ExoFrame_Manual_Test_Scenarios.md#scenario-mt-15-llm-provider-selection)
+
+---
+
+### Step 5.9: Request Processor Pipeline 🔲 PLANNED
+
+- **Dependencies:** Step 5.8 (LLM Provider Selection), Step 3.2 (AgentRunner), Step 2.2 (Frontmatter Parser)
+- **Rollback:** Remove request processor, revert to TODO comment in main.ts
+- **Action:** Wire up the file watcher callback to process requests and generate plans
+- **Location:** `src/services/request_processor.ts`, `src/main.ts`
+
+**Problem Statement:**
+
+The daemon currently detects new request files but does not process them:
+
+```typescript
+// src/main.ts (current state)
+const watcher = new FileWatcher(config, (event) => {
+  console.log(`📥 New file ready: ${event.path}`);
+  // TODO: Dispatch to request processor  <-- THIS IS THE GAP
+});
+```
+
+Manual test MT-03 (Create Request) passes, but MT-04 (Plan Generation) fails because the request-to-plan pipeline is not connected.
+
+**The Solution: Request Processor Service**
+
+Implement a `RequestProcessor` service that:
+
+1. Parses the detected request file (YAML frontmatter + body)
+2. Validates the request against schema
+3. Loads agent blueprint from `Blueprints/Agents/`
+4. Calls `AgentRunner.run()` with the LLM provider
+5. Writes the generated plan to `Inbox/Plans/`
+6. Updates request status to `processing` → `planned`
+7. Logs all activities to the Activity Journal
+
+**Implementation Files:**
+
+| File | Purpose |
+|------|---------|
+| `src/services/request_processor.ts` | RequestProcessor class |
+| `src/main.ts` | Integration: call processor in watcher callback |
+| `tests/request_processor_test.ts` | TDD tests |
+
+**RequestProcessor Interface:**
+
+```typescript
+interface RequestProcessor {
+  /**
+   * Process a detected request file and generate a plan
+   * @param filePath - Path to the request markdown file
+   * @returns The generated plan file path, or null if processing failed
+   */
+  process(filePath: string): Promise<string | null>;
+}
+```
+
+**Daemon Integration:**
+
+```typescript
+// src/main.ts (after implementation)
+const requestProcessor = new RequestProcessor(config, llmProvider, dbService);
+
+const watcher = new FileWatcher(config, async (event) => {
+  console.log(`📥 New file ready: ${event.path}`);
+  
+  try {
+    const planPath = await requestProcessor.process(event.path);
+    if (planPath) {
+      console.log(`✅ Plan generated: ${planPath}`);
+    }
+  } catch (error) {
+    console.error(`❌ Failed to process request: ${error.message}`);
+  }
+});
+```
+
+**Success Criteria:**
+
+1. [ ] `RequestProcessor.process()` parses request file correctly
+2. [ ] Invalid requests logged and skipped (no crash)
+3. [ ] Agent blueprint loaded from `Blueprints/Agents/default.toml`
+4. [ ] `AgentRunner.run()` called with correct prompt
+5. [ ] Plan file created in `Inbox/Plans/` with YAML frontmatter
+6. [ ] Plan linked to original request via `trace_id`
+7. [ ] Request status updated to `planned`
+8. [ ] Activity logged: `request.processing`, `request.planned`
+9. [ ] MT-04 (Plan Generation) passes
+10. [ ] All unit tests pass in `tests/request_processor_test.ts`
+
+**TDD Test Cases:**
+
+```typescript
+// tests/request_processor_test.ts
+
+Deno.test("RequestProcessor: parses valid request file", async () => {...});
+Deno.test("RequestProcessor: skips invalid YAML frontmatter", async () => {...});
+Deno.test("RequestProcessor: generates plan with MockLLMProvider", async () => {...});
+Deno.test("RequestProcessor: writes plan to Inbox/Plans/", async () => {...});
+Deno.test("RequestProcessor: plan has correct frontmatter", async () => {...});
+Deno.test("RequestProcessor: updates request status", async () => {...});
+Deno.test("RequestProcessor: logs activity to database", async () => {...});
+Deno.test("RequestProcessor: handles LLM errors gracefully", async () => {...});
+```
 
 ---
 
