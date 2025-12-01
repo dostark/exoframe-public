@@ -1,6 +1,7 @@
 import { ConfigService } from "./config/service.ts";
 import { FileWatcher } from "./services/watcher.ts";
 import { DatabaseService } from "./services/db.ts";
+import { ProviderFactory } from "./ai/provider_factory.ts";
 import { ensureDir } from "@std/fs";
 import { join } from "@std/path";
 
@@ -16,9 +17,31 @@ if (import.meta.main) {
     console.log(`   Root: ${config.system.root}`);
     console.log(`   Log Level: ${config.system.log_level}`);
 
+    // Initialize LLM Provider
+    const providerInfo = ProviderFactory.getProviderInfo(config);
+    const llmProvider = ProviderFactory.create(config);
+    console.log(`✅ LLM Provider initialized: ${providerInfo.id}`);
+    console.log(`   Type: ${providerInfo.type}`);
+    console.log(`   Model: ${providerInfo.model}`);
+    console.log(`   Source: ${providerInfo.source}`);
+
     // Initialize Database Service
     const dbService = new DatabaseService(config);
     console.log("✅ Database connected (WAL mode)");
+
+    // Log provider initialization to Activity Journal
+    dbService.logActivity(
+      "system",
+      "llm.provider.initialized",
+      llmProvider.id,
+      {
+        type: providerInfo.type,
+        model: providerInfo.model,
+        source: providerInfo.source,
+      },
+      undefined,
+      null,
+    );
 
     // Ensure Inbox/Requests directory exists
     const inboxPath = join(config.system.root, config.paths.inbox, "Requests");

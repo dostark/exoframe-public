@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { AiConfigSchema } from "./ai_config.ts";
 
 export const ConfigSchema = z.object({
   system: z.object({
@@ -29,6 +30,8 @@ export const ConfigSchema = z.object({
     target_path: z.string(),
     created: z.string().optional(),
   })).default([]),
+  /** AI/LLM provider configuration */
+  ai: AiConfigSchema.optional(),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

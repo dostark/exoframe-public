@@ -1797,9 +1797,22 @@ Deno.test("MissionReporter: formats report with valid TOML frontmatter", async (
 
 ---
 
-## Phase 5: Obsidian Setup ✅ COMPLETED
+## Phase 5: Obsidian Setup & Runtime Integration ✅ IN PROGRESS
 
 **Goal:** Configure Obsidian as the primary UI for ExoFrame, enabling users to view dashboards, manage tasks, and monitor agent activity without leaving their knowledge management environment.
+
+### Steps Summary
+
+| Step | Description                  | Location                    | Status      |
+| ---- | ---------------------------- | --------------------------- | ----------- |
+| 5.1  | Install Required Plugins     | Obsidian Community Plugins  | ✅ Complete |
+| 5.2  | Configure Obsidian Vault     | Knowledge/ directory        | ✅ Complete |
+| 5.3  | Pin Dashboard                | Knowledge/Dashboard.md      | ✅ Complete |
+| 5.4  | Configure File Watcher       | Obsidian Settings           | ✅ Complete |
+| 5.5  | The Obsidian Dashboard       | Knowledge/Dashboard.md      | ✅ Complete |
+| 5.6  | Request Commands             | src/cli/request_commands.ts | ✅ Complete |
+| 5.7  | YAML Frontmatter Migration   | src/cli/base.ts + parsers   | ✅ Complete |
+| 5.8  | LLM Provider Selection Logic | src/ai/provider_factory.ts  | ✅ Complete |
 
 > **Platform note:** Maintainers must document OS-specific instructions (Windows symlink prerequisites, macOS sandbox
 > prompts, Linux desktop watchers) before marking each sub-step complete.
@@ -2602,6 +2615,56 @@ TABLE status, priority, agent FROM "Inbox/Requests" LIMIT 1
 
 ---
 
+### Step 5.8: LLM Provider Selection Logic ✅ COMPLETE
+
+- **Dependencies:** Step 3.1 (Model Adapter with IModelProvider interface), Step 6.8 (MockLLMProvider)
+- **Rollback:** Remove provider selection, hardcode MockProvider
+- **Action:** Implement provider selection logic in daemon startup based on environment and configuration
+- **Location:** `src/ai/provider_factory.ts`, `src/main.ts`
+
+**Implementation Summary:**
+
+Step 5.8 has been implemented using TDD methodology:
+
+1. **Tests Created:** `tests/provider_factory_test.ts` (23 tests)
+2. **Config Schema:** `src/config/ai_config.ts` with Zod validation
+3. **Factory Class:** `src/ai/provider_factory.ts` with `create()` and `getProviderInfo()`
+4. **Daemon Integration:** `src/main.ts` logs provider ID at startup
+
+**Supported Providers:**
+
+- `mock` - MockLLMProvider for testing (default)
+- `ollama` - Local Ollama server
+- `anthropic` - Anthropic Claude API (requires ANTHROPIC_API_KEY)
+- `openai` - OpenAI API (requires OPENAI_API_KEY)
+
+**Configuration Priority:**
+
+1. Environment variables (highest): `EXO_LLM_PROVIDER`, `EXO_LLM_MODEL`, `EXO_LLM_BASE_URL`, `EXO_LLM_TIMEOUT_MS`
+2. Config file [ai] section
+3. Defaults (MockLLMProvider)
+
+**Manual Test:** See MT-15 in `docs/ExoFrame_Manual_Test_Scenarios.md`
+
+**Success Criteria:** ✅ All Met
+
+1. [x] `ProviderFactory.create()` returns correct provider based on environment
+2. [x] Environment variables override config file settings
+3. [x] Config file `[ai]` section parsed correctly
+4. [x] Default is `MockLLMProvider` when no config/env specified
+5. [x] Missing API key throws clear error for cloud providers
+6. [x] Unknown provider falls back to mock with warning
+7. [x] Provider ID logged at daemon startup
+8. [x] `EXO_LLM_MODEL` correctly sets model for all providers
+9. [x] `EXO_LLM_BASE_URL` correctly overrides endpoint
+10. [x] `EXO_LLM_TIMEOUT_MS` correctly sets timeout
+11. [x] Zod schema validates `[ai]` config section
+12. [x] All 23 unit tests pass in `tests/provider_factory_test.ts`
+13. [x] Integration test: daemon starts with each provider type
+14. [x] Manual test: See [MT-15: LLM Provider Selection](./ExoFrame_Manual_Test_Scenarios.md#scenario-mt-15-llm-provider-selection)
+
+---
+
 ## Phase 6: Testing & Quality Assurance
 
 > **Status:** ✅ IN PROGRESS\
@@ -2621,17 +2684,17 @@ Phase 6 establishes the testing infrastructure needed to confidently ship ExoFra
 
 ### Steps Summary
 
-| Step | Description                   | Location                           | Status      |
-| ---- | ----------------------------- | ---------------------------------- | ----------- |
-| 6.1  | Unit Tests (Core Services)    | `tests/*_test.ts`                  | ✅ Complete |
-| 6.2  | Obsidian Integration Tests    | `tests/obsidian/`                  | ✅ Complete |
-| 6.3  | CLI Command Tests             | `tests/cli/`                       | ✅ Complete |
-| 6.4  | Integration Test Scenarios    | `tests/integration/`               | ✅ Complete |
-| 6.5  | Documentation Structure Tests | `tests/docs/`                      | ✅ Complete |
-| 6.6  | Security Validation Tests     | `tests/security/`                  | 🔲 Planned  |
-| 6.7  | Performance Benchmarks        | `tests/benchmarks/`                | 🔲 Planned  |
+| Step | Description                   | Location                                | Status      |
+| ---- | ----------------------------- | --------------------------------------- | ----------- |
+| 6.1  | Unit Tests (Core Services)    | `tests/*_test.ts`                       | ✅ Complete |
+| 6.2  | Obsidian Integration Tests    | `tests/obsidian/`                       | ✅ Complete |
+| 6.3  | CLI Command Tests             | `tests/cli/`                            | ✅ Complete |
+| 6.4  | Integration Test Scenarios    | `tests/integration/`                    | ✅ Complete |
+| 6.5  | Documentation Structure Tests | `tests/docs/`                           | ✅ Complete |
+| 6.6  | Security Validation Tests     | `tests/security/`                       | 🔲 Planned  |
+| 6.7  | Performance Benchmarks        | `tests/benchmarks/`                     | 🔲 Planned  |
 | 6.8  | Mock LLM Provider             | `src/ai/providers/mock_llm_provider.ts` | ✅ Complete |
-| 6.9  | Manual QA Checklist           | Testing Strategy §4                | 🔲 Planned  |
+| 6.9  | Manual QA Checklist           | Testing Strategy §4                     | 🔲 Planned  |
 
 **Note:** Lease management is integrated into `src/services/execution_loop.ts` (not a separate service).
 Tests for lease acquisition/release are in `tests/execution_loop_test.ts`.

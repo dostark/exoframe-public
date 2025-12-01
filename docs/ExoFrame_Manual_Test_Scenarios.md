@@ -1006,6 +1006,137 @@ rm ~/ExoFrame/Inbox/Requests/rapid-*.md
 
 ---
 
+## Scenario MT-15: LLM Provider Selection
+
+**Purpose:** Verify daemon correctly selects LLM provider based on environment variables and configuration.
+
+### Preconditions
+
+- ExoFrame installed (MT-01 complete)
+- No daemon currently running
+- Ollama installed (optional, for Ollama tests)
+
+### Steps
+
+```bash
+# Step 1: Test default behavior (mock provider)
+cd ~/ExoFrame
+deno task start:fg &
+sleep 3
+
+# Step 2: Check startup logs for provider
+grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
+
+# Step 3: Stop daemon
+exoctl daemon stop
+
+# Step 4: Test Ollama provider via environment
+EXO_LLM_PROVIDER=ollama deno task start:fg &
+sleep 3
+grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
+exoctl daemon stop
+
+# Step 5: Test Ollama with custom model
+EXO_LLM_PROVIDER=ollama EXO_LLM_MODEL=codellama deno task start:fg &
+sleep 3
+grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
+exoctl daemon stop
+
+# Step 6: Test missing API key error (Anthropic)
+unset ANTHROPIC_API_KEY
+EXO_LLM_PROVIDER=anthropic deno task start:fg 2>&1 | head -20
+# Should show error about missing API key
+
+# Step 7: Test config file provider selection
+cat >> ~/ExoFrame/exo.config.toml << 'EOF'
+[ai]
+provider = "ollama"
+model = "llama3.2"
+EOF
+deno task start:fg &
+sleep 3
+grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
+exoctl daemon stop
+
+# Step 8: Test environment overrides config
+EXO_LLM_PROVIDER=mock deno task start:fg &
+sleep 3
+grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
+exoctl daemon stop
+```
+
+### Expected Results
+
+**Step 2:**
+
+- Shows: `✅ LLM Provider: mock-recorded`
+- Mock provider used by default
+
+**Step 4:**
+
+- Shows: `✅ LLM Provider: ollama-llama2`
+- Ollama provider selected via env var
+
+**Step 5:**
+
+- Shows: `✅ LLM Provider: ollama-codellama`
+- Custom model from EXO_LLM_MODEL
+
+**Step 6:**
+
+- Shows: `❌ Error: ANTHROPIC_API_KEY environment variable required for Anthropic provider`
+- Daemon does NOT start
+
+**Step 7:**
+
+- Shows: `✅ LLM Provider: ollama-llama3.2`
+- Config file settings used
+
+**Step 8:**
+
+- Shows: `✅ LLM Provider: mock-recorded`
+- Environment variable overrides config
+
+### Verification
+
+```bash
+# Check daemon log for provider initialization
+grep -E "LLM Provider|provider.*mock|provider.*ollama" ~/ExoFrame/System/daemon.log
+
+# Verify provider ID format
+# Expected patterns:
+#   mock-recorded
+#   mock-scripted
+#   ollama-<model>
+#   anthropic-<model>
+#   openai-<model>
+```
+
+### Cleanup
+
+```bash
+# Stop daemon
+exoctl daemon stop 2>/dev/null || pkill -f "exoframe"
+
+# Remove test config section (if added)
+# Edit ~/ExoFrame/exo.config.toml and remove [ai] section
+
+# Unset test environment variables
+unset EXO_LLM_PROVIDER EXO_LLM_MODEL EXO_LLM_BASE_URL
+```
+
+### Pass Criteria
+
+- [ ] Default provider is MockLLMProvider
+- [ ] `EXO_LLM_PROVIDER=ollama` creates OllamaProvider
+- [ ] `EXO_LLM_MODEL` overrides model name
+- [ ] Missing API key shows clear error (does not crash)
+- [ ] Config file `[ai]` section is respected
+- [ ] Environment variables override config file
+- [ ] Provider ID logged at startup
+
+---
+
 ## QA Sign-off Template
 
 ```markdown
@@ -1033,10 +1164,11 @@ rm ~/ExoFrame/Inbox/Requests/rapid-*.md
 | MT-12 | Database Corruption      |      |      |      |       |
 | MT-13 | Concurrent Requests      |      |      |      |       |
 | MT-14 | File Watcher Reliability |      |      |      |       |
+| MT-15 | LLM Provider Selection   |      |      |      |       |
 
 ### Summary
 
-- **Total Scenarios:** 14
+- **Total Scenarios:** 15
 - **Passed:**
 - **Failed:**
 - **Skipped:**
