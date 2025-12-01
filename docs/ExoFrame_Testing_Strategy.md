@@ -244,7 +244,7 @@ The production daemon (`deno task start:fg`) runs with restricted permissions:
 
 ---
 
-### 2.4 Performance Benchmarks
+### 2.5 Performance Benchmarks
 
 **Purpose:** Establish baselines and detect regressions.
 
@@ -292,7 +292,7 @@ deno run scripts/compare_benchmarks.ts --baseline=baseline.json --current=curren
 
 ---
 
-### 2.5 Documentation Tests
+### 2.6 Documentation Tests
 
 **Purpose:** Prevent documentation drift from code.
 
@@ -315,7 +315,7 @@ deno test tests/docs/
 
 ---
 
-### 2.6 Manual QA
+### 2.4 Manual QA
 
 **Purpose:** Catch issues that automated tests miss.
 
@@ -331,7 +331,7 @@ deno test tests/docs/
 
 **QA Scenarios:**
 
-See Section 4 (Pre-Release Checklist) for detailed scenarios.
+See [Manual Test Scenarios](./ExoFrame_Manual_Test_Scenarios.md) for detailed test scripts with step-by-step commands and expected results.
 
 ---
 
@@ -539,67 +539,43 @@ deno task test:all
 
 ### 4.2 Manual QA Scenarios
 
-**Execute on each target platform before major releases:**
+**Execute on each target platform before major releases.**
 
-| #  | Scenario                  | Steps                                                  | Expected Result                             | Pass/Fail |
-| -- | ------------------------- | ------------------------------------------------------ | ------------------------------------------- | --------- |
-| 1  | **Fresh Install**         | Clone repo → `deno task setup` → `exoctl daemon start` | Daemon starts, directories created          |           |
-| 2  | **Create Request**        | `exoctl request "Test"`                                | Request file created with valid frontmatter |           |
-| 3  | **Plan Generation**       | Wait for daemon to process                             | Plan appears in `/Inbox/Plans/`             |           |
-| 4  | **Plan Approval**         | `exoctl plan approve <id>`                             | Plan moved to `/System/Active/`             |           |
-| 5  | **Execution**             | Wait for agent execution                               | Report created, git branch exists           |           |
-| 6  | **Portal Mount**          | `exoctl portal add ~/project MyProject`                | Symlink created, context card generated     |           |
-| 7  | **Daemon Crash Recovery** | `kill -9 <daemon_pid>` → restart                       | Leases expired, state recovered             |           |
-| 8  | **Database Corruption**   | Delete `journal.db` → restart                          | Error message, recovery instructions        |           |
-| 9  | **Invalid Request**       | Create request with malformed YAML                     | Validation error logged, file skipped       |           |
-| 10 | **Real LLM Test**         | Run with actual Anthropic/OpenAI API                   | Plan generated, tokens logged               |           |
+See **[Manual Test Scenarios](./ExoFrame_Manual_Test_Scenarios.md)** for detailed step-by-step instructions with exact commands and expected results.
+
+**Scenario Summary (14 total):**
+
+| ID    | Scenario                 | Category       |
+| ----- | ------------------------ | -------------- |
+| MT-01 | Fresh Installation       | Setup          |
+| MT-02 | Daemon Startup           | Setup          |
+| MT-03 | Create Request           | Core Workflow  |
+| MT-04 | Plan Generation (Mock)   | Core Workflow  |
+| MT-05 | Plan Approval            | Core Workflow  |
+| MT-06 | Plan Rejection           | Core Workflow  |
+| MT-07 | Plan Execution (Mock)    | Core Workflow  |
+| MT-08 | Portal Management        | Features       |
+| MT-09 | Daemon Crash Recovery    | Error Handling |
+| MT-10 | Real LLM Integration     | Integration    |
+| MT-11 | Invalid Request Handling | Error Handling |
+| MT-12 | Database Corruption      | Error Handling |
+| MT-13 | Concurrent Requests      | Reliability    |
+| MT-14 | File Watcher Reliability | Reliability    |
+
+**Minimum for v1.0 Release:** MT-01 through MT-12 must pass on Ubuntu 24.04.
 
 ---
 
 ### 4.3 Sign-off Template
 
-```markdown
-## QA Sign-off: v[VERSION]
+Use the **QA Sign-off Template** in [Manual Test Scenarios](./ExoFrame_Manual_Test_Scenarios.md#qa-sign-off-template) for release sign-off.
 
-**Tester:** [Name]
-**Date:** [Date]
-**Platform:** [Ubuntu 24.04 / macOS / Windows WSL2]
+The template includes:
 
-### Automated Tests
-
-- [ ] Unit tests pass
-- [ ] Integration tests pass
-- [ ] Security tests pass
-- [ ] Documentation tests pass
-- [ ] Benchmarks within threshold
-
-### Manual QA Scenarios
-
-| #  | Scenario              | Pass/Fail | Notes |
-| -- | --------------------- | --------- | ----- |
-| 1  | Fresh Install         |           |       |
-| 2  | Create Request        |           |       |
-| 3  | Plan Generation       |           |       |
-| 4  | Plan Approval         |           |       |
-| 5  | Execution             |           |       |
-| 6  | Portal Mount          |           |       |
-| 7  | Daemon Crash Recovery |           |       |
-| 8  | Database Corruption   |           |       |
-| 9  | Invalid Request       |           |       |
-| 10 | Real LLM Test         |           |       |
-
-### Issues Found
-
-- [ ] None
-- [ ] [Issue #XX: Description]
-
-### Verdict
-
-- [ ] **APPROVED** for release
-- [ ] **BLOCKED** - see issues above
-
-**Signature:** _____________________
-```
+- Checklist for all 14 manual test scenarios
+- Pass/Fail/Skip tracking with notes
+- Issue documentation section
+- Final verdict (Approved/Blocked)
 
 ---
 
@@ -613,7 +589,7 @@ deno task test:all
 | **Integration Tests**   | Scenarios 1-10 (all 10 scenarios implemented)                        | ✅ Complete |
 | **Security Tests**      | Path traversal, Network exfil, Env theft, Shell injection (29 tests) | ✅ Complete |
 | **Documentation Tests** | User Guide sections, CLI coverage                                    | ✅ Complete |
-| **Manual QA**           | All 10 scenarios on Ubuntu                                           | 🔲 Planned  |
+| **Manual QA**           | All 14 scenarios on Ubuntu (see Manual Test Scenarios doc)           | 🔲 Planned  |
 
 ### 5.2 In Scope (Should Have)
 
