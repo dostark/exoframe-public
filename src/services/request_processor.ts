@@ -19,6 +19,7 @@ import type { DatabaseService } from "./db.ts";
 import type { Config } from "../config/schema.ts";
 import { AgentRunner, type Blueprint, type ParsedRequest } from "./agent_runner.ts";
 import { PlanWriter, type RequestMetadata } from "./plan_writer.ts";
+import { EventLogger } from "./event_logger.ts";
 
 // ============================================================================
 // Types and Interfaces
@@ -75,6 +76,7 @@ export class RequestProcessor {
   private readonly agentRunner: AgentRunner;
   private readonly planWriter: PlanWriter;
   private readonly plansDir: string;
+  private readonly logger: EventLogger;
 
   constructor(
     private readonly config: Config,
@@ -82,6 +84,12 @@ export class RequestProcessor {
     private readonly db: DatabaseService,
     private readonly processorConfig: RequestProcessorConfig,
   ) {
+    // Initialize EventLogger for this service
+    this.logger = new EventLogger({
+      db,
+      defaultActor: "agent:request-processor",
+    });
+
     // Initialize AgentRunner
     this.agentRunner = new AgentRunner(provider, { db });
 
@@ -113,23 +121,26 @@ export class RequestProcessor {
     const traceId = frontmatter.trace_id;
     const requestId = basename(filePath, ".md");
 
+    // Create trace-specific logger
+    const traceLogger = this.logger.child({ traceId });
+
     // Log processing start
-    this.logActivity("request.processing", filePath, {
-      trace_id: traceId,
+    traceLogger.info("request.processing", filePath, {
       agent: frontmatter.agent,
       priority: frontmatter.priority,
-    }, traceId);
+    });
 
     try {
       // Step 2: Load the agent blueprint
       const blueprint = await this.loadBlueprint(frontmatter.agent);
       if (!blueprint) {
-        console.error(`[RequestProcessor] Blueprint not found: ${frontmatter.agent}`);
+        traceLogger.error("blueprint.not_found", frontmatter.agent, {
+          request: filePath,
+        });
         await this.updateRequestStatus(filePath, parsed.rawContent, "failed");
-        this.logActivity("request.failed", filePath, {
-          trace_id: traceId,
+        traceLogger.error("request.failed", filePath, {
           error: `Blueprint not found: ${frontmatter.agent}`,
-        }, traceId);
+        });
         return null;
       }
 
@@ -162,22 +173,18 @@ export class RequestProcessor {
       await this.updateRequestStatus(filePath, parsed.rawContent, "planned");
 
       // Log successful completion
-      this.logActivity("request.planned", filePath, {
-        trace_id: traceId,
+      traceLogger.info("request.planned", filePath, {
         plan_path: planResult.planPath,
-      }, traceId);
+      });
 
       return planResult.planPath;
     } catch (error) {
       // Handle errors gracefully
-      console.error(`[RequestProcessor] Error processing request:`, error);
+      traceLogger.error("request.failed", filePath, {
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       await this.updateRequestStatus(filePath, parsed.rawContent, "failed");
-
-      this.logActivity("request.failed", filePath, {
-        trace_id: traceId,
-        error: error instanceof Error ? error.message : String(error),
-      }, traceId);
 
       return null;
     }
@@ -189,7 +196,7 @@ export class RequestProcessor {
   private async parseRequestFile(filePath: string): Promise<ParsedRequestFile | null> {
     // Check file exists
     if (!await exists(filePath)) {
-      console.error(`[RequestProcessor] File not found: ${filePath}`);
+      this.logger.error("file.not_found", filePath, {});
       return null;
     }
 
@@ -199,7 +206,9 @@ export class RequestProcessor {
       // Extract TOML frontmatter between +++ delimiters
       const tomlMatch = content.match(/^\+\+\+\n([\s\S]*?)\n\+\+\+\n?([\s\S]*)$/);
       if (!tomlMatch) {
-        console.error(`[RequestProcessor] Invalid frontmatter format in: ${filePath}`);
+        this.logger.error("frontmatter.invalid", filePath, {
+          error: "Missing or malformed +++ delimiters",
+        });
         return null;
       }
 
@@ -211,7 +220,7 @@ export class RequestProcessor {
 
       // Validate required fields
       if (!frontmatter.trace_id) {
-        console.error(`[RequestProcessor] Missing trace_id in: ${filePath}`);
+        this.logger.error("frontmatter.missing_trace_id", filePath, {});
         return null;
       }
 
@@ -221,7 +230,9 @@ export class RequestProcessor {
         rawContent: content,
       };
     } catch (error) {
-      console.error(`[RequestProcessor] Failed to parse: ${filePath}`, error);
+      this.logger.error("file.parse_failed", filePath, {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return null;
     }
   }
@@ -243,7 +254,9 @@ export class RequestProcessor {
         agentId,
       };
     } catch (error) {
-      console.error(`[RequestProcessor] Failed to load blueprint: ${agentId}`, error);
+      this.logger.error("blueprint.load_failed", agentId, {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return null;
     }
   }
@@ -265,30 +278,10 @@ export class RequestProcessor {
 
       await Deno.writeTextFile(filePath, updatedContent);
     } catch (error) {
-      console.error(`[RequestProcessor] Failed to update status: ${filePath}`, error);
-    }
-  }
-
-  /**
-   * Log activity to the Activity Journal
-   */
-  private logActivity(
-    actionType: string,
-    target: string,
-    payload: Record<string, unknown>,
-    traceId?: string,
-  ): void {
-    try {
-      this.db.logActivity(
-        "agent",
-        actionType,
-        target,
-        payload,
-        traceId,
-        null,
-      );
-    } catch (error) {
-      console.error(`[RequestProcessor] Failed to log activity:`, error);
+      this.logger.error("request.status_update_failed", filePath, {
+        new_status: newStatus,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 }

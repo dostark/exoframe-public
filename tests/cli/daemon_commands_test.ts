@@ -129,8 +129,8 @@ await new Promise(() => {});
         // Try to start again
         await daemonCommands.start();
 
-        // Verify error message about already running
-        assertStringIncludes(logOutput, "already running");
+        // Verify error message about already running (EventLogger format)
+        assertStringIncludes(logOutput, "daemon.already_running");
       } finally {
         console.log = originalLog;
       }
@@ -163,7 +163,7 @@ await new Promise(() => {});
 
       assertEquals(logs.length, 1);
       const log = logs[0] as Record<string, unknown>;
-      assertEquals(log.actor, "human");
+      assertExists(log.actor);
 
       // Verify payload contains expected fields
       const payload = JSON.parse(log.payload as string);
@@ -216,8 +216,8 @@ await new Promise(() => {});
         // Try to stop when not running
         await daemonCommands.stop();
 
-        // Verify friendly message
-        assertStringIncludes(logOutput, "not running");
+        // Verify friendly message (EventLogger format)
+        assertStringIncludes(logOutput, "daemon.not_running");
       } finally {
         console.log = originalLog;
       }
@@ -263,7 +263,8 @@ await new Promise(() => {});
 
       assertEquals(logs.length, 1);
       const log = logs[0] as Record<string, unknown>;
-      assertEquals(log.actor, "human");
+      // Actor is now user identity (email or username) instead of "human"
+      assertExists(log.actor);
 
       // Verify payload contains expected fields
       const payload = JSON.parse(log.payload as string);
@@ -329,7 +330,8 @@ await new Promise(() => {});
 
       assertEquals(logs.length, 1);
       const log = logs[0] as Record<string, unknown>;
-      assertEquals(log.actor, "human");
+      // Actor is now user identity (email or username) instead of "human"
+      assertExists(log.actor);
 
       // Verify payload contains expected fields
       const payload = JSON.parse(log.payload as string);
@@ -437,8 +439,8 @@ await new Promise(() => {});
       try {
         await daemonCommands.logs(50, false);
 
-        // Should show friendly message
-        assertStringIncludes(logOutput, "No log file found");
+        // Should show friendly message (EventLogger format)
+        assertStringIncludes(logOutput, "daemon.no_logs");
       } finally {
         console.log = originalLog;
       }

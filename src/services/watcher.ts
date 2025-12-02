@@ -1,6 +1,7 @@
 import { join } from "@std/path";
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "./db.ts";
+import { EventLogger } from "./event_logger.ts";
 
 /**
  * Event emitted when a stable file is detected
@@ -25,7 +26,7 @@ export class FileWatcher {
   private onFileReady: (event: FileReadyEvent) => void | Promise<void>;
   private abortController: AbortController | null = null;
   private fsWatcher: Deno.FsWatcher | null = null;
-  private db?: DatabaseService;
+  private logger: EventLogger;
 
   constructor(
     config: Config,
@@ -36,7 +37,12 @@ export class FileWatcher {
     this.debounceMs = config.watcher.debounce_ms;
     this.stabilityCheck = config.watcher.stability_check;
     this.onFileReady = onFileReady;
-    this.db = db;
+
+    // Initialize EventLogger
+    this.logger = new EventLogger({
+      db,
+      defaultActor: "system",
+    });
   }
 
   /**
@@ -51,13 +57,14 @@ export class FileWatcher {
       });
       this.fsWatcher = watcher;
 
-      console.log(`📁 Watching directory: ${this.watchPath}`);
-      console.log(`   Debounce: ${this.debounceMs}ms | Stability Check: ${this.stabilityCheck}`);
-
-      // Log watcher started
-      this.logActivity("system", "watcher.started", this.watchPath, {
-        debounce_ms: this.debounceMs,
-        stability_check: this.stabilityCheck,
+      this.logger.log({
+        action: "watcher.started",
+        target: this.watchPath,
+        payload: {
+          debounce_ms: this.debounceMs,
+          stability_check: this.stabilityCheck,
+        },
+        icon: "📁",
       });
 
       for await (const event of watcher) {
@@ -75,7 +82,7 @@ export class FileWatcher {
             }
 
             // Log file event detected
-            this.logActivity("system", `watcher.event_${event.kind}`, path, {
+            this.logger.debug(`watcher.event_${event.kind}`, path, {
               event_kind: event.kind,
             });
 
@@ -85,16 +92,15 @@ export class FileWatcher {
       }
     } catch (error) {
       // Log watcher error
-      this.logActivity("system", "watcher.error", this.watchPath, {
+      this.logger.error("watcher.error", this.watchPath, {
         error_type: error instanceof Error ? error.constructor.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
       });
 
       if (error instanceof Deno.errors.NotFound) {
+        // Console-only message for user guidance
         console.error(`❌ Watch directory not found: ${this.watchPath}`);
         console.error(`   Create it with: mkdir -p "${this.watchPath}"`);
-      } else {
-        console.error("❌ Watcher error:", error);
       }
       throw error;
     }
@@ -121,9 +127,12 @@ export class FileWatcher {
     this.debounceTimers.clear();
 
     // Log watcher stopped
-    this.logActivity("system", "watcher.stopped", this.watchPath, {});
-
-    console.log("⏹️  File watcher stopped");
+    this.logger.log({
+      action: "watcher.stopped",
+      target: this.watchPath,
+      payload: {},
+      icon: "⏹️",
+    });
   }
 
   /**
@@ -160,7 +169,7 @@ export class FileWatcher {
       }
 
       // Log file ready
-      this.logActivity("system", "watcher.file_ready", path, {
+      this.logger.info("watcher.file_ready", path, {
         content_length: content.length,
         stability_check_used: this.stabilityCheck,
       });
@@ -169,16 +178,10 @@ export class FileWatcher {
       await this.onFileReady({ path, content });
     } catch (error) {
       // Log file processing error
-      this.logActivity("system", "watcher.file_error", path, {
+      this.logger.warn("watcher.file_error", path, {
         error_type: error instanceof Error ? error.constructor.name : "Unknown",
         error_message: error instanceof Error ? error.message : String(error),
       });
-
-      if (error instanceof Error) {
-        console.error(`⚠️  ${error.message}`);
-      } else {
-        console.error("⚠️  Unknown error processing file:", error);
-      }
     }
   }
 
@@ -208,7 +211,7 @@ export class FileWatcher {
           // Validate it's not empty
           if (content.trim().length > 0) {
             // Log successful stability check
-            this.logActivity("system", "watcher.file_stable", path, {
+            this.logger.debug("watcher.file_stable", path, {
               attempts: attempt + 1,
               final_size: stat2.size,
             });
@@ -238,32 +241,10 @@ export class FileWatcher {
     }
 
     // Log file never stabilized
-    this.logActivity("system", "watcher.file_unstable", path, {
+    this.logger.warn("watcher.file_unstable", path, {
       max_attempts: maxAttempts,
     });
 
-    // Emit telemetry
-    console.warn(`📊 watcher.file_unstable: ${path}`);
     throw new Error(`File never stabilized: ${path}`);
-  }
-
-  /**
-   * Log activity to Activity Journal
-   */
-  private logActivity(
-    actor: string,
-    actionType: string,
-    target: string | null,
-    payload: Record<string, unknown>,
-  ): void {
-    if (!this.db) {
-      return;
-    }
-
-    try {
-      this.db.logActivity(actor, actionType, target, payload, undefined, null);
-    } catch (error) {
-      console.error("[FileWatcher] Failed to log activity:", error);
-    }
   }
 }

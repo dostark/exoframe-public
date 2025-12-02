@@ -272,31 +272,17 @@ export class ChangesetCommands extends BaseCommand {
     const shaResult = await shaCmd.output();
     const commitSha = new TextDecoder().decode(shaResult.stdout).trim();
 
-    // Log approval
+    // Log approval with user identity
     const userIdentity = await this.getUserIdentity();
-    this.db.logActivity(
-      "human",
-      "changeset.approved",
-      changeset.request_id,
-      {
-        approved_by: userIdentity,
-        commit_sha: commitSha,
-        branch: changeset.branch,
-        files_changed: changeset.files_changed,
-        approved_at: new Date().toISOString(),
-        via: "cli",
-        command: this.getCommandLineString(),
-      },
-      changeset.trace_id,
-      null,
-    );
-
-    console.log(`✓ Changeset approved by ${userIdentity}`);
-    console.log(`  Branch: ${changeset.branch}`);
-    console.log(`  Merged to main: ${commitSha.substring(0, 8)}`);
-    console.log(`  Files changed: ${changeset.files_changed}`);
-    console.log(`  Trace ID: ${changeset.trace_id}`);
-    console.log(`\nNext: Delete the feature branch with 'git branch -d ${changeset.branch}'`);
+    const actionLogger = await this.getActionLogger();
+    actionLogger.info("changeset.approved", changeset.request_id, {
+      commit_sha: commitSha,
+      branch: changeset.branch,
+      files_changed: changeset.files_changed,
+      approved_at: new Date().toISOString(),
+      via: "cli",
+      command: this.getCommandLineString(),
+    }, changeset.trace_id);
   }
 
   /**
@@ -327,29 +313,16 @@ export class ChangesetCommands extends BaseCommand {
       throw new Error(`Failed to delete branch: ${error}`);
     }
 
-    // Log rejection
+    // Log rejection with user identity
     const userIdentity = await this.getUserIdentity();
-    this.db.logActivity(
-      "human",
-      "changeset.rejected",
-      changeset.request_id,
-      {
-        rejected_by: userIdentity,
-        branch: changeset.branch,
-        rejection_reason: reason,
-        files_changed: changeset.files_changed,
-        rejected_at: new Date().toISOString(),
-        via: "cli",
-        command: this.getCommandLineString(),
-      },
-      changeset.trace_id,
-      null,
-    );
-
-    console.log(`✗ Changeset rejected by ${userIdentity}`);
-    console.log(`  Branch: ${changeset.branch} (deleted)`);
-    console.log(`  Reason: ${reason}`);
-    console.log(`  Files affected: ${changeset.files_changed}`);
-    console.log(`  Trace ID: ${changeset.trace_id}`);
+    const actionLogger = await this.getActionLogger();
+    actionLogger.info("changeset.rejected", changeset.request_id, {
+      branch: changeset.branch,
+      rejection_reason: reason,
+      files_changed: changeset.files_changed,
+      rejected_at: new Date().toISOString(),
+      via: "cli",
+      command: this.getCommandLineString(),
+    }, changeset.trace_id);
   }
 }

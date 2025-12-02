@@ -220,6 +220,28 @@ Keep plain `console.log` for:
 3. **Help text:** Command documentation
 4. **Error fallbacks:** When Activity Journal itself fails
 
+### Display-Only Logger for Console Output
+
+For read-only CLI commands that only need console output (no Activity Journal), create a **display-only EventLogger** by omitting the `db` parameter:
+
+```typescript
+import { EventLogger } from "../services/event_logger.ts";
+
+// Display-only logger (console output only, no DB writes)
+const display = new EventLogger({});
+
+// Use for read-only operations like listing, showing, status queries
+display.info("request.list", "requests", { count: 5 });
+display.info("daemon.status", "daemon", { status: "Running ✓", pid: 12345 });
+display.error("cli.error", "command", { message: "Something went wrong" });
+```
+
+This approach:
+
+- Maintains consistent output formatting across all CLI commands
+- Avoids polluting Activity Journal with read-only query operations
+- Uses the same EventLogger API for both display and journaled events
+
 ### Use consistent action type naming
 
 ```

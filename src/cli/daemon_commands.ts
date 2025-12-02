@@ -32,11 +32,11 @@ export class DaemonCommands extends BaseCommand {
     const status = await this.status();
 
     if (status.running) {
-      console.log(`Daemon is already running (PID: ${status.pid})`);
+      this.logger.info("daemon.already_running", "daemon", { pid: status.pid });
       return;
     }
 
-    console.log("Starting ExoFrame daemon...");
+    this.logger.info("daemon.starting", "daemon");
 
     const workspaceRoot = this.config.system.root;
     const logFile = join(workspaceRoot, "System", "daemon.log");
@@ -84,20 +84,16 @@ export class DaemonCommands extends BaseCommand {
     // Give process a moment to start
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    console.log(`✓ Daemon started (PID: ${pid})`);
-    console.log(`  Logs: ${logFile}`);
-    console.log(`  Run 'exoctl daemon status' to check health`);
-
     const newStatus = await this.status();
     if (!newStatus.running) {
-      this.logDaemonActivity("daemon.start_failed", {
+      await this.logDaemonActivity("daemon.start_failed", {
         error: "Daemon failed to start",
       });
       throw new Error("Daemon failed to start. Check logs for details.");
     }
 
-    // Log successful start
-    this.logDaemonActivity("daemon.started", {
+    // Log successful start (writes to both console and Activity Journal)
+    await this.logDaemonActivity("daemon.started", {
       pid: pid,
       log_file: logFile,
     });
@@ -110,11 +106,11 @@ export class DaemonCommands extends BaseCommand {
     const status = await this.status();
 
     if (!status.running) {
-      console.log("Daemon is not running");
+      this.logger.info("daemon.not_running", "daemon");
       return;
     }
 
-    console.log(`Stopping daemon (PID: ${status.pid})...`);
+    this.logger.info("daemon.stopping", "daemon", { pid: status.pid });
 
     try {
       // Send SIGTERM
@@ -129,9 +125,8 @@ export class DaemonCommands extends BaseCommand {
       // Wait for process to exit (up to 5 seconds)
       const stopped = await this.waitForProcessState(status.pid!, false, 5000);
       if (stopped) {
-        console.log("✓ Daemon stopped");
         await Deno.remove(this.pidFile).catch(() => {});
-        this.logDaemonActivity("daemon.stopped", {
+        await this.logDaemonActivity("daemon.stopped", {
           pid: status.pid,
           method: "graceful",
         });
@@ -139,7 +134,7 @@ export class DaemonCommands extends BaseCommand {
       }
 
       // Force kill if still running
-      console.log("Daemon did not stop gracefully, forcing...");
+      this.logger.warn("daemon.force_stopping", "daemon", { pid: status.pid });
       const forceKillCmd = new Deno.Command("kill", {
         args: ["-KILL", status.pid!.toString()],
         stdout: "piped",
@@ -148,8 +143,7 @@ export class DaemonCommands extends BaseCommand {
 
       await forceKillCmd.output();
       await Deno.remove(this.pidFile).catch(() => {});
-      console.log("✓ Daemon stopped (forced)");
-      this.logDaemonActivity("daemon.stopped", {
+      await this.logDaemonActivity("daemon.stopped", {
         pid: status.pid,
         method: "forced",
       });
@@ -163,14 +157,14 @@ export class DaemonCommands extends BaseCommand {
    * Restart the ExoFrame daemon
    */
   async restart(): Promise<void> {
-    console.log("Restarting daemon...");
+    this.logger.info("daemon.restarting", "daemon");
     const beforeStatus = await this.status();
     await this.stop();
     // Brief pause to ensure port/resources are released
     await new Promise((resolve) => queueMicrotask(() => resolve(undefined)));
     await this.start();
     const afterStatus = await this.status();
-    this.logDaemonActivity("daemon.restarted", {
+    await this.logDaemonActivity("daemon.restarted", {
       previous_pid: beforeStatus.pid,
       new_pid: afterStatus.pid,
     });
@@ -242,7 +236,7 @@ export class DaemonCommands extends BaseCommand {
     const logFile = join(this.config.system.root, "System", "daemon.log");
 
     if (!await exists(logFile)) {
-      console.log("No log file found. Daemon may not have been started yet.");
+      this.logger.info("daemon.no_logs", logFile, { hint: "Daemon may not have been started yet" });
       return;
     }
 
@@ -310,23 +304,17 @@ export class DaemonCommands extends BaseCommand {
   }
 
   /**
-   * Log daemon activity to the activity journal
+   * Log daemon activity to the activity journal using EventLogger
    */
-  private logDaemonActivity(actionType: string, payload: Record<string, unknown>): void {
+  private async logDaemonActivity(actionType: string, payload: Record<string, unknown>): Promise<void> {
     try {
-      this.db.logActivity(
-        "human",
-        actionType,
-        null,
-        {
-          ...payload,
-          via: "cli",
-          command: this.getCommandLineString(),
-          timestamp: new Date().toISOString(),
-        },
-        undefined,
-        null,
-      );
+      const actionLogger = await this.getActionLogger();
+      actionLogger.info(actionType, "daemon", {
+        ...payload,
+        timestamp: new Date().toISOString(),
+        via: "cli",
+        command: this.getCommandLineString(),
+      });
     } catch (error) {
       // Log errors but don't fail the operation
       console.error("Failed to log daemon activity:", error);

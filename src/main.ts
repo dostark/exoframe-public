@@ -3,60 +3,54 @@ import { FileWatcher } from "./services/watcher.ts";
 import { DatabaseService } from "./services/db.ts";
 import { ProviderFactory } from "./ai/provider_factory.ts";
 import { RequestProcessor } from "./services/request_processor.ts";
+import { EventLogger } from "./services/event_logger.ts";
 import { ensureDir } from "@std/fs";
 import { join } from "@std/path";
 
 if (import.meta.main) {
-  console.log("🚀 Starting ExoFrame Daemon...");
-
   try {
     const configService = new ConfigService();
     const config = configService.get();
     const checksum = configService.getChecksum();
 
-    console.log(`✅ Configuration loaded (Checksum: ${checksum.slice(0, 8)})`);
-    console.log(`   Root: ${config.system.root}`);
-    console.log(`   Log Level: ${config.system.log_level}`);
-
-    // Initialize LLM Provider
-    const providerInfo = ProviderFactory.getProviderInfo(config);
-    const llmProvider = ProviderFactory.create(config);
-    console.log(`✅ LLM Provider initialized: ${providerInfo.id}`);
-    console.log(`   Type: ${providerInfo.type}`);
-    console.log(`   Model: ${providerInfo.model}`);
-    console.log(`   Source: ${providerInfo.source}`);
-
-    // Initialize Database Service
+    // Initialize Database Service first (needed for EventLogger)
     const dbService = new DatabaseService(config);
-    console.log("✅ Database connected (WAL mode)");
 
-    // Log daemon starting to Activity Journal
-    dbService.logActivity(
-      "system",
-      "daemon.starting",
-      "exoframe",
-      {
+    // Create main EventLogger with database connection
+    const logger = new EventLogger({
+      db: dbService,
+      prefix: "",
+      defaultActor: "system",
+    });
+
+    logger.log({
+      action: "daemon.starting",
+      target: "exoframe",
+      payload: {
         config_checksum: checksum.slice(0, 8),
         root: config.system.root,
         log_level: config.system.log_level,
       },
-      undefined,
-      null,
-    );
+      icon: "🚀",
+    });
 
-    // Log provider initialization to Activity Journal
-    dbService.logActivity(
-      "system",
-      "llm.provider.initialized",
-      llmProvider.id,
-      {
-        type: providerInfo.type,
-        model: providerInfo.model,
-        source: providerInfo.source,
-      },
-      undefined,
-      null,
-    );
+    logger.info("config.loaded", "exo.config.toml", {
+      checksum: checksum.slice(0, 8),
+      root: config.system.root,
+      log_level: config.system.log_level,
+    });
+
+    logger.info("database.connected", "journal.db", { mode: "WAL" });
+
+    // Initialize LLM Provider
+    const providerInfo = ProviderFactory.getProviderInfo(config);
+    const llmProvider = ProviderFactory.create(config);
+
+    logger.info("llm.provider.initialized", providerInfo.id, {
+      type: providerInfo.type,
+      model: providerInfo.model,
+      source: providerInfo.source,
+    });
 
     // Ensure Inbox/Requests and Inbox/Plans directories exist
     const requestsPath = join(config.system.root, config.paths.inbox, "Requests");
@@ -75,51 +69,48 @@ if (import.meta.main) {
         includeReasoning: true,
       },
     );
-    console.log("✅ Request Processor initialized");
+
+    logger.info("request_processor.initialized", "RequestProcessor", {
+      inbox: requestsPath,
+      blueprints: join(config.system.root, config.paths.blueprints, "Agents"),
+    });
+
+    // Create child logger for watcher events
+    const watcherLogger = logger.child({ actor: "system" });
 
     // Start file watcher
     const watcher = new FileWatcher(config, async (event) => {
-      console.log(`📥 New file ready: ${event.path}`);
-      console.log(`   Content length: ${event.content.length} bytes`);
-
-      // Log event to Activity Journal
-      dbService.logActivity(
-        "system",
-        "file.detected",
-        event.path,
-        { size: event.content.length },
-        undefined,
-        null,
-      );
+      watcherLogger.info("file.detected", event.path, {
+        size: event.content.length,
+      });
 
       // Process the request and generate a plan
       try {
         const planPath = await requestProcessor.process(event.path);
         if (planPath) {
-          console.log(`✅ Plan generated: ${planPath}`);
+          watcherLogger.info("plan.generated", planPath, {
+            source: event.path,
+          });
         } else {
-          console.log(`⚠️ Request skipped or failed: ${event.path}`);
+          watcherLogger.warn("request.skipped", event.path, {
+            reason: "processing returned null",
+          });
         }
       } catch (error) {
-        console.error(`❌ Failed to process request: ${event.path}`, error);
+        watcherLogger.error("request.failed", event.path, {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     });
 
     // Handle graceful shutdown
     const shutdown = () => {
-      console.log("\n🛑 Shutting down...");
-
-      // Log daemon stopping to Activity Journal (before closing DB)
-      dbService.logActivity(
-        "system",
-        "daemon.stopping",
-        "exoframe",
-        {
-          reason: "signal",
-        },
-        undefined,
-        null,
-      );
+      logger.log({
+        action: "daemon.stopping",
+        target: "exoframe",
+        payload: { reason: "signal" },
+        icon: "🛑",
+      });
 
       watcher.stop();
       dbService.close();
@@ -129,21 +120,17 @@ if (import.meta.main) {
     Deno.addSignalListener("SIGINT", shutdown);
     Deno.addSignalListener("SIGTERM", shutdown);
 
-    console.log("ExoFrame Daemon Active");
-
-    // Log daemon started to Activity Journal
-    dbService.logActivity(
-      "system",
-      "daemon.started",
-      "exoframe",
-      {
+    logger.log({
+      action: "daemon.started",
+      target: "exoframe",
+      payload: {
         provider: providerInfo.id,
         model: providerInfo.model,
         watching: requestsPath,
+        status: "active",
       },
-      undefined,
-      null,
-    );
+      icon: "✅",
+    });
 
     // Start watching (this will run indefinitely)
     await watcher.start();

@@ -148,25 +148,19 @@ export class RequestCommands extends BaseCommand {
     // Write file
     await Deno.writeTextFile(path, content);
 
-    // Log activity
-    this.db.logActivity(
-      "human",
-      "request.created",
-      path,
-      {
-        trace_id,
-        priority,
-        agent,
-        portal: portal || null,
-        source,
-        created_by,
-        description_length: trimmedDescription.length,
-        via: "cli",
-        command: this.getCommandLineString(),
-      },
+    // Log activity using EventLogger
+    const actionLogger = await this.getActionLogger();
+    actionLogger.info("request.created", path, {
       trace_id,
-      null,
-    );
+      priority,
+      agent,
+      portal: portal || null,
+      source,
+      created_by,
+      description_length: trimmedDescription.length,
+      via: "cli",
+      command: this.getCommandLineString(),
+    }, trace_id);
 
     return {
       trace_id,

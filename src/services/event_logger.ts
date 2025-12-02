@@ -172,29 +172,49 @@ export class EventLogger {
   /**
    * Log an info-level event
    */
-  info(action: string, target: string, payload?: Record<string, unknown>): void {
-    this.log({ action, target, payload, level: "info" });
+  info(
+    action: string,
+    target: string,
+    payload?: Record<string, unknown>,
+    traceId?: string,
+  ): void {
+    this.log({ action, target, payload, level: "info", traceId });
   }
 
   /**
    * Log a warning-level event
    */
-  warn(action: string, target: string, payload?: Record<string, unknown>): void {
-    this.log({ action, target, payload, level: "warn" });
+  warn(
+    action: string,
+    target: string,
+    payload?: Record<string, unknown>,
+    traceId?: string,
+  ): void {
+    this.log({ action, target, payload, level: "warn", traceId });
   }
 
   /**
    * Log an error-level event
    */
-  error(action: string, target: string, payload?: Record<string, unknown>): void {
-    this.log({ action, target, payload, level: "error" });
+  error(
+    action: string,
+    target: string,
+    payload?: Record<string, unknown>,
+    traceId?: string,
+  ): void {
+    this.log({ action, target, payload, level: "error", traceId });
   }
 
   /**
    * Log a debug-level event
    */
-  debug(action: string, target: string, payload?: Record<string, unknown>): void {
-    this.log({ action, target, payload, level: "debug" });
+  debug(
+    action: string,
+    target: string,
+    payload?: Record<string, unknown>,
+    traceId?: string,
+  ): void {
+    this.log({ action, target, payload, level: "debug", traceId });
   }
 
   /**

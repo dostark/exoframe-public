@@ -3,6 +3,7 @@ import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "../services/db.ts";
 import { ConfigService } from "../config/service.ts";
 import { ContextCardGenerator } from "../services/context_card_generator.ts";
+import { EventLogger } from "../services/event_logger.ts";
 
 export interface PortalInfo {
   alias: string;
@@ -99,11 +100,13 @@ export class PortalCommands {
         await this.configService.addPortal(alias, absoluteTarget);
       }
 
-      // Log to activity journal
-      this.logActivity("portal.added", {
+      // Log to activity journal (also outputs to console)
+      await this.logActivity("portal.added", {
         alias,
-        target_path: absoluteTarget,
-        symlink_path: symlinkPath,
+        target: absoluteTarget,
+        symlink: `Portals/${alias}`,
+        context_card: "generated",
+        hint: "Restart daemon to apply changes: exoctl daemon restart",
       });
     } catch (error) {
       // Rollback on failure
@@ -284,10 +287,11 @@ export class PortalCommands {
       }
     }
 
-    // Log to activity journal
-    this.logActivity("portal.removed", {
+    // Log to activity journal (also outputs to console)
+    await this.logActivity("portal.removed", {
       alias,
-      keep_card: options?.keepCard || false,
+      context_card: options?.keepCard ? "kept" : "archived",
+      hint: "Restart daemon to apply changes: exoctl daemon restart",
     });
   }
 
@@ -360,7 +364,7 @@ export class PortalCommands {
     }
 
     // Log verification
-    this.logActivity("portal.verified", {
+    await this.logActivity("portal.verified", {
       portals_checked: results.length,
       failed: results.filter((r) => r.status === "failed").length,
     });
@@ -391,9 +395,10 @@ export class PortalCommands {
       techStack: [],
     });
 
-    // Log to activity journal
-    this.logActivity("portal.refreshed", {
+    // Log to activity journal (also outputs to console)
+    await this.logActivity("portal.refreshed", {
       alias,
+      target: targetPath,
     });
   }
 
@@ -424,24 +429,20 @@ export class PortalCommands {
   }
 
   /**
-   * Log activity to database
+   * Log activity to database using EventLogger
    */
-  private logActivity(actionType: string, payload: Record<string, unknown>): void {
+  private async logActivity(actionType: string, payload: Record<string, unknown>): Promise<void> {
     if (!this.db) return;
 
     try {
-      this.db.logActivity(
-        "human",
-        actionType,
-        null,
-        {
-          ...payload,
-          via: "cli",
-          command: `exoctl ${Deno.args.join(" ")}`,
-        },
-        "cli-" + crypto.randomUUID(),
-        null,
-      );
+      const userIdentity = await EventLogger.getUserIdentity();
+      const logger = new EventLogger({ db: this.db });
+      const actionLogger = logger.child({ actor: userIdentity });
+      actionLogger.info(actionType, "portal", {
+        ...payload,
+        via: "cli",
+        command: `exoctl ${Deno.args.join(" ")}`,
+      });
     } catch (error) {
       // Log errors but don't fail the operation
       console.error("Failed to log activity:", error);

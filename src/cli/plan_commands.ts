@@ -72,8 +72,9 @@ export class PlanCommands extends BaseCommand {
       throw new Error(`Target path already exists: ${targetPath}`);
     }
 
-    // Get user identity
+    // Get user identity and action logger
     const actor = await this.getUserIdentity();
+    const actionLogger = await this.getActionLogger();
     const now = new Date().toISOString();
 
     // Update frontmatter
@@ -92,20 +93,12 @@ export class PlanCommands extends BaseCommand {
     // Remove original (atomic operation complete)
     await Deno.remove(sourcePath);
 
-    // Log activity
-    this.db.logActivity(
-      "human",
-      "plan.approved",
-      planId,
-      {
-        user: actor,
-        approved_at: now,
-        via: "cli",
-        command: this.getCommandLineString(),
-      },
-      frontmatter.trace_id as string || undefined,
-      null,
-    );
+    // Log activity with user identity
+    actionLogger.info("plan.approved", planId, {
+      approved_at: now,
+      via: "cli",
+      command: this.getCommandLineString(),
+    }, frontmatter.trace_id as string | undefined);
   }
 
   /**
@@ -129,8 +122,9 @@ export class PlanCommands extends BaseCommand {
     const content = await Deno.readTextFile(sourcePath);
     const { frontmatter, body } = this.extractFrontmatterWithBody(content);
 
-    // Get user identity
+    // Get user identity and action logger
     const actor = await this.getUserIdentity();
+    const actionLogger = await this.getActionLogger();
     const now = new Date().toISOString();
 
     // Update frontmatter
@@ -150,21 +144,13 @@ export class PlanCommands extends BaseCommand {
     // Remove original (atomic operation complete)
     await Deno.remove(sourcePath);
 
-    // Log activity
-    this.db.logActivity(
-      "human",
-      "plan.rejected",
-      planId,
-      {
-        user: actor,
-        reason: reason,
-        rejected_at: now,
-        via: "cli",
-        command: this.getCommandLineString(),
-      },
-      frontmatter.trace_id as string || undefined,
-      null,
-    );
+    // Log activity with user identity
+    actionLogger.info("plan.rejected", planId, {
+      reason: reason,
+      rejected_at: now,
+      via: "cli",
+      command: this.getCommandLineString(),
+    }, frontmatter.trace_id as string | undefined);
   }
 
   /**
@@ -187,8 +173,9 @@ export class PlanCommands extends BaseCommand {
     const content = await Deno.readTextFile(planPath);
     const { frontmatter, body } = this.extractFrontmatterWithBody(content);
 
-    // Get user identity
+    // Get user identity and action logger
     const actor = await this.getUserIdentity();
+    const actionLogger = await this.getActionLogger();
     const now = new Date().toISOString();
 
     // Update frontmatter
@@ -221,21 +208,13 @@ export class PlanCommands extends BaseCommand {
     const updatedContent = this.serializePlan(updatedFrontmatter, updatedBody);
     await Deno.writeTextFile(planPath, updatedContent);
 
-    // Log activity
-    this.db.logActivity(
-      "human",
-      "plan.revision_requested",
-      planId,
-      {
-        user: actor,
-        comment_count: comments.length,
-        reviewed_at: now,
-        via: "cli",
-        command: this.getCommandLineString(),
-      },
-      frontmatter.trace_id as string || undefined,
-      null,
-    );
+    // Log activity with user identity
+    actionLogger.info("plan.revision_requested", planId, {
+      comment_count: comments.length,
+      reviewed_at: now,
+      via: "cli",
+      command: this.getCommandLineString(),
+    }, frontmatter.trace_id as string | undefined);
   }
 
   /**

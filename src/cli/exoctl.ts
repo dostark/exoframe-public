@@ -16,6 +16,7 @@ import { Command } from "@cliffy/command";
 import { ConfigService } from "../config/service.ts";
 import { DatabaseService } from "../services/db.ts";
 import { GitService } from "../services/git_service.ts";
+import { EventLogger } from "../services/event_logger.ts";
 import { PlanCommands } from "./plan_commands.ts";
 import { RequestCommands } from "./request_commands.ts";
 import { ChangesetCommands } from "./changeset_commands.ts";
@@ -28,6 +29,9 @@ const configService = new ConfigService();
 const config = configService.get();
 const db = new DatabaseService(config);
 const gitService = new GitService({ config, db });
+
+// Display-only logger (no DB writes) for read-only operations
+const display = new EventLogger({});
 
 // Initialize command handlers
 const context = { config, db };
@@ -69,8 +73,9 @@ await new Command()
 
           // Require description for inline mode
           if (!description) {
-            console.error('Error: Description required. Usage: exoctl request "<description>"');
-            console.error("       Or use --file to read from file.");
+            display.error("cli.error", "request", {
+              message: 'Description required. Usage: exoctl request "<description>" or use --file',
+            });
             Deno.exit(1);
           }
 
@@ -82,14 +87,13 @@ await new Command()
           });
 
           if (options.dryRun) {
-            console.log("Dry run - would create:");
-            printRequestResult(result, true, true);
+            display.info("cli.dry_run", "request", { would_create: result.filename });
             return;
           }
 
           printRequestResult(result, !!options.json, false);
         } catch (error) {
-          console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+          display.error("cli.error", "request", { message: error instanceof Error ? error.message : "Unknown error" });
           Deno.exit(1);
         }
       })
@@ -103,24 +107,26 @@ await new Command()
             try {
               const requests = await requestCommands.list(options.status);
               if (options.json) {
-                console.log(JSON.stringify(requests, null, 2));
+                display.info("cli.output", "requests", { data: JSON.stringify(requests, null, 2) });
               } else {
                 if (requests.length === 0) {
-                  console.log("No requests found.");
+                  display.info("request.list", "requests", { count: 0, message: "No requests found" });
                   return;
                 }
-                console.log(`\n📥 Requests (${requests.length}):\n`);
+                display.info("request.list", "requests", { count: requests.length });
                 for (const req of requests) {
                   const priorityIcon = { critical: "🔴", high: "🟠", normal: "🟢", low: "⚪" }[req.priority] || "🟢";
-                  console.log(`${priorityIcon} ${req.trace_id.slice(0, 8)}`);
-                  console.log(`   Status: ${req.status}`);
-                  console.log(`   Agent: ${req.agent}`);
-                  console.log(`   Created: ${req.created_by} @ ${req.created}`);
-                  console.log();
+                  display.info(`${priorityIcon} ${req.trace_id.slice(0, 8)}`, req.trace_id, {
+                    status: req.status,
+                    agent: req.agent,
+                    created: `${req.created_by} @ ${req.created}`,
+                  });
                 }
               }
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "request list", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -133,16 +139,18 @@ await new Command()
             const id = args[0];
             try {
               const { metadata, content } = await requestCommands.show(id);
-              console.log(`\n📄 Request: ${metadata.trace_id.slice(0, 8)}\n`);
-              console.log(`Trace ID: ${metadata.trace_id}`);
-              console.log(`Status: ${metadata.status}`);
-              console.log(`Priority: ${metadata.priority}`);
-              console.log(`Agent: ${metadata.agent}`);
-              console.log(`Created: ${metadata.created_by} @ ${metadata.created}`);
-              console.log("\n" + "─".repeat(60) + "\n");
-              console.log(content);
+              display.info("request.show", metadata.trace_id.slice(0, 8), {
+                trace_id: metadata.trace_id,
+                status: metadata.status,
+                priority: metadata.priority,
+                agent: metadata.agent,
+                created: `${metadata.created_by} @ ${metadata.created}`,
+              });
+              display.info("request.content", id, { content });
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "request show", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -162,19 +170,21 @@ await new Command()
             try {
               const plans = await planCommands.list(options.status);
               if (plans.length === 0) {
-                console.log("No plans found.");
+                display.info("plan.list", "plans", { count: 0, message: "No plans found" });
                 return;
               }
-              console.log(`\n📋 Plans (${plans.length}):\n`);
+              display.info("plan.list", "plans", { count: plans.length });
               for (const plan of plans) {
                 const statusIcon = plan.status === "review" ? "🔍" : "⚠️";
-                console.log(`${statusIcon} ${plan.id}`);
-                console.log(`   Status: ${plan.status}`);
-                if (plan.trace_id) console.log(`   Trace: ${plan.trace_id.substring(0, 8)}...`);
-                console.log();
+                display.info(`${statusIcon} ${plan.id}`, plan.id, {
+                  status: plan.status,
+                  trace: plan.trace_id ? `${plan.trace_id.substring(0, 8)}...` : undefined,
+                });
               }
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "plan list", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -187,13 +197,15 @@ await new Command()
             const id = args[0] as unknown as string;
             try {
               const plan = await planCommands.show(id);
-              console.log(`\n📄 Plan: ${plan.id}\n`);
-              console.log(`Status: ${plan.status}`);
-              if (plan.trace_id) console.log(`Trace: ${plan.trace_id}`);
-              console.log("\n" + "─".repeat(60) + "\n");
-              console.log(plan.content);
+              display.info("plan.show", plan.id, {
+                status: plan.status,
+                trace: plan.trace_id,
+              });
+              display.info("plan.content", id, { content: plan.content });
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "plan show", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -207,7 +219,9 @@ await new Command()
             try {
               await planCommands.approve(id);
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "plan approve", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -222,7 +236,9 @@ await new Command()
             try {
               await planCommands.reject(id, options.reason);
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "plan reject", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -240,7 +256,9 @@ await new Command()
             try {
               await planCommands.revise(id, options.comment);
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "plan revise", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -260,19 +278,21 @@ await new Command()
             try {
               const changesets = await changesetCommands.list(options.status);
               if (changesets.length === 0) {
-                console.log("No changesets found.");
+                display.info("changeset.list", "changesets", { count: 0, message: "No changesets found" });
                 return;
               }
-              console.log(`\n🔀 Changesets (${changesets.length}):\n`);
+              display.info("changeset.list", "changesets", { count: changesets.length });
               for (const cs of changesets) {
-                console.log(`📌 ${cs.request_id} (${cs.branch})`);
-                console.log(`   Files: ${cs.files_changed}`);
-                console.log(`   Created: ${new Date(cs.created_at).toLocaleString()}`);
-                console.log(`   Trace: ${cs.trace_id.substring(0, 8)}...`);
-                console.log();
+                display.info(`📌 ${cs.request_id}`, cs.branch, {
+                  files: cs.files_changed,
+                  created: new Date(cs.created_at).toLocaleString(),
+                  trace: `${cs.trace_id.substring(0, 8)}...`,
+                });
               }
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "changeset list", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -285,18 +305,19 @@ await new Command()
             const id = args[0] as unknown as string;
             try {
               const cs = await changesetCommands.show(id);
-              console.log(`\n🔀 Changeset: ${cs.request_id}\n`);
-              console.log(`Branch: ${cs.branch}`);
-              console.log(`Files changed: ${cs.files_changed}`);
-              console.log(`Commits: ${cs.commits.length}`);
-              console.log(`\nCommits:\n`);
+              display.info("changeset.show", cs.request_id, {
+                branch: cs.branch,
+                files_changed: cs.files_changed,
+                commits: cs.commits.length,
+              });
               for (const commit of cs.commits) {
-                console.log(`  ${commit.sha.substring(0, 8)} - ${commit.message}`);
+                display.info("commit", commit.sha.substring(0, 8), { message: commit.message });
               }
-              console.log(`\nDiff:\n`);
-              console.log(cs.diff);
+              display.info("changeset.diff", id, { diff: cs.diff });
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "changeset show", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -310,7 +331,9 @@ await new Command()
             try {
               await changesetCommands.approve(id);
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "changeset approve", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -325,7 +348,9 @@ await new Command()
             try {
               await changesetCommands.reject(id, options.reason);
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "changeset reject", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -344,18 +369,18 @@ await new Command()
           .action(async (options) => {
             try {
               const branches = await gitCommands.listBranches(options.pattern);
-              console.log(`\n🌳 Branches (${branches.length}):\n`);
+              display.info("git.branches", "repository", { count: branches.length });
               for (const branch of branches) {
                 const current = branch.is_current ? "* " : "  ";
-                console.log(`${current}${branch.name}`);
-                console.log(
-                  `   Last commit: ${branch.last_commit} (${new Date(branch.last_commit_date).toLocaleDateString()})`,
-                );
-                if (branch.trace_id) console.log(`   Trace: ${branch.trace_id.substring(0, 8)}...`);
-                console.log();
+                display.info(`${current}${branch.name}`, branch.name, {
+                  last_commit: `${branch.last_commit} (${new Date(branch.last_commit_date).toLocaleDateString()})`,
+                  trace: branch.trace_id ? `${branch.trace_id.substring(0, 8)}...` : undefined,
+                });
               }
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "git branches", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -367,32 +392,20 @@ await new Command()
           .action(async () => {
             try {
               const status = await gitCommands.status();
-              console.log(`\n📊 Repository Status\n`);
-              console.log(`Branch: ${status.branch}\n`);
-              if (status.modified.length > 0) {
-                console.log(`Modified (${status.modified.length}):`);
-                status.modified.forEach((f) => console.log(`  M ${f}`));
-              }
-              if (status.added.length > 0) {
-                console.log(`Added (${status.added.length}):`);
-                status.added.forEach((f) => console.log(`  A ${f}`));
-              }
-              if (status.deleted.length > 0) {
-                console.log(`Deleted (${status.deleted.length}):`);
-                status.deleted.forEach((f) => console.log(`  D ${f}`));
-              }
-              if (status.untracked.length > 0) {
-                console.log(`Untracked (${status.untracked.length}):`);
-                status.untracked.forEach((f) => console.log(`  ? ${f}`));
-              }
-              if (
-                status.modified.length === 0 && status.added.length === 0 &&
-                status.deleted.length === 0 && status.untracked.length === 0
-              ) {
-                console.log("Working tree clean");
-              }
+              display.info("git.status", status.branch, {
+                modified: status.modified.length > 0 ? status.modified : undefined,
+                added: status.added.length > 0 ? status.added : undefined,
+                deleted: status.deleted.length > 0 ? status.deleted : undefined,
+                untracked: status.untracked.length > 0 ? status.untracked : undefined,
+                clean: status.modified.length === 0 && status.added.length === 0 &&
+                    status.deleted.length === 0 && status.untracked.length === 0
+                  ? true
+                  : undefined,
+              });
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "git status", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -406,18 +419,20 @@ await new Command()
             try {
               const commits = await gitCommands.logByTraceId(options.trace);
               if (commits.length === 0) {
-                console.log(`No commits found for trace: ${options.trace}`);
+                display.info("git.log", options.trace, { count: 0, message: "No commits found" });
                 return;
               }
-              console.log(`\n📜 Commits for trace ${options.trace.substring(0, 8)}...\n`);
+              display.info("git.log", `${options.trace.substring(0, 8)}...`, { count: commits.length });
               for (const commit of commits) {
-                console.log(`${commit.sha.substring(0, 8)} - ${commit.message}`);
-                console.log(`  Author: ${commit.author}`);
-                console.log(`  Date: ${new Date(commit.date).toLocaleString()}`);
-                console.log();
+                display.info(commit.sha.substring(0, 8), commit.message, {
+                  author: commit.author,
+                  date: new Date(commit.date).toLocaleString(),
+                });
               }
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "git log", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -436,7 +451,9 @@ await new Command()
             try {
               await daemonCommands.start();
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "daemon start", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -449,7 +466,9 @@ await new Command()
             try {
               await daemonCommands.stop();
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "daemon stop", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -462,7 +481,9 @@ await new Command()
             try {
               await daemonCommands.restart();
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "daemon restart", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -474,13 +495,16 @@ await new Command()
           .action(async () => {
             try {
               const status = await daemonCommands.status();
-              console.log(`\n🔧 Daemon Status\n`);
-              console.log(`Version: ${status.version}`);
-              console.log(`Status: ${status.running ? "Running ✓" : "Stopped ✗"}`);
-              if (status.pid) console.log(`PID: ${status.pid}`);
-              if (status.uptime) console.log(`Uptime: ${status.uptime}`);
+              display.info("daemon.status", "daemon", {
+                version: status.version,
+                status: status.running ? "Running ✓" : "Stopped ✗",
+                pid: status.pid,
+                uptime: status.uptime,
+              });
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "daemon status", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -495,7 +519,9 @@ await new Command()
             try {
               await daemonCommands.logs(options.lines, options.follow);
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "daemon logs", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -515,13 +541,10 @@ await new Command()
             const alias = args[1] as unknown as string;
             try {
               await portalCommands.add(targetPath, alias);
-              console.log(`✓ Portal '${alias}' added successfully`);
-              console.log(`  Target: ${targetPath}`);
-              console.log(`  Symlink: Portals/${alias}`);
-              console.log(`  Context card generated`);
-              console.log(`\n⚠️  Restart daemon to apply changes: exoctl daemon restart`);
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "portal add", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -534,22 +557,24 @@ await new Command()
             try {
               const portals = await portalCommands.list();
               if (portals.length === 0) {
-                console.log("No portals configured.");
-                console.log("\nAdd a portal with: exoctl portal add <path> <alias>");
+                display.info("portal.list", "portals", {
+                  count: 0,
+                  hint: "Add a portal with: exoctl portal add <path> <alias>",
+                });
                 return;
               }
-              console.log(`\n🔗 Configured Portals (${portals.length}):\n`);
+              display.info("portal.list", "portals", { count: portals.length });
               for (const portal of portals) {
-                const statusIcon = portal.status === "active" ? "✓" : "⚠";
-                console.log(`${portal.alias}`);
-                console.log(`  Status: ${portal.status === "active" ? "Active" : "Broken"} ${statusIcon}`);
-                console.log(`  Target: ${portal.targetPath}${portal.status === "broken" ? " (not found)" : ""}`);
-                console.log(`  Symlink: ${portal.symlinkPath}`);
-                console.log(`  Context: ${portal.contextCardPath}`);
-                console.log();
+                display.info(portal.alias, portal.symlinkPath, {
+                  status: portal.status === "active" ? "Active ✓" : "Broken ⚠",
+                  target: portal.targetPath + (portal.status === "broken" ? " (not found)" : ""),
+                  context: portal.contextCardPath,
+                });
               }
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "portal list", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -562,16 +587,19 @@ await new Command()
             const alias = args[0] as unknown as string;
             try {
               const portal = await portalCommands.show(alias);
-              console.log(`\n📁 Portal: ${portal.alias}\n`);
-              console.log(`Target Path:    ${portal.targetPath}`);
-              console.log(`Symlink:        ${portal.symlinkPath}`);
-              console.log(`Status:         ${portal.status === "active" ? "Active ✓" : "Broken ⚠"}`);
-              console.log(`Context Card:   ${portal.contextCardPath}`);
-              if (portal.permissions) console.log(`Permissions:    ${portal.permissions}`);
-              if (portal.created) console.log(`Created:        ${portal.created}`);
-              if (portal.lastVerified) console.log(`Last Verified:  ${portal.lastVerified}`);
+              display.info("portal.show", portal.alias, {
+                target_path: portal.targetPath,
+                symlink: portal.symlinkPath,
+                status: portal.status === "active" ? "Active ✓" : "Broken ⚠",
+                context_card: portal.contextCardPath,
+                permissions: portal.permissions,
+                created: portal.created,
+                last_verified: portal.lastVerified,
+              });
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "portal show", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -585,13 +613,10 @@ await new Command()
             const alias = args[0] as unknown as string;
             try {
               await portalCommands.remove(alias, { keepCard: options.keepCard });
-              console.log(`✓ Portal '${alias}' removed`);
-              if (!options.keepCard) {
-                console.log(`  Context card archived`);
-              }
-              console.log(`\n⚠️  Restart daemon to apply changes: exoctl daemon restart`);
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "portal remove", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -604,24 +629,22 @@ await new Command()
           .action(async (_options, alias?: string) => {
             try {
               const results = await portalCommands.verify(alias);
-              console.log("\n🔍 Portal Verification:\n");
               let healthy = 0;
               let broken = 0;
               for (const result of results) {
-                const icon = result.status === "ok" ? "✓" : "✗";
-                console.log(`${result.alias}: ${result.status.toUpperCase()} ${icon}`);
                 if (result.issues && result.issues.length > 0) {
-                  for (const issue of result.issues) {
-                    console.log(`  ⚠️  ${issue}`);
-                  }
+                  display.warn("portal.verify", result.alias, { status: "FAILED", issues: result.issues });
                   broken++;
                 } else {
+                  display.info("portal.verify", result.alias, { status: "OK" });
                   healthy++;
                 }
               }
-              console.log(`\nSummary: ${healthy} healthy, ${broken} broken`);
+              display.info("portal.verify.summary", "portals", { healthy, broken });
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "portal verify", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -634,9 +657,10 @@ await new Command()
             const alias = args[0] as unknown as string;
             try {
               await portalCommands.refresh(alias);
-              console.log(`✓ Context card refreshed for '${alias}'`);
             } catch (error) {
-              console.error(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+              display.error("cli.error", "portal refresh", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
               Deno.exit(1);
             }
           }),
@@ -647,18 +671,16 @@ await new Command()
 // Helper function for printing request results
 import type { RequestMetadata } from "./request_commands.ts";
 
-function printRequestResult(result: RequestMetadata, json: boolean, dryRun: boolean) {
+function printRequestResult(result: RequestMetadata, json: boolean, _dryRun: boolean) {
   if (json) {
-    console.log(JSON.stringify(result, null, 2));
+    display.info("cli.output", "request", { data: JSON.stringify(result, null, 2) });
   } else {
-    const prefix = dryRun ? "Would create:" : "✓ Request created:";
-    console.log(`${prefix} ${result.filename}`);
-    console.log(`  Trace ID: ${result.trace_id}`);
-    console.log(`  Priority: ${result.priority}`);
-    console.log(`  Agent: ${result.agent}`);
-    console.log(`  Path: ${result.path}`);
-    if (!dryRun) {
-      console.log(`  Next: Daemon will process this automatically`);
-    }
+    display.info("request.created", result.filename, {
+      trace_id: result.trace_id,
+      priority: result.priority,
+      agent: result.agent,
+      path: result.path,
+      next: "Daemon will process this automatically",
+    });
   }
 }

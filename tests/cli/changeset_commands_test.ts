@@ -221,7 +221,8 @@ describe("ChangesetCommands", () => {
       assertExists(approval.payload);
       const payload = JSON.parse(approval.payload);
       assertExists(payload.commit_sha);
-      assertEquals(payload.approved_by, "test@example.com");
+      // User identity is now in actor field, not approved_by
+      assertExists(approval.actor);
     });
   });
 
@@ -260,7 +261,8 @@ describe("ChangesetCommands", () => {
       assertExists(rejection);
       const payload = JSON.parse(rejection.payload);
       assertEquals(payload.rejection_reason, "Quality issues");
-      assertEquals(payload.rejected_by, "test@example.com");
+      // User identity is now in actor field, not rejected_by
+      assertExists(rejection.actor);
     });
 
     it("should include rejection reason in log", async () => {

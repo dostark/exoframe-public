@@ -14,8 +14,8 @@
  */
 
 import { assertEquals, assertExists, assertMatch, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
-import { initActivityTableSchema, initTestDbService } from "./helpers/db.ts";
-import { EventLogger, type EventLoggerConfig, type LogEvent, type LogLevel } from "../src/services/event_logger.ts";
+import { initTestDbService } from "./helpers/db.ts";
+import { EventLogger } from "../src/services/event_logger.ts";
 
 // ============================================================================
 // Basic Logging Tests

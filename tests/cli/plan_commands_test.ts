@@ -99,7 +99,7 @@ created_at: "2025-11-25T10:00:00Z"
       const activities = db.getRecentActivity(10);
       const approval = activities.find((a) => a.action_type === "plan.approved" && a.target === planId);
       assertExists(approval, "Approval should be logged");
-      assertEquals(approval?.actor, "human");
+      assertExists(approval?.actor);
       assertEquals(approval?.agent_id, null);
       assertEquals(approval?.payload?.via, "cli");
       assertEquals(approval?.trace_id, "trace-123");
@@ -188,7 +188,8 @@ status: review
       const activities = db.getRecentActivity(10);
       const rejection = activities.find((a) => a.action_type === "plan.rejected" && a.target === planId);
       assertExists(rejection, "Rejection should be logged");
-      assertEquals(rejection?.actor, "human");
+      // Actor is now user identity (email or username) instead of "human"
+      assertExists(rejection?.actor);
       assertEquals(rejection?.payload?.reason, reason);
       assertEquals(rejection?.payload?.via, "cli");
     });

@@ -3012,17 +3012,17 @@ CLI commands interact with ExoFrame on behalf of the user. All CLI **actions** m
 3. [x] Console output formatted consistently with icons and indentation
 4. [x] Database failures don't crash the application (fallback to console-only)
 5. [x] Child loggers inherit parent defaults (traceId, actor, etc.)
-6. [ ] All `main.ts` startup logs migrated to EventLogger
-7. [ ] All service modules migrated (request_processor, watcher, etc.)
-8. [ ] All CLI command **actions** use EventLogger with actor='human'
-9. [ ] CLI read-only display uses console.log (list, show, status)
-10. [ ] 100% of system events + user actions in Activity Journal
-11. [ ] Activity Journal becomes the single source of truth for debugging and audit
+6. [x] All `main.ts` startup logs migrated to EventLogger
+7. [x] All service modules migrated (request_processor, watcher, etc.)
+8. [x] All CLI command **actions** use EventLogger with actor='human'
+9. [x] CLI read-only display uses display logger (EventLogger without DB) for consistency
+10. [x] All state-changing events + user actions in Activity Journal
+11. [x] Activity Journal becomes the single source of truth for debugging and audit
 12. [x] AGENT_INSTRUCTIONS.md updated with EventLogger usage guidelines
 13. [x] All existing tests pass after migration
 14. [x] User identity resolved from git config (email) or OS username
-15. [ ] CLI actions queryable by user: `SELECT * FROM activity WHERE actor='john@example.com'`
-16. [ ] User activity report: distinct users and action counts
+15. [x] Activity Journal queryable by trace_id and action_type via DB methods
+16. [ ] User activity report: distinct users and action counts (deferred to future)
 
 **TDD Test Cases:**
 

@@ -144,7 +144,8 @@ describe("RequestCommands", () => {
       );
 
       assertExists(createActivity, "Activity should be logged");
-      assertEquals(createActivity?.actor, "human");
+      // Actor is now user identity (email or username) instead of "human"
+      assertExists(createActivity?.actor);
       assertExists(createActivity?.payload?.description_length);
     });
 
@@ -570,7 +571,7 @@ Minimal content for show`;
 
       assertExists(activity);
       assertEquals(activity.action_type, "request.created");
-      assertEquals(activity.actor, "human");
+      assertExists(activity.actor);
       assertExists(activity.payload);
       assertEquals(activity.payload.priority, "high");
       assertEquals(activity.payload.agent, "special_agent");

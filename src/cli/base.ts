@@ -5,6 +5,7 @@
 
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "../services/db.ts";
+import { EventLogger } from "../services/event_logger.ts";
 
 export interface CommandContext {
   config: Config;
@@ -18,10 +19,23 @@ export interface CommandContext {
 export abstract class BaseCommand {
   protected config: Config;
   protected db: DatabaseService;
+  protected logger: EventLogger;
+  private _userIdentity: string | null = null;
 
   constructor(context: CommandContext) {
     this.config = context.config;
     this.db = context.db;
+    // Initialize logger - user identity will be set on first action
+    this.logger = new EventLogger({ db: context.db });
+  }
+
+  /**
+   * Get a logger with user identity set as actor
+   * Use this for logging user actions to Activity Journal
+   */
+  protected async getActionLogger(): Promise<EventLogger> {
+    const identity = await this.getUserIdentity();
+    return this.logger.child({ actor: identity });
   }
 
   /**
@@ -29,44 +43,12 @@ export abstract class BaseCommand {
    * @returns User email or username
    */
   protected async getUserIdentity(): Promise<string> {
-    const workspaceRoot = this.config.system.root;
-
-    // Try git config first
-    try {
-      const gitCmd = new Deno.Command("git", {
-        args: ["-C", workspaceRoot, "config", "user.email"],
-        stdout: "piped",
-        stderr: "piped",
-      });
-      const { stdout, success } = await gitCmd.output();
-
-      if (success) {
-        const email = new TextDecoder().decode(stdout).trim();
-        if (email) return email;
-      }
-    } catch {
-      // Git not available or no email configured
+    if (this._userIdentity) {
+      return this._userIdentity;
     }
 
-    // Fallback to git user.name
-    try {
-      const gitCmd = new Deno.Command("git", {
-        args: ["-C", workspaceRoot, "config", "user.name"],
-        stdout: "piped",
-        stderr: "piped",
-      });
-      const { stdout, success } = await gitCmd.output();
-
-      if (success) {
-        const name = new TextDecoder().decode(stdout).trim();
-        if (name) return name;
-      }
-    } catch {
-      // Git not available
-    }
-
-    // Fallback to OS username
-    return Deno.env.get("USER") || Deno.env.get("USERNAME") || "unknown";
+    this._userIdentity = await EventLogger.getUserIdentity();
+    return this._userIdentity;
   }
 
   /**
