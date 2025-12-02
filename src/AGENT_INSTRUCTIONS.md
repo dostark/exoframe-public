@@ -2,6 +2,28 @@
 
 This document contains instructions for AI coding agents when creating or modifying modules in the ExoFrame `src/` directory.
 
+## ⚠️ CRITICAL: Test-Driven Development Required
+
+**All implementation or major modification of modules MUST strictly follow TDD (Test-Driven Development).**
+
+Before writing any implementation code:
+
+1. **Verify a refined step exists** in `docs/ExoFrame_Implementation_Plan.md` that covers the work
+2. **Check the step includes TDD test cases** with specific test names and assertions
+3. **Write tests first** based on the plan's test cases before implementing
+4. **Run tests to confirm they fail** (red phase)
+5. **Implement the minimum code** to make tests pass (green phase)
+6. **Refactor** while keeping tests green
+
+**If no refined step exists with TDD test cases:**
+
+- STOP implementation
+- Create or refine the step in `docs/ExoFrame_Implementation_Plan.md` first
+- Include specific test cases with expected behaviors
+- Get approval before proceeding
+
+This ensures all code is properly planned, tested, and documented.
+
 ## Project Structure
 
 ```
