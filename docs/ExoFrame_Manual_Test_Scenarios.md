@@ -68,9 +68,9 @@ cd exoframe
 # Step 2: Deploy workspace using the deploy script (recommended)
 ./scripts/deploy_workspace.sh ~/ExoFrame
 
-# Step 3: Navigate to workspace and verify
+# Step 3: Navigate to workspace and verify CLI
 cd ~/ExoFrame
-deno task --help
+exoctl --help
 ```
 
 ### Expected Results
@@ -90,8 +90,8 @@ deno task --help
 
 **Step 3:**
 
-- Shows available deno tasks
-- Should include: `start`, `start:fg`, `start:bg`, `test`, etc.
+- Shows available exoctl commands
+- Should include: `daemon`, `request`, `plan`, `blueprint`, `portal`, etc.
 
 ### Verification
 
@@ -250,10 +250,10 @@ Test content
 
 EOF
 
-exoctl blueprint create custom-test\
---name "Custom Test"\
---model "mock:test-model"\
---system-prompt-file /tmp/custom-prompt.txt
+exoctl blueprint create custom-test \
+  --name "Custom Test" \
+  --model "mock:test-model" \
+  --system-prompt-file /tmp/custom-prompt.txt
 
 # Step 8: Validate custom blueprint
 
@@ -261,7 +261,6 @@ exoctl blueprint validate custom-test
 
 # Step 9: Create an invalid blueprint manually
 
-mkdir -p ~/ExoFrame/Blueprints/Agents
 cat > ~/ExoFrame/Blueprints/Agents/invalid-test.md << 'EOF'
 +++
 name = "Missing agent_id"
@@ -277,15 +276,15 @@ exoctl blueprint validate invalid-test
 
 # Step 11: Test reserved name rejection
 
-exoctl blueprint create system\
---name "System Agent"\
---model "ollama:llama2" 2>&1 || echo "Expected: Reserved name rejected"
+exoctl blueprint create system \
+  --name "System Agent" \
+  --model "ollama:llama2" 2>&1 || echo "Expected: Reserved name rejected"
 
 # Step 12: Test duplicate rejection
 
-exoctl blueprint create test-agent\
---name "Duplicate Test"\
---model "ollama:llama2" 2>&1 || echo "Expected: Duplicate rejected"
+exoctl blueprint create test-agent \
+  --name "Duplicate Test" \
+  --model "ollama:llama2" 2>&1 || echo "Expected: Duplicate rejected"
 
 # Step 13: Test edit command (requires EDITOR)
 
@@ -303,6 +302,7 @@ exoctl blueprint remove custom-test --force
 exoctl blueprint remove coder-test --force
 exoctl blueprint remove mock-agent --force
 exoctl blueprint remove test-agent --force
+exoctl blueprint remove invalid-test --force
 
 ````
 ### Expected Results
@@ -392,7 +392,7 @@ grep "Custom Test Agent" ~/ExoFrame/Blueprints/Agents/custom-test.md
 # Expected: Custom prompt content present
 
 # Check Activity Journal logged blueprint operations
-sqlite3 ~/ExoFrame/System/exo.db "SELECT action_type, target FROM activity_log WHERE action_type LIKE 'blueprint.%' ORDER BY timestamp DESC LIMIT 10;"
+sqlite3 ~/ExoFrame/System/journal.db "SELECT action_type, target FROM activity WHERE action_type LIKE 'blueprint.%' ORDER BY timestamp DESC LIMIT 10;"
 # Expected: blueprint.created, blueprint.edited, blueprint.removed entries
 
 # Verify blueprints were removed
@@ -400,7 +400,7 @@ ls ~/ExoFrame/Blueprints/Agents/*.md 2>/dev/null | grep -E "(test-agent|coder-te
 # Expected: No test blueprint files remain
 
 # Check request was created with custom agent
-cat ~/ExoFrame/Inbox/Requests/request-*.md | grep "agent_id.*mock-agent"
+cat ~/ExoFrame/Inbox/Requests/request-*.md | grep "mock-agent"
 # Expected: Request references mock-agent
 ````
 
@@ -451,18 +451,23 @@ unset EDITOR
 ### Preconditions
 
 - Daemon running (MT-02 complete)
-- Blueprint exists (MT-03 complete, specifically "default" agent)
+- Default blueprint available (may have been removed in MT-03 cleanup)
 
 ### Steps
 
 ```bash
-# Step 1: Create a simple request
+# Step 1: Create default blueprint (if not exists)
+exoctl blueprint create default \
+  --name "Default Agent" \
+  --template default
+
+# Step 2: Create a simple request
 exoctl request "Add a hello world function to utils.ts"
 
-# Step 2: List requests
+# Step 3: List requests
 exoctl request list
 
-# Step 3: Verify request file
+# Step 4: Verify request file
 ls -la ~/ExoFrame/Inbox/Requests/
 ```
 
@@ -470,17 +475,22 @@ ls -la ~/ExoFrame/Inbox/Requests/
 
 **Step 1:**
 
+- Blueprint created successfully (or already exists message)
+- Default agent available for requests
+
+**Step 2:**
+
 - Command completes successfully
 - Shows trace ID (e.g., `a1b2c3d4-e5f6-7890-abcd-ef1234567890`)
 - Shows file path created (e.g., `request-a1b2c3d4.md`)
 
-**Step 2:**
+**Step 3:**
 
 - Lists the created request
 - Shows status: `pending`
 - Shows trace ID
 
-**Step 3:**
+**Step 4:**
 
 - Request file exists with `.md` extension
 - Filename format: `request-<trace-id-prefix>.md`
@@ -494,15 +504,24 @@ cat ~/ExoFrame/Inbox/Requests/request-*.md
 # Expected content (YAML frontmatter):
 # ---
 # trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-# created: 2025-12-01T10:00:00.000Z
+# created: "2025-12-01T10:00:00.000Z"
 # status: pending
 # priority: normal
 # agent: default
 # source: cli
-# created_by: user@example.com
+# created_by: "user@example.com"
 # ---
 #
+# # Request
+#
 # Add a hello world function to utils.ts
+```
+
+### Cleanup
+
+```bash
+# Remove test request if not proceeding to MT-05
+rm -f ~/ExoFrame/Inbox/Requests/request-*.md
 ```
 
 ### Pass Criteria
@@ -526,14 +545,17 @@ cat ~/ExoFrame/Inbox/Requests/request-*.md
 ### Steps
 
 ```bash
-# Step 1: Check for plan (may need to wait)
+# Step 1: Verify daemon is running
+exoctl daemon status
+
+# Step 2: Check for plan (may need to wait)
 sleep 5
 exoctl plan list
 
-# Step 2: View the generated plan
+# Step 3: View the generated plan
 exoctl plan show <plan-id>
 
-# Step 3: Verify plan file
+# Step 4: Verify plan file
 ls -la ~/ExoFrame/Inbox/Plans/
 ```
 
@@ -541,16 +563,21 @@ ls -la ~/ExoFrame/Inbox/Plans/
 
 **Step 1:**
 
+- Daemon status shows "Running"
+- If not running, start with: `exoctl daemon start`
+
+**Step 2:**
+
 - Shows plan in list
 - Status: `review`
 
-**Step 2:**
+**Step 3:**
 
 - Shows plan details
 - Includes proposed steps
 - Shows associated request ID
 
-**Step 3:**
+**Step 4:**
 
 - Plan file exists in `Inbox/Plans/`
 
@@ -565,7 +592,7 @@ cat ~/ExoFrame/Inbox/Plans/PLAN-*.md
 # trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 # request_id: "implement-auth"
 # status: review
-# created_at: 2025-12-01T10:01:00.000Z
+# created_at: "2025-12-01T10:01:00.000Z"
 # agent_id: default
 # ---
 #
@@ -574,6 +601,27 @@ cat ~/ExoFrame/Inbox/Plans/PLAN-*.md
 # 1. Create utils.ts file
 # 2. Add hello world function
 # ...
+```
+
+### Troubleshooting
+
+If no plans are generated after 30 seconds:
+
+```bash
+# Check daemon logs for errors
+tail -50 ~/ExoFrame/System/daemon.log
+
+# Check if request processor is running
+grep -i "request.*processing\|watcher\|detected" ~/ExoFrame/System/daemon.log | tail -20
+
+# Verify request file is valid
+cat ~/ExoFrame/Inbox/Requests/request-*.md
+
+# Try restarting daemon
+exoctl daemon stop
+exoctl daemon start
+sleep 5
+exoctl plan list
 ```
 
 ### Pass Criteria

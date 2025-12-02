@@ -3,7 +3,7 @@
  * Implements Step 5.9 of the ExoFrame Implementation Plan
  *
  * Responsibilities:
- * 1. Parse request files (TOML frontmatter + body)
+ * 1. Parse request files (YAML frontmatter + body)
  * 2. Load agent blueprints from Blueprints/Agents/
  * 3. Call AgentRunner.run() to generate plan content
  * 4. Write plans to Inbox/Plans/ using PlanWriter
@@ -11,7 +11,7 @@
  * 6. Log all activities to Activity Journal
  */
 
-import { parse as parseToml } from "@std/toml";
+import { parse as parseYaml } from "@std/yaml";
 import { basename, join } from "@std/path";
 import { exists } from "@std/fs";
 import type { IModelProvider } from "../ai/providers.ts";
@@ -40,7 +40,7 @@ export interface RequestProcessorConfig {
 }
 
 /**
- * Parsed request frontmatter (TOML format)
+ * Parsed request frontmatter (YAML format)
  */
 interface RequestFrontmatter {
   trace_id: string;
@@ -203,20 +203,20 @@ export class RequestProcessor {
     try {
       const content = await Deno.readTextFile(filePath);
 
-      // Extract TOML frontmatter between +++ delimiters
-      const tomlMatch = content.match(/^\+\+\+\n([\s\S]*?)\n\+\+\+\n?([\s\S]*)$/);
-      if (!tomlMatch) {
+      // Extract YAML frontmatter between --- delimiters
+      const yamlMatch = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+      if (!yamlMatch) {
         this.logger.error("frontmatter.invalid", filePath, {
-          error: "Missing or malformed +++ delimiters",
+          error: "Missing or malformed --- delimiters",
         });
         return null;
       }
 
-      const tomlContent = tomlMatch[1];
-      const body = tomlMatch[2] || "";
+      const yamlContent = yamlMatch[1];
+      const body = yamlMatch[2] || "";
 
-      // Parse TOML
-      const frontmatter = parseToml(tomlContent) as unknown as RequestFrontmatter;
+      // Parse YAML
+      const frontmatter = parseYaml(yamlContent) as unknown as RequestFrontmatter;
 
       // Validate required fields
       if (!frontmatter.trace_id) {
@@ -262,7 +262,7 @@ export class RequestProcessor {
   }
 
   /**
-   * Update the status field in a request file's TOML frontmatter
+   * Update the status field in a request file's YAML frontmatter
    */
   private async updateRequestStatus(
     filePath: string,
@@ -270,10 +270,10 @@ export class RequestProcessor {
     newStatus: string,
   ): Promise<void> {
     try {
-      // Replace the status field in the TOML frontmatter
+      // Replace the status field in the YAML frontmatter
       const updatedContent = originalContent.replace(
-        /^(status\s*=\s*)"[^"]*"$/m,
-        `$1"${newStatus}"`,
+        /^(status:\s*).+$/m,
+        `$1${newStatus}`,
       );
 
       await Deno.writeTextFile(filePath, updatedContent);

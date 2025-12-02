@@ -335,7 +335,7 @@ Deno.test("MissionReporter: formats report with valid YAML frontmatter", async (
     const result = await reporter.generate(traceData);
     const content = await Deno.readTextFile(result.reportPath);
 
-    // Verify TOML frontmatter structure
+    // Verify YAML frontmatter structure
     assert(content.startsWith("---\n"), "Should start with YAML delimiter");
     assertStringIncludes(content, 'trace_id: "test-trace-12345"');
     assertStringIncludes(content, 'request_id: "test-request"');

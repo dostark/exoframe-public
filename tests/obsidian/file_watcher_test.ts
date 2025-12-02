@@ -28,11 +28,11 @@ Deno.test("ExoFrame creates files Obsidian can detect", async () => {
     const testFile = join(testDir, "test-report.md");
 
     // Simulate agent writing a file
-    const content = `+++
-title = "Test Report"
-status = "completed"
-created = "${new Date().toISOString()}"
-+++
+    const content = `---
+title: "Test Report"
+status: "completed"
+created: "${new Date().toISOString()}"
+---
 
 # Test Report
 
@@ -141,19 +141,19 @@ Deno.test("Files are created with readable permissions", async () => {
 // Frontmatter Compatibility Tests
 // ============================================================================
 
-Deno.test("TOML frontmatter is valid for Obsidian", async () => {
-  const testDir = await Deno.makeTempDir({ prefix: "exoframe-toml-" });
+Deno.test("YAML frontmatter is valid for Obsidian", async () => {
+  const testDir = await Deno.makeTempDir({ prefix: "exoframe-yaml-" });
 
   try {
     const testFile = join(testDir, "report.md");
 
-    // TOML frontmatter format (ExoFrame standard)
-    const content = `+++
-title = "Mission Report"
-status = "success"
-trace_id = "abc123"
-created = "2025-11-28T12:00:00Z"
-+++
+    // YAML frontmatter format (ExoFrame standard for Dataview compatibility)
+    const content = `---
+title: "Mission Report"
+status: "success"
+trace_id: "abc123"
+created: "2025-11-28T12:00:00Z"
+---
 
 # Mission Report
 
@@ -163,9 +163,9 @@ Content here.
     await Deno.writeTextFile(testFile, content);
     const readBack = await Deno.readTextFile(testFile);
 
-    // Verify TOML delimiters
-    assert(readBack.startsWith("+++"), "Should start with TOML delimiter");
-    assert(readBack.includes("+++\n\n#"), "Should have closing delimiter before content");
+    // Verify YAML delimiters
+    assert(readBack.startsWith("---"), "Should start with YAML delimiter");
+    assert(readBack.includes("---\n\n#"), "Should have closing delimiter before content");
   } finally {
     await Deno.remove(testDir, { recursive: true });
   }
@@ -176,13 +176,13 @@ Deno.test("Report frontmatter has required Dataview fields", () => {
   const requiredFields = ["status", "created"];
   const optionalFields = ["trace_id", "title", "agent"];
 
-  const frontmatter = `+++
-title = "Test Report"
-status = "success"
-trace_id = "test-123"
-created = "2025-11-28T12:00:00Z"
-agent = "default"
-+++`;
+  const frontmatter = `---
+title: "Test Report"
+status: "success"
+trace_id: "test-123"
+created: "2025-11-28T12:00:00Z"
+agent: "default"
+---`;
 
   for (const field of requiredFields) {
     assertStringIncludes(frontmatter, field, `Frontmatter should have ${field}`);
@@ -208,10 +208,10 @@ agent = "default"
 
 Deno.test("ExoFrame uses Obsidian wikilink format for internal links", () => {
   // ExoFrame reports should use [[wikilinks]] for cross-referencing
-  const reportContent = `+++
-title = "Mission Report"
-status = "success"
-+++
+  const reportContent = `---
+title: "Mission Report"
+status: "success"
+---
 
 # Mission Report
 
@@ -251,16 +251,16 @@ Deno.test("Wikilinks use relative paths without extension", () => {
 
 Deno.test("ExoFrame frontmatter supports Obsidian aliases for link resolution", () => {
   // Obsidian can use aliases in frontmatter for alternative link targets
-  const reportWithAliases = `+++
-title = "Mission Report ABC123"
-aliases = ["abc123", "mission-abc"]
-status = "success"
-+++
+  const reportWithAliases = `---
+title: "Mission Report ABC123"
+aliases: ["abc123", "mission-abc"]
+status: "success"
+---
 
 # Mission Report
 `;
 
-  assertStringIncludes(reportWithAliases, 'aliases = ["abc123"', "Should support aliases array");
+  assertStringIncludes(reportWithAliases, 'aliases: ["abc123"', "Should support aliases array");
 
   // With aliases, [[abc123]] and [[mission-abc]] will resolve to this file
   // This helps when ExoFrame uses trace_id references
@@ -272,10 +272,10 @@ Deno.test("Internal links in ExoFrame reports follow Obsidian conventions", asyn
   try {
     // Create a report with internal links
     const reportFile = join(testDir, "mission-report.md");
-    const content = `+++
-title = "Mission Report"
-trace_id = "abc123"
-+++
+    const content = `---
+title: "Mission Report"
+trace_id: "abc123"
+---
 
 # Mission Report
 

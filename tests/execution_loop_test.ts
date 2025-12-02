@@ -939,9 +939,9 @@ Deno.test("ExecutionLoop: handles plan with malformed frontmatter", async () => 
     const systemActiveDir = join(tempDir, "System", "Active");
     await Deno.mkdir(systemActiveDir, { recursive: true });
 
-    // Plan with invalid TOML
+    // Plan with invalid YAML
     const planContent = `---
-this is not: valid: toml: format
+this is not: valid: yaml: format
 ---
 
 # Malformed Plan

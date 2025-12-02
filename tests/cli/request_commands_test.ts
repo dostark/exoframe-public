@@ -511,7 +511,7 @@ Minimal content for show`;
   });
 
   describe("create edge cases", () => {
-    it("should handle description with special TOML characters", async () => {
+    it("should handle description with special characters", async () => {
       const description = 'Test with "quotes" and \\backslashes\\ and\nnewlines';
       const result = await requestCommands.create(description);
 

@@ -64,16 +64,65 @@ fi
 
 # Create a small README for deployed workspace (users)
 cat > "$DEST/README.md" <<'EOF'
-ExoFrame - Deployed Workspace
+# ExoFrame - Deployed Workspace
 
 This directory is a runtime workspace created from the ExoFrame repository.
-Run the following to initialize the database and prepare the workspace:
 
-  cd /path/to/your/workspace
-  deno task cache
-  deno task setup
+## Quick Start
 
-After that, start the daemon as documented in the Technical Spec.
+1. **Configure ExoFrame:**
+   ```bash
+   cp exo.config.sample.toml exo.config.toml
+   # Edit exo.config.toml to customize paths and settings
+   ```
+
+2. **Start the daemon:**
+   ```bash
+   exoctl daemon start
+   ```
+
+3. **Verify it's running:**
+   ```bash
+   exoctl daemon status
+   ```
+
+4. **Create your first request:**
+   ```bash
+   exoctl request "Add a hello world function"
+   ```
+
+## Daemon Management
+
+```bash
+exoctl daemon start    # Start in background
+exoctl daemon stop     # Stop gracefully
+exoctl daemon status   # Check if running
+exoctl daemon restart  # Restart daemon
+```
+
+## Documentation
+
+- Technical Specification: See project repository
+- User Guide: See project repository
+- Manual Test Scenarios: See project repository
+
+## Directory Structure
+
+- `Blueprints/` - Agent definitions
+- `Inbox/` - Request and plan queue
+- `Knowledge/` - Obsidian vault for context and reports
+- `System/` - Database and active tasks
+- `Portals/` - Symlinks to external projects
+
+## Getting Help
+
+```bash
+exoctl --help              # General help
+exoctl request --help      # Request commands
+exoctl plan --help         # Plan commands
+exoctl blueprint --help    # Blueprint commands
+exoctl portal --help       # Portal commands
+```
 EOF
 
 # Run cache+setup in the deployed workspace (best-effort) unless --no-run
@@ -100,9 +149,23 @@ fi
 echo "Deployment complete. User workspace at: $DEST"
 
 echo
-echo "Next steps for users:"
-echo "  - Inspect $DEST/exo.config.sample.toml and copy to exo.config.toml"
-echo "  - Run: deno task cache && deno task setup (if not run automatically)"
-echo "  - Start daemon: deno task start"
+echo "Next steps:"
+echo "  1. Navigate to workspace:"
+echo "     cd $DEST"
+echo ""
+echo "  2. Configure ExoFrame:"
+echo "     cp exo.config.sample.toml exo.config.toml"
+echo "     # Edit exo.config.toml to customize settings"
+echo ""
+echo "  3. Verify installation:"
+echo "     exoctl --version"
+echo ""
+echo "  4. Start the daemon:"
+echo "     exoctl daemon start"
+echo ""
+echo "  5. Check status:"
+echo "     exoctl daemon status"
+echo ""
+echo "For more information, see: $DEST/README.md"
 
 exit 0

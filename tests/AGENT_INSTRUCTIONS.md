@@ -53,15 +53,15 @@ const { db, cleanup } = await initTestDbService();
 
 ## Frontmatter Formats
 
-### Request Files: Use TOML frontmatter (`+++`)
+### Request Files: Use YAML frontmatter (`---`)
 
 ```markdown
-+++
-trace_id = "abc-123-def"
-agent = "senior-coder"
-status = "pending"
-priority = "normal"
-+++
+---
+trace_id: "abc-123-def"
+agent: "senior-coder"
+status: "pending"
+priority: "normal"
+---
 
 # Request description here
 ```

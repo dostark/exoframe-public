@@ -3,7 +3,7 @@
  * Implements Step 5.9 of the ExoFrame Implementation Plan
  *
  * TDD Test Cases:
- * 1. Parses valid request file (TOML frontmatter + body)
+ * 1. Parses valid request file (YAML frontmatter + body)
  * 2. Skips invalid frontmatter (logs error, returns null)
  * 3. Generates plan with MockLLMProvider
  * 4. Writes plan to Inbox/Plans/
@@ -35,7 +35,7 @@ function createMockResponse(thought: string, content: string): string {
 }
 
 /**
- * Create a request file with TOML frontmatter
+ * Create a request file with YAML frontmatter
  */
 function createRequestContent(opts: {
   traceId: string;
@@ -44,15 +44,15 @@ function createRequestContent(opts: {
   priority?: string;
   body: string;
 }): string {
-  return `+++
-trace_id = "${opts.traceId}"
-created = "${new Date().toISOString()}"
-status = "${opts.status || "pending"}"
-priority = "${opts.priority || "normal"}"
-agent = "${opts.agent || "default"}"
-source = "cli"
-created_by = "test@example.com"
-+++
+  return `---
+trace_id: "${opts.traceId}"
+created: "${new Date().toISOString()}"
+status: ${opts.status || "pending"}
+priority: ${opts.priority || "normal"}
+agent: ${opts.agent || "default"}
+source: cli
+created_by: "test@example.com"
+---
 
 # Request
 
@@ -128,7 +128,7 @@ describe("RequestProcessor", () => {
   });
 
   describe("Request Parsing", () => {
-    it("should parse valid request file with TOML frontmatter", async () => {
+    it("should parse valid request file with YAML frontmatter", async () => {
       const traceId = crypto.randomUUID();
       const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
       const requestContent = createRequestContent({
@@ -150,11 +150,11 @@ describe("RequestProcessor", () => {
       assertStringIncludes(result!, "_plan.md");
     });
 
-    it("should return null for invalid TOML frontmatter", async () => {
+    it("should return null for invalid YAML frontmatter", async () => {
       const requestPath = join(testDir, "Inbox", "Requests", "invalid-request.md");
-      const invalidContent = `---
-this is yaml not toml
----
+      const invalidContent = `+++
+this is toml not yaml
++++
 
 # Request
 
@@ -293,7 +293,7 @@ Do something
 
       // Re-read request file to check status update
       const updatedContent = await Deno.readTextFile(requestPath);
-      assertStringIncludes(updatedContent, 'status = "planned"');
+      assertStringIncludes(updatedContent, 'status: planned');
     });
   });
 
@@ -353,7 +353,7 @@ Do something
 
       // Check request status is updated to 'failed'
       const updatedContent = await Deno.readTextFile(requestPath);
-      assertStringIncludes(updatedContent, 'status = "failed"');
+      assertStringIncludes(updatedContent, 'status: failed');
     });
 
     it("should handle missing blueprint gracefully", async () => {
