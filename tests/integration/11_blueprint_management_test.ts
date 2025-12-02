@@ -218,7 +218,7 @@ Invalid blueprint without agent_id field
     // Test 8: Use Blueprint in Request
     // ========================================================================
     await t.step("Test 8: Blueprint referenced in request creation", async () => {
-      const { filePath, traceId } = await env.createRequest(
+      const { filePath } = await env.createRequest(
         "Test request using custom agent",
         { agentId: testAgentId },
       );

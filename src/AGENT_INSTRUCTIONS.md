@@ -581,6 +581,57 @@ export class MyService {
 }
 ```
 
+## Blueprint Creation Guidelines
+
+### When Creating Agent Blueprints
+
+Blueprints define AI agents with specific capabilities, models, and system prompts. Follow these guidelines:
+
+**Blueprint File Structure:**
+- Location: `Blueprints/Agents/{agent_id}.md`
+- Format: TOML frontmatter with `+++` delimiters + Markdown content
+- Required fields: `agent_id`, `name`, `model`, `capabilities`, `created`, `created_by`, `version`
+
+**Validation Rules:**
+1. **agent_id**: Lowercase alphanumeric + hyphens only (e.g., `senior-coder`)
+2. **Reserved names**: Cannot use `system`, `default`, `test`
+3. **Model format**: `provider:model-name` (e.g., `anthropic:claude-sonnet`)
+4. **System prompt**: Must include `<thought>` and `<content>` output format instructions
+5. **Capabilities**: Array of strings describing agent abilities
+
+**Available Templates:**
+- `default` - General-purpose agent (Ollama)
+- `coder` - Software development (Claude Sonnet)
+- `reviewer` - Code review (GPT-4)
+- `architect` - System design (Claude Opus)
+- `researcher` - Research and analysis (GPT-4 Turbo)
+- `mock` - Testing agent (MockLLMProvider)
+- `gemini` - Google's multimodal AI (Gemini 2.0)
+
+**CLI Commands:**
+```bash
+# Create from template
+exoctl blueprint create <agent-id> --name "Name" --model <provider:model> --template <template>
+
+# List all blueprints
+exoctl blueprint list
+
+# Validate blueprint
+exoctl blueprint validate <agent-id>
+
+# Edit blueprint
+exoctl blueprint edit <agent-id>
+```
+
+**Activity Logging:**
+All blueprint operations are logged to Activity Journal:
+- `blueprint.created` - When blueprint is created
+- `blueprint.validated` - When validation is performed
+- `blueprint.edited` - When blueprint is modified
+- `blueprint.removed` - When blueprint is deleted
+
+---
+
 ## Final Step: Format Code
 
 **ALWAYS run `deno fmt` as the final step after major code changes.**

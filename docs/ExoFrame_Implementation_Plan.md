@@ -63,65 +63,26 @@ structure.
   deterministic `deno.lock` file.
 - **Justification:** Establishes the Deno security sandbox immediately. We want to fail early if permissions are too
   tight.
-- **Success Criteria:**
-  - `deno task start` runs a `main.ts` that prints "ExoFrame Daemon Active".
-  - The process fails (PermissionDenied) if requested permissions (read/write) are removed from `deno.json`.
-  - `deno task fmt:check` + `deno task lint` run clean on CI.
-- **Example implementation**
 
-```json
-cat > deno.json <<'EOF'
-{
-  "name": "@dostark/exoframe",
-  "version": "0.1.0",
-  "lock": true,
-  "exports": "./src/main.ts",
-  "tasks": {
-    "start": "deno run --allow-read=. --allow-write=. --allow-net=api.anthropic.com,api.openai.com,generativelanguage.googleapis.com,localhost:11434 --allow-env=EXO_,HOME,USER --allow-run=git src/main.ts",
-    "dev": "deno run --watch --allow-all src/main.ts",
-    "stop": "deno run --allow-run=pkill scripts/stop.ts",
-    "status": "deno run --allow-run=ps scripts/status.ts",
-    "setup": "deno run --allow-all scripts/setup.ts",
-    "cli": "deno run --allow-all src/cli.ts",
-    "test": "deno test --allow-all tests/",
-    "test:watch": "deno test --watch --allow-all tests/",
-    "bench": "deno bench --allow-all tests/benchmarks/",
-    "coverage": "deno test --coverage=cov_profile && deno coverage cov_profile",
-    "lint": "deno lint src/ tests/",
-    "fmt": "deno fmt src/ tests/",
-    "fmt:check": "deno fmt --check src/ tests/",
-    "cache": "deno cache src/main.ts",
-    "compile": "deno compile --allow-all --output exoframe src/main.ts"
-  },
-  "imports": {
-    "@std/fs": "jsr:@std/fs@^0.221.0",
-    "@std/path": "jsr:@std/path@^0.221.0",
-    "@std/toml": "jsr:@std/toml@^0.221.0",
-    "@db/sqlite": "jsr:@db/sqlite@^0.11.0",
-    "zod": "https://deno.land/x/zod@v3.22.4/mod.ts"
-  },
-  "exclude": ["cov_profile", "exoframe", "dist"],
-  "lint": {
-    "rules": {
-      "tags": ["recommended"],
-      "exclude": ["no-explicit-any"]
-    }
-  },
-  "fmt": {
-    "useTabs": false,
-    "lineWidth": 100,
-    "indentWidth": 2,
-    "semiColons": true,
-    "singleQuote": false
-  },
-  "compilerOptions": {
-    "strict": true,
-    "allowJs": false,
-    "checkJs": false
-  }
-}
-EOF
-```
+**Success Criteria:**
+
+**Core Functionality:**
+1. [x] `deno task start` runs `main.ts` and prints "ExoFrame Daemon Active"
+2. [x] Process fails with PermissionDenied when required permissions removed from `deno.json`
+3. [x] `deno.lock` file generated and committed to version control
+
+**Code Quality:**
+4. [x] `deno task fmt:check` passes with no formatting issues
+5. [x] `deno task lint` passes with no linting errors
+6. [x] CI pipeline runs both checks automatically
+
+7. [x] Complete Deno configuration created with security sandbox and task definitions
+
+**Implementation:** See `deno.json` in project root for complete configuration with:
+- Strict permission flags (read, write, net, env, run)
+- Task definitions (start, dev, test, lint, fmt)
+- Import maps for dependencies (@std/fs, @std/path, @std/toml, @db/sqlite, zod)
+- Compiler options with strict type checking
 
 ### Running tests (developer guide)
 
@@ -158,11 +119,26 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 - **Action:** Implement Database Service using `jsr:@db/sqlite`. Create migration scripts for `activity` and `leases`
   tables and codify WAL/foreign key pragmas in `scripts/setup_db.ts`.
 - **Justification:** Every future step relies on logging. The "Brain's Memory" must be active before the Brain itself.
-- **Success Criteria:**
-  - Unit test can insert a structured log entry and retrieve it by `trace_id`.
-  - The `.db` file is created in `/System` with WAL mode enabled.
-  - `deno task migrate up`/`down` reruns cleanly and records entries in `schema_version`.
-- **Schema:**
+
+**Success Criteria:**
+
+**Core Functionality:**
+1. [x] Database file created at `/System/journal.db` with WAL mode enabled
+2. [x] `activity` table with trace_id, actor, agent_id, action_type, payload, timestamp
+3. [x] `leases` table for file locking with TTL expiration
+4. [x] `schema_version` table for migration tracking
+
+**Database Operations:**
+5. [x] Insert structured log entry and retrieve by trace_id
+6. [x] Query by actor (agent/human/system) and agent_id
+7. [x] Lease acquisition and expiration working correctly
+
+**Migration System:**
+8. [x] `deno task migrate up` applies schema changes cleanly
+9. [x] `deno task migrate down` reverts changes without errors
+10. [x] Migration history tracked in schema_version table
+
+**Schema:**
   ```sql
   CREATE TABLE activity (
     id TEXT PRIMARY KEY,
@@ -205,9 +181,19 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 - **Action:** Create `ConfigService`. Define Zod schemas for `exo.config.toml`. Include config checksum in Activity
   Journal for auditability.
 - **Justification:** Hardcoding paths is technical debt. We need a single source of truth for system physics.
-- **Success Criteria:**
-  - System loads config on startup.
-  - System throws a readable error if `exo.config.toml` is malformed or missing keys.
+
+**Success Criteria:**
+
+**Core Functionality:**
+1. [x] ConfigService loads `exo.config.toml` on system startup
+2. [x] Zod schema validates all required configuration fields
+3. [x] Readable error messages for malformed TOML or missing keys
+4. [x] Config checksum logged to Activity Journal for auditability
+
+**Configuration Validation:**
+5. [x] System paths (Knowledge, Inbox, System, Blueprints) validated
+6. [x] LLM provider settings validated (API keys, endpoints)
+7. [x] Watcher settings validated (debounce_ms, file patterns)
 
 ### Step 1.4: The Knowledge Vault Scaffold ✅ COMPLETED
 
@@ -217,9 +203,18 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
   - `/Knowledge/Reports` (Write-Only memory)
   - `/Knowledge/Portals` (Auto-generated Context Cards)
 - **Justification:** This folder _is_ the physical memory. If it doesn't exist, Agents have nowhere to look for rules.
-- **Success Criteria:**
-  - Script creates folders.
-  - Script creates a `README.md` in `/Knowledge` explaining how to use Obsidian with ExoFrame.
+
+**Success Criteria:**
+
+**Directory Structure:**
+1. [x] `/Knowledge` directory created as vault root
+2. [x] `/Knowledge/Context` directory for read-only reference files
+3. [x] `/Knowledge/Reports` directory for agent-generated mission reports
+4. [x] `/Knowledge/Portals` directory for auto-generated context cards
+
+**Documentation:**
+5. [x] `README.md` created in `/Knowledge` explaining Obsidian integration
+6. [x] Setup script is idempotent (safe to run multiple times)
 
 ---
 
@@ -282,67 +277,9 @@ arrive as plain text:
 
 **Stage 1: Extract Frontmatter** Split markdown into frontmatter (between `+++` delimiters) and body content.
 
-```typescript
-interface ParsedMarkdown {
-  frontmatter: Record<string, unknown>;
-  body: string;
-}
-
-function extractFrontmatter(markdown: string): ParsedMarkdown {
-  const frontmatterRegex = /^\+\+\+\n([\s\S]*?)\n\+\+\+\n([\s\S]*)$/;
-  const match = markdown.match(frontmatterRegex);
-
-  if (!match) {
-    throw new Error("No frontmatter found");
-  }
-
-  const tomlContent = match[1];
-  const body = match[2];
-
-  // Parse TOML to object
-  const frontmatter = parseToml(tomlContent);
-
-  return { frontmatter, body };
-}
-```
-
 **Stage 2: Define Zod Schema** Create a strict schema for request frontmatter:
 
-```typescript
-import { z } from "zod";
-
-export const RequestSchema = z.object({
-  trace_id: z.string().uuid(),
-  agent_id: z.string().min(1),
-  status: z.enum(["pending", "in_progress", "completed", "failed"]),
-  priority: z.number().int().min(0).max(10).default(5),
-  created_at: z.string().datetime().optional(),
-  tags: z.array(z.string()).default([]),
-});
-
-export type Request = z.infer<typeof RequestSchema>;
-```
-
 **Stage 3: Validate with Zod** Parse frontmatter object against schema:
-
-```typescript
-function parseRequest(markdown: string): { request: Request; body: string } {
-  const { frontmatter, body } = extractFrontmatter(markdown);
-
-  const result = RequestSchema.safeParse(frontmatter);
-
-  if (!result.success) {
-    // Log validation errors
-    console.error("Invalid request frontmatter:");
-    for (const issue of result.error.issues) {
-      console.error(`  - ${issue.path.join(".")}: ${issue.message}`);
-    }
-    throw new Error("Request validation failed");
-  }
-
-  return { request: result.data, body };
-}
-```
 
 **Implementation Checklist:**
 
@@ -2823,120 +2760,6 @@ Create a unified `EventLogger` class that:
 4. Provides consistent log levels (info, warn, error)
 5. Handles database connection failures gracefully (falls back to console-only)
 
-**EventLogger Interface:**
-
-```typescript
-// src/services/event_logger.ts
-
-export type LogLevel = "info" | "warn" | "error" | "debug";
-
-/**
- * Actor types:
- * - "system" - Daemon, watcher, internal services
- * - "agent:<id>" - AI agent (e.g., "agent:senior-coder", "agent:request-processor")
- * - "<user>" - Human user identity from git config or OS (e.g., "john@example.com", "jdoe")
- */
-export type Actor = string;
-
-export interface LogEvent {
-  /** Action type in domain.action format (e.g., "daemon.started") */
-  action: string;
-
-  /** Target entity (file path, service name, etc.) */
-  target: string;
-
-  /** Additional context as key-value pairs */
-  payload?: Record<string, unknown>;
-
-  /**
-   * Actor performing the action:
-   * - "system" for daemon/services
-   * - "agent:<id>" for AI agents (e.g., "agent:senior-coder")
-   * - User identity for humans (e.g., "john@example.com" from git, or OS username)
-   */
-  actor?: Actor;
-
-  /** Trace ID for correlation */
-  traceId?: string;
-
-  /** Log level for console output */
-  level?: LogLevel;
-
-  /** Custom emoji/icon for console output */
-  icon?: string;
-}
-
-export interface EventLoggerConfig {
-  /** DatabaseService instance (optional - allows console-only mode) */
-  db?: DatabaseService;
-
-  /** Prefix for console messages (e.g., "[ExoFrame]") */
-  prefix?: string;
-
-  /** Minimum log level to output */
-  minLevel?: LogLevel;
-
-  /** Whether to include timestamps in console output */
-  showTimestamp?: boolean;
-
-  /**
-   * Default actor identity. For CLI commands, this should be the user identity
-   * obtained from git config (user.email) or OS username.
-   */
-  defaultActor?: Actor;
-}
-
-export class EventLogger {
-  constructor(config: EventLoggerConfig);
-
-  /**
-   * Log an event to both console and Activity Journal
-   */
-  log(event: LogEvent): void;
-
-  /**
-   * Convenience methods
-   */
-  info(action: string, target: string, payload?: Record<string, unknown>): void;
-  warn(action: string, target: string, payload?: Record<string, unknown>): void;
-  error(action: string, target: string, payload?: Record<string, unknown>): void;
-  debug(action: string, target: string, payload?: Record<string, unknown>): void;
-
-  /**
-   * Create a child logger with preset values (e.g., for a specific service)
-   */
-  child(defaults: Partial<LogEvent>): EventLogger;
-
-  /**
-   * Get user identity from git config or OS username
-   * Used automatically for CLI commands
-   */
-  static getUserIdentity(): Promise<string>;
-}
-```
-
-**Actor Identity Resolution:**
-
-```typescript
-// How actor identity is determined:
-
-// 1. For system/daemon events:
-actor = "system";
-
-// 2. For agent events:
-actor = "agent:senior-coder";
-actor = "agent:request-processor";
-
-// 3. For human/CLI events (resolved automatically):
-// Try git config first:
-//   git config user.email → "john.doe@example.com"
-// Fallback to git user.name:
-//   git config user.name → "John Doe"
-// Fallback to OS username:
-//   Deno.env.get("USER") → "jdoe"
-actor = "john.doe@example.com";
-```
-
 **Console Output Format:**
 
 ```
@@ -3023,7 +2846,6 @@ CLI commands interact with ExoFrame on behalf of the user. All CLI **actions** m
 13. [x] All existing tests pass after migration
 14. [x] User identity resolved from git config (email) or OS username
 15. [x] Activity Journal queryable by trace_id and action_type via DB methods
-16. [ ] User activity report: distinct users and action counts (deferred to future)
 
 **TDD Test Cases:**
 
@@ -3056,98 +2878,6 @@ CLI commands interact with ExoFrame on behalf of the user. All CLI **actions** m
 // Format
 "should format timestamps consistently";
 "should indent multi-line payloads";
-```
-
-**Example Usage After Migration:**
-
-```typescript
-// src/main.ts (after migration)
-
-const logger = new EventLogger({ db: dbService, prefix: "[ExoFrame]" });
-
-// Before: console.log(`✅ Configuration loaded (Checksum: ${checksum})`);
-// After:
-logger.info("config.loaded", "exo.config.toml", {
-  checksum: checksum.slice(0, 8),
-  root: config.system.root,
-  log_level: config.system.log_level,
-});
-
-// Before: console.log(`✅ LLM Provider initialized: ${providerInfo.id}`);
-// After:
-logger.info("llm.provider.initialized", providerInfo.id, {
-  type: providerInfo.type,
-  model: providerInfo.model,
-  source: providerInfo.source,
-});
-
-// Service-specific child logger
-const processorLogger = logger.child({
-  actor: "agent",
-  agentId: "request-processor",
-});
-
-// Before: console.error(`[RequestProcessor] Failed to parse: ${filePath}`);
-// After:
-processorLogger.error("request.parse_failed", filePath, {
-  error: error.message,
-});
-```
-
-**CLI Command Example (User Actions):**
-
-```typescript
-// src/cli/plan_commands.ts (after migration)
-
-export class PlanCommands extends BaseCommand {
-  private logger: EventLogger;
-  private userIdentity: string | null = null;
-
-  constructor(context: CommandContext) {
-    super(context);
-    // Logger will be initialized with user identity on first use
-    this.logger = new EventLogger({ db: context.db });
-  }
-
-  private async getLogger(): Promise<EventLogger> {
-    if (!this.userIdentity) {
-      // Resolve user identity once (from git config or OS username)
-      this.userIdentity = await EventLogger.getUserIdentity();
-    }
-    return this.logger.child({ actor: this.userIdentity });
-  }
-
-  async approve(planId: string): Promise<void> {
-    const logger = await this.getLogger();
-
-    // ... validation and file move logic ...
-
-    // Log the action with actual user identity
-    // Activity Journal record: actor="john.doe@example.com", action_type="plan.approved"
-    logger.info("plan.approved", planId, {
-      approved_at: new Date().toISOString(),
-      via: "cli",
-      command: "exoctl plan approve",
-    });
-
-    // Display-only output (console.log for user feedback)
-    console.log(`✓ Plan ${planId} approved by ${this.userIdentity}`);
-    console.log(`  Moved to: /System/Active/${planId}.md`);
-  }
-
-  async list(statusFilter?: string): Promise<PlanMetadata[]> {
-    // Read-only operation - no activity logging needed
-    const plans = await this.loadPlans(statusFilter);
-
-    // Display-only output
-    console.log(`\n📋 Plans (${plans.length}):\n`);
-    for (const plan of plans) {
-      console.log(`  ${plan.id} - ${plan.status}`);
-    }
-
-    return plans;
-  }
-}
 ```
 
 **Activity Journal Query Benefits:**
@@ -3350,149 +3080,52 @@ The code, documentation, or solution
 
 #### **Success Criteria:**
 
-1. [x] `exoctl blueprint create` generates valid blueprint file
-2. [x] Generated blueprint passes `RequestProcessor.loadBlueprint()`
-3. [x] Blueprint frontmatter validates against schema
-4. [x] `--template` option applies correct defaults
-5. [x] `--system-prompt-file` loads and validates file content
-6. [x] `exoctl blueprint list` shows all blueprints with metadata
-7. [x] `exoctl blueprint show` displays full blueprint content
-8. [x] `exoctl blueprint validate` checks format and required fields
-9. [x] `exoctl blueprint edit` opens blueprint in user's $EDITOR
-10. [x] `exoctl blueprint remove` requires confirmation unless --force
-11. [x] Activity Journal logs all blueprint operations with user identity
-12. [x] Blueprint creation adds entry with `action_type='blueprint.created'`
-13. [x] Validation errors provide clear guidance on fixes
-14. [x] Reserved agent_id names are rejected
-15. [x] Duplicate agent_id names are rejected
-16. [x] Model provider validation checks `exo.config.toml`
-17. [x] Tests in `tests/cli/blueprint_commands_test.ts`
+**Core Implementation:**
+1. [x] Create `src/cli/blueprint_commands.ts` extending `BaseCommand`
+2. [x] Define `BlueprintSchema` in `src/schemas/blueprint.ts`
+3. [x] Implement `create()` method with validation
+4. [x] Implement `list()` method showing all blueprints
+5. [x] Implement `show()` method displaying full content
+6. [x] Implement `validate()` method checking format
+7. [x] Implement `edit()` method opening in $EDITOR
+8. [x] Implement `remove()` method with confirmation
+9. [x] Register commands in `src/cli/exoctl.ts`
 
-#### **Default Blueprint Creation:**
+**Templates & System Prompts:**
+10. [x] Add template system (default, coder, reviewer, architect, researcher, mock, gemini)
+11. [x] System prompt loaded from file via --system-prompt-file option
+12. [x] Templates include default blueprint (used as fallback)
+13. [x] Templates include mock blueprint for testing
+14. [x] Blueprint frontmatter generation with validation
 
-Create default and mock blueprints during system initialization:
+**CLI Functionality:**
+15. [x] `exoctl blueprint create` generates valid blueprint file
+16. [x] Generated blueprint passes `RequestProcessor.loadBlueprint()`
+17. [x] Blueprint frontmatter validates against schema
+18. [x] `--template` option applies correct defaults
+19. [x] `--system-prompt-file` loads and validates file content
+20. [x] `exoctl blueprint list` shows all blueprints with metadata
+21. [x] `exoctl blueprint show` displays full blueprint content
+22. [x] `exoctl blueprint validate` checks format and required fields
+23. [x] `exoctl blueprint edit` opens blueprint in user's $EDITOR
+24. [x] `exoctl blueprint remove` requires confirmation unless --force
 
-```typescript
-// scripts/setup.ts or src/cli/blueprint_commands.ts
+**Validation & Error Handling:**
+25. [x] Validation errors provide clear guidance on fixes
+26. [x] Reserved agent_id names are rejected
+27. [x] Duplicate agent_id names are rejected
+28. [x] Model provider validation checks `exo.config.toml`
 
-// Default blueprint for production use
-const defaultBlueprint = `+++
-agent_id = "default"
-name = "Default Agent"
-model = "ollama:codellama:13b"
-capabilities = ["general"]
-created = "${new Date().toISOString()}"
-created_by = "system"
-version = "1.0.0"
-+++
+**Integration & Logging:**
+29. [x] Add blueprint validation in `RequestProcessor.loadBlueprint()`
+30. [x] Activity Journal logs all blueprint operations with user identity
+31. [x] Blueprint creation adds entry with `action_type='blueprint.created'`
 
-# Default Agent
-
-You are a helpful assistant that follows instructions carefully.
-
-## Output Format
-
-Always structure your response as:
-
-\`\`\`xml
-<thought>
-Your reasoning and approach
-</thought>
-
-<content>
-Your response or solution
-</content>
-\`\`\`
-`;
-
-// Mock blueprint for testing and development
-const mockBlueprint = `+++
-agent_id = "mock"
-name = "Mock Agent"
-model = "mock:test-model"
-capabilities = ["testing", "development"]
-created = "${new Date().toISOString()}"
-created_by = "system"
-version = "1.0.0"
-+++
-
-# Mock Agent (Testing Only)
-
-You are a mock agent used for testing and development. This blueprint uses the MockLLMProvider
-which returns deterministic responses without making actual API calls.
-
-## Purpose
-
-- Enable fast, deterministic unit and integration tests
-- Avoid API costs during development
-- Test error handling and edge cases
-- Validate request → plan → execution flow without real LLM
-
-## Mock Provider Strategies
-
-This agent can use different mock strategies (configured in test setup):
-
-1. **recorded** - Replay pre-recorded LLM responses
-2. **scripted** - Return specific responses based on test scenarios
-3. **pattern** - Match request patterns and return templated responses
-4. **failing** - Simulate LLM failures for error handling tests
-5. **slow** - Simulate slow responses for timeout tests
-
-## Output Format
-
-Always structure your response as:
-
-\`\`\`xml
-<thought>
-Mock reasoning based on test scenario
-</thought>
-
-<content>
-Mock content based on test scenario
-</content>
-\`\`\`
-
-## Usage
-
-\`\`\`bash
-# Create test request using mock agent
-exoctl request "Test request" --agent mock
-
-# Or specify in request frontmatter
-agent = "mock"
-\`\`\`
-
-## Notes
-
-- **Do not use in production** - This agent does not perform real AI reasoning
-- Responses are deterministic and controlled by test fixtures
-- Useful for CI/CD pipelines where real LLM calls are not desired
-`;
-
-await Deno.writeTextFile("Blueprints/Agents/default.md", defaultBlueprint);
-await Deno.writeTextFile("Blueprints/Agents/mock.md", mockBlueprint);
-````
-
-#### **Implementation Checklist:**
-
-1. [ ] Create `src/cli/blueprint_commands.ts` extending `BaseCommand`
-2. [ ] Define `BlueprintSchema` in `src/schemas/blueprint.ts`
-3. [ ] Implement `create()` method with validation
-4. [ ] Implement `list()` method showing all blueprints
-5. [ ] Implement `show()` method displaying full content
-6. [ ] Implement `validate()` method checking format
-7. [ ] Implement `edit()` method opening in $EDITOR
-8. [ ] Implement `remove()` method with confirmation
-9. [ ] Add template system (default, coder, reviewer, architect, researcher, mock)
-10. [ ] Add `loadSystemPrompt()` utility for --system-prompt-file
-11. [ ] Add `generateBlueprintFrontmatter()` helper
-12. [ ] Add blueprint validation in `RequestProcessor.loadBlueprint()`
-13. [ ] Create default blueprint during `exoctl setup`
-14. [ ] Create mock blueprint during `exoctl setup` for testing
-15. [ ] Register commands in `src/cli/exoctl.ts`
-16. [ ] Write tests in `tests/cli/blueprint_commands_test.ts`
-17. [ ] Update User Guide with blueprint management section
-18. [ ] Update AGENT_INSTRUCTIONS.md with blueprint creation guidelines
+**Testing & Documentation:**
+32. [x] Write tests in `tests/cli/blueprint_commands_test.ts` (31 tests passing)
+33. [x] Write integration test in `tests/integration/11_blueprint_management_test.ts` (12 steps passing)
+34. [x] Update User Guide with blueprint management section
+35. [x] Update AGENT_INSTRUCTIONS.md with blueprint creation guidelines
 
 #### **Example Usage:**
 
@@ -4684,6 +4317,328 @@ export class ModelFactory {
 - [ ] Config schema supports multi-provider selection
 - [ ] Integration tests for each provider (with mocked HTTP)
 - [ ] Documentation updated with provider setup instructions
+
+---
+
+## Phase 10: MCP API Integration (Future Enhancement)
+
+**Duration:** 1-2 weeks  
+**Prerequisites:** Phase 4 (CLI Architecture) complete  
+**Goal:** Add Model Context Protocol (MCP) server interface for programmatic ExoFrame interaction
+
+### Overview
+
+Implement an MCP server that exposes ExoFrame operations as standardized tools, enabling external AI assistants (Claude Desktop, Cline, IDE agents) to interact with ExoFrame programmatically while preserving the file-based core architecture.
+
+### Step 10.1: MCP Server Foundation
+
+**Implementation:**
+
+```typescript
+// src/mcp/server.ts
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+
+export class ExoFrameMCPServer {
+  private server: Server;
+  private config: Config;
+  private db: DatabaseService;
+
+  constructor(config: Config, db: DatabaseService) {
+    this.config = config;
+    this.db = db;
+    this.server = new Server(
+      {
+        name: "exoframe",
+        version: "1.7.0",
+      },
+      {
+        capabilities: {
+          tools: {},
+        },
+      },
+    );
+    this.setupToolHandlers();
+  }
+
+  private setupToolHandlers() {
+    // List available tools
+    this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
+      tools: [
+        {
+          name: "exoframe_create_request",
+          description: "Create a new request for ExoFrame agents",
+          inputSchema: {
+            type: "object",
+            properties: {
+              description: { type: "string" },
+              agent: { type: "string", default: "default" },
+              context: { type: "array", items: { type: "string" } },
+            },
+            required: ["description"],
+          },
+        },
+        {
+          name: "exoframe_list_plans",
+          description: "List pending plans awaiting approval",
+          inputSchema: {
+            type: "object",
+            properties: {
+              status: { type: "string", enum: ["pending", "approved", "rejected"] },
+            },
+          },
+        },
+        {
+          name: "exoframe_approve_plan",
+          description: "Approve a pending plan",
+          inputSchema: {
+            type: "object",
+            properties: {
+              plan_id: { type: "string" },
+            },
+            required: ["plan_id"],
+          },
+        },
+        {
+          name: "exoframe_query_journal",
+          description: "Query the Activity Journal for recent events",
+          inputSchema: {
+            type: "object",
+            properties: {
+              trace_id: { type: "string" },
+              limit: { type: "number", default: 50 },
+            },
+          },
+        },
+      ],
+    }));
+
+    // Handle tool calls
+    this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      const { name, arguments: args } = request.params;
+
+      switch (name) {
+        case "exoframe_create_request":
+          return await this.createRequest(args);
+        case "exoframe_list_plans":
+          return await this.listPlans(args);
+        case "exoframe_approve_plan":
+          return await this.approvePlan(args);
+        case "exoframe_query_journal":
+          return await this.queryJournal(args);
+        default:
+          throw new Error(`Unknown tool: ${name}`);
+      }
+    });
+  }
+
+  async start() {
+    const transport = new StdioServerTransport();
+    await this.server.connect(transport);
+  }
+}
+```
+
+**Success Criteria:**
+
+1. [ ] MCP server starts via `exoctl mcp start`
+2. [ ] Server exposes standard MCP capabilities
+3. [ ] Stdio transport for local connections
+4. [ ] Server metadata includes name and version
+5. [ ] Graceful shutdown on SIGTERM
+
+### Step 10.2: Tool Implementations
+
+**Request Creation Tool:**
+
+```typescript
+private async createRequest(args: any) {
+  const requestCmd = new RequestCommands(
+    { config: this.config, db: this.db },
+    this.config.system.root
+  );
+  
+  const result = await requestCmd.create(
+    args.description,
+    args.agent || "default",
+    args.context || []
+  );
+  
+  return {
+    content: [
+      {
+        type: "text",
+        text: `Request created: ${result.path}\nTrace ID: ${result.trace_id}`,
+      },
+    ],
+  };
+}
+```
+
+**Plan Listing Tool:**
+
+```typescript
+private async listPlans(args: any) {
+  const planCmd = new PlanCommands(
+    { config: this.config, db: this.db },
+    this.config.system.root
+  );
+  
+  const plans = await planCmd.list(args.status);
+  
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(plans, null, 2),
+      },
+    ],
+  };
+}
+```
+
+**Journal Query Tool:**
+
+```typescript
+private async queryJournal(args: any) {
+  const activities = args.trace_id
+    ? await this.db.getActivitiesByTraceId(args.trace_id)
+    : await this.db.getRecentActivities(args.limit || 50);
+  
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(activities, null, 2),
+      },
+    ],
+  };
+}
+```
+
+**Success Criteria:**
+
+1. [ ] `exoframe_create_request` creates request files
+2. [ ] `exoframe_list_plans` returns pending plans
+3. [ ] `exoframe_approve_plan` approves plans
+4. [ ] `exoframe_query_journal` queries Activity Journal
+5. [ ] All operations logged to Activity Journal
+6. [ ] Error responses follow MCP error schema
+
+### Step 10.3: Client Integration Examples
+
+**Claude Desktop Configuration:**
+
+```json
+// ~/Library/Application Support/Claude/claude_desktop_config.json
+{
+  "mcpServers": {
+    "exoframe": {
+      "command": "exoctl",
+      "args": ["mcp", "start"],
+      "env": {
+        "EXOFRAME_ROOT": "/Users/alice/ExoFrame"
+      }
+    }
+  }
+}
+```
+
+**Cline Integration:**
+
+```json
+// .vscode/settings.json
+{
+  "cline.mcpServers": {
+    "exoframe": {
+      "command": "exoctl",
+      "args": ["mcp", "start"]
+    }
+  }
+}
+```
+
+**Success Criteria:**
+
+1. [ ] Documentation for Claude Desktop setup
+2. [ ] Documentation for Cline/IDE integration
+3. [ ] Example prompts for using MCP tools
+4. [ ] Troubleshooting guide for MCP connections
+
+### Step 10.4: Testing & Documentation
+
+**Test Coverage:**
+
+```typescript
+// tests/mcp/server_test.ts
+Deno.test("MCP Server - create request tool", async () => {
+  const server = new ExoFrameMCPServer(config, db);
+  const result = await server.createRequest({
+    description: "Test request",
+    agent: "default",
+  });
+  
+  assert(result.content[0].text.includes("Request created"));
+});
+
+Deno.test("MCP Server - list plans tool", async () => {
+  const server = new ExoFrameMCPServer(config, db);
+  const result = await server.listPlans({ status: "pending" });
+  
+  const plans = JSON.parse(result.content[0].text);
+  assert(Array.isArray(plans));
+});
+```
+
+**Documentation Updates:**
+
+- User Guide: New "MCP Integration" section
+- Technical Spec: MCP architecture diagram
+- Examples: Common MCP workflows
+
+**Success Criteria:**
+
+1. [ ] Unit tests for all MCP tools
+2. [ ] Integration test with MCP client
+3. [ ] Documentation in User Guide
+4. [ ] Architecture diagram updated
+5. [ ] Example repository with MCP configurations
+
+### Phase 10 Benefits
+
+**For Users:**
+
+- Automate ExoFrame workflows from AI assistants
+- Integrate with existing IDE agents
+- Programmatic access without learning CLI
+
+**For Developers:**
+
+- Standard MCP protocol (no custom API)
+- Local-first (no cloud dependencies)
+- Full audit trail in Activity Journal
+- Complements file-based architecture
+
+**For Ecosystem:**
+
+- ExoFrame becomes MCP-compatible tool
+- Works with any MCP client (Claude, Cline, etc.)
+- Positions ExoFrame as infrastructure layer
+
+### Phase 10 Exit Criteria
+
+- [ ] MCP server implemented with stdio transport
+- [ ] All core tools implemented (create, list, approve, query)
+- [ ] Activity Journal logging for all MCP operations
+- [ ] Integration tests with MCP client
+- [ ] Documentation for Claude Desktop setup
+- [ ] Documentation for IDE integration
+- [ ] Example configurations repository
+- [ ] User Guide updated with MCP section
 
 ---
 

@@ -297,6 +297,26 @@ By anchoring intelligence in the **Local File System**, utilizing **Transparent 
 It transforms the computer from a passive storage device into an active, cognitive partner. **ExoFrame is the
 infrastructure for the next decade of sovereign intellectual work.**
 
+### Future Enhancement: MCP API Integration
+
+**Model Context Protocol (MCP)** enables standardized communication between AI assistants and external tools/data sources. A future enhancement would add an MCP server interface to ExoFrame, allowing external AI assistants (Claude Desktop, Cline, etc.) to interact with ExoFrame programmatically.
+
+**Benefits:**
+
+- **Automation:** External AI assistants can create requests, approve plans, query activity logs
+- **Integration:** Connect ExoFrame with IDE agents, ChatGPT plugins, Claude Desktop apps
+- **Unified Interface:** Standard MCP tools (`exoframe.createRequest`, `exoframe.approvePlan`, `exoframe.queryJournal`)
+- **Preserved Sovereignty:** MCP server runs locally, no cloud dependencies required
+
+**Architecture:**
+
+- MCP server exposes ExoFrame operations as standardized tools
+- External assistants connect via stdio or SSE transport
+- All operations logged to Activity Journal with trace linking
+- Maintains ExoFrame's file-based core with API convenience layer
+
+This would complement ExoFrame's file-based API, offering both human-friendly CLI and machine-friendly MCP interfaces.
+
 ---
 
 ## Appendix A: Benchmarks

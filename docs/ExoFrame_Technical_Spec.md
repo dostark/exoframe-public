@@ -955,6 +955,66 @@ Implement A2A bridge only if one or more of these requirements emerge:
 **Current Recommendation**: Defer A2A implementation. File-based protocol is simpler, more secure, and sufficient for
 current use cases.
 
+### 11.5. Model Context Protocol (MCP) Integration
+
+**What is MCP?** Model Context Protocol is Anthropic's open standard for connecting AI assistants to external tools and data sources. It enables standardized tool calling and context sharing between AI assistants (Claude Desktop, Cline, IDE agents) and external systems.
+
+**Why MCP Fits ExoFrame:**
+
+Unlike A2A (which targets agent-to-agent coordination), MCP is designed for **assistant-to-tool integration** - precisely ExoFrame's use case:
+
+- **Local-First:** MCP servers run locally via stdio transport (no network required)
+- **Tool Calling:** Standardized interface for operations (`createRequest`, `approvePlan`, `queryJournal`)
+- **Complementary:** MCP layer sits above file-based core, doesn't replace it
+- **Ecosystem:** Works with Claude Desktop, Cline, Cursor, and other MCP clients
+
+**Planned Architecture (Phase 10):**
+
+```typescript
+// src/mcp/server.ts
+export class ExoFrameMCPServer {
+  // Expose ExoFrame operations as MCP tools
+  tools = [
+    "exoframe_create_request",    // Create request files
+    "exoframe_list_plans",        // Query pending plans
+    "exoframe_approve_plan",      // Approve plans
+    "exoframe_query_journal",     // Query Activity Journal
+    "exoframe_list_portals",      // List available portals
+    "exoframe_get_blueprint",     // Retrieve blueprint details
+  ];
+  
+  async start() {
+    // Start MCP server on stdio transport
+    // Delegate to existing CLI command implementations
+    // Log all operations to Activity Journal
+  }
+}
+```
+
+**Integration Example:**
+
+```json
+// Claude Desktop config
+{
+  "mcpServers": {
+    "exoframe": {
+      "command": "exoctl",
+      "args": ["mcp", "start"]
+    }
+  }
+}
+```
+
+**Benefits:**
+
+- **Automation:** AI assistants can create requests, approve plans programmatically
+- **Integration:** Works with any MCP-compatible client
+- **Sovereignty:** All processing remains local
+- **Auditability:** MCP operations logged to Activity Journal
+- **Simplicity:** Standard protocol, no custom API design
+
+**Implementation Status:** Planned for Phase 10 (see Implementation Plan)
+
 ---
 
 _End of Technical Specification_
