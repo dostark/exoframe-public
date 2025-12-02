@@ -30,6 +30,20 @@ if (import.meta.main) {
     const dbService = new DatabaseService(config);
     console.log("✅ Database connected (WAL mode)");
 
+    // Log daemon starting to Activity Journal
+    dbService.logActivity(
+      "system",
+      "daemon.starting",
+      "exoframe",
+      {
+        config_checksum: checksum.slice(0, 8),
+        root: config.system.root,
+        log_level: config.system.log_level,
+      },
+      undefined,
+      null,
+    );
+
     // Log provider initialization to Activity Journal
     dbService.logActivity(
       "system",
@@ -94,6 +108,19 @@ if (import.meta.main) {
     // Handle graceful shutdown
     const shutdown = () => {
       console.log("\n🛑 Shutting down...");
+
+      // Log daemon stopping to Activity Journal (before closing DB)
+      dbService.logActivity(
+        "system",
+        "daemon.stopping",
+        "exoframe",
+        {
+          reason: "signal",
+        },
+        undefined,
+        null,
+      );
+
       watcher.stop();
       dbService.close();
       Deno.exit(0);
@@ -103,6 +130,20 @@ if (import.meta.main) {
     Deno.addSignalListener("SIGTERM", shutdown);
 
     console.log("ExoFrame Daemon Active");
+
+    // Log daemon started to Activity Journal
+    dbService.logActivity(
+      "system",
+      "daemon.started",
+      "exoframe",
+      {
+        provider: providerInfo.id,
+        model: providerInfo.model,
+        watching: requestsPath,
+      },
+      undefined,
+      null,
+    );
 
     // Start watching (this will run indefinitely)
     await watcher.start();

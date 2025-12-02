@@ -1813,7 +1813,8 @@ Deno.test("MissionReporter: formats report with valid TOML frontmatter", async (
 | 5.6  | Request Commands             | src/cli/request_commands.ts       | ✅ Complete |
 | 5.7  | YAML Frontmatter Migration   | src/cli/base.ts + parsers         | ✅ Complete |
 | 5.8  | LLM Provider Selection Logic | src/ai/provider_factory.ts        | ✅ Complete |
-| 5.9  | Request Processor Pipeline   | src/services/request_processor.ts | 🔲 Planned  |
+| 5.9  | Request Processor Pipeline   | src/services/request_processor.ts | ✅ Complete |
+| 5.10 | Unified Event Logger         | src/services/event_logger.ts      | 🔲 Planned  |
 
 > **Platform note:** Maintainers must document OS-specific instructions (Windows symlink prerequisites, macOS sandbox
 > prompts, Linux desktop watchers) before marking each sub-step complete.
@@ -2780,6 +2781,409 @@ const watcher = new FileWatcher(config, async (event) => {
 // Blueprint Loading
 "should load custom agent blueprint";
 "should use default blueprint when agent is 'default'";
+```
+
+---
+
+### Step 5.10: Unified Event Logger (Console + Activity Journal) 🔲 PLANNED
+
+- **Dependencies:** Step 1.2 (Activity Journal), All modules using console.log
+- **Rollback:** Revert to direct console.log calls
+- **Action:** Create a unified logging service that writes to both console and Activity Journal
+- **Location:** `src/services/event_logger.ts`, all src/ modules
+
+**Problem Statement:**
+
+The current codebase has inconsistent logging patterns:
+
+1. **Console-only logs:** Many important events are printed to console but NOT registered in the Activity Journal (e.g., configuration loaded, daemon starting, LLM provider initialized)
+2. **Dual logging:** Some events are logged to both console and Activity Journal, but with different message formats
+3. **Audit gaps:** The Activity Journal should be the primary source for debugging and auditing, but it's missing ~40% of operational events
+4. **Code duplication:** Console.log + db.logActivity calls are scattered throughout the codebase
+
+**Examples of Missing Activity Logs:**
+
+```typescript
+// main.ts - These console logs have NO activity journal entry:
+console.log(`✅ Configuration loaded (Checksum: ${checksum.slice(0, 8)})`);
+console.log(`   Root: ${config.system.root}`);
+console.log(`   Log Level: ${config.system.log_level}`);
+console.log(`✅ LLM Provider initialized: ${providerInfo.id}`);
+console.log(`✅ Request Processor initialized`);
+```
+
+**The Solution: EventLogger Service**
+
+Create a unified `EventLogger` class that:
+
+1. Accepts a structured event with action type, target, and payload
+2. Writes to Activity Journal (database)
+3. Prints formatted message to console
+4. Provides consistent log levels (info, warn, error)
+5. Handles database connection failures gracefully (falls back to console-only)
+
+**EventLogger Interface:**
+
+```typescript
+// src/services/event_logger.ts
+
+export type LogLevel = "info" | "warn" | "error" | "debug";
+
+/**
+ * Actor types:
+ * - "system" - Daemon, watcher, internal services
+ * - "agent:<id>" - AI agent (e.g., "agent:senior-coder", "agent:request-processor")
+ * - "<user>" - Human user identity from git config or OS (e.g., "john@example.com", "jdoe")
+ */
+export type Actor = string;
+
+export interface LogEvent {
+  /** Action type in domain.action format (e.g., "daemon.started") */
+  action: string;
+
+  /** Target entity (file path, service name, etc.) */
+  target: string;
+
+  /** Additional context as key-value pairs */
+  payload?: Record<string, unknown>;
+
+  /**
+   * Actor performing the action:
+   * - "system" for daemon/services
+   * - "agent:<id>" for AI agents (e.g., "agent:senior-coder")
+   * - User identity for humans (e.g., "john@example.com" from git, or OS username)
+   */
+  actor?: Actor;
+
+  /** Trace ID for correlation */
+  traceId?: string;
+
+  /** Log level for console output */
+  level?: LogLevel;
+
+  /** Custom emoji/icon for console output */
+  icon?: string;
+}
+
+export interface EventLoggerConfig {
+  /** DatabaseService instance (optional - allows console-only mode) */
+  db?: DatabaseService;
+
+  /** Prefix for console messages (e.g., "[ExoFrame]") */
+  prefix?: string;
+
+  /** Minimum log level to output */
+  minLevel?: LogLevel;
+
+  /** Whether to include timestamps in console output */
+  showTimestamp?: boolean;
+
+  /**
+   * Default actor identity. For CLI commands, this should be the user identity
+   * obtained from git config (user.email) or OS username.
+   */
+  defaultActor?: Actor;
+}
+
+export class EventLogger {
+  constructor(config: EventLoggerConfig);
+
+  /**
+   * Log an event to both console and Activity Journal
+   */
+  log(event: LogEvent): void;
+
+  /**
+   * Convenience methods
+   */
+  info(action: string, target: string, payload?: Record<string, unknown>): void;
+  warn(action: string, target: string, payload?: Record<string, unknown>): void;
+  error(action: string, target: string, payload?: Record<string, unknown>): void;
+  debug(action: string, target: string, payload?: Record<string, unknown>): void;
+
+  /**
+   * Create a child logger with preset values (e.g., for a specific service)
+   */
+  child(defaults: Partial<LogEvent>): EventLogger;
+
+  /**
+   * Get user identity from git config or OS username
+   * Used automatically for CLI commands
+   */
+  static getUserIdentity(): Promise<string>;
+}
+```
+
+**Actor Identity Resolution:**
+
+```typescript
+// How actor identity is determined:
+
+// 1. For system/daemon events:
+actor = "system";
+
+// 2. For agent events:
+actor = "agent:senior-coder";
+actor = "agent:request-processor";
+
+// 3. For human/CLI events (resolved automatically):
+// Try git config first:
+//   git config user.email → "john.doe@example.com"
+// Fallback to git user.name:
+//   git config user.name → "John Doe"
+// Fallback to OS username:
+//   Deno.env.get("USER") → "jdoe"
+actor = "john.doe@example.com";
+```
+
+**Console Output Format:**
+
+```
+[timestamp] icon message
+            key: value
+            key: value
+
+Examples:
+✅ Configuration loaded (Checksum: d70fb81)
+   Root: /home/user/ExoFrame
+   Log Level: info
+
+🚀 Daemon starting
+   Provider: ollama
+   Model: codellama:13b
+
+📥 File detected: request-abc123.md
+   Size: 2048 bytes
+
+⚠️ Context truncated
+   Files skipped: 3
+   Token budget: 100000
+```
+
+**Migration Plan:**
+
+| Module                  | Current Console Calls | Migration Approach                                          |
+| ----------------------- | --------------------- | ----------------------------------------------------------- |
+| `main.ts`               | ~15 calls             | Replace all with EventLogger (actor: "system")              |
+| `request_processor.ts`  | ~8 calls              | Replace with EventLogger.child() (actor: "agent:processor") |
+| `watcher.ts`            | ~6 calls              | Replace with EventLogger.child() (actor: "system")          |
+| `daemon_commands.ts`    | ~12 calls             | Replace with EventLogger.child() (actor: user identity)     |
+| `changeset_commands.ts` | ~10 calls             | Replace with EventLogger.child() (actor: user identity)     |
+| `plan_commands.ts`      | ~5 calls              | Replace with EventLogger.child() (actor: user identity)     |
+| `request_commands.ts`   | ~8 calls              | Replace with EventLogger.child() (actor: user identity)     |
+| `portal_commands.ts`    | ~10 calls             | Replace with EventLogger.child() (actor: user identity)     |
+| `git_commands.ts`       | ~6 calls              | Replace with EventLogger.child() (actor: user identity)     |
+| `exoctl.ts`             | ~40 calls             | Display output only (list, show, status) - no DB logging    |
+
+**CLI Logging Rules:**
+
+CLI commands interact with ExoFrame on behalf of the user. All CLI **actions** must be logged to the Activity Journal with the **actual user identity** (email or username) for complete audit trail:
+
+| CLI Output Type     | Example                                          | Log to Activity Journal?    |
+| ------------------- | ------------------------------------------------ | --------------------------- |
+| **User Actions**    | `exoctl plan approve`, `exoctl changeset reject` | ✅ YES - with user identity |
+| **State Changes**   | `exoctl request create`, `exoctl portal add`     | ✅ YES - with user identity |
+| **Read Operations** | `exoctl plan list`, `exoctl request show`        | ❌ NO - display only        |
+| **Status Display**  | `exoctl daemon status`, `exoctl git branches`    | ❌ NO - display only        |
+| **Help/Version**    | `exoctl --help`, `exoctl --version`              | ❌ NO - display only        |
+| **Errors**          | Validation failures, missing files               | ✅ YES - with user identity |
+
+**Note:** CLI commands already log some actions via `db.logActivity()` calls. The migration will unify these into EventLogger for consistency and ensure ALL actions are captured.
+
+**Exceptions (Keep console.log only):**
+
+1. **Read-only display:** List results, show details, status output
+2. **Interactive prompts:** User input handling
+3. **Help text:** Command documentation
+4. **Error fallbacks:** When Activity Journal itself fails
+
+**Implementation Files:**
+
+| File                           | Purpose                    |
+| ------------------------------ | -------------------------- |
+| `src/services/event_logger.ts` | EventLogger class          |
+| `tests/event_logger_test.ts`   | Unit tests                 |
+| All src/ modules               | Migration from console.log |
+
+**Success Criteria:**
+
+1. [ ] `EventLogger` class implemented with log(), info(), warn(), error() methods
+2. [ ] All log events written to Activity Journal with proper action types
+3. [ ] Console output formatted consistently with icons and indentation
+4. [ ] Database failures don't crash the application (fallback to console-only)
+5. [ ] Child loggers inherit parent defaults (traceId, actor, etc.)
+6. [ ] All `main.ts` startup logs migrated to EventLogger
+7. [ ] All service modules migrated (request_processor, watcher, etc.)
+8. [ ] All CLI command **actions** use EventLogger with actor='human'
+9. [ ] CLI read-only display uses console.log (list, show, status)
+10. [ ] 100% of system events + user actions in Activity Journal
+11. [ ] Activity Journal becomes the single source of truth for debugging and audit
+12. [ ] AGENT_INSTRUCTIONS.md updated with EventLogger usage guidelines
+13. [ ] All existing tests pass after migration
+14. [ ] User identity resolved from git config (email) or OS username
+15. [ ] CLI actions queryable by user: `SELECT * FROM activity WHERE actor='john@example.com'`
+16. [ ] User activity report: distinct users and action counts
+
+**TDD Test Cases:**
+
+```typescript
+// src/services/event_logger_test.ts
+
+// Basic Logging
+"should write event to Activity Journal";
+"should print formatted message to console";
+"should include payload values in console output";
+
+// Log Levels
+"should respect minLevel configuration";
+"should use appropriate icons for each level";
+
+// Child Loggers
+"should inherit parent defaults";
+"should override parent defaults when specified";
+
+// Actor Identity
+"should resolve user identity from git config email";
+"should fallback to git user.name if email not set";
+"should fallback to OS username if git not configured";
+"should cache user identity after first resolution";
+
+// Error Handling
+"should fallback to console-only when DB unavailable";
+"should not throw when DB write fails";
+
+// Format
+"should format timestamps consistently";
+"should indent multi-line payloads";
+```
+
+**Example Usage After Migration:**
+
+```typescript
+// src/main.ts (after migration)
+
+const logger = new EventLogger({ db: dbService, prefix: "[ExoFrame]" });
+
+// Before: console.log(`✅ Configuration loaded (Checksum: ${checksum})`);
+// After:
+logger.info("config.loaded", "exo.config.toml", {
+  checksum: checksum.slice(0, 8),
+  root: config.system.root,
+  log_level: config.system.log_level,
+});
+
+// Before: console.log(`✅ LLM Provider initialized: ${providerInfo.id}`);
+// After:
+logger.info("llm.provider.initialized", providerInfo.id, {
+  type: providerInfo.type,
+  model: providerInfo.model,
+  source: providerInfo.source,
+});
+
+// Service-specific child logger
+const processorLogger = logger.child({
+  actor: "agent",
+  agentId: "request-processor",
+});
+
+// Before: console.error(`[RequestProcessor] Failed to parse: ${filePath}`);
+// After:
+processorLogger.error("request.parse_failed", filePath, {
+  error: error.message,
+});
+```
+
+**CLI Command Example (User Actions):**
+
+```typescript
+// src/cli/plan_commands.ts (after migration)
+
+export class PlanCommands extends BaseCommand {
+  private logger: EventLogger;
+  private userIdentity: string | null = null;
+
+  constructor(context: CommandContext) {
+    super(context);
+    // Logger will be initialized with user identity on first use
+    this.logger = new EventLogger({ db: context.db });
+  }
+
+  private async getLogger(): Promise<EventLogger> {
+    if (!this.userIdentity) {
+      // Resolve user identity once (from git config or OS username)
+      this.userIdentity = await EventLogger.getUserIdentity();
+    }
+    return this.logger.child({ actor: this.userIdentity });
+  }
+
+  async approve(planId: string): Promise<void> {
+    const logger = await this.getLogger();
+
+    // ... validation and file move logic ...
+
+    // Log the action with actual user identity
+    // Activity Journal record: actor="john.doe@example.com", action_type="plan.approved"
+    logger.info("plan.approved", planId, {
+      approved_at: new Date().toISOString(),
+      via: "cli",
+      command: "exoctl plan approve",
+    });
+
+    // Display-only output (console.log for user feedback)
+    console.log(`✓ Plan ${planId} approved by ${this.userIdentity}`);
+    console.log(`  Moved to: /System/Active/${planId}.md`);
+  }
+
+  async list(statusFilter?: string): Promise<PlanMetadata[]> {
+    // Read-only operation - no activity logging needed
+    const plans = await this.loadPlans(statusFilter);
+
+    // Display-only output
+    console.log(`\n📋 Plans (${plans.length}):\n`);
+    for (const plan of plans) {
+      console.log(`  ${plan.id} - ${plan.status}`);
+    }
+
+    return plans;
+  }
+}
+```
+
+**Activity Journal Query Benefits:**
+
+After migration, all operational events are queryable with specific user identities:
+
+```sql
+-- Find all configuration changes
+SELECT * FROM activity WHERE action_type = 'config.loaded' ORDER BY timestamp DESC;
+
+-- Trace daemon lifecycle
+SELECT * FROM activity WHERE action_type LIKE 'daemon.%' ORDER BY timestamp;
+
+-- Debug request processing
+SELECT * FROM activity WHERE trace_id = 'abc123' ORDER BY timestamp;
+
+-- Audit all provider initializations
+SELECT * FROM activity WHERE action_type = 'llm.provider.initialized';
+
+-- Audit all actions by a specific user
+SELECT action_type, target, payload, timestamp
+FROM activity 
+WHERE actor = 'john.doe@example.com' 
+ORDER BY timestamp DESC;
+
+-- Find all human users who have interacted with ExoFrame
+SELECT DISTINCT actor, COUNT(*) as action_count
+FROM activity 
+WHERE actor NOT IN ('system') AND actor NOT LIKE 'agent:%'
+GROUP BY actor
+ORDER BY action_count DESC;
+
+-- Find all plan approvals/rejections by user
+SELECT action_type, target, json_extract(payload, '$.approved_by') as user, timestamp
+FROM activity 
+WHERE action_type LIKE 'plan.%' AND actor = 'human'
+ORDER BY timestamp DESC;
 ```
 
 ---
