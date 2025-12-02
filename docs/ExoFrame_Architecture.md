@@ -1,6 +1,6 @@
 # ExoFrame Architecture
 
-**Version:** 1.7.0  
+**Version:** 1.7.0\
 **Date:** December 2, 2025
 
 This document provides a comprehensive architectural overview of ExoFrame components using Mermaid diagrams.

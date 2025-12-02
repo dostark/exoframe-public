@@ -250,10 +250,10 @@ Test content
 
 EOF
 
-exoctl blueprint create custom-test \
-  --name "Custom Test" \
-  --model "mock:test-model" \
-  --system-prompt-file /tmp/custom-prompt.txt
+exoctl blueprint create custom-test\
+--name "Custom Test"\
+--model "mock:test-model"\
+--system-prompt-file /tmp/custom-prompt.txt
 
 # Step 8: Validate custom blueprint
 
@@ -276,15 +276,15 @@ exoctl blueprint validate invalid-test
 
 # Step 11: Test reserved name rejection
 
-exoctl blueprint create system \
-  --name "System Agent" \
-  --model "ollama:llama2" 2>&1 || echo "Expected: Reserved name rejected"
+exoctl blueprint create system\
+--name "System Agent"\
+--model "ollama:llama2" 2>&1 || echo "Expected: Reserved name rejected"
 
 # Step 12: Test duplicate rejection
 
-exoctl blueprint create test-agent \
-  --name "Duplicate Test" \
-  --model "ollama:llama2" 2>&1 || echo "Expected: Duplicate rejected"
+exoctl blueprint create test-agent\
+--name "Duplicate Test"\
+--model "ollama:llama2" 2>&1 || echo "Expected: Duplicate rejected"
 
 # Step 13: Test edit command (requires EDITOR)
 
@@ -541,6 +541,9 @@ rm -f ~/ExoFrame/Inbox/Requests/request-*.md
 
 - Daemon running with mock LLM (default in dev mode)
 - Request created (MT-04 complete)
+- Mock blueprint exists with recorded responses OR using real LLM provider
+
+**Note:** Mock LLM requires pre-recorded responses. If testing without recordings, use a real LLM provider (see MT-11) or expect `status: failed` with "No recorded response found" error.
 
 ### Steps
 
@@ -548,14 +551,23 @@ rm -f ~/ExoFrame/Inbox/Requests/request-*.md
 # Step 1: Verify daemon is running
 exoctl daemon status
 
-# Step 2: Check for plan (may need to wait)
+# Step 2: Create a mock blueprint with recorded responses (if not exists)
+# Skip this if using real LLM provider
+exoctl blueprint create mock-agent \
+  --name "Mock Agent" \
+  --template mock
+
+# Step 3: Create request using mock agent
+exoctl request "Add a hello world function to utils.ts" --agent mock-agent
+
+# Step 4: Check for plan (may need to wait)
 sleep 5
 exoctl plan list
 
-# Step 3: View the generated plan
+# Step 5: View the generated plan (if successful)
 exoctl plan show <plan-id>
 
-# Step 4: Verify plan file
+# Step 6: Verify plan file
 ls -la ~/ExoFrame/Inbox/Plans/
 ```
 
@@ -568,32 +580,42 @@ ls -la ~/ExoFrame/Inbox/Plans/
 
 **Step 2:**
 
-- Shows plan in list
-- Status: `review`
+- Mock blueprint created successfully
+- Or shows "already exists" if previously created
 
 **Step 3:**
 
-- Shows plan details
-- Includes proposed steps
-- Shows associated request ID
+- Request created successfully
+- Shows trace_id and file path
 
 **Step 4:**
 
-- Plan file exists in `Inbox/Plans/`
+- With recorded responses: Shows plan in list with `status: review`
+- Without recordings: Shows request with `status: failed`
+
+**Step 5:**
+
+- With recordings: Shows plan details including proposed steps and request ID
+- Without recordings: Error message about missing recording
+
+**Step 6:**
+
+- With recordings: Plan file exists in `Inbox/Plans/` with format `<request-id>_plan.md`
+- Without recordings: No plan file (request marked failed)
 
 ### Verification
 
 ```bash
-# Read the plan file
-cat ~/ExoFrame/Inbox/Plans/PLAN-*.md
+# Read the plan file (if generated)
+cat ~/ExoFrame/Inbox/Plans/*_plan.md 2>/dev/null
 
-# Expected structure (YAML frontmatter):
+# Expected structure with YAML frontmatter (if plan generated):
 # ---
 # trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-# request_id: "implement-auth"
+# request_id: "request-a1b2c3d4"
 # status: review
 # created_at: "2025-12-01T10:01:00.000Z"
-# agent_id: default
+# agent_id: mock-agent
 # ---
 #
 # ## Proposed Plan
@@ -601,6 +623,10 @@ cat ~/ExoFrame/Inbox/Plans/PLAN-*.md
 # 1. Create utils.ts file
 # 2. Add hello world function
 # ...
+
+# If no plan generated, check request status
+cat ~/ExoFrame/Inbox/Requests/request-*.md | grep -A1 "^status:"
+# Expected with no recordings: status: failed
 ```
 
 ### Troubleshooting
@@ -611,11 +637,17 @@ If no plans are generated after 30 seconds:
 # Check daemon logs for errors
 tail -50 ~/ExoFrame/System/daemon.log
 
+# Look for mock recording errors
+grep -i "No recorded response\|prompt hash" ~/ExoFrame/System/daemon.log | tail -5
+
 # Check if request processor is running
 grep -i "request.*processing\|watcher\|detected" ~/ExoFrame/System/daemon.log | tail -20
 
-# Verify request file is valid
+# Verify request file is valid YAML
 cat ~/ExoFrame/Inbox/Requests/request-*.md
+
+# Check request status (should show 'failed' if no recordings)
+cat ~/ExoFrame/Inbox/Requests/request-*.md | grep "^status:"
 
 # Try restarting daemon
 exoctl daemon stop
@@ -624,11 +656,31 @@ sleep 5
 exoctl plan list
 ```
 
+**Common Issues:**
+
+1. **"No recorded response found for prompt hash"** - This is expected when using mock provider without recordings. Options:
+   - Use real LLM provider: `EXO_LLM_PROVIDER=ollama exoctl daemon start`
+   - Or accept `status: failed` as expected behavior for mock testing
+
+2. **Request marked as failed immediately** - Normal with mock provider and no recordings
+
+3. **Plan file not created** - Mock provider needs pre-recorded responses in recordings directory to generate plans
+
 ### Pass Criteria
 
+**With Mock LLM and Recordings:**
+
 - [ ] Plan generated within 30 seconds
-- [ ] Plan linked to original request
+- [ ] Plan linked to original request (matching trace_id)
 - [ ] Plan contains actionable steps
+- [ ] Plan file uses YAML frontmatter format
+
+**With Mock LLM and No Recordings (Expected Failure):**
+
+- [ ] Request marked as `status: failed`
+- [ ] Daemon logs show "No recorded response found" error
+- [ ] Daemon continues running (no crash)
+- [ ] Error message includes prompt hash for debugging
 
 ---
 
@@ -674,14 +726,17 @@ ls -la ~/ExoFrame/System/Active/
 
 ```bash
 # Check plan is no longer in Inbox
-ls ~/ExoFrame/Inbox/Plans/ | grep <plan-id>  # Should be empty
+ls ~/ExoFrame/Inbox/Plans/ | grep "_plan.md"  # Should be empty
 
 # Check plan is in Active
-ls ~/ExoFrame/System/Active/ | grep <plan-id>  # Should show file
+ls ~/ExoFrame/System/Active/ | grep "_plan.md"  # Should show file
 
 # Read moved plan file
-cat ~/ExoFrame/System/Active/PLAN-*.md
-# Frontmatter should show: status: approved
+cat ~/ExoFrame/System/Active/*_plan.md
+# YAML frontmatter should show:
+# ---
+# status: approved
+# ---
 ```
 
 ### Pass Criteria
@@ -735,11 +790,14 @@ ls -la ~/ExoFrame/System/Archive/
 
 ```bash
 # Read archived plan
-cat ~/ExoFrame/System/Archive/PLAN-*.md
+cat ~/ExoFrame/System/Archive/*_plan.md 2>/dev/null || \
+cat ~/ExoFrame/Inbox/Plans/*_rejected.md 2>/dev/null
 
-# Should contain:
+# YAML frontmatter should contain:
+# ---
 # status: rejected
 # rejection_reason: Needs different approach
+# ---
 ```
 
 ### Pass Criteria
@@ -754,10 +812,13 @@ cat ~/ExoFrame/System/Archive/PLAN-*.md
 
 **Purpose:** Verify approved plan executes and generates changeset.
 
+**Status:** ⚠️ **NOT IMPLEMENTED** - Plan execution engine and changeset management are planned features (Phase 8-9). This scenario is a placeholder for future implementation.
+
 ### Preconditions
 
 - Approved plan exists (MT-06 complete or create new)
 - Daemon running
+- Plan execution engine implemented
 
 ### Steps
 
@@ -769,11 +830,11 @@ exoctl plan approve <plan-id>
 sleep 10
 
 # Step 3: Check for changeset (agent-created branch)
-exoctl changeset list
-exoctl changeset show <changeset-id>
+exoctl changeset list 2>/dev/null || echo "Command not implemented yet"
+exoctl changeset show <changeset-id> 2>/dev/null || echo "Command not implemented yet"
 
 # Step 4: Verify git branch created
-exoctl git branches
+exoctl git branches 2>/dev/null || echo "Command not implemented yet"
 ```
 
 ### Expected Results
@@ -907,14 +968,17 @@ rm -rf /tmp/test-project
 
 ```bash
 # Step 1: Get daemon PID
-DAEMON_PID=$(pgrep -f "exoframe")
+DAEMON_PID=$(pgrep -f "deno.*main.ts" | head -1)
 echo "Daemon PID: $DAEMON_PID"
+
+# Alternative: Use exoctl to get PID
+# exoctl daemon status | grep "PID:"
 
 # Step 2: Force kill the daemon (simulate crash)
 kill -9 $DAEMON_PID
 
 # Step 3: Verify daemon is dead
-pgrep -f "exoframe" || echo "Daemon stopped"
+pgrep -f "deno.*main.ts" || echo "Daemon stopped"
 
 # Step 4: Restart daemon
 cd ~/ExoFrame
@@ -984,9 +1048,10 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 export OPENAI_API_KEY="sk-..."
 
 # Step 2: Start daemon with real LLM
-EXO_LLM_PROVIDER=anthropic deno task start:fg &
+cd ~/ExoFrame
+EXO_LLM_PROVIDER=anthropic exoctl daemon start
 # OR
-EXO_LLM_PROVIDER=openai deno task start:fg &
+EXO_LLM_PROVIDER=openai exoctl daemon start
 
 # Step 3: Wait for startup
 sleep 5
@@ -1257,15 +1322,28 @@ grep -i "error\|conflict\|race" ~/ExoFrame/System/daemon.log
 ### Steps
 
 ```bash
-# Step 1: Create files rapidly
+# Step 1: Create files rapidly (proper format with frontmatter)
 for i in $(seq 1 5); do
-  echo "Request $i" > ~/ExoFrame/Inbox/Requests/rapid-$i.md
+  cat > ~/ExoFrame/Inbox/Requests/rapid-$i.md << EOF
+---
+trace_id: "00000000-0000-0000-0000-00000000000$i"
+created: "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+status: pending
+priority: normal
+agent: default
+source: manual-test
+---
+
+# Request
+
+Test request $i
+EOF
   sleep 0.1
 done
 
-# Step 2: Modify files
+# Step 2: Modify files (update status)
 for i in $(seq 1 5); do
-  echo "Modified" >> ~/ExoFrame/Inbox/Requests/rapid-$i.md
+  sed -i 's/status: pending/status: processing/' ~/ExoFrame/Inbox/Requests/rapid-$i.md
   sleep 0.1
 done
 
@@ -1331,21 +1409,26 @@ grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
 exoctl daemon stop
 
 # Step 4: Test Ollama provider via environment
-EXO_LLM_PROVIDER=ollama deno task start:fg &
+cd ~/ExoFrame
+EXO_LLM_PROVIDER=ollama exoctl daemon start
 sleep 3
-grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
+grep -i "LLM Provider\|provider" ~/ExoFrame/System/daemon.log | tail -5
 exoctl daemon stop
 
 # Step 5: Test Ollama with custom model
-EXO_LLM_PROVIDER=ollama EXO_LLM_MODEL=codellama deno exoctl daemon start
+cd ~/ExoFrame
+EXO_LLM_PROVIDER=ollama EXO_LLM_MODEL=codellama exoctl daemon start
 sleep 3
-grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
+grep -i "LLM Provider\|provider" ~/ExoFrame/System/daemon.log | tail -5
 exoctl daemon stop
 
 # Step 6: Test missing API key error (Anthropic)
+cd ~/ExoFrame
 unset ANTHROPIC_API_KEY
-EXO_LLM_PROVIDER=anthropic deno task start:fg 2>&1 | head -20
-# Should show error about missing API key
+EXO_LLM_PROVIDER=anthropic exoctl daemon start 2>&1 || echo "Expected: API key error"
+sleep 2
+# Check if daemon failed to start (expected)
+exoctl daemon status 2>&1 || echo "Daemon not running (expected)"
 
 # Step 7: Test config file provider selection
 cat >> ~/ExoFrame/exo.config.toml << 'EOF'
@@ -1360,9 +1443,10 @@ grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
 exoctl daemon stop
 
 # Step 8: Test environment overrides config
-EXO_LLM_PROVIDER=mock deno task start:fg &
+cd ~/ExoFrame
+EXO_LLM_PROVIDER=mock exoctl daemon start
 sleep 3
-grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
+grep -i "LLM Provider\|provider" ~/ExoFrame/System/daemon.log | tail -5
 exoctl daemon stop
 ```
 

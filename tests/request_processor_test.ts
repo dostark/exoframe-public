@@ -293,7 +293,7 @@ Do something
 
       // Re-read request file to check status update
       const updatedContent = await Deno.readTextFile(requestPath);
-      assertStringIncludes(updatedContent, 'status: planned');
+      assertStringIncludes(updatedContent, "status: planned");
     });
   });
 
@@ -353,7 +353,7 @@ Do something
 
       // Check request status is updated to 'failed'
       const updatedContent = await Deno.readTextFile(requestPath);
-      assertStringIncludes(updatedContent, 'status: failed');
+      assertStringIncludes(updatedContent, "status: failed");
     });
 
     it("should handle missing blueprint gracefully", async () => {

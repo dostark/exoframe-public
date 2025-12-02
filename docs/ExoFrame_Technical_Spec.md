@@ -975,14 +975,14 @@ Unlike A2A (which targets agent-to-agent coordination), MCP is designed for **as
 export class ExoFrameMCPServer {
   // Expose ExoFrame operations as MCP tools
   tools = [
-    "exoframe_create_request",    // Create request files
-    "exoframe_list_plans",        // Query pending plans
-    "exoframe_approve_plan",      // Approve plans
-    "exoframe_query_journal",     // Query Activity Journal
-    "exoframe_list_portals",      // List available portals
-    "exoframe_get_blueprint",     // Retrieve blueprint details
+    "exoframe_create_request", // Create request files
+    "exoframe_list_plans", // Query pending plans
+    "exoframe_approve_plan", // Approve plans
+    "exoframe_query_journal", // Query Activity Journal
+    "exoframe_list_portals", // List available portals
+    "exoframe_get_blueprint", // Retrieve blueprint details
   ];
-  
+
   async start() {
     // Start MCP server on stdio transport
     // Delegate to existing CLI command implementations

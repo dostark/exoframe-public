@@ -67,6 +67,7 @@ structure.
 **Success Criteria:**
 
 **Core Functionality:**
+
 1. [x] `deno task start` runs `main.ts` and prints "ExoFrame Daemon Active"
 2. [x] Process fails with PermissionDenied when required permissions removed from `deno.json`
 3. [x] `deno.lock` file generated and committed to version control
@@ -79,6 +80,7 @@ structure.
 7. [x] Complete Deno configuration created with security sandbox and task definitions
 
 **Implementation:** See `deno.json` in project root for complete configuration with:
+
 - Strict permission flags (read, write, net, env, run)
 - Task definitions (start, dev, test, lint, fmt)
 - Import maps for dependencies (@std/fs, @std/path, @std/toml, @db/sqlite, zod)
@@ -123,6 +125,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 **Success Criteria:**
 
 **Core Functionality:**
+
 1. [x] Database file created at `/System/journal.db` with WAL mode enabled
 2. [x] `activity` table with trace_id, actor, agent_id, action_type, payload, timestamp
 3. [x] `leases` table for file locking with TTL expiration
@@ -139,41 +142,42 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 10. [x] Migration history tracked in schema_version table
 
 **Schema:**
-  ```sql
-  CREATE TABLE activity (
-    id TEXT PRIMARY KEY,
-    trace_id TEXT NOT NULL,
-    actor TEXT NOT NULL,              -- 'agent', 'human', 'system'
-    agent_id TEXT,                    -- Specific agent: 'senior-coder', 'security-auditor', NULL for human/system
-    action_type TEXT NOT NULL,
-    payload JSON NOT NULL,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
 
-  CREATE INDEX idx_activity_trace ON activity(trace_id);
-  CREATE INDEX idx_activity_time ON activity(timestamp);
-  CREATE INDEX idx_activity_actor ON activity(actor);
-  CREATE INDEX idx_activity_agent ON activity(agent_id);
+```sql
+CREATE TABLE activity (
+  id TEXT PRIMARY KEY,
+  trace_id TEXT NOT NULL,
+  actor TEXT NOT NULL,              -- 'agent', 'human', 'system'
+  agent_id TEXT,                    -- Specific agent: 'senior-coder', 'security-auditor', NULL for human/system
+  action_type TEXT NOT NULL,
+  payload JSON NOT NULL,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-  -- File Leases: Prevents concurrent modifications
-  CREATE TABLE leases (
-    file_path TEXT PRIMARY KEY,
-    agent_id TEXT NOT NULL,
-    acquired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    heartbeat_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    expires_at DATETIME NOT NULL      -- TTL: acquired_at + 60 seconds
-  );
+CREATE INDEX idx_activity_trace ON activity(trace_id);
+CREATE INDEX idx_activity_time ON activity(timestamp);
+CREATE INDEX idx_activity_actor ON activity(actor);
+CREATE INDEX idx_activity_agent ON activity(agent_id);
 
-  CREATE INDEX idx_leases_expires ON leases(expires_at);
+-- File Leases: Prevents concurrent modifications
+CREATE TABLE leases (
+  file_path TEXT PRIMARY KEY,
+  agent_id TEXT NOT NULL,
+  acquired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  heartbeat_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  expires_at DATETIME NOT NULL      -- TTL: acquired_at + 60 seconds
+);
 
-  -- Schema version tracking (for migrations)
-  CREATE TABLE schema_version (
-    version INTEGER PRIMARY KEY,
-    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+CREATE INDEX idx_leases_expires ON leases(expires_at);
 
-  INSERT INTO schema_version (version) VALUES (1);
-  ```
+-- Schema version tracking (for migrations)
+CREATE TABLE schema_version (
+  version INTEGER PRIMARY KEY,
+  applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO schema_version (version) VALUES (1);
+```
 
 ### Step 1.3: Configuration Loader (TOML + Zod) ✅ COMPLETED
 
@@ -185,6 +189,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 **Success Criteria:**
 
 **Core Functionality:**
+
 1. [x] ConfigService loads `exo.config.toml` on system startup
 2. [x] Zod schema validates all required configuration fields
 3. [x] Readable error messages for malformed TOML or missing keys
@@ -207,6 +212,7 @@ Add a `deno.json` `test` task for convenience so contributors can run `deno task
 **Success Criteria:**
 
 **Directory Structure:**
+
 1. [x] `/Knowledge` directory created as vault root
 2. [x] `/Knowledge/Context` directory for read-only reference files
 3. [x] `/Knowledge/Reports` directory for agent-generated mission reports
@@ -4643,3 +4649,4 @@ Deno.test("MCP Server - list plans tool", async () => {
 ---
 
 _End of Implementation Plan_
+````
