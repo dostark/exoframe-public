@@ -29,7 +29,7 @@ Before modifying documentation:
 
 | Document                          | Purpose                                          | When to Update                                    |
 | --------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
-| `ExoFrame_White_paper.md`         | High-level vision, market positioning, use cases | Major feature additions, positioning changes      |
+| `ExoFrame_White_Paper.md`         | High-level vision, market positioning, use cases | Major feature additions, positioning changes      |
 | `ExoFrame_Technical_Spec.md`      | Architecture, schemas, security model            | New components, API changes, schema modifications |
 | `ExoFrame_Implementation_Plan.md` | Step-by-step build plan with TDD test cases      | Before/during any implementation work             |
 
@@ -103,7 +103,7 @@ Each step MUST include:
 
 These documents MUST have synchronized version numbers:
 
-- `ExoFrame_White_paper.md`
+- `ExoFrame_White_Paper.md`
 - `ExoFrame_Technical_Spec.md`
 - `ExoFrame_Implementation_Plan.md`
 - `ExoFrame_User_Guide.md`
