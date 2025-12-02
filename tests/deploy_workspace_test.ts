@@ -307,7 +307,7 @@ Deno.test({
       );
       assertStringIncludes(
         secondStart.stdout,
-        "already running",
+        "daemon.already_running",
         "Should report daemon already running",
       );
     } finally {
@@ -334,7 +334,7 @@ Deno.test({
       );
       assertStringIncludes(
         stopResult.stdout,
-        "not running",
+        "daemon.not_running",
         "Should report daemon not running",
       );
     } finally {

@@ -336,6 +336,79 @@ await ensureDir(join(tempDir, "Inbox", "Requests"));
  */
 ```
 
+## CLI Command Testing
+
+### ⚠️ CRITICAL: Add Integration Tests for New CLI Commands
+
+**When implementing new CLI commands, you MUST add corresponding integration tests in `tests/integration/`.**
+
+Each new CLI command requires:
+
+1. **Unit tests** in `tests/cli/<command>_commands_test.ts` - Test command logic in isolation
+2. **Integration tests** in `tests/integration/` - Test command in realistic scenarios with:
+   - Full workspace setup (database, file watchers, etc.)
+   - Interaction with other system components
+   - End-to-end workflows (e.g., create request → generate plan → approve → execute)
+   - Error handling and edge cases in production-like environment
+
+### Integration Test Naming Convention
+
+Use sequential numbering for integration tests:
+
+```
+tests/integration/
+├── 01_happy_path_test.ts          # Basic success flow
+├── 02_plan_rejection_test.ts      # Alternative flow
+├── 03_plan_revision_test.ts       # Iterative flow
+├── 04_execution_failure_test.ts   # Error handling
+├── 05_concurrent_requests_test.ts # Concurrency
+├── ...
+├── 11_new_feature_test.ts         # Your new integration test
+```
+
+### Integration Test Structure
+
+```typescript
+import { TestEnvironment } from "./helpers/test_environment.ts";
+import { assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
+
+Deno.test("Integration: New CLI Feature - success flow", async () => {
+  const env = await TestEnvironment.create({
+    initGit: true,
+    configOverrides: { watcher: { debounce_ms: 50 } },
+  });
+
+  try {
+    // Step 1: Setup preconditions
+    await env.createRequest("Test request");
+
+    // Step 2: Execute CLI command
+    const result = await env.runCliCommand("new-command", ["arg1", "arg2"]);
+
+    // Step 3: Verify state changes
+    assertExists(result);
+    assertEquals(result.status, "success");
+
+    // Step 4: Verify side effects (files created, DB updated, etc.)
+    const activities = env.db.getActivitiesByTrace(result.trace_id);
+    assertEquals(activities.length, 1);
+  } finally {
+    await env.cleanup();
+  }
+});
+```
+
+### When to Add Integration Tests
+
+Add integration tests when:
+
+- Adding new CLI commands (`exoctl <new-command>`)
+- Modifying workflows that span multiple components
+- Implementing features that interact with external systems (git, file system, etc.)
+- Adding error handling for complex failure scenarios
+
+Integration tests complement unit tests by validating the system works correctly as a whole, not just in isolation.
+
 ## Running Tests
 
 ```bash
@@ -347,6 +420,9 @@ deno test tests/feature_test.ts --allow-all
 
 # Run with filter
 deno test --allow-all --filter "FeatureName"
+
+# Run only integration tests
+deno test tests/integration/ --allow-all
 ```
 
 ## Final Step: Format Code

@@ -61,7 +61,6 @@ Deno.test("scaffold.sh creates required directory structure", async () => {
       "Knowledge/Portals",
       "Portals",
       "scripts",
-      "src",
     ];
 
     for (const dir of requiredDirs) {
@@ -126,22 +125,17 @@ Deno.test("scaffold.sh copies exo.config.sample.toml template", async () => {
   }
 });
 
-Deno.test("scaffold.sh copies src/main.ts template", async () => {
+Deno.test("scaffold.sh does not create src directory", async () => {
   const tmp = await Deno.makeTempDir({ prefix: "exoframe-scaffold-test-" });
   try {
     const result = await runScaffold(tmp);
     assert(result.code === 0, `scaffold.sh failed: ${result.stderr}`);
-    assertStringIncludes(result.stdout, "Copied src/main.ts template");
 
-    const mainPath = join(tmp, "src", "main.ts");
+    const srcPath = join(tmp, "src");
     assert(
-      await exists(mainPath),
-      "src/main.ts should be copied",
+      !await exists(srcPath),
+      "src directory should NOT be created by scaffold",
     );
-
-    // Verify it's a TypeScript file
-    const content = await Deno.readTextFile(mainPath);
-    assert(content.length > 0, "main.ts should not be empty");
   } finally {
     await Deno.remove(tmp, { recursive: true }).catch(() => {});
   }
@@ -187,24 +181,7 @@ Deno.test("scaffold.sh does not overwrite existing config file", async () => {
   }
 });
 
-Deno.test("scaffold.sh does not overwrite existing src/main.ts", async () => {
-  const tmp = await Deno.makeTempDir({ prefix: "exoframe-scaffold-test-" });
-  try {
-    // Create an existing main.ts file
-    await Deno.mkdir(join(tmp, "src"), { recursive: true });
-    const existingContent = "// My existing main.ts\nconsole.log('hello');\n";
-    await Deno.writeTextFile(join(tmp, "src", "main.ts"), existingContent);
-
-    const result = await runScaffold(tmp);
-    assert(result.code === 0, `scaffold.sh failed: ${result.stderr}`);
-
-    // Verify the existing file was not overwritten
-    const content = await Deno.readTextFile(join(tmp, "src", "main.ts"));
-    assertStringIncludes(content, "// My existing main.ts");
-  } finally {
-    await Deno.remove(tmp, { recursive: true }).catch(() => {});
-  }
-});
+// Test removed: src/main.ts template no longer exists
 
 Deno.test("scaffold.sh is idempotent", async () => {
   const tmp = await Deno.makeTempDir({ prefix: "exoframe-scaffold-test-" });

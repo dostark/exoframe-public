@@ -23,6 +23,7 @@ import { ChangesetCommands } from "./changeset_commands.ts";
 import { GitCommands } from "./git_commands.ts";
 import { DaemonCommands } from "./daemon_commands.ts";
 import { PortalCommands } from "./portal_commands.ts";
+import { BlueprintCommands } from "./blueprint_commands.ts";
 
 // Initialize services
 const configService = new ConfigService();
@@ -41,6 +42,7 @@ const changesetCommands = new ChangesetCommands(context, gitService);
 const gitCommands = new GitCommands(context);
 const daemonCommands = new DaemonCommands(context);
 const portalCommands = new PortalCommands({ config, db, configService });
+const blueprintCommands = new BlueprintCommands(context);
 
 await new Command()
   .name("exoctl")
@@ -664,6 +666,196 @@ await new Command()
               Deno.exit(1);
             }
           }),
+      ),
+  )
+  // Blueprint commands
+  .command(
+    "blueprint",
+    new Command()
+      .description("Manage agent blueprints")
+      .command(
+        "create <agent-id>",
+        new Command()
+          .description("Create a new agent blueprint")
+          .option("-n, --name <name:string>", "Agent name (required)")
+          .option("-m, --model <model:string>", "Model in provider:model format (required)")
+          .option("-d, --description <description:string>", "Brief description")
+          .option("-c, --capabilities <capabilities:string>", "Comma-separated capabilities")
+          .option("-p, --system-prompt <prompt:string>", "Inline system prompt")
+          .option("-f, --system-prompt-file <file:string>", "Load system prompt from file")
+          .option(
+            "-t, --template <template:string>",
+            "Template (default, coder, reviewer, architect, researcher, gemini, mock)",
+          )
+          .action(async (options, ...args: string[]) => {
+            const agentId = args[0] as unknown as string;
+            try {
+              const result = await blueprintCommands.create(agentId, {
+                name: options.name,
+                model: options.model,
+                description: options.description,
+                capabilities: options.capabilities,
+                systemPrompt: options.systemPrompt,
+                systemPromptFile: options.systemPromptFile,
+                template: options.template,
+              });
+              display.info("blueprint.created", result.agent_id, {
+                name: result.name,
+                model: result.model,
+                path: result.path,
+              });
+            } catch (error) {
+              display.error("cli.error", "blueprint create", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
+              Deno.exit(1);
+            }
+          }),
+      )
+      .command(
+        "list",
+        new Command()
+          .description("List all agent blueprints")
+          .action(async () => {
+            try {
+              const blueprints = await blueprintCommands.list();
+              if (blueprints.length === 0) {
+                display.info("blueprint.list", "blueprints", {
+                  count: 0,
+                  hint:
+                    'Create a blueprint with: exoctl blueprint create <agent-id> --name "Name" --model "provider:model"',
+                });
+                return;
+              }
+              display.info("blueprint.list", "blueprints", { count: blueprints.length });
+              for (const blueprint of blueprints) {
+                display.info(blueprint.agent_id, blueprint.name, {
+                  model: blueprint.model,
+                  capabilities: blueprint.capabilities?.join(", ") || "general",
+                  created: blueprint.created,
+                });
+              }
+            } catch (error) {
+              display.error("cli.error", "blueprint list", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
+              Deno.exit(1);
+            }
+          }),
+      )
+      .command(
+        "show <agent-id>",
+        new Command()
+          .description("Show blueprint details")
+          .action(async (_options, ...args: string[]) => {
+            const agentId = args[0] as unknown as string;
+            try {
+              const blueprint = await blueprintCommands.show(agentId);
+              display.info("blueprint.show", blueprint.agent_id, {
+                name: blueprint.name,
+                model: blueprint.model,
+                capabilities: blueprint.capabilities?.join(", ") || "general",
+                version: blueprint.version,
+                created: blueprint.created,
+                created_by: blueprint.created_by,
+                content_preview: blueprint.content.substring(0, 200) + "...",
+              });
+            } catch (error) {
+              display.error("cli.error", "blueprint show", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
+              Deno.exit(1);
+            }
+          }),
+      )
+      .command(
+        "validate <agent-id>",
+        new Command()
+          .description("Validate blueprint format")
+          .action(async (_options, ...args: string[]) => {
+            const agentId = args[0] as unknown as string;
+            try {
+              const result = await blueprintCommands.validate(agentId);
+              if (result.valid) {
+                display.info("blueprint.valid", agentId, {
+                  status: "Valid ✓",
+                  warnings: result.warnings?.length || 0,
+                });
+              } else {
+                display.error("blueprint.invalid", agentId, {
+                  status: "Invalid ✗",
+                  errors: result.errors,
+                });
+                Deno.exit(1);
+              }
+            } catch (error) {
+              display.error("cli.error", "blueprint validate", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
+              Deno.exit(1);
+            }
+          }),
+      )
+      .command(
+        "edit <agent-id>",
+        new Command()
+          .description("Edit blueprint in $EDITOR")
+          .action(async (_options, ...args: string[]) => {
+            const agentId = args[0] as unknown as string;
+            try {
+              await blueprintCommands.edit(agentId);
+            } catch (error) {
+              display.error("cli.error", "blueprint edit", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
+              Deno.exit(1);
+            }
+          }),
+      )
+      .command(
+        "remove <agent-id>",
+        new Command()
+          .description("Remove a blueprint")
+          .option("--force", "Skip confirmation")
+          .action(async (options, ...args: string[]) => {
+            const agentId = args[0] as unknown as string;
+            try {
+              await blueprintCommands.remove(agentId, { force: options.force });
+              display.info("blueprint.removed", agentId, { status: "Removed ✓" });
+            } catch (error) {
+              display.error("cli.error", "blueprint remove", {
+                message: error instanceof Error ? error.message : "Unknown error",
+              });
+              Deno.exit(1);
+            }
+          }),
+      )
+      .command(
+        "ls",
+        new Command().description("Alias for 'list'").action(async () => {
+          const blueprints = await blueprintCommands.list();
+          if (blueprints.length === 0) {
+            display.info("blueprint.list", "blueprints", { count: 0 });
+            return;
+          }
+          display.info("blueprint.list", "blueprints", { count: blueprints.length });
+          for (const blueprint of blueprints) {
+            display.info(blueprint.agent_id, blueprint.name, {
+              model: blueprint.model,
+              capabilities: blueprint.capabilities?.join(", ") || "general",
+            });
+          }
+        }),
+      )
+      .command(
+        "rm <agent-id>",
+        new Command().description("Alias for 'remove'").option("--force", "Skip confirmation").action(
+          async (options, ...args: string[]) => {
+            const agentId = args[0] as unknown as string;
+            await blueprintCommands.remove(agentId, { force: options.force });
+            display.info("blueprint.removed", agentId, { status: "Removed ✓" });
+          },
+        ),
       ),
   )
   .parse(Deno.args);

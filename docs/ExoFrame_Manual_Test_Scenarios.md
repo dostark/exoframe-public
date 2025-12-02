@@ -193,13 +193,265 @@ pkill -f "exoframe"
 
 ---
 
-## Scenario MT-03: Create Request
+## Scenario MT-03: Blueprint Management
+
+**Purpose:** Verify blueprint creation, validation, editing, and removal work correctly.
+
+### Preconditions
+
+- ExoFrame workspace deployed at `~/ExoFrame`
+- Database initialized
+- No existing test blueprints
+
+### Steps
+
+````bash
+# Step 1: List existing blueprints (should be empty or only defaults)
+cd ~/ExoFrame
+exoctl blueprint list
+
+# Step 2: Create a blueprint from scratch
+exoctl blueprint create test-agent \
+  --name "Test Agent" \
+  --model "ollama:codellama:13b" \
+  --description "Test agent for manual scenarios"
+
+# Step 3: Create a blueprint using template
+exoctl blueprint create coder-test \
+  --name "Test Coder" \
+  --template coder
+
+# Step 4: List blueprints again
+exoctl blueprint list
+
+# Step 5: Show blueprint details
+exoctl blueprint show test-agent
+
+# Step 6: Validate blueprint
+exoctl blueprint validate test-agent
+
+# Step 7: Create blueprint with custom system prompt
+cat > /tmp/custom-prompt.txt << 'EOF'
+# Custom Test Agent
+
+You are a test agent.
+
+## Output Format
+
+```xml
+<thought>
+Test reasoning
+</thought>
+
+<content>
+Test content
+</content>
+````
+
+EOF
+
+exoctl blueprint create custom-test\
+--name "Custom Test"\
+--model "mock:test-model"\
+--system-prompt-file /tmp/custom-prompt.txt
+
+# Step 8: Validate custom blueprint
+
+exoctl blueprint validate custom-test
+
+# Step 9: Create an invalid blueprint manually
+
+mkdir -p ~/ExoFrame/Blueprints/Agents
+cat > ~/ExoFrame/Blueprints/Agents/invalid-test.md << 'EOF'
++++
+name = "Missing agent_id"
+model = "ollama:llama2"
++++
+
+Invalid blueprint without agent_id
+EOF
+
+# Step 10: Try to validate invalid blueprint
+
+exoctl blueprint validate invalid-test
+
+# Step 11: Test reserved name rejection
+
+exoctl blueprint create system\
+--name "System Agent"\
+--model "ollama:llama2" 2>&1 || echo "Expected: Reserved name rejected"
+
+# Step 12: Test duplicate rejection
+
+exoctl blueprint create test-agent\
+--name "Duplicate Test"\
+--model "ollama:llama2" 2>&1 || echo "Expected: Duplicate rejected"
+
+# Step 13: Test edit command (requires EDITOR)
+
+export EDITOR="cat" # Use cat to just display without editing
+exoctl blueprint edit test-agent
+
+# Step 14: Use blueprint in a request
+
+exoctl blueprint create mock-agent --name "Mock Agent" --template mock
+exoctl request "Test request for manual scenario" --agent mock-agent
+
+# Step 15: Remove blueprints
+
+exoctl blueprint remove custom-test --force
+exoctl blueprint remove coder-test --force
+exoctl blueprint remove mock-agent --force
+exoctl blueprint remove test-agent --force
+
+````
+### Expected Results
+
+**Step 1:**
+- Shows list of blueprints (may be empty)
+- No errors
+
+**Step 2:**
+- Blueprint created successfully
+- File created at `~/ExoFrame/Blueprints/Agents/test-agent.md`
+- Success message with path shown
+- Activity logged
+
+**Step 3:**
+- Blueprint created with coder template defaults
+- Model: `anthropic:claude-sonnet`
+- Capabilities include `code_generation`
+
+**Step 4:**
+- Shows both `test-agent` and `coder-test`
+- Displays model and capabilities for each
+
+**Step 5:**
+- Shows full blueprint details
+- Displays: agent_id, name, model, capabilities, created, created_by, version
+- Shows full system prompt content
+
+**Step 6:**
+- Validation passes
+- Shows: "Blueprint 'test-agent' is valid"
+- Lists validation checks passed (frontmatter, fields, tags)
+
+**Step 7:**
+- Blueprint created with custom system prompt from file
+- File content matches custom-prompt.txt
+
+**Step 8:**
+- Validation passes
+- Confirms `<thought>` and `<content>` tags present
+
+**Step 9:**
+- Invalid blueprint file created manually
+
+**Step 10:**
+- Validation fails
+- Error mentions missing `agent_id` field
+- Lists validation errors clearly
+
+**Step 11:**
+- Command fails with error
+- Error message: "'system' is a reserved agent_id"
+- Lists reserved names
+
+**Step 12:**
+- Command fails with error
+- Error message: "Blueprint 'test-agent' already exists"
+- Suggests using `exoctl blueprint edit` instead
+
+**Step 13:**
+- Opens blueprint in $EDITOR (or displays with cat)
+- Shows full blueprint content
+
+**Step 14:**
+- Request created successfully
+- Uses mock-agent blueprint
+- Request file references mock-agent in frontmatter
+
+**Step 15:**
+- All blueprints removed successfully
+- Files deleted from Blueprints/Agents/
+- Activity logged for each removal
+
+### Verification
+
+```bash
+# Check blueprint files were created
+ls -la ~/ExoFrame/Blueprints/Agents/
+# Expected: test-agent.md, coder-test.md, custom-test.md, mock-agent.md, invalid-test.md
+
+# Check TOML frontmatter format
+head -20 ~/ExoFrame/Blueprints/Agents/test-agent.md
+# Expected: Starts with +++, has TOML fields, ends with +++
+
+# Check system prompt from file was loaded
+grep "Custom Test Agent" ~/ExoFrame/Blueprints/Agents/custom-test.md
+# Expected: Custom prompt content present
+
+# Check Activity Journal logged blueprint operations
+sqlite3 ~/ExoFrame/System/exo.db "SELECT action_type, target FROM activity_log WHERE action_type LIKE 'blueprint.%' ORDER BY timestamp DESC LIMIT 10;"
+# Expected: blueprint.created, blueprint.edited, blueprint.removed entries
+
+# Verify blueprints were removed
+ls ~/ExoFrame/Blueprints/Agents/*.md 2>/dev/null | grep -E "(test-agent|coder-test|custom-test|mock-agent)" || echo "All test blueprints removed"
+# Expected: No test blueprint files remain
+
+# Check request was created with custom agent
+cat ~/ExoFrame/Inbox/Requests/request-*.md | grep "agent_id.*mock-agent"
+# Expected: Request references mock-agent
+````
+
+### Cleanup
+
+```bash
+# Remove any remaining test blueprints
+rm -f ~/ExoFrame/Blueprints/Agents/test-agent.md
+rm -f ~/ExoFrame/Blueprints/Agents/coder-test.md
+rm -f ~/ExoFrame/Blueprints/Agents/custom-test.md
+rm -f ~/ExoFrame/Blueprints/Agents/mock-agent.md
+rm -f ~/ExoFrame/Blueprints/Agents/invalid-test.md
+
+# Remove custom prompt file
+rm -f /tmp/custom-prompt.txt
+
+# Remove test request
+rm -f ~/ExoFrame/Inbox/Requests/request-*.md
+
+# Reset EDITOR
+unset EDITOR
+```
+
+### Pass Criteria
+
+- [ ] `exoctl blueprint list` shows all blueprints
+- [ ] `exoctl blueprint create` generates valid TOML frontmatter
+- [ ] Template system applies correct defaults (model, capabilities)
+- [ ] `--system-prompt-file` loads content from file
+- [ ] `exoctl blueprint show` displays full blueprint
+- [ ] `exoctl blueprint validate` detects schema errors
+- [ ] Validation requires `<thought>` and `<content>` tags
+- [ ] Reserved names (`system`, `test`) are rejected
+- [ ] Duplicate agent_id names are rejected
+- [ ] `exoctl blueprint edit` opens in $EDITOR
+- [ ] Blueprints can be used in `exoctl request --agent`
+- [ ] `exoctl blueprint remove` deletes files
+- [ ] All operations logged to Activity Journal
+- [ ] Invalid frontmatter detected during validation
+- [ ] Clear error messages for all failure cases
+
+---
+
+## Scenario MT-04: Create Request
 
 **Purpose:** Verify request creation via CLI works correctly.
 
 ### Preconditions
 
 - Daemon running (MT-02 complete)
+- Blueprint exists (MT-03 complete, specifically "default" agent)
 
 ### Steps
 
@@ -262,14 +514,14 @@ cat ~/ExoFrame/Inbox/Requests/request-*.md
 
 ---
 
-## Scenario MT-04: Plan Generation (Mock LLM)
+## Scenario MT-05: Plan Generation (Mock LLM)
 
 **Purpose:** Verify the daemon generates a plan from a request using mock LLM.
 
 ### Preconditions
 
 - Daemon running with mock LLM (default in dev mode)
-- Request created (MT-03 complete)
+- Request created (MT-04 complete)
 
 ### Steps
 
@@ -332,13 +584,13 @@ cat ~/ExoFrame/Inbox/Plans/PLAN-*.md
 
 ---
 
-## Scenario MT-05: Plan Approval
+## Scenario MT-06: Plan Approval
 
 **Purpose:** Verify plan approval workflow moves plan to active state.
 
 ### Preconditions
 
-- Plan exists in review status (MT-04 complete)
+- Plan exists in review status (MT-05 complete)
 
 ### Steps
 
@@ -392,7 +644,7 @@ cat ~/ExoFrame/System/Active/PLAN-*.md
 
 ---
 
-## Scenario MT-06: Plan Rejection
+## Scenario MT-07: Plan Rejection
 
 **Purpose:** Verify plan rejection workflow archives the plan.
 
@@ -450,13 +702,13 @@ cat ~/ExoFrame/System/Archive/PLAN-*.md
 
 ---
 
-## Scenario MT-07: Plan Execution (Mock LLM)
+## Scenario MT-08: Plan Execution (Mock LLM)
 
 **Purpose:** Verify approved plan executes and generates changeset.
 
 ### Preconditions
 
-- Approved plan exists (MT-05 complete or create new)
+- Approved plan exists (MT-06 complete or create new)
 - Daemon running
 
 ### Steps
@@ -516,7 +768,7 @@ tail -50 ~/ExoFrame/System/daemon.log | grep -i "execution\|completed"
 
 ---
 
-## Scenario MT-08: Portal Management
+## Scenario MT-09: Portal Management
 
 **Purpose:** Verify portal (external project) can be mounted and accessed.
 
@@ -594,7 +846,7 @@ rm -rf /tmp/test-project
 
 ---
 
-## Scenario MT-09: Daemon Crash Recovery
+## Scenario MT-10: Daemon Crash Recovery
 
 **Purpose:** Verify daemon recovers gracefully after unexpected termination.
 
@@ -666,7 +918,7 @@ exoctl request list
 
 ---
 
-## Scenario MT-10: Real LLM Integration
+## Scenario MT-11: Real LLM Integration
 
 **Purpose:** Verify ExoFrame works with real LLM API (Anthropic or OpenAI).
 
@@ -751,7 +1003,7 @@ unset OPENAI_API_KEY
 
 ---
 
-## Scenario MT-11: Invalid Request Handling
+## Scenario MT-12: Invalid Request Handling
 
 **Purpose:** Verify system handles malformed input gracefully.
 
@@ -815,7 +1067,7 @@ rm ~/ExoFrame/Inbox/Requests/invalid-test.md
 
 ---
 
-## Scenario MT-12: Database Corruption Recovery
+## Scenario MT-13: Database Corruption Recovery
 
 **Purpose:** Verify system handles missing/corrupted database.
 
@@ -883,7 +1135,7 @@ cp ~/ExoFrame/System/journal.db.backup ~/ExoFrame/System/journal.db
 
 ---
 
-## Scenario MT-13: Concurrent Request Processing
+## Scenario MT-14: Concurrent Request Processing
 
 **Purpose:** Verify system handles multiple simultaneous requests.
 
@@ -946,7 +1198,7 @@ grep -i "error\|conflict\|race" ~/ExoFrame/System/daemon.log
 
 ---
 
-## Scenario MT-14: File Watcher Reliability
+## Scenario MT-15: File Watcher Reliability
 
 **Purpose:** Verify file watcher detects all changes reliably.
 
@@ -1006,7 +1258,7 @@ rm ~/ExoFrame/Inbox/Requests/rapid-*.md
 
 ---
 
-## Scenario MT-15: LLM Provider Selection
+## Scenario MT-16: LLM Provider Selection
 
 **Purpose:** Verify daemon correctly selects LLM provider based on environment variables and configuration.
 
@@ -1153,23 +1405,24 @@ unset EXO_LLM_PROVIDER EXO_LLM_MODEL EXO_LLM_BASE_URL
 | ----- | ------------------------ | ---- | ---- | ---- | ----- |
 | MT-01 | Fresh Installation       |      |      |      |       |
 | MT-02 | Daemon Startup           |      |      |      |       |
-| MT-03 | Create Request           |      |      |      |       |
-| MT-04 | Plan Generation (Mock)   |      |      |      |       |
-| MT-05 | Plan Approval            |      |      |      |       |
-| MT-06 | Plan Rejection           |      |      |      |       |
-| MT-07 | Plan Execution (Mock)    |      |      |      |       |
-| MT-08 | Portal Management        |      |      |      |       |
-| MT-09 | Daemon Crash Recovery    |      |      |      |       |
-| MT-10 | Real LLM Integration     |      |      |      |       |
-| MT-11 | Invalid Request Handling |      |      |      |       |
-| MT-12 | Database Corruption      |      |      |      |       |
-| MT-13 | Concurrent Requests      |      |      |      |       |
-| MT-14 | File Watcher Reliability |      |      |      |       |
-| MT-15 | LLM Provider Selection   |      |      |      |       |
+| MT-03 | Blueprint Management     |      |      |      |       |
+| MT-04 | Create Request           |      |      |      |       |
+| MT-05 | Plan Generation (Mock)   |      |      |      |       |
+| MT-06 | Plan Approval            |      |      |      |       |
+| MT-07 | Plan Rejection           |      |      |      |       |
+| MT-08 | Plan Execution (Mock)    |      |      |      |       |
+| MT-09 | Portal Management        |      |      |      |       |
+| MT-10 | Daemon Crash Recovery    |      |      |      |       |
+| MT-11 | Real LLM Integration     |      |      |      |       |
+| MT-12 | Invalid Request Handling |      |      |      |       |
+| MT-13 | Database Corruption      |      |      |      |       |
+| MT-14 | Concurrent Requests      |      |      |      |       |
+| MT-15 | File Watcher Reliability |      |      |      |       |
+| MT-16 | LLM Provider Selection   |      |      |      |       |
 
 ### Summary
 
-- **Total Scenarios:** 15
+- **Total Scenarios:** 16
 - **Passed:**
 - **Failed:**
 - **Skipped:**

@@ -1377,6 +1377,12 @@ That's not just irony—it's validation.
 | **Activity Logging Audit**    | "Verify every CLI command is traced in activity log"   | Complete audit trail                           |
 | **Format Migration**          | "Migrate frontmatter to YAML for Dataview"             | Consistent format, ecosystem compatibility     |
 | **Full Verification**         | "Run all tests"                                        | Verify nothing broke                           |
+| **Agent Instructions**        | Create AGENT_INSTRUCTIONS.md in key directories        | AI helpers follow same patterns                |
+| **Unified Logging**           | "Migrate console.log to EventLogger"                   | Audit trail + consistent output                |
+| **Display Logger**            | EventLogger without db parameter                       | Console-only for read operations               |
+| **Provider Selection**        | Environment → Config → Defaults hierarchy              | Flexible LLM provider configuration            |
+| **Security Test Label**       | `[security]` prefix in test names                      | Filterable security test suite                 |
+| **Integration Scenarios**     | TestEnvironment helper for isolated tests              | Full workflow testing                          |
 
 ### The Question Templates
 
@@ -1407,6 +1413,13 @@ That's not just irony—it's validation.
 - "How many tokens does each format use in LLM context?"
 - "What are all the places that would need updating if we change format?"
 - "Can we do this migration without breaking existing files?"
+
+**For Unified Logging**:
+
+- "What console.log calls need to be migrated to EventLogger?"
+- "Which operations are read-only and should use display-only logger?"
+- "What actor should be used for this log event?"
+- "Is trace_id being propagated through child loggers?"
 
 ### Pattern 12: Coverage-Driven TDD
 
@@ -1969,6 +1982,349 @@ This isn't inconsistency—it's documentation of real engineering decisions:
 - We documented both (honesty)
 
 **The Real Pattern**: Good engineering isn't about making perfect decisions. It's about making reversible decisions with good test coverage.
+
+---
+
+## Part XI: The Infrastructure Maturation Sprint (December 2025)
+
+### The Week That Changed Everything
+
+**The Context**: ExoFrame had working pieces—file watcher, context loading, git integration, tool registry. But they were islands connected by `console.log` bridges and prayer. This week we connected them with real infrastructure.
+
+### Pattern 18: Agent Instructions as Living Documentation
+
+**The Problem**: Every module had its own conventions. Service A logged with `console.log`, Service B used `console.error`, Service C had its own logging helper. Tests were scattered, and new contributors (human or AI) had to reverse-engineer patterns.
+
+**The Solution**: Create `AGENT_INSTRUCTIONS.md` files at strategic locations.
+
+**What We Created**:
+
+```
+src/AGENT_INSTRUCTIONS.md     # Source development guidelines
+tests/AGENT_INSTRUCTIONS.md   # Test development guidelines  
+docs/AGENT_INSTRUCTIONS.md    # Documentation development guidelines
+```
+
+**The Critical Addition—TDD as a Gate**:
+
+```markdown
+## ⚠️ CRITICAL: Test-Driven Development Required
+
+**All implementation or major modification of modules MUST strictly follow TDD.**
+
+Before writing any implementation code:
+
+1. Verify a refined step exists in docs/ExoFrame_Implementation_Plan.md
+2. Check the step includes TDD test cases with specific test names
+3. Write tests first based on the plan's test cases
+4. Run tests to confirm they fail (red phase)
+5. Implement the minimum code to make tests pass (green phase)
+6. Refactor while keeping tests green
+
+**If no refined step exists with TDD test cases:**
+
+- STOP implementation
+- Create or refine the step first
+- Include specific test cases with expected behaviors
+- Get approval before proceeding
+```
+
+**Why This Works**:
+
+- AI agents read these files when working in a directory
+- Conventions are explicit, not tribal knowledge
+- New patterns (like EventLogger) are documented once, followed everywhere
+- TDD becomes a hard requirement, not a suggestion
+
+**The Meta-Lesson**: Documentation that lives next to code gets read. Documentation in a wiki gets ignored.
+
+### Pattern 19: Unified Logging (The EventLogger Revolution)
+
+**The Before State**:
+
+```typescript
+// src/main.ts
+console.log("🚀 Starting ExoFrame Daemon...");
+console.log(`✅ Configuration loaded (Checksum: ${checksum})`);
+
+// src/services/watcher.ts
+console.log(`📁 Watching directory: ${path}`);
+console.error(`❌ Watch directory not found: ${path}`);
+
+// src/cli/daemon_commands.ts
+console.log("Starting ExoFrame daemon...");
+console.log(`✓ Daemon started (PID: ${pid})`);
+```
+
+**The Problem**:
+
+- No audit trail (console output is ephemeral)
+- Inconsistent formatting (emojis here, not there)
+- No trace correlation (which request caused this log?)
+- No actor tracking (human? agent? system?)
+
+**The Solution**: EventLogger service that writes to BOTH console AND Activity Journal.
+
+```typescript
+// Create logger with database connection
+const logger = new EventLogger({ db: dbService, prefix: "[ExoFrame]" });
+
+// Single call → console output + database record
+logger.info("daemon.started", "exoframe", {
+  pid: process.pid,
+  provider: "ollama",
+  model: "codellama:13b",
+});
+
+// Child loggers inherit context
+const traceLogger = logger.child({ traceId: request.trace_id });
+traceLogger.info("request.processing", filePath, { status: "started" });
+```
+
+**The Display-Only Pattern**:
+
+For read-only CLI operations (list, show, status), we don't want to pollute the Activity Journal with query operations:
+
+```typescript
+// Display-only logger (no DB parameter = console only)
+const display = new EventLogger({});
+
+// Used for read-only display operations
+display.info("request.list", "requests", { count: 5 });
+display.info("daemon.status", "daemon", { status: "Running ✓", pid: 12345 });
+```
+
+**The Migration Stats**:
+
+| Metric                     | Before  | After    |
+| -------------------------- | ------- | -------- |
+| Files changed              | -       | 18       |
+| console.log calls migrated | ~100    | 0        |
+| Activity Journal coverage  | Partial | Complete |
+| Tests updated              | -       | 6 files  |
+
+**The Actor Identity Resolution**:
+
+```typescript
+// For system events
+logger.child({ actor: "system" });
+
+// For agent events
+logger.child({ actor: "agent:senior-coder" });
+
+// For human events (CLI) - resolved from git or OS
+const identity = await EventLogger.getUserIdentity();
+// Returns: git email → git name → OS username → "unknown"
+logger.child({ actor: identity }); // "john@example.com"
+```
+
+**Success Criteria Achieved**:
+
+- [x] EventLogger class with log(), info(), warn(), error() methods
+- [x] All log events written to Activity Journal
+- [x] Console output formatted consistently with icons
+- [x] Database failures handled gracefully (fallback to console-only)
+- [x] Child loggers inherit parent defaults
+- [x] User identity resolved from git config
+- [x] All CLI command actions use EventLogger
+- [x] Display-only logger for read-only operations
+
+### Pattern 20: The Request Processor Pipeline
+
+**The Gap**: The daemon could detect files, but had a TODO in the callback:
+
+```typescript
+// Before (main.ts)
+const watcher = new FileWatcher(config, async (event) => {
+  console.log(`📥 New file ready: ${event.path}`);
+  // TODO: Process request and generate plan
+});
+```
+
+**The Solution**: RequestProcessor service that implements the complete pipeline:
+
+```
+File Detected → Parse TOML Frontmatter → Load Blueprint → Run Agent → Write Plan → Update Status
+```
+
+**The Implementation**:
+
+```typescript
+const requestProcessor = new RequestProcessor(
+  config,
+  llmProvider,
+  dbService,
+  {
+    inboxPath: join(config.system.root, config.paths.inbox),
+    blueprintsPath: join(config.system.root, config.paths.blueprints, "Agents"),
+    includeReasoning: true,
+  },
+);
+
+// In file watcher callback
+const planPath = await requestProcessor.process(event.path);
+if (planPath) {
+  watcherLogger.info("plan.generated", planPath, { source: event.path });
+}
+```
+
+**What It Does**:
+
+1. Parses TOML frontmatter from request files
+2. Loads agent blueprints from `Blueprints/Agents/`
+3. Calls AgentRunner with LLM provider to generate plan content
+4. Writes plans to `Inbox/Plans/` using PlanWriter
+5. Updates request status (`pending` → `planned` | `failed`)
+6. Logs all activities to Activity Journal with trace_id correlation
+
+**The Database Helper Refactoring**:
+
+During this implementation, we discovered test database setup was inconsistent:
+
+```typescript
+// Before: Raw SQL scattered across tests
+db.instance.exec(`CREATE TABLE IF NOT EXISTS activity (...)`);
+
+// After: Centralized helper
+const { db, tempDir, cleanup } = await initTestDbService();
+// Tables are created automatically, cleanup is guaranteed
+```
+
+7 test files were updated to use the centralized helpers.
+
+### Pattern 21: Provider Selection Logic
+
+**The Hierarchy**: Environment → Config → Defaults
+
+```typescript
+// Provider resolution order:
+// 1. EXO_LLM_PROVIDER environment variable
+// 2. config.ai.provider from exo.config.toml
+// 3. Default: "mock" (safe for development)
+
+const provider = ProviderFactory.create(config);
+```
+
+**Environment Variables**:
+
+| Variable             | Purpose                                         |
+| -------------------- | ----------------------------------------------- |
+| `EXO_LLM_PROVIDER`   | Provider type (mock, ollama, anthropic, openai) |
+| `EXO_LLM_MODEL`      | Model name override                             |
+| `EXO_LLM_BASE_URL`   | API endpoint override                           |
+| `EXO_LLM_TIMEOUT_MS` | Request timeout override                        |
+
+**The MockLLMProvider for Testing**:
+
+```typescript
+// 5 mock strategies for different test scenarios
+const mock = new MockLLMProvider({
+  strategy: "recorded", // Replay by prompt hash
+  // strategy: "scripted", // Return in sequence
+  // strategy: "pattern",  // Regex matching
+  // strategy: "failing",  // Always throw
+  // strategy: "slow",     // Add delay
+});
+
+// Helper functions for common patterns
+const planGenerator = createPlanGeneratorMock();
+const failingProvider = createFailingMock("API rate limited");
+const slowProvider = createSlowMock(5000); // 5 second delay
+```
+
+### Pattern 22: Security Tests as First-Class Citizens
+
+**The Requirement**: Every security boundary needs explicit tests.
+
+**What We Added**:
+
+```bash
+# New deno task to run only security tests
+deno task test:security
+```
+
+**Coverage**:
+
+| Category              | Test Count | Location                             |
+| --------------------- | ---------- | ------------------------------------ |
+| Path traversal        | 5          | path_resolver_test.ts                |
+| Portal escape         | 2          | path_resolver_test.ts                |
+| File system escape    | 6          | tool_registry_test.ts                |
+| Shell injection       | 4          | tool_registry_test.ts                |
+| Network exfiltration  | 1          | tool_registry_test.ts                |
+| Env variable security | 4          | config_test.ts                       |
+| Cross-portal access   | 4          | integration/09_portal_access_test.ts |
+
+**The Filtering Pattern**:
+
+```typescript
+Deno.test({
+  name: "[security] path traversal attack should be blocked",
+  fn: async () => { ... }
+});
+```
+
+Tests labeled with `[security]` can be run in isolation before releases.
+
+### Pattern 23: Integration Test Completeness
+
+**The Gap**: Unit tests passed, but end-to-end scenarios were untested.
+
+**What We Added** (10 integration test scenarios):
+
+| Scenario               | Description                                 |
+| ---------------------- | ------------------------------------------- |
+| 01_happy_path          | Request → Plan → Approve → Execute → Report |
+| 02_plan_rejection      | Request → Plan → Reject → Archive           |
+| 03_plan_revision       | Request → Plan → Revise → New Plan          |
+| 04_execution_failure   | Failure detection, rollback, recovery       |
+| 05_concurrent_requests | Parallel processing with lease mechanism    |
+| 06_system_recovery     | Orphan detection, lease cleanup, resume     |
+| 07_context_overflow    | Large context file handling (50 files)      |
+| 08_git_conflict        | Conflict detection and resolution           |
+| 09_portal_access       | Security boundary enforcement               |
+| 10_invalid_input       | Malformed input handling                    |
+
+**The TestEnvironment Helper**:
+
+```typescript
+const env = await TestEnvironment.create();
+// Creates isolated workspace with:
+// - Temp directory structure
+// - Initialized git repo
+// - Database with activity table
+// - Mock LLM provider
+// - Full ExoFrame config
+
+// After test
+await env.cleanup();
+```
+
+### The Week in Numbers
+
+| Metric                      | Value                  |
+| --------------------------- | ---------------------- |
+| Commits                     | 16                     |
+| Files changed               | 80+                    |
+| New tests added             | 150+                   |
+| Total tests                 | 515 → passing          |
+| Branch coverage             | 78% → 80%              |
+| Integration scenarios       | 0 → 10                 |
+| Security tests              | 0 → 29                 |
+| Documentation files created | 3 (AGENT_INSTRUCTIONS) |
+
+### The Key Insight
+
+**Infrastructure Week taught us**: The difference between "demo-able" and "production-ready" is:
+
+1. **Unified logging** (not scattered console.log)
+2. **Trace correlation** (every operation linked to its request)
+3. **Actor tracking** (who did what)
+4. **Security boundaries** (with tests that prove they work)
+5. **Integration tests** (that simulate real workflows)
+6. **Agent instructions** (so AI helpers follow the same patterns)
+
+**The Rule**: Every `console.log` is technical debt. Every untraced operation is a debugging nightmare waiting to happen.
 
 ---
 

@@ -14,6 +14,7 @@ Before writing any implementation code:
 4. **Run tests to confirm they fail** (red phase)
 5. **Implement the minimum code** to make tests pass (green phase)
 6. **Refactor** while keeping tests green
+7. **Verify success criteria** - After all tests pass, validate the implementation against the Success Criteria defined in the Implementation Plan step
 
 **If no refined step exists with TDD test cases:**
 
@@ -22,7 +23,22 @@ Before writing any implementation code:
 - Include specific test cases with expected behaviors
 - Get approval before proceeding
 
-This ensures all code is properly planned, tested, and documented.
+**⚠️ CRITICAL: Success Criteria Verification**
+
+After completing implementation with all tests passing, you MUST:
+
+1. **Review the Success Criteria** section in the Implementation Plan step
+2. **Verify each criterion** is met by the implementation
+3. **Document verification** - For each criterion, confirm it works as specified
+4. **Report any gaps** - If any criteria are not met, implement the missing functionality
+5. **Check Problems tab** - Review and address any TypeScript errors, lint warnings, or other issues flagged by VS Code
+6. **Fix all problems** - Resolve compilation errors, type mismatches, unused imports, and code quality issues before marking step complete
+
+**Do not consider a step complete** until ALL success criteria are verified and met. Tests passing is necessary but not sufficient - the implementation must fulfill all documented success criteria from the plan.
+
+**Zero tolerance for Problems:** The implementation must have no TypeScript errors, no lint warnings, and pass all code quality checks. A clean Problems tab is required for completion.
+
+This ensures all code is properly planned, tested, documented, and meets all requirements.
 
 ## Project Structure
 

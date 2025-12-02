@@ -35,17 +35,17 @@
 
 ## Execution Governance
 
-| Phase   | Timebox | Entry Criteria                        | Exit Criteria                                 |
-| ------- | ------- | ------------------------------------- | --------------------------------------------- |
-| Phase 1 | 1 week  | Repo initialized, change log approved | Daemon boots, storage scaffolds exist         |
-| Phase 2 | 1 week  | Phase 1 exit + watcher harness        | Watcher + parser tests pass                   |
-| Phase 3 | 2 weeks | Validated config + mock LLM           | Request → Plan loop verified                  |
-| Phase 4 | 1 week  | Stable agent runtime                  | Git + tool registry exercised                 |
-| Phase 5 | 1 week  | CLI scaffold merged                   | Obsidian vault validated                      |
-| Phase 6 | 2 days  | All prior phases code-complete        | Testing strategy documented                   |
-| Phase 7 | 1 week  | Testing complete                      | Flow orchestration working                    |
-| Phase 8 | 1 week  | Core functionality stable             | UX improvements + UI evaluation done          |
-| Phase 9 | 1 week  | System stable with Ollama             | Cloud LLM providers (Anthropic/OpenAI/Google) |
+| Phase   | Timebox | Entry Criteria                        | Exit Criteria                                        |
+| ------- | ------- | ------------------------------------- | ---------------------------------------------------- |
+| Phase 1 | 1 week  | Repo initialized, change log approved | Daemon boots, storage scaffolds exist                |
+| Phase 2 | 1 week  | Phase 1 exit + watcher harness        | Watcher + parser tests pass                          |
+| Phase 3 | 2 weeks | Validated config + mock LLM           | Request → Plan loop verified                         |
+| Phase 4 | 1 week  | Stable agent runtime                  | Git + tool registry exercised                        |
+| Phase 5 | 1 week  | CLI scaffold merged                   | Obsidian vault validated                             |
+| Phase 6 | 2 days  | All prior phases code-complete        | Testing strategy documented                          |
+| Phase 7 | 1 week  | Testing complete                      | Flow orchestration working                           |
+| Phase 8 | 1 week  | Core functionality stable             | UX improvements + UI evaluation done                 |
+| Phase 9 | 1 week  | System stable with Ollama             | Cloud LLM providers (Anthropic/OpenAI/Google Gemini) |
 
 Each step lists **Dependencies**, **Rollback/Contingency**, and updated success metrics.
 
@@ -77,7 +77,7 @@ cat > deno.json <<'EOF'
   "lock": true,
   "exports": "./src/main.ts",
   "tasks": {
-    "start": "deno run --allow-read=. --allow-write=. --allow-net=api.anthropic.com,api.openai.com,localhost:11434 --allow-env=EXO_,HOME,USER --allow-run=git src/main.ts",
+    "start": "deno run --allow-read=. --allow-write=. --allow-net=api.anthropic.com,api.openai.com,generativelanguage.googleapis.com,localhost:11434 --allow-env=EXO_,HOME,USER --allow-run=git src/main.ts",
     "dev": "deno run --watch --allow-all src/main.ts",
     "stop": "deno run --allow-run=pkill scripts/stop.ts",
     "status": "deno run --allow-run=ps scripts/status.ts",
@@ -476,7 +476,7 @@ await generator.generate({
 - **Action:** Create `IModelProvider` interface and implement `MockProvider` and `OllamaProvider`.
 - **Justification:** Decouples the agent runtime from specific LLM providers, allowing easy switching and testing.
 
-**The Problem:** The system needs to talk to various LLMs (Ollama, OpenAI, Anthropic). Hardcoding API calls makes
+**The Problem:** The system needs to talk to various LLMs (Ollama, OpenAI, Anthropic, Google Gemini). Hardcoding API calls makes
 testing difficult and vendor lock-in easy.
 
 **The Solution:** Define a standard `IModelProvider` interface. Implement a `MockProvider` for unit tests (returns
@@ -1803,18 +1803,19 @@ Deno.test("MissionReporter: formats report with valid TOML frontmatter", async (
 
 ### Steps Summary
 
-| Step | Description                  | Location                          | Status      |
-| ---- | ---------------------------- | --------------------------------- | ----------- |
-| 5.1  | Install Required Plugins     | Obsidian Community Plugins        | ✅ Complete |
-| 5.2  | Configure Obsidian Vault     | Knowledge/ directory              | ✅ Complete |
-| 5.3  | Pin Dashboard                | Knowledge/Dashboard.md            | ✅ Complete |
-| 5.4  | Configure File Watcher       | Obsidian Settings                 | ✅ Complete |
-| 5.5  | The Obsidian Dashboard       | Knowledge/Dashboard.md            | ✅ Complete |
-| 5.6  | Request Commands             | src/cli/request_commands.ts       | ✅ Complete |
-| 5.7  | YAML Frontmatter Migration   | src/cli/base.ts + parsers         | ✅ Complete |
-| 5.8  | LLM Provider Selection Logic | src/ai/provider_factory.ts        | ✅ Complete |
-| 5.9  | Request Processor Pipeline   | src/services/request_processor.ts | ✅ Complete |
-| 5.10 | Unified Event Logger         | src/services/event_logger.ts      | 🔲 Planned  |
+| Step | Description                     | Location                          | Status      |
+| ---- | ------------------------------- | --------------------------------- | ----------- |
+| 5.1  | Install Required Plugins        | Obsidian Community Plugins        | ✅ Complete |
+| 5.2  | Configure Obsidian Vault        | Knowledge/ directory              | ✅ Complete |
+| 5.3  | Pin Dashboard                   | Knowledge/Dashboard.md            | ✅ Complete |
+| 5.4  | Configure File Watcher          | Obsidian Settings                 | ✅ Complete |
+| 5.5  | The Obsidian Dashboard          | Knowledge/Dashboard.md            | ✅ Complete |
+| 5.6  | Request Commands                | src/cli/request_commands.ts       | ✅ Complete |
+| 5.7  | YAML Frontmatter Migration      | src/cli/base.ts + parsers         | ✅ Complete |
+| 5.8  | LLM Provider Selection Logic    | src/ai/provider_factory.ts        | ✅ Complete |
+| 5.9  | Request Processor Pipeline      | src/services/request_processor.ts | ✅ Complete |
+| 5.10 | Unified Event Logger            | src/services/event_logger.ts      | ✅ Complete |
+| 5.11 | Blueprint Creation & Management | src/cli/blueprint_commands.ts     | ✅ Complete |
 
 > **Platform note:** Maintainers must document OS-specific instructions (Windows symlink prerequisites, macOS sandbox
 > prompts, Linux desktop watchers) before marking each sub-step complete.
@@ -3188,6 +3189,499 @@ ORDER BY timestamp DESC;
 
 ---
 
+### Step 5.11: Blueprint Creation and Management ✅ COMPLETED
+
+- **Dependencies:** Step 5.9 (Request Processor Pipeline)
+- **Rollback:** Delete created blueprint files, revert to default agent only
+- **Action:** Implement CLI commands for creating, listing, and managing agent blueprints
+- **Requirement:** Blueprints are **mandatory** for RequestProcessor — missing blueprint causes request to fail with "failed" status
+- **Justification:** Enables users to create custom agents with specific capabilities, models, and system prompts without manual file creation
+
+**The Problem:**
+
+The current system requires blueprint files in `Blueprints/Agents/` but provides no tooling to create them:
+
+- ❌ Users must manually create markdown files with correct TOML frontmatter
+- ❌ No validation until runtime (when RequestProcessor fails to find blueprint)
+- ❌ No way to list available agents or view blueprint details
+- ❌ Blueprint format is documented but not enforced
+- ❌ RequestProcessor fails silently if blueprint is missing (status="failed" but no guidance)
+- ❌ Only `.gitkeep` exists in `Blueprints/Agents/` — no default blueprint
+
+**The Solution: Blueprint CLI Commands**
+
+Create `exoctl blueprint` commands to manage agent blueprints with validation and templates:
+
+#### **Commands:**
+
+```bash
+# Create new blueprint from template
+exoctl blueprint create <agent-id> --name "Agent Name" --model <model-id>
+exoctl blueprint create senior-coder --name "Senior Coder" --model anthropic:claude-3-sonnet
+
+# Create with full options
+exoctl blueprint create security-auditor \
+  --name "Security Auditor" \
+  --model openai:gpt-4 \
+  --description "Specialized agent for security analysis" \
+  --capabilities code_review,vulnerability_scanning \
+  --system-prompt-file ~/prompts/security.txt
+
+# List all available blueprints
+exoctl blueprint list
+exoctl blueprint ls
+
+# Show blueprint details
+exoctl blueprint show <agent-id>
+exoctl blueprint show senior-coder
+
+# Validate blueprint file
+exoctl blueprint validate <agent-id>
+exoctl blueprint validate senior-coder
+
+# Edit blueprint (opens in $EDITOR)
+exoctl blueprint edit <agent-id>
+
+# Remove blueprint (with confirmation)
+exoctl blueprint remove <agent-id>
+exoctl blueprint rm security-auditor --force
+```
+
+#### **Options:**
+
+| Option                 | Short | Type   | Required | Description                              |
+| ---------------------- | ----- | ------ | -------- | ---------------------------------------- |
+| `--name`               | `-n`  | string | ✓        | Human-readable agent name                |
+| `--model`              | `-m`  | string | ✓        | Model provider:model format              |
+| `--description`        | `-d`  | string |          | Brief description of agent purpose       |
+| `--capabilities`       | `-c`  | string |          | Comma-separated capability list          |
+| `--system-prompt`      | `-p`  | string |          | Inline system prompt                     |
+| `--system-prompt-file` | `-f`  | path   |          | Load system prompt from file             |
+| `--template`           | `-t`  | string |          | Template name (default, coder, reviewer) |
+| `--force`              |       | flag   |          | Skip confirmation prompts                |
+
+#### **Blueprint File Structure:**
+
+````markdown
++++
+agent_id = "senior-coder"
+name = "Senior Coder"
+model = "anthropic:claude-3-sonnet"
+capabilities = ["code_generation", "debugging", "refactoring"]
+created = "2025-11-28T10:00:00Z"
+created_by = "user@example.com"
+version = "1.0.0"
++++
+
+# Senior Coder Agent
+
+You are a senior software engineer with expertise in multiple programming languages.
+
+## Capabilities
+
+- Code generation following best practices
+- Debugging complex issues
+- Refactoring for maintainability
+- Test-driven development
+
+## Guidelines
+
+1. Always write tests before implementation
+2. Follow language-specific style guides
+3. Prioritize readability and maintainability
+4. Explain reasoning in <thought> tags
+5. Provide code in <content> tags
+
+## Output Format
+
+```xml
+<thought>
+Your reasoning about the problem and approach
+</thought>
+
+<content>
+The code, documentation, or solution
+</content>
+```
+````
+
+````
+#### **Templates:**
+
+| Template     | Description                     | Model Default             | Capabilities                        |
+| ------------ | ------------------------------- | ------------------------- | ----------------------------------- |
+| `default`    | General-purpose agent           | `ollama:codellama:13b`    | general                             |
+| `coder`      | Software development            | `anthropic:claude-sonnet` | code_generation, debugging, testing |
+| `reviewer`   | Code review specialist          | `openai:gpt-4`            | code_review, security_analysis      |
+| `architect`  | System design and architecture  | `anthropic:claude-opus`   | system_design, documentation        |
+| `researcher` | Research and analysis           | `openai:gpt-4-turbo`      | research, analysis, summarization   |
+| `gemini`     | Google's multimodal AI          | `google:gemini-2.0-flash` | general, multimodal, reasoning      |
+| `mock`       | Testing and development agent   | `mock:test-model`         | testing, development                |
+
+#### **Activity Logging:**
+
+- `blueprint.created` with `{agent_id, name, model, template, created_by, via: 'cli'}`
+- `blueprint.updated` with `{agent_id, fields_changed, updated_by, via: 'cli'}`
+- `blueprint.removed` with `{agent_id, removed_by, via: 'cli'}`
+- `blueprint.validated` with `{agent_id, is_valid, errors}`
+
+#### **Validation Rules:**
+
+1. **agent_id:**
+   - Lowercase alphanumeric + hyphens only
+   - Must be unique in `Blueprints/Agents/`
+   - Reserved names: `system`, `default`, `test`
+
+2. **model:**
+   - Format: `provider:model-name` (e.g., `anthropic:claude-3-sonnet`, `google:gemini-2.0-flash`)
+   - Provider must be configured in `exo.config.toml`
+
+3. **name:**
+   - Non-empty string
+   - Max 100 characters
+
+4. **system_prompt:**
+   - Must include `<thought>` and `<content>` output format instructions
+   - Min 50 characters
+
+5. **File location:**
+   - Must be in `Blueprints/Agents/` directory
+   - Filename: `{agent_id}.md`
+
+#### **Success Criteria:**
+
+1. [x] `exoctl blueprint create` generates valid blueprint file
+2. [x] Generated blueprint passes `RequestProcessor.loadBlueprint()`
+3. [x] Blueprint frontmatter validates against schema
+4. [x] `--template` option applies correct defaults
+5. [x] `--system-prompt-file` loads and validates file content
+6. [x] `exoctl blueprint list` shows all blueprints with metadata
+7. [x] `exoctl blueprint show` displays full blueprint content
+8. [x] `exoctl blueprint validate` checks format and required fields
+9. [x] `exoctl blueprint edit` opens blueprint in user's $EDITOR
+10. [x] `exoctl blueprint remove` requires confirmation unless --force
+11. [x] Activity Journal logs all blueprint operations with user identity
+12. [x] Blueprint creation adds entry with `action_type='blueprint.created'`
+13. [x] Validation errors provide clear guidance on fixes
+14. [x] Reserved agent_id names are rejected
+15. [x] Duplicate agent_id names are rejected
+16. [x] Model provider validation checks `exo.config.toml`
+17. [x] Tests in `tests/cli/blueprint_commands_test.ts`
+
+#### **Default Blueprint Creation:**
+
+Create default and mock blueprints during system initialization:
+
+```typescript
+// scripts/setup.ts or src/cli/blueprint_commands.ts
+
+// Default blueprint for production use
+const defaultBlueprint = `+++
+agent_id = "default"
+name = "Default Agent"
+model = "ollama:codellama:13b"
+capabilities = ["general"]
+created = "${new Date().toISOString()}"
+created_by = "system"
+version = "1.0.0"
++++
+
+# Default Agent
+
+You are a helpful assistant that follows instructions carefully.
+
+## Output Format
+
+Always structure your response as:
+
+\`\`\`xml
+<thought>
+Your reasoning and approach
+</thought>
+
+<content>
+Your response or solution
+</content>
+\`\`\`
+`;
+
+// Mock blueprint for testing and development
+const mockBlueprint = `+++
+agent_id = "mock"
+name = "Mock Agent"
+model = "mock:test-model"
+capabilities = ["testing", "development"]
+created = "${new Date().toISOString()}"
+created_by = "system"
+version = "1.0.0"
++++
+
+# Mock Agent (Testing Only)
+
+You are a mock agent used for testing and development. This blueprint uses the MockLLMProvider
+which returns deterministic responses without making actual API calls.
+
+## Purpose
+
+- Enable fast, deterministic unit and integration tests
+- Avoid API costs during development
+- Test error handling and edge cases
+- Validate request → plan → execution flow without real LLM
+
+## Mock Provider Strategies
+
+This agent can use different mock strategies (configured in test setup):
+
+1. **recorded** - Replay pre-recorded LLM responses
+2. **scripted** - Return specific responses based on test scenarios
+3. **pattern** - Match request patterns and return templated responses
+4. **failing** - Simulate LLM failures for error handling tests
+5. **slow** - Simulate slow responses for timeout tests
+
+## Output Format
+
+Always structure your response as:
+
+\`\`\`xml
+<thought>
+Mock reasoning based on test scenario
+</thought>
+
+<content>
+Mock content based on test scenario
+</content>
+\`\`\`
+
+## Usage
+
+\`\`\`bash
+# Create test request using mock agent
+exoctl request "Test request" --agent mock
+
+# Or specify in request frontmatter
+agent = "mock"
+\`\`\`
+
+## Notes
+
+- **Do not use in production** - This agent does not perform real AI reasoning
+- Responses are deterministic and controlled by test fixtures
+- Useful for CI/CD pipelines where real LLM calls are not desired
+`;
+
+await Deno.writeTextFile("Blueprints/Agents/default.md", defaultBlueprint);
+await Deno.writeTextFile("Blueprints/Agents/mock.md", mockBlueprint);
+````
+
+#### **Implementation Checklist:**
+
+1. [ ] Create `src/cli/blueprint_commands.ts` extending `BaseCommand`
+2. [ ] Define `BlueprintSchema` in `src/schemas/blueprint.ts`
+3. [ ] Implement `create()` method with validation
+4. [ ] Implement `list()` method showing all blueprints
+5. [ ] Implement `show()` method displaying full content
+6. [ ] Implement `validate()` method checking format
+7. [ ] Implement `edit()` method opening in $EDITOR
+8. [ ] Implement `remove()` method with confirmation
+9. [ ] Add template system (default, coder, reviewer, architect, researcher, mock)
+10. [ ] Add `loadSystemPrompt()` utility for --system-prompt-file
+11. [ ] Add `generateBlueprintFrontmatter()` helper
+12. [ ] Add blueprint validation in `RequestProcessor.loadBlueprint()`
+13. [ ] Create default blueprint during `exoctl setup`
+14. [ ] Create mock blueprint during `exoctl setup` for testing
+15. [ ] Register commands in `src/cli/exoctl.ts`
+16. [ ] Write tests in `tests/cli/blueprint_commands_test.ts`
+17. [ ] Update User Guide with blueprint management section
+18. [ ] Update AGENT_INSTRUCTIONS.md with blueprint creation guidelines
+
+#### **Example Usage:**
+
+```bash
+# 1. Create default blueprint
+$ exoctl blueprint create default --name "Default Agent" --model ollama:codellama:13b
+✓ Blueprint created: default
+  Location: /home/user/ExoFrame/Blueprints/Agents/default.md
+  Model: ollama:codellama:13b
+  Template: default
+
+# 2. Create mock agent for testing
+$ exoctl blueprint create mock --name "Mock Agent" --model mock:test-model --template mock
+✓ Blueprint created: mock
+  Location: /home/user/ExoFrame/Blueprints/Agents/mock.md
+  Model: mock:test-model
+  Template: mock
+  Note: This agent uses MockLLMProvider for deterministic testing
+
+# 3. Create specialized agent
+$ exoctl blueprint create security-auditor \
+    --name "Security Auditor" \
+    --model openai:gpt-4 \
+    --template reviewer \
+    --capabilities security_analysis,vulnerability_scanning
+✓ Blueprint created: security-auditor
+  Location: /home/user/ExoFrame/Blueprints/Agents/security-auditor.md
+
+# 4. List all blueprints
+$ exoctl blueprint list
+📋 Blueprints (3):
+
+🤖 default
+   Name: Default Agent
+   Model: ollama:codellama:13b
+   Capabilities: general
+   Created: system @ 2025-11-28T10:00:00Z
+
+🧪 mock
+   Name: Mock Agent
+   Model: mock:test-model
+   Capabilities: testing, development
+   Created: system @ 2025-11-28T10:00:00Z
+
+🔒 security-auditor
+   Name: Security Auditor
+   Model: openai:gpt-4
+   Capabilities: security_analysis, vulnerability_scanning
+   Created: user@example.com @ 2025-11-28T10:15:00Z
+
+# 5. Show blueprint details
+$ exoctl blueprint show security-auditor
+📄 Blueprint: security-auditor
+
+Agent ID: security-auditor
+Name: Security Auditor
+Model: openai:gpt-4
+Capabilities: security_analysis, vulnerability_scanning
+Created: user@example.com @ 2025-11-28T10:15:00Z
+
+────────────────────────────────────────────────────────────
+[full content including system prompt...]
+
+# 6. Validate blueprint
+$ exoctl blueprint validate security-auditor
+✓ Blueprint 'security-auditor' is valid
+  - Frontmatter format: OK
+  - Required fields: OK
+  - Model provider: OK (openai configured)
+  - System prompt: OK (includes <thought> and <content> tags)
+
+# 7. Create test request using mock agent
+$ exoctl request "Test request processing pipeline" --agent mock
+✓ Request created: request-x1y2z3w4.md
+  Agent: mock
+  Model: mock:test-model
+  Note: Using MockLLMProvider for deterministic testing
+
+# 8. Create request using custom blueprint
+$ exoctl request "Audit the authentication module for vulnerabilities" \
+    --agent security-auditor
+✓ Request created: request-a1b2c3d4.md
+  Agent: security-auditor
+  Model: openai:gpt-4
+
+# 9. Validate that RequestProcessor finds the blueprint
+$ # (daemon processes request automatically)
+$ cat System/journal.db | grep "blueprint.loaded"
+blueprint.loaded|{"agent_id":"security-auditor","model":"openai:gpt-4"}
+```
+
+#### **Error Handling:**
+
+```bash
+# Missing required fields
+$ exoctl blueprint create test-agent
+Error: --name is required
+Usage: exoctl blueprint create <agent-id> --name "<name>" --model "<model>"
+
+# Invalid agent_id format
+$ exoctl blueprint create Test_Agent --name "Test" --model ollama:llama2
+Error: agent_id must be lowercase alphanumeric with hyphens only
+Example: test-agent
+
+# Reserved name
+$ exoctl blueprint create system --name "System" --model ollama:llama2
+Error: 'system' is a reserved agent_id
+Reserved names: system, default, test
+
+# Duplicate agent_id
+$ exoctl blueprint create default --name "Default" --model ollama:llama2
+Error: Blueprint 'default' already exists
+Use 'exoctl blueprint edit default' to modify
+
+# Invalid model provider
+$ exoctl blueprint create test --name "Test" --model unknown:model
+Error: Provider 'unknown' not configured in exo.config.toml
+Available providers: ollama, anthropic, openai, google
+
+# Missing system prompt output format
+$ exoctl blueprint create test --name "Test" --model ollama:llama2 \
+    --system-prompt "You are a helpful assistant"
+Error: System prompt must include output format instructions
+Required: <thought> and <content> tags
+```
+
+#### **RequestProcessor Integration:**
+
+Update `RequestProcessor.loadBlueprint()` to provide better error messages:
+
+```typescript
+// src/services/request_processor.ts
+
+private async loadBlueprint(agentId: string): Promise<Blueprint | null> {
+  const blueprintPath = join(
+    this.config.paths.blueprints,
+    "Agents",
+    `${agentId}.md`
+  );
+
+  try {
+    const exists = await Deno.stat(blueprintPath).then(() => true).catch(() => false);
+    
+    if (!exists) {
+      this.logger.error("blueprint.not_found", agentId, {
+        path: blueprintPath,
+        help: `Create blueprint with: exoctl blueprint create ${agentId} --name "Agent Name" --model <model>`,
+      });
+      return null;
+    }
+
+    const content = await Deno.readTextFile(blueprintPath);
+    const parsed = this.parseFrontmatter(content);
+    
+    // Validate blueprint structure
+    const validation = BlueprintSchema.safeParse(parsed.frontmatter);
+    if (!validation.success) {
+      this.logger.error("blueprint.invalid", agentId, {
+        path: blueprintPath,
+        errors: validation.error.issues,
+        help: `Validate with: exoctl blueprint validate ${agentId}`,
+      });
+      return null;
+    }
+
+    this.logger.info("blueprint.loaded", agentId, {
+      model: validation.data.model,
+      capabilities: validation.data.capabilities,
+    });
+
+    return {
+      agentId: validation.data.agent_id,
+      name: validation.data.name,
+      model: validation.data.model,
+      systemPrompt: parsed.body,
+      capabilities: validation.data.capabilities,
+    };
+  } catch (error) {
+    this.logger.error("blueprint.load_error", agentId, {
+      error: error.message,
+      path: blueprintPath,
+    });
+    return null;
+  }
+}
+```
+
+---
+
 ## Phase 6: Testing & Quality Assurance
 
 > **Status:** ✅ IN PROGRESS\
@@ -4184,7 +4678,7 @@ export class ModelFactory {
 
 - [ ] `AnthropicProvider` implemented with all models
 - [ ] `OpenAIProvider` implemented with all models (+ Azure support)
-- [ ] `GoogleProvider` implemented with all models
+- [ ] `GoogleProvider` implemented with Gemini 2.0 models
 - [ ] Retry logic with exponential backoff for rate limits
 - [ ] Token usage tracking logged to Activity Journal
 - [ ] Config schema supports multi-provider selection

@@ -695,6 +695,96 @@ Continue? (y/N): y
 ⚠️  Daemon restart recommended: exoctl daemon restart
 ```
 
+#### **Blueprint Commands** - Manage agent definitions
+
+Blueprints define agent personas, capabilities, and system prompts. They are **required** for request processing - missing blueprints cause requests to fail.
+
+```bash
+# Create a new agent blueprint
+exoctl blueprint create <agent-id> --name "Agent Name" --model <provider:model>
+exoctl blueprint create senior-coder --name "Senior Coder" --model anthropic:claude-sonnet
+
+# Create with full options
+exoctl blueprint create security-auditor \
+  --name "Security Auditor" \
+  --model openai:gpt-4 \
+  --description "Specialized agent for security analysis" \
+  --capabilities code_review,vulnerability_scanning \
+  --system-prompt-file ~/prompts/security.txt
+
+# Create from template (faster setup)
+exoctl blueprint create my-coder --name "My Coder" --template coder
+exoctl blueprint create my-reviewer --name "My Reviewer" --template reviewer
+exoctl blueprint create test-agent --name "Test Agent" --template mock
+
+# List all available blueprints
+exoctl blueprint list
+
+# Show blueprint details
+exoctl blueprint show <agent-id>
+exoctl blueprint show senior-coder
+
+# Validate blueprint format
+exoctl blueprint validate <agent-id>
+exoctl blueprint validate senior-coder
+
+# Edit blueprint in $EDITOR
+exoctl blueprint edit <agent-id>
+
+# Remove blueprint
+exoctl blueprint remove <agent-id>
+exoctl blueprint remove security-auditor --force  # Skip confirmation
+```
+
+**Available Templates:**
+
+| Template     | Model                   | Best For                          |
+| ------------ | ----------------------- | --------------------------------- |
+| `default`    | ollama:codellama:13b    | General-purpose tasks             |
+| `coder`      | anthropic:claude-sonnet | Software development              |
+| `reviewer`   | openai:gpt-4            | Code review and quality           |
+| `architect`  | anthropic:claude-opus   | System design and architecture    |
+| `researcher` | openai:gpt-4-turbo      | Research and analysis             |
+| `gemini`     | google:gemini-2.0-flash | Multimodal AI with fast responses |
+| `mock`       | mock:test-model         | Testing and CI/CD                 |
+
+**Blueprint File Structure:**
+
+```markdown
++++
+agent_id = "senior-coder"
+name = "Senior Coder"
+model = "anthropic:claude-3-sonnet"
+capabilities = ["code_generation", "debugging"]
+created = "2025-12-02T10:00:00Z"
+created_by = "user@example.com"
+version = "1.0.0"
++++
+
+# Senior Coder Agent
+
+System prompt with <thought> and <content> tags...
+```
+
+**Example workflow:**
+
+```bash
+# 1. Create a custom agent
+$ exoctl blueprint create my-agent \
+  --name "My Custom Agent" \
+  --model anthropic:claude-sonnet
+✓ Blueprint created: Blueprints/Agents/my-agent.md
+
+# 2. List all agents
+$ exoctl blueprint list
+senior-coder (anthropic:claude-3-sonnet)
+security-auditor (openai:gpt-4)
+my-agent (anthropic:claude-sonnet)
+
+# 3. Use in requests
+$ exoctl request "Review code" --agent security-auditor
+```
+
 **Common errors and solutions:**
 
 ```bash

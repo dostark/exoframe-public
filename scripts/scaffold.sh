@@ -19,8 +19,7 @@ mkdir -p "$TARGET/System" \
   "$TARGET/Knowledge/Reports" \
   "$TARGET/Knowledge/Portals" \
   "$TARGET/Portals" \
-  "$TARGET/scripts" \
-  "$TARGET/src"
+  "$TARGET/scripts"
 
 # Place .gitkeep placeholders to keep empty dirs visible in repos if desired
 touch "$TARGET/System/.gitkeep" || true
@@ -35,12 +34,6 @@ touch "$TARGET/Portals/.gitkeep" || true
 if [ -f "$ROOT_DIR/templates/exo.config.sample.toml" ] && [ ! -f "$TARGET/exo.config.sample.toml" ]; then
   cp "$ROOT_DIR/templates/exo.config.sample.toml" "$TARGET/exo.config.sample.toml"
   echo "Copied exo.config.sample.toml"
-fi
-
-if [ -f "$ROOT_DIR/templates/src_main.ts" ] && [ ! -f "$TARGET/src/main.ts" ]; then
-  mkdir -p "$TARGET/src"
-  cp "$ROOT_DIR/templates/src_main.ts" "$TARGET/src/main.ts"
-  echo "Copied src/main.ts template"
 fi
 
 if [ -f "$ROOT_DIR/templates/README.template.md" ] && [ ! -f "$TARGET/README.md" ]; then
