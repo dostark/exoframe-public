@@ -1,7 +1,7 @@
 # ExoFrame Manual Test Scenarios
 
-- **Version:** 1.0.0
-- **Release Date:** 2025-12-01
+- **Version:** 1.7.0
+- **Release Date:** 2025-12-02
 - **Status:** Active
 - **Reference:** [Testing Strategy](./ExoFrame_Testing_Strategy.md) Section 2.4
 

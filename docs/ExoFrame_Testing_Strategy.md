@@ -1,7 +1,7 @@
 # ExoFrame Testing Strategy
 
-- **Version:** 1.0.0
-- **Release Date:** 2025-11-30
+- **Version:** 1.7.0
+- **Release Date:** 2025-12-02
 - **Status:** Planning Document
 - **Reference:** [Implementation Plan](./ExoFrame_Implementation_Plan.md) Phase 6
 

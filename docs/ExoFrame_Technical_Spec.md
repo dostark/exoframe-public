@@ -1,9 +1,10 @@
 # Project ExoFrame: Technical Specification & Architecture
 
-- **Version:** 1.6.0
-- **Release Date:** 2025-11-27
+- **Version:** 1.7.0
+- **Release Date:** 2025-12-02
 - **Status:** Engineering Specification
 - **Reference:** [ExoFrame White Paper](./ExoFrame_White_Paper.md)
+- **Architecture:** [ExoFrame Architecture Diagrams](./ExoFrame_Architecture.md)
 - **Philosophy:** Local-First, Type-Safe, Secure-by-Design
 
 ---

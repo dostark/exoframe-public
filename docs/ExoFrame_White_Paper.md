@@ -2,8 +2,8 @@
 
 ### White Paper - Developer Tool Edition
 
-- **Date:** November 27, 2025
-- **Version:** 1.6.0
+- **Date:** December 2, 2025
+- **Version:** 1.7.0
 - **Status:** Development Specification
 - **Target Audience:** Solo Developers, Technical Power Users, System Architects
 

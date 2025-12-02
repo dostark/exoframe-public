@@ -1,7 +1,7 @@
 # ExoFrame Repository Build
 
-- **Version:** 1.6.0
-- **Release Date:** 2025-11-27
+- **Version:** 1.7.0
+- **Release Date:** 2025-12-02
 
 ### Create repository from scratch (no GitHub repo yet)
 
