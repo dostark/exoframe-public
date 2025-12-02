@@ -169,31 +169,56 @@ constructor() {
 }
 ```
 
-## Activity Logging
+## Activity Logging with EventLogger
 
-### Log important actions to Activity Journal
+### ⚠️ IMPORTANT: Use EventLogger for All Logging
+
+**All operational events MUST be logged using `EventLogger`** — this ensures events are written to both console AND the Activity Journal for complete audit trail.
 
 ```typescript
-private logActivity(
-  actionType: string,
-  target: string,
-  payload: Record<string, unknown>,
-  traceId?: string,
-): void {
-  try {
-    this.db.logActivity(
-      "agent",        // actor: "agent", "human", or "system"
-      actionType,     // e.g., "request.processing", "plan.created"
-      target,         // path or identifier
-      payload,        // additional context
-      traceId,        // for trace correlation
-      null,           // agentId (optional)
-    );
-  } catch (error) {
-    console.error(`[MyService] Failed to log activity:`, error);
-  }
-}
+import { EventLogger } from "../services/event_logger.ts";
+
+// Initialize with database connection
+const logger = new EventLogger({ db: dbService, prefix: "[MyService]" });
+
+// Basic usage - logs to both console and Activity Journal
+logger.info("config.loaded", "exo.config.toml", { checksum: "abc123" });
+logger.warn("context.truncated", "loader", { files_skipped: 3 });
+logger.error("provider.failed", "anthropic", { error: "rate_limited" });
+
+// Create child logger for specific service/context
+const serviceLogger = logger.child({
+  actor: "agent:processor",
+  traceId: crypto.randomUUID(),
+});
+
+serviceLogger.info("request.processing", filePath, { status: "started" });
 ```
+
+### Actor Identity
+
+Use appropriate actor values:
+
+```typescript
+// System events (daemon, services)
+logger.child({ actor: "system" });
+
+// Agent events (AI operations)
+logger.child({ actor: "agent:senior-coder" });
+
+// Human events (CLI commands) - resolves from git config or OS
+const userIdentity = await EventLogger.getUserIdentity();
+logger.child({ actor: userIdentity });
+```
+
+### When NOT to Use EventLogger
+
+Keep plain `console.log` for:
+
+1. **Read-only CLI display:** List results, show details, status output
+2. **Interactive prompts:** User input handling
+3. **Help text:** Command documentation
+4. **Error fallbacks:** When Activity Journal itself fails
 
 ### Use consistent action type naming
 

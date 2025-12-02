@@ -2785,7 +2785,7 @@ const watcher = new FileWatcher(config, async (event) => {
 
 ---
 
-### Step 5.10: Unified Event Logger (Console + Activity Journal) 🔲 PLANNED
+### Step 5.10: Unified Event Logger (Console + Activity Journal) ✅ COMPLETED
 
 - **Dependencies:** Step 1.2 (Activity Journal), All modules using console.log
 - **Rollback:** Revert to direct console.log calls
@@ -3007,20 +3007,20 @@ CLI commands interact with ExoFrame on behalf of the user. All CLI **actions** m
 
 **Success Criteria:**
 
-1. [ ] `EventLogger` class implemented with log(), info(), warn(), error() methods
-2. [ ] All log events written to Activity Journal with proper action types
-3. [ ] Console output formatted consistently with icons and indentation
-4. [ ] Database failures don't crash the application (fallback to console-only)
-5. [ ] Child loggers inherit parent defaults (traceId, actor, etc.)
+1. [x] `EventLogger` class implemented with log(), info(), warn(), error() methods
+2. [x] All log events written to Activity Journal with proper action types
+3. [x] Console output formatted consistently with icons and indentation
+4. [x] Database failures don't crash the application (fallback to console-only)
+5. [x] Child loggers inherit parent defaults (traceId, actor, etc.)
 6. [ ] All `main.ts` startup logs migrated to EventLogger
 7. [ ] All service modules migrated (request_processor, watcher, etc.)
 8. [ ] All CLI command **actions** use EventLogger with actor='human'
 9. [ ] CLI read-only display uses console.log (list, show, status)
 10. [ ] 100% of system events + user actions in Activity Journal
 11. [ ] Activity Journal becomes the single source of truth for debugging and audit
-12. [ ] AGENT_INSTRUCTIONS.md updated with EventLogger usage guidelines
-13. [ ] All existing tests pass after migration
-14. [ ] User identity resolved from git config (email) or OS username
+12. [x] AGENT_INSTRUCTIONS.md updated with EventLogger usage guidelines
+13. [x] All existing tests pass after migration
+14. [x] User identity resolved from git config (email) or OS username
 15. [ ] CLI actions queryable by user: `SELECT * FROM activity WHERE actor='john@example.com'`
 16. [ ] User activity report: distinct users and action counts
 
