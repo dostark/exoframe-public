@@ -1,7 +1,7 @@
 # ExoFrame Architecture
 
-**Version:** 1.7.0\
-**Date:** December 2, 2025
+**Version:** 1.8.0\
+**Date:** December 3, 2025
 
 This document provides a comprehensive architectural overview of ExoFrame components using Mermaid diagrams.
 
@@ -29,8 +29,10 @@ graph TB
     
     subgraph Core["⚙️ Core System"]
         Main[main.ts - Daemon]
-        Watcher[File Watcher]
+        ReqWatch[Request Watcher<br/>Inbox/Requests]
+        PlanWatch[Plan Watcher<br/>System/Active]
         ReqProc[Request Processor]
+        PlanExec[Plan Executor<br/>5.12.1-5.12.2 ✅]
         AgentRun[Agent Runner]
         FlowEng[Flow Engine]
         ExecLoop[Execution Loop]
@@ -96,10 +98,14 @@ graph TB
     Main --> ConfigSvc
     Main --> DBSvc
     Main --> Factory
-    Main --> Watcher
+    Main --> ReqWatch
+    Main --> PlanWatch
     Main --> ReqProc
-    Watcher --> Inbox
+    Main --> PlanExec
+    ReqWatch --> Inbox
+    PlanWatch --> System
     ReqProc --> AgentRun
+    PlanExec --> AgentRun
     AgentRun --> ExecLoop
     ExecLoop --> FlowEng
     
@@ -141,7 +147,7 @@ graph TB
     
     class User,Agent actor
     class Exoctl,ReqCmd,PlanCmd,ChangeCmd,GitCmd,DaemonCmd,PortalCmd,BlueprintCmd cli
-    class Main,Watcher,ReqProc,AgentRun,FlowEng,ExecLoop core
+    class Main,ReqWatch,PlanWatch,ReqProc,PlanExec,AgentRun,FlowEng,ExecLoop core
     class ConfigSvc,DBSvc,GitSvc,EventLog,ContextLoad,PlanWriter,MissionRpt,PathRes,ToolReg,CtxCard service
     class DB,FS,Inbox,Blueprint,Knowledge,Portals,System storage
     class Factory,Ollama,Claude,GPT,Gemini,Mock ai
@@ -187,6 +193,181 @@ sequenceDiagram
     CLI->>DB: Log plan.approved
     CLI-->>U: Approved ✓
 ```
+
+---
+
+## Plan Execution Flow (Step 5.12)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant CLI as exoctl CLI
+    participant Plans as Inbox/Plans
+    participant Active as System/Active
+    participant W as Plan Watcher
+    participant Detect as Detection (5.12.1)
+    participant Parse as Parsing (5.12.2)
+    participant Gen as Code Generation (5.12.3)
+    participant CS as Changeset (5.12.4)
+    participant DB as Activity Journal
+    
+    U->>CLI: exoctl plan approve {uuid}
+    CLI->>Plans: Read plan-{uuid}.md
+    CLI->>Active: Move to System/Active/
+    CLI->>DB: Log plan.approved
+    CLI-->>U: Plan approved ✓
+    
+    Note over W: File Watcher monitors<br/>System/Active/
+    W->>Active: Detect _plan.md file
+    W->>Detect: Trigger detection
+    
+    Detect->>Active: Read plan file
+    Detect->>Detect: Parse YAML frontmatter
+    Detect->>Detect: Validate trace_id
+    Detect->>DB: Log plan.detected
+    Detect->>DB: Log plan.ready_for_execution
+    
+    Detect->>Parse: Pass plan content
+    Parse->>Parse: Extract body after frontmatter
+    Parse->>Parse: Extract steps (regex)
+    Parse->>Parse: Validate step numbering
+    Parse->>Parse: Validate step titles
+    
+    alt Parsing Success
+        Parse->>DB: Log plan.parsed
+        Parse->>Parse: Build step objects:<br/>{number, title, content}
+        Parse->>Gen: Pass parsed plan
+        Note over Gen: TODO: Step 5.12.3<br/>Code Generation
+    else Parsing Failed
+        Parse->>DB: Log plan.parsing_failed
+        Parse-->>U: Parsing error logged
+    end
+    
+    Note over Gen,CS: Future Implementation:<br/>5.12.3-5.12.6
+```
+
+### Plan Execution Components
+
+```mermaid
+graph TB
+    subgraph Detection["5.12.1 Detection ✅"]
+        D1[File Watcher<br/>System/Active/]
+        D2[Filter _plan.md files]
+        D3[Parse YAML frontmatter]
+        D4[Validate trace_id]
+        D5[Log plan.detected]
+    end
+    
+    subgraph Parsing["5.12.2 Parsing ✅"]
+        P1[Extract body section]
+        P2[Regex: ## Step N: Title]
+        P3[Validate sequential numbering]
+        P4[Validate non-empty titles]
+        P5[Build step objects]
+        P6[Log plan.parsed]
+    end
+    
+    subgraph Generation["5.12.3 Code Generation 📋"]
+        G1[Load agent blueprint]
+        G2[Call LLM with context]
+        G3[Generate file changes]
+        G4[Validate generated code]
+    end
+    
+    subgraph Changeset["5.12.4 Changeset Creation 📋"]
+        C1[Create feature branch]
+        C2[Apply file changes]
+        C3[Stage changes]
+        C4[Create changeset record]
+    end
+    
+    subgraph Status["5.12.5 Status Update 📋"]
+        S1[Mark plan executed]
+        S2[Move to Archive]
+        S3[Log completion]
+    end
+    
+    subgraph Error["5.12.6 Error Handling 📋"]
+        E1[Catch LLM errors]
+        E2[Catch Git errors]
+        E3[Log failures]
+        E4[Preserve plan state]
+    end
+    
+    D1 --> D2 --> D3 --> D4 --> D5
+    D5 --> P1
+    P1 --> P2 --> P3 --> P4 --> P5 --> P6
+    P6 --> G1
+    G1 --> G2 --> G3 --> G4
+    G4 --> C1
+    C1 --> C2 --> C3 --> C4
+    C4 --> S1
+    S1 --> S2 --> S3
+    
+    G2 -.error.-> E1
+    C2 -.error.-> E2
+    E1 --> E3 --> E4
+    E2 --> E3
+    
+    classDef implemented fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    classDef planned fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef error fill:#ffcdd2,stroke:#c62828,stroke-width:2px
+    
+    class D1,D2,D3,D4,D5,P1,P2,P3,P4,P5,P6 implemented
+    class G1,G2,G3,G4,C1,C2,C3,C4,S1,S2,S3 planned
+    class E1,E2,E3,E4 error
+```
+
+### Plan File Structure
+
+```mermaid
+graph TB
+    subgraph PlanFile["_plan.md Structure"]
+        FM[YAML Frontmatter<br/>---<br/>trace_id: uuid<br/>request_id: uuid<br/>agent: string<br/>status: approved<br/>---]
+        Body[Markdown Body<br/># Plan Title<br/>Description]
+        Step1[## Step 1: Title<br/>Content and tasks]
+        Step2[## Step 2: Title<br/>Content and tasks]
+        StepN[## Step N: Title<br/>Content and tasks]
+    end
+    
+    subgraph Parsed["Parsed Structure"]
+        Context[Context Object<br/>{trace_id, request_id,<br/>agent, status}]
+        Steps[Steps Array<br/>[{number, title, content}]]
+    end
+    
+    FM --> Context
+    Body --> Context
+    Step1 --> Steps
+    Step2 --> Steps
+    StepN --> Steps
+    
+    Context --> Execution[Plan Executor]
+    Steps --> Execution
+    
+    classDef file fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef parsed fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    classDef exec fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    
+    class FM,Body,Step1,Step2,StepN file
+    class Context,Steps parsed
+    class Execution exec
+```
+
+### Activity Logging Events
+
+**Detection Events:**
+
+- `plan.detected` - Plan file found in System/Active
+- `plan.ready_for_execution` - Valid plan parsed, ready for execution
+- `plan.invalid_frontmatter` - YAML parsing failed
+- `plan.missing_trace_id` - Required trace_id field not found
+- `plan.detection_failed` - Unexpected error during detection
+
+**Parsing Events:**
+
+- `plan.parsed` - Plan successfully parsed with step count
+- `plan.parsing_failed` - Missing body, no steps, or empty titles
+- `plan.non_sequential_steps` - Warning for gaps in step numbering
 
 ---
 
@@ -632,8 +813,10 @@ graph LR
 | ---------------------- | ---------------------------------- | ----------------------------------- |
 | **CLI Layer**          | Human interface for system control | `src/cli/*.ts`                      |
 | **Daemon**             | Background orchestration engine    | `src/main.ts`                       |
-| **File Watcher**       | Detect new requests in Inbox       | `src/services/watcher.ts`           |
+| **Request Watcher**    | Detect new requests in Inbox       | `src/services/watcher.ts`           |
+| **Plan Watcher**       | Detect approved plans (5.12.1)     | `src/services/watcher.ts`           |
 | **Request Processor**  | Parse requests, generate plans     | `src/services/request_processor.ts` |
+| **Plan Executor**      | Execute approved plans (5.12)      | `src/main.ts` (in-progress)         |
 | **Agent Runner**       | Execute agent logic with LLM       | `src/services/agent_runner.ts`      |
 | **Event Logger**       | Write to Activity Journal          | `src/services/event_logger.ts`      |
 | **Config Service**     | Load and validate exo.config.toml  | `src/config/service.ts`             |
