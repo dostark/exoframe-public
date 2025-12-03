@@ -345,13 +345,222 @@ See [Manual Test Scenarios](./ExoFrame_Manual_Test_Scenarios.md) for detailed te
 
 **Mock Strategies:**
 
-| Strategy     | Use Case              | Implementation                   |
-| ------------ | --------------------- | -------------------------------- |
-| **Recorded** | Replay real responses | Hash prompt → lookup response    |
-| **Scripted** | Predictable sequences | Return responses in order        |
-| **Pattern**  | Dynamic responses     | Match prompt patterns → generate |
-| **Failing**  | Error handling tests  | Always throw error               |
-| **Slow**     | Timeout tests         | Add artificial delay             |
+| Strategy     | Use Case              | Implementation                   | Test Scenarios                           |
+| ------------ | --------------------- | -------------------------------- | ---------------------------------------- |
+| **Recorded** | Replay real responses | Hash prompt → lookup response    | Integration tests, realistic responses   |
+| **Scripted** | Predictable sequences | Return responses in order        | Multi-step workflows, conversation flows |
+| **Pattern**  | Dynamic responses     | Match prompt patterns → generate | Various request types, flexible testing  |
+| **Failing**  | Error handling tests  | Always throw error               | Retry logic, error recovery              |
+| **Slow**     | Timeout tests         | Add artificial delay             | Timeout handling, race conditions        |
+
+#### Strategy Details
+
+##### Recorded Strategy
+
+**Purpose:** Replay real LLM responses captured from previous API calls.
+
+**How it works:**
+
+- Hashes the prompt using a deterministic algorithm to create a unique fingerprint
+- Looks up response by prompt hash (tries exact match → preview match → pattern fallback)
+- Can load recordings from fixture directory (`.json` files)
+- Automatically falls back to pattern matching if no recording found (new in v1.7)
+
+**When to use:**
+
+- Integration tests requiring realistic, complex responses
+- Testing with actual Claude/GPT output without API costs
+- Regression testing against known-good responses
+- Ensuring plan format consistency across versions
+
+**Example:**
+
+```typescript
+const recorded = new MockLLMProvider("recorded", {
+  fixtureDir: "./tests/fixtures/llm_responses",
+});
+
+// Uses recorded response if available, falls back to patterns
+const plan = await recorded.generate("Implement authentication");
+```
+
+##### Scripted Strategy
+
+**Purpose:** Return predefined responses in a fixed, predictable sequence.
+
+**How it works:**
+
+- Maintains an index into a responses array
+- Returns responses in order on each call
+- Cycles back to first response when array is exhausted
+- Deterministic - same sequence every test run
+
+**When to use:**
+
+- Testing multi-step workflows where order matters
+- Conversation flows and dialogue systems
+- Sequential plan generation and approval cycles
+- State machine testing
+
+**Example:**
+
+```typescript
+const scripted = new MockLLMProvider("scripted", {
+  responses: [
+    "I'll analyze the request...",
+    "Based on requirements, here's the plan...",
+    "Implementation complete",
+  ],
+});
+
+// Returns responses in order
+await scripted.generate("step 1"); // → "I'll analyze..."
+await scripted.generate("step 2"); // → "Based on..."
+await scripted.generate("step 3"); // → "Implementation..."
+await scripted.generate("step 4"); // → "I'll analyze..." (cycles)
+```
+
+##### Pattern Strategy
+
+**Purpose:** Generate dynamic responses based on prompt content using regex matching.
+
+**How it works:**
+
+- Matches prompts against regex patterns in order
+- Returns static string or calls function to generate dynamic response
+- Uses first matching pattern in the patterns array
+- Throws error if no pattern matches
+
+**When to use:**
+
+- Flexible testing of various request types without pre-recording
+- Testing different plan formats (implement/fix/add/create)
+- Dynamic response generation based on prompt content
+- Prototyping before recording real responses
+
+**Example:**
+
+```typescript
+const pattern = new MockLLMProvider("pattern", {
+  patterns: [
+    {
+      pattern: /implement|add|create/i,
+      response: "## Implementation Plan\n\n1. Design...\n2. Code...\n3. Test...",
+    },
+    {
+      pattern: /fix|bug|error/i,
+      response: "## Bug Fix Plan\n\n1. Reproduce\n2. Root cause\n3. Fix\n4. Test",
+    },
+    {
+      pattern: /add (\w+) function/i,
+      response: (match) => `Creating ${match[1]} function...`,
+    },
+  ],
+});
+
+// Matches patterns dynamically
+await pattern.generate("Implement authentication"); // → Implementation Plan
+await pattern.generate("Fix login bug"); // → Bug Fix Plan
+await pattern.generate("Add hello function"); // → Creating hello function...
+```
+
+##### Failing Strategy
+
+**Purpose:** Simulate API failures, network errors, and service unavailability.
+
+**How it works:**
+
+- Always throws `MockLLMError` on every `generate()` call
+- Still tracks call count and history for test assertions
+- Supports custom error messages to simulate specific failures
+- Never returns a successful response
+
+**When to use:**
+
+- Testing error handling and recovery mechanisms
+- Retry logic and exponential backoff
+- Graceful degradation when LLM unavailable
+- User-facing error messages
+
+**Example:**
+
+```typescript
+const failing = new MockLLMProvider("failing", {
+  errorMessage: "API rate limit exceeded (429)",
+});
+
+try {
+  await failing.generate("any prompt");
+} catch (error) {
+  assertEquals(error.message, "API rate limit exceeded (429)");
+  assertEquals(failing.callCount, 1); // Still tracks calls
+}
+```
+
+##### Slow Strategy
+
+**Purpose:** Simulate network latency, slow API responses, and timeout conditions.
+
+**How it works:**
+
+- Adds configurable delay (default 500ms) before returning response
+- Cycles through responses array like scripted strategy (after delay)
+- Uses real setTimeout, accurately simulates async delays
+
+**When to use:**
+
+- Testing request timeout handling
+- Loading state UI and progress indicators
+- Race condition testing
+- Concurrent request processing
+- Performance testing under slow network conditions
+
+**Example:**
+
+```typescript
+const slow = new MockLLMProvider("slow", {
+  delayMs: 5000, // 5 second delay
+  responses: ["Delayed response"],
+});
+
+const start = Date.now();
+const response = await slow.generate("test");
+const elapsed = Date.now() - start;
+
+assert(elapsed >= 5000); // Verifies delay occurred
+
+// Test timeout behavior
+const controller = new AbortController();
+setTimeout(() => controller.abort(), 1000); // Timeout after 1s
+
+try {
+  await Promise.race([
+    slow.generate("test"),
+    new Promise((_, reject) => {
+      controller.signal.addEventListener("abort", () => reject(new Error("Timeout")));
+    }),
+  ]);
+} catch (error) {
+  assertEquals(error.message, "Timeout");
+}
+```
+
+#### Helper Functions
+
+The module provides convenience functions for common testing scenarios:
+
+```typescript
+import { createFailingMock, createPlanGeneratorMock, createSlowMock } from "../src/ai/providers/mock_llm_provider.ts";
+
+// Quick pattern-based mock with common plan formats
+const planMock = createPlanGeneratorMock();
+
+// Quick failing mock with custom message
+const failMock = createFailingMock("Service unavailable");
+
+// Quick slow mock with custom delay
+const slowMock = createSlowMock(3000); // 3 second delay
+```
 
 **Recording Real Responses:**
 

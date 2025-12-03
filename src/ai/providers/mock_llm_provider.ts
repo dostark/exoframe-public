@@ -3,17 +3,96 @@
  *
  * Testing Strategy §3.1: Mock LLM Provider
  *
- * Provides multiple strategies for mocking LLM responses:
- * - recorded: Replay real responses based on prompt hash lookup
- * - scripted: Return responses in order (sequence)
- * - pattern: Match prompt patterns and generate responses
- * - failing: Always throw error (for error handling tests)
- * - slow: Add artificial delay (for timeout tests)
+ * Provides multiple strategies for mocking LLM responses without making actual API calls.
+ * Each strategy serves a specific testing purpose:
+ *
+ * ## Strategy Details
+ *
+ * ### recorded
+ * **Purpose:** Replay real LLM responses captured from previous API calls
+ * **How it works:**
+ *   - Hashes the prompt to create a unique fingerprint
+ *   - Looks up response by hash (exact match → preview match → pattern fallback)
+ *   - Can load recordings from fixture directory (.json files)
+ *   - Auto-falls back to pattern matching if no recording found
+ * **Use in testing:** Integration tests requiring realistic responses without API costs
+ * **Example:** Testing plan generation with actual Claude/GPT responses
+ *
+ * ### scripted
+ * **Purpose:** Return predefined responses in a fixed sequence
+ * **How it works:**
+ *   - Maintains an index into a responses array
+ *   - Returns responses in order, cycling back to first when exhausted
+ *   - Deterministic and predictable for every test run
+ * **Use in testing:** Multi-step workflows where order matters (e.g., conversation flows)
+ * **Example:** Testing request → plan → approval → execution sequence
+ *
+ * ### pattern
+ * **Purpose:** Generate dynamic responses based on prompt content
+ * **How it works:**
+ *   - Matches prompts against regex patterns
+ *   - Returns static string or calls function to generate dynamic response
+ *   - Uses first matching pattern in the list
+ * **Use in testing:** Flexible testing of various request types without pre-recording
+ * **Example:** Testing "implement", "fix", "add" requests with appropriate plan formats
+ *
+ * ### failing
+ * **Purpose:** Simulate API failures and network errors
+ * **How it works:**
+ *   - Always throws MockLLMError on every generate() call
+ *   - Still tracks call count and history for assertions
+ *   - Supports custom error messages
+ * **Use in testing:** Error handling, retry logic, graceful degradation
+ * **Example:** Testing daemon recovery when LLM provider is unavailable
+ *
+ * ### slow
+ * **Purpose:** Simulate network latency and slow API responses
+ * **How it works:**
+ *   - Adds configurable delay (default 500ms) before returning response
+ *   - Cycles through responses like scripted strategy after delay
+ * **Use in testing:** Timeout behavior, loading states, race conditions
+ * **Example:** Testing request timeout handling or concurrent request processing
+ *
+ * ## Helper Functions
+ *
+ * - `createPlanGeneratorMock()` - Pattern-based mock with common plan formats
+ * - `createFailingMock(message?)` - Failing mock with custom error message
+ * - `createSlowMock(delayMs?)` - Slow mock with configurable delay
+ *
+ * ## Usage Examples
+ *
+ * ```typescript
+ * // Test with recorded real responses
+ * const recorded = new MockLLMProvider("recorded", {
+ *   fixtureDir: "./tests/fixtures/llm_responses"
+ * });
+ *
+ * // Test multi-step conversation
+ * const scripted = new MockLLMProvider("scripted", {
+ *   responses: ["Hello", "How can I help?", "Goodbye"]
+ * });
+ *
+ * // Test dynamic request types
+ * const pattern = new MockLLMProvider("pattern", {
+ *   patterns: [
+ *     { pattern: /implement/i, response: "Implementation plan..." },
+ *     { pattern: /fix/i, response: "Bug fix plan..." }
+ *   ]
+ * });
+ *
+ * // Test error handling
+ * const failing = new MockLLMProvider("failing", {
+ *   errorMessage: "API rate limit exceeded"
+ * });
+ *
+ * // Test timeout behavior
+ * const slow = new MockLLMProvider("slow", {
+ *   delayMs: 5000
+ * });
+ * ```
  */
 
 import { IModelProvider, ModelOptions } from "../providers.ts";
-import { crypto } from "jsr:@std/crypto@^1.0.0";
-import { encodeHex } from "jsr:@std/encoding@^1.0.0/hex";
 
 // ============================================================================
 // Types and Interfaces
@@ -147,6 +226,21 @@ export class MockLLMProvider implements IModelProvider {
     if (options.fixtureDir) {
       this.loadRecordingsFromDir(options.fixtureDir);
     }
+
+    // For recorded strategy without recordings, add default patterns as fallback
+    // Only if patterns were not explicitly provided (even if empty)
+    if (
+      strategy === "recorded" &&
+      this.recordings.length === 0 &&
+      this.patterns.length === 0 &&
+      !("patterns" in options) // Check if patterns key was explicitly set
+    ) {
+      console.warn(
+        "MockLLMProvider: 'recorded' strategy specified but no recordings available. " +
+          "Adding default pattern fallbacks for testing.",
+      );
+      this.patterns = this.getDefaultPatterns();
+    }
   }
 
   // ============================================================================
@@ -211,7 +305,7 @@ export class MockLLMProvider implements IModelProvider {
   /**
    * Recorded strategy: Look up response by prompt hash
    */
-  private async generateRecorded(prompt: string): Promise<string> {
+  private generateRecorded(prompt: string): string {
     const hash = this.hashPrompt(prompt);
 
     // Try exact hash match first
@@ -228,17 +322,28 @@ export class MockLLMProvider implements IModelProvider {
       return previewMatch.response;
     }
 
+    // Fall back to pattern matching if available
+    if (this.patterns.length > 0) {
+      console.warn(
+        `No exact recording found for prompt, falling back to pattern matching:\n` +
+          `Hash: ${hash}\n` +
+          `Preview: "${prompt.substring(0, 50)}..."`,
+      );
+      return this.generatePattern(prompt);
+    }
+
     throw new MockLLMError(
       `No recorded response found for prompt hash: ${hash}\n` +
         `Prompt preview: "${prompt.substring(0, 50)}..."\n` +
-        `Available recordings: ${this.recordings.length}`,
+        `Available recordings: ${this.recordings.length}\n` +
+        `Hint: Add recordings or use 'pattern' strategy instead`,
     );
   }
 
   /**
    * Scripted strategy: Return responses in sequence
    */
-  private async generateScripted(): Promise<string> {
+  private generateScripted(): string {
     const response = this.responses[this.responseIndex];
     this.responseIndex = (this.responseIndex + 1) % this.responses.length;
     return response;
@@ -247,7 +352,7 @@ export class MockLLMProvider implements IModelProvider {
   /**
    * Pattern strategy: Match prompt against patterns
    */
-  private async generatePattern(prompt: string): Promise<string> {
+  private generatePattern(prompt: string): string {
     for (const matcher of this.patterns) {
       const match = prompt.match(matcher.pattern);
       if (match) {
@@ -267,7 +372,7 @@ export class MockLLMProvider implements IModelProvider {
   /**
    * Failing strategy: Always throw error
    */
-  private async generateFailing(): Promise<never> {
+  private generateFailing(): Promise<never> {
     throw new MockLLMError(this.errorMessage);
   }
 
@@ -402,6 +507,91 @@ export class MockLLMProvider implements IModelProvider {
    */
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Get default patterns for fallback when no recordings available
+   */
+  private getDefaultPatterns(): PatternMatcher[] {
+    return [
+      {
+        pattern: /implement|add|create/i,
+        response: `<thought>
+I need to analyze the request and create a plan for implementation.
+</thought>
+
+<content>
+## Proposed Plan
+
+### Overview
+Based on the request, I will implement the required functionality.
+
+### Steps
+1. **Analyze Requirements** - Review the request and identify key requirements
+2. **Design Solution** - Create a technical design for the implementation
+3. **Implement Code** - Write the necessary code changes
+4. **Write Tests** - Add unit tests to verify the implementation
+5. **Review** - Self-review the changes for quality
+
+### Files to Modify
+- src/feature.ts (new file)
+- tests/feature_test.ts (new file)
+
+### Expected Outcome
+The feature will be implemented and tested according to requirements.
+</content>`,
+      },
+      {
+        pattern: /fix|bug|error|issue/i,
+        response: `<thought>
+I need to investigate and fix the reported issue.
+</thought>
+
+<content>
+## Proposed Plan
+
+### Overview
+I will investigate and fix the reported issue.
+
+### Steps
+1. **Reproduce Issue** - Verify the bug exists
+2. **Root Cause Analysis** - Identify why the bug occurs
+3. **Implement Fix** - Apply the necessary correction
+4. **Test Fix** - Verify the bug is resolved
+5. **Regression Test** - Ensure no new issues introduced
+
+### Files to Modify
+- src/affected_module.ts (to fix the bug)
+- tests/affected_module_test.ts (add regression test)
+
+### Expected Outcome
+The bug will be fixed without introducing regressions.
+</content>`,
+      },
+      {
+        pattern: /.*/,
+        response: `<thought>
+I will create a plan to address this request.
+</thought>
+
+<content>
+## Proposed Plan
+
+### Overview
+I will address the user's request.
+
+### Steps
+1. **Analyze** - Review the request details
+2. **Plan** - Design the approach
+3. **Implement** - Execute the changes
+4. **Test** - Verify the solution
+5. **Document** - Update relevant documentation
+
+### Expected Outcome
+The request will be fulfilled according to specifications.
+</content>`,
+      },
+    ];
   }
 }
 

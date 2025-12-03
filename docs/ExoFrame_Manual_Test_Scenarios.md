@@ -19,6 +19,10 @@ This document contains detailed manual test scenarios for ExoFrame. Each scenari
 
 Execute these scenarios on each target platform before major releases.
 
+### Important Notes
+
+**MockLLMProvider Behavior:** The default MockLLMProvider automatically initializes with default pattern fallbacks when no recordings are provided. This means scenarios using the mock provider (MT-05, MT-08) will successfully generate plans without requiring pre-recorded responses. The provider logs "falling back to pattern matching" which is expected and normal behavior.
+
 ---
 
 ## Test Environment Setup
@@ -541,9 +545,8 @@ rm -f ~/ExoFrame/Inbox/Requests/request-*.md
 
 - Daemon running with mock LLM (default in dev mode)
 - Request created (MT-04 complete)
-- Mock blueprint exists with recorded responses OR using real LLM provider
 
-**Note:** Mock LLM requires pre-recorded responses. If testing without recordings, use a real LLM provider (see MT-11) or expect `status: failed` with "No recorded response found" error.
+**Note:** MockLLMProvider automatically initializes with default pattern fallbacks when no recordings are provided, so it will generate valid plans without requiring pre-recorded responses.
 
 ### Steps
 
@@ -551,8 +554,7 @@ rm -f ~/ExoFrame/Inbox/Requests/request-*.md
 # Step 1: Verify daemon is running
 exoctl daemon status
 
-# Step 2: Create a mock blueprint with recorded responses (if not exists)
-# Skip this if using real LLM provider
+# Step 2: Create a mock blueprint (if not exists)
 exoctl blueprint create mock-agent \
   --name "Mock Agent" \
   --template mock
@@ -560,11 +562,11 @@ exoctl blueprint create mock-agent \
 # Step 3: Create request using mock agent
 exoctl request "Add a hello world function to utils.ts" --agent mock-agent
 
-# Step 4: Check for plan (may need to wait)
+# Step 4: Wait for plan generation
 sleep 5
 exoctl plan list
 
-# Step 5: View the generated plan (if successful)
+# Step 5: View the generated plan
 exoctl plan show <plan-id>
 
 # Step 6: Verify plan file
@@ -590,43 +592,60 @@ ls -la ~/ExoFrame/Inbox/Plans/
 
 **Step 4:**
 
-- With recorded responses: Shows plan in list with `status: review`
-- Without recordings: Shows request with `status: failed`
+- Shows plan in list with `status: review`
+- Plan generated using default pattern fallback
 
 **Step 5:**
 
-- With recordings: Shows plan details including proposed steps and request ID
-- Without recordings: Error message about missing recording
+- Shows plan details including proposed steps and request ID
+- Plan content includes standard sections (Overview, Steps, Expected Outcome)
 
 **Step 6:**
 
-- With recordings: Plan file exists in `Inbox/Plans/` with format `<request-id>_plan.md`
-- Without recordings: No plan file (request marked failed)
+- Plan file exists in `Inbox/Plans/` with format `<request-id>_plan.md`
 
 ### Verification
 
 ```bash
-# Read the plan file (if generated)
-cat ~/ExoFrame/Inbox/Plans/*_plan.md 2>/dev/null
+# Read the plan file
+cat ~/ExoFrame/Inbox/Plans/*_plan.md
 
-# Expected structure with YAML frontmatter (if plan generated):
+# Expected structure with YAML frontmatter:
 # ---
 # trace_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 # request_id: "request-a1b2c3d4"
 # status: review
 # created_at: "2025-12-01T10:01:00.000Z"
-# agent_id: mock-agent
 # ---
+#
+# # Plan: request-a1b2c3d4
+#
+# ## Summary
+#
+# Based on the request, I will implement the required functionality.
+#
+# ## Reasoning
+#
+# I need to analyze the request and create a plan for implementation.
 #
 # ## Proposed Plan
 #
-# 1. Create utils.ts file
-# 2. Add hello world function
-# ...
-
-# If no plan generated, check request status
-cat ~/ExoFrame/Inbox/Requests/request-*.md | grep -A1 "^status:"
-# Expected with no recordings: status: failed
+# ### Overview
+# Based on the request, I will implement the required functionality.
+#
+# ### Steps
+# 1. **Analyze Requirements** - Review the request and identify key requirements
+# 2. **Design Solution** - Create a technical design for the implementation
+# 3. **Implement Code** - Write the necessary code changes
+# 4. **Write Tests** - Add unit tests to verify the implementation
+# 5. **Review** - Self-review the changes for quality
+#
+# ### Files to Modify
+# - src/feature.ts (new file)
+# - tests/feature_test.ts (new file)
+#
+# ### Expected Outcome
+# The feature will be implemented and tested according to requirements.
 ```
 
 ### Troubleshooting
@@ -637,16 +656,16 @@ If no plans are generated after 30 seconds:
 # Check daemon logs for errors
 tail -50 ~/ExoFrame/System/daemon.log
 
-# Look for mock recording errors
-grep -i "No recorded response\|prompt hash" ~/ExoFrame/System/daemon.log | tail -5
+# Look for processing errors
+grep -i "request.*processing\|plan.*generated\|error" ~/ExoFrame/System/daemon.log | tail -10
 
 # Check if request processor is running
-grep -i "request.*processing\|watcher\|detected" ~/ExoFrame/System/daemon.log | tail -20
+grep -i "watcher\|detected" ~/ExoFrame/System/daemon.log | tail -20
 
 # Verify request file is valid YAML
 cat ~/ExoFrame/Inbox/Requests/request-*.md
 
-# Check request status (should show 'failed' if no recordings)
+# Check request status
 cat ~/ExoFrame/Inbox/Requests/request-*.md | grep "^status:"
 
 # Try restarting daemon
@@ -658,29 +677,28 @@ exoctl plan list
 
 **Common Issues:**
 
-1. **"No recorded response found for prompt hash"** - This is expected when using mock provider without recordings. Options:
-   - Use real LLM provider: `EXO_LLM_PROVIDER=ollama exoctl daemon start`
-   - Or accept `status: failed` as expected behavior for mock testing
+1. **Plan not generated** - Check that:
+   - Daemon is running (`exoctl daemon status`)
+   - Request file has valid YAML frontmatter
+   - Blueprint file exists for the specified agent
+   - No errors in daemon logs
 
-2. **Request marked as failed immediately** - Normal with mock provider and no recordings
+2. **Request marked as failed** - Check daemon logs for:
+   - Blueprint not found errors
+   - LLM provider errors
+   - File system permission issues
 
-3. **Plan file not created** - Mock provider needs pre-recorded responses in recordings directory to generate plans
+3. **MockLLMProvider logs "No exact recording found"** - This is expected and normal behavior. The provider automatically falls back to default pattern matching and generates a valid plan.
 
 ### Pass Criteria
 
-**With Mock LLM and Recordings:**
-
 - [ ] Plan generated within 30 seconds
 - [ ] Plan linked to original request (matching trace_id)
-- [ ] Plan contains actionable steps
+- [ ] Plan contains actionable steps with standard structure
+- [ ] Plan includes Reasoning and Proposed Plan sections
 - [ ] Plan file uses YAML frontmatter format
-
-**With Mock LLM and No Recordings (Expected Failure):**
-
-- [ ] Request marked as `status: failed`
-- [ ] Daemon logs show "No recorded response found" error
-- [ ] Daemon continues running (no crash)
-- [ ] Error message includes prompt hash for debugging
+- [ ] MockLLMProvider logs show "falling back to pattern matching" (expected)
+- [ ] Request status updated to "planned"
 
 ---
 

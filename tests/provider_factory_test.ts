@@ -278,9 +278,9 @@ Deno.test(
 
     // Capture console.warn output
     const originalWarn = console.warn;
-    let warningMessage = "";
+    const warningMessages: string[] = [];
     console.warn = (msg: string) => {
-      warningMessage = msg;
+      warningMessages.push(msg);
     };
 
     try {
@@ -288,7 +288,10 @@ Deno.test(
 
       assertExists(provider);
       assertEquals(provider.id.startsWith("mock"), true, "Should fall back to mock");
-      assertStringIncludes(warningMessage, "unknown-provider-xyz");
+
+      // Check that at least one warning mentions the unknown provider
+      const hasProviderWarning = warningMessages.some((msg) => msg.includes("unknown-provider-xyz"));
+      assertEquals(hasProviderWarning, true, "Should warn about unknown provider");
     } finally {
       console.warn = originalWarn;
     }

@@ -118,12 +118,14 @@ export class TestEnvironment {
     const frontmatter = [
       "---",
       `trace_id: "${traceId}"`,
-      `agent_id: ${options.agentId ?? "senior-coder"}`,
+      `created: "${new Date().toISOString()}"`,
       `status: pending`,
       `priority: ${options.priority ?? 5}`,
-      `tags: [${(options.tags ?? []).map((t) => `"${t}"`).join(", ")}]`,
+      `agent: ${options.agentId ?? "senior-coder"}`,
+      `source: test`,
+      `created_by: test_environment`,
       options.portal ? `portal: "${options.portal}"` : null,
-      `created_at: "${new Date().toISOString()}"`,
+      `tags: [${(options.tags ?? []).map((t) => `"${t}"`).join(", ")}]`,
       "---",
     ].filter(Boolean).join("\n");
 
