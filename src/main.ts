@@ -146,8 +146,75 @@ if (import.meta.main) {
             request_id: frontmatter.request_id || "unknown",
           });
 
+          // Step 5.12.2: Parse plan structure
+          const bodyMatch = content.match(/^---\n[\s\S]*?\n---\n\n([\s\S]*)$/);
+
+          if (!bodyMatch) {
+            watcherLogger.error("plan.parsing_failed", event.path, {
+              error: "No body section found after frontmatter",
+              trace_id: frontmatter.trace_id,
+            });
+            return;
+          }
+
+          const body = bodyMatch[1];
+
+          // Extract steps using regex
+          const stepMatches = [...body.matchAll(
+            /## Step (\d+): ([^\n]+)\n([\s\S]*?)(?=## Step \d+:|$)/g,
+          )];
+
+          if (stepMatches.length === 0) {
+            watcherLogger.error("plan.parsing_failed", event.path, {
+              error: "No steps found in plan body",
+              trace_id: frontmatter.trace_id,
+            });
+            return;
+          }
+
+          // Validate step numbering is sequential
+          const stepNumbers = stepMatches.map((m) => parseInt(m[1]));
+          const isSequential = stepNumbers.every((num, idx) => num === idx + 1);
+
+          if (!isSequential) {
+            watcherLogger.warn("plan.non_sequential_steps", event.path, {
+              trace_id: frontmatter.trace_id,
+              step_numbers: stepNumbers,
+              expected: Array.from({ length: stepNumbers.length }, (_, i) => i + 1),
+            });
+          }
+
+          // Validate all steps have non-empty titles
+          const hasEmptyTitle = stepMatches.some((m) => m[2].trim() === "");
+
+          if (hasEmptyTitle) {
+            watcherLogger.error("plan.parsing_failed", event.path, {
+              error: "One or more steps have empty titles",
+              trace_id: frontmatter.trace_id,
+            });
+            return;
+          }
+
+          // Build parsed plan structure
+          const parsedSteps = stepMatches.map((match) => ({
+            number: parseInt(match[1]),
+            title: match[2].trim(),
+            content: match[3].trim(),
+          }));
+
+          watcherLogger.info("plan.parsed", event.path, {
+            trace_id: frontmatter.trace_id,
+            request_id: frontmatter.request_id,
+            agent: frontmatter.agent || "default",
+            step_count: parsedSteps.length,
+            steps: parsedSteps.map((s) => `${s.number}. ${s.title}`),
+          });
+
           // TODO: Execute plan (Step 5.12.3 - Code Generation)
-          // const changesetId = await planExecutor.execute(event.path);
+          // const changesetId = await planExecutor.execute(event.path, {
+          //   frontmatter,
+          //   steps: parsedSteps,
+          // });
         } catch (error) {
           watcherLogger.error("plan.detection_failed", event.path, {
             error: error instanceof Error ? error.message : String(error),

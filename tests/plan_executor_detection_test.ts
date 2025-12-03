@@ -17,18 +17,15 @@ import { join } from "@std/path";
 import { ensureDir } from "@std/fs";
 import { initTestDbService } from "./helpers/db.ts";
 import { createMockConfig } from "./helpers/config.ts";
-import type { DatabaseService } from "../src/services/db.ts";
 
 describe("Plan Executor - Detection", () => {
   let tempDir: string;
-  let db: DatabaseService;
   let cleanup: () => Promise<void>;
   let activePath: string;
 
   beforeEach(async () => {
     const result = await initTestDbService();
     tempDir = result.tempDir;
-    db = result.db;
     cleanup = result.cleanup;
 
     // Create System/Active directory
@@ -289,7 +286,7 @@ status: approved
   describe("Integration with FileWatcher", () => {
     it("should detect plan when file is created", async () => {
       // Arrange: Setup watcher pattern
-      const config = createMockConfig(tempDir, {
+      const _config = createMockConfig(tempDir, {
         watcher: { debounce_ms: 50, stability_check: false },
       });
 
