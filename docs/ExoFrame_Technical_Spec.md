@@ -630,7 +630,7 @@ export default class ExoFramePlugin extends Plugin {
 
 ### 5.8.1. Overview
 
-The Plan Execution Engine automatically executes approved plans moved to `System/Active/`. It uses an **agent-driven architecture** where LLM agents have direct portal access through scoped tools, eliminating fragile response parsing. It consists of six sub-steps, with Detection (5.12.1) and Parsing (5.12.2) currently implemented.
+The Plan Execution Engine automatically executes approved plans moved to `System/Active/`. It uses an **agent-driven architecture via MCP (Model Context Protocol) server** where LLM agents connect to ExoFrame's MCP server and use standardized tools for portal operations. This eliminates fragile response parsing, provides strong security boundaries, and supports configurable security modes (sandboxed or hybrid). It consists of six sub-steps, with Detection (5.12.1) and Parsing (5.12.2) currently implemented.
 
 **Implementation Status:**
 
@@ -638,10 +638,10 @@ The Plan Execution Engine automatically executes approved plans moved to `System
 | -------- | ------------------ | -------------- | ------------------------------------------ |
 | 5.12.1   | Detection          | ✅ Implemented | Monitors System/Active for approved plans  |
 | 5.12.2   | Parsing            | ✅ Implemented | Extracts and validates plan structure      |
-| 5.12.3   | Agent Orchestration| 📋 Planned     | Invokes LLM agent with portal-scoped tools |
+| 5.12.3   | Agent Orchestration| 📋 Planned     | Invokes LLM agent via MCP server with tools|
 | 5.12.4   | Changeset Registry | 📋 Planned     | Registers changeset created by agent       |
 | 5.12.5   | Status Update      | 📋 Planned     | Marks plan executed, moves to archive      |
-| 5.12.6   | Error Handling     | 📋 Planned     | Handles agent/Git errors gracefully        |
+| 5.12.6   | Error Handling     | 📋 Planned     | Handles agent/MCP/Git errors gracefully    |
 
 ### 5.8.2. Dual FileWatcher Architecture
 
@@ -877,35 +877,131 @@ Create REST API routes.
 
 **Future (Steps 5.12.3-5.12.6):**
 
-- Agent Orchestration: Invoke LLM agent with portal-scoped tools (read_file, write_file, git_create_branch, git_commit)
-- Agent creates feature branch and commits changes directly to portal
-- Changeset Registry: Record changeset with commit SHA and created_by (agent name)
-- Status Update: Mark executed, move to `System/Archive/`
-- Error Handling: Catch agent/Git errors, preserve plan state
+- **MCP Server:** Start ExoFrame MCP server with portal scope, register 6 tools (read_file, write_file, list_directory, git_create_branch, git_commit, git_status)
+- **Agent Orchestration:** Invoke LLM agent via MCP (stdio or SSE transport) with validated portal permissions
+- **Security Modes:** Sandboxed (no file access, all via MCP) or Hybrid (read-only + audit)
+- **Agent Execution:** Agent uses MCP tools to create feature branch and commit changes
+- **Changeset Registry:** Record changeset with commit SHA, created_by (agent name), and trace_id
+- **Status Update:** Mark executed, move to `System/Archive/`
+- **Error Handling:** Catch agent/MCP/Git errors, audit unauthorized changes (hybrid mode), preserve plan state
 
 ### 5.8.7. Testing
 
-**Unit Tests (tests/plan_executor_parsing_test.ts):**
+**Unit Tests:**
 
-- 19 test cases covering detection and parsing
-- File detection, YAML parsing, step extraction
-- Validation logic, error handling
-- File system integration
+- `tests/plan_executor_parsing_test.ts` - 19 test cases (detection and parsing) ✅
+- `tests/mcp/server_test.ts` - 25+ test cases (MCP server, tools, resources, prompts) 📋
+- `tests/mcp/tools_test.ts` - 30+ test cases (tool handlers, validation, security modes) 📋
+- `tests/agent_executor_test.ts` - 20+ test cases (MCP invocation, agent integration) 📋
+- `tests/portal_permissions_test.ts` - 12+ test cases (permission validation) 📋
 
-**Integration Tests (tests/integration/14_plan_execution_parsing_test.ts):**
+**Integration Tests:**
 
-- 5 end-to-end test scenarios
-- Complete multi-step plan parsing
-- Minimal plan structure handling
-- Invalid plan detection
-- Context extraction validation
+- `tests/integration/14_plan_execution_parsing_test.ts` - 5 scenarios (parsing) ✅
+- `tests/integration/15_plan_execution_mcp_test.ts` - Full MCP flow (request → MCP → changeset) 📋
+- Sandboxed mode security enforcement tests 📋
+- Hybrid mode audit detection tests 📋
 
-**Test Coverage:**
+**MCP Test Coverage:**
 
-- All 24 test cases passing
-- Detection logic fully validated
-- Parsing logic fully validated
-- Error handling verified
+- MCP server initialization (stdio/SSE transports)
+- Tool registration and invocation
+- Resource discovery (portal:// URIs)
+- Prompt handling (execute_plan, create_changeset)
+- Permission validation (agents_allowed, operations)
+- Security mode enforcement (sandboxed vs hybrid)
+- Unauthorized change detection and reversion
+- Error handling (invalid tools, parameters, execution errors)
+
+### 5.8.8. MCP Server Architecture
+
+**Purpose:** ExoFrame exposes a Model Context Protocol (MCP) server that LLM agents connect to for portal operations. This provides a standardized, secure interface with configurable security modes.
+
+**MCP Components:**
+
+```
+┌─────────────────────────────────────────────┐
+│         ExoFrame MCP Server                 │
+├─────────────────────────────────────────────┤
+│ Tools:      6 tools (read_file, write_file, │
+│             list_directory, git_*)          │
+├─────────────────────────────────────────────┤
+│ Resources:  portal://PortalName/path URIs   │
+├─────────────────────────────────────────────┤
+│ Prompts:    execute_plan, create_changeset  │
+├─────────────────────────────────────────────┤
+│ Transport:  stdio or SSE (HTTP)             │
+└─────────────────────────────────────────────┘
+```
+
+**MCP Tools:**
+
+| Tool               | Description                        | Inputs                          |
+|--------------------|------------------------------------|---------------------------------|
+| `read_file`        | Read portal file                   | portal, path                    |
+| `write_file`       | Write portal file                  | portal, path, content           |
+| `list_directory`   | List portal directory              | portal, path (optional)         |
+| `git_create_branch`| Create feature branch              | portal, branch                  |
+| `git_commit`       | Commit changes                     | portal, message, files          |
+| `git_status`       | Check git status                   | portal                          |
+
+**MCP Resources:**
+
+- Format: `portal://PortalName/path/to/file.ts`
+- Dynamically discovered from portal filesystem
+- Includes MIME type and description metadata
+- Agent can request resource content via MCP
+
+**MCP Prompts:**
+
+- `execute_plan`: Execute an approved ExoFrame plan
+- `create_changeset`: Create a changeset for code changes
+
+**Security Modes:**
+
+**Sandboxed (Recommended):**
+- Agent has NO file system access
+- Runs with `--allow-read=NONE --allow-write=NONE`
+- All operations through MCP tools
+- Impossible to bypass ExoFrame
+
+**Hybrid (Performance):**
+- Agent has read-only portal access
+- Can read files directly (faster)
+- MUST use MCP tools for writes
+- Post-execution audit via git diff
+- Unauthorized changes reverted
+
+**Configuration:**
+
+```toml
+# exo.config.toml
+
+[mcp]
+enabled = true
+transport = "stdio"  # or "sse"
+server_name = "exoframe"
+
+[[portals]]
+name = "MyApp"
+path = "/home/user/projects/MyApp"
+agents_allowed = ["senior-coder", "code-reviewer"]
+operations = ["read", "write", "git"]
+
+[portals.MyApp.security]
+mode = "sandboxed"  # or "hybrid"
+audit_enabled = true
+log_all_actions = true
+```
+
+**Implementation Files:**
+
+- `src/mcp/server.ts` - MCP server implementation
+- `src/mcp/tools.ts` - Tool handlers
+- `src/mcp/resources.ts` - Resource handlers
+- `src/mcp/prompts.ts` - Prompt templates
+- `tests/mcp/server_test.ts` - Server tests
+- `tests/mcp/tools_test.ts` - Tool tests
 
 ---
 

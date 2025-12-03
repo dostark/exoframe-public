@@ -67,6 +67,10 @@ ExoFrame follows a **test pyramid** approach:
 | Git service             | `tests/git_service_test.ts`      | P1       | ✅ Complete |
 | Agent runner            | `tests/agent_runner_test.ts`     | P1       | ✅ Complete |
 | Execution loop          | `tests/execution_loop_test.ts`   | P1       | ✅ Complete |
+| MCP server              | `tests/mcp/server_test.ts`       | P1       | 📋 Planned  |
+| MCP tools               | `tests/mcp/tools_test.ts`        | P1       | 📋 Planned  |
+| Agent executor (MCP)    | `tests/agent_executor_test.ts`   | P1       | 📋 Planned  |
+| Portal permissions      | `tests/portal_permissions_test.ts`| P1      | 📋 Planned  |
 | Mission reporter        | `tests/mission_reporter_test.ts` | P1       | ✅ Complete |
 | Plan writer             | `tests/plan_writer_test.ts`      | P1       | ✅ Complete |
 | Tool registry           | `tests/tool_registry_test.ts`    | P1       | ✅ Complete |
@@ -122,6 +126,9 @@ temporary directories created during daemon tests.
 | 8  | **Daemon Restart**      | Daemon killed mid-execution                 | State recovery       | ✅ Complete |
 | 9  | **Portal Access**       | Request accesses portal files               | Security enforcement | ✅ Complete |
 | 10 | **Invalid Input**       | Malformed YAML frontmatter                  | Input validation     | ✅ Complete |
+| 11 | **MCP Execution**       | Plan executed via MCP server                | MCP protocol flow    | 📋 Planned  |
+| 12 | **Sandboxed Mode**      | Agent runs with no file access              | Security enforcement | 📋 Planned  |
+| 13 | **Hybrid Mode Audit**   | Agent makes unauthorized file change        | Change detection     | 📋 Planned  |
 
 **Test Structure:**
 
@@ -788,15 +795,172 @@ The template includes:
 
 ---
 
-## 5. v1.0 Test Scope
+## 5. MCP Testing Strategy
 
-### 5.1 In Scope (Must Have)
+### 5.1 MCP Unit Tests
+
+**tests/mcp/server_test.ts (25+ test cases):**
+
+**Server Initialization:**
+- `should start MCP server with stdio transport`
+- `should start MCP server with SSE transport`
+- `should register all 6 tools on start`
+- `should register resources on start`
+- `should register prompts on start`
+- `should handle server initialization errors`
+
+**Tool Registration:**
+- `should expose read_file tool with correct schema`
+- `should expose write_file tool with correct schema`
+- `should expose list_directory tool with correct schema`
+- `should expose git_create_branch tool with correct schema`
+- `should expose git_commit tool with correct schema`
+- `should expose git_status tool with correct schema`
+
+**Resource Handling:**
+- `should discover portal files as resources`
+- `should format URIs as portal://PortalName/path`
+- `should return resource content when requested`
+- `should handle missing resources gracefully`
+
+**Prompt Handling:**
+- `should provide execute_plan prompt`
+- `should provide create_changeset prompt`
+- `should validate prompt arguments`
+
+**Security:**
+- `should validate portal permissions before tool execution`
+- `should log all tool invocations to Activity Journal`
+- `should reject unauthorized portal access`
+
+**Error Handling:**
+- `should handle invalid tool names`
+- `should handle invalid tool parameters`
+- `should handle tool execution errors`
+
+**tests/mcp/tools_test.ts (30+ test cases):**
+
+**read_file Tool:**
+- `should read file within portal boundaries`
+- `should reject path with ../ traversal`
+- `should reject absolute paths`
+- `should validate portal permissions`
+- `should log invocation to Activity Journal`
+
+**write_file Tool:**
+- `should write file within portal boundaries`
+- `should create parent directories if needed`
+- `should reject path outside portal`
+- `should validate write permissions`
+- `should log file writes to Activity Journal`
+
+**list_directory Tool:**
+- `should list files in portal directory`
+- `should handle missing directories`
+- `should respect portal boundaries`
+- `should return file metadata (name, size, type)`
+
+**git_create_branch Tool:**
+- `should create feature branch in portal repo`
+- `should validate branch name format (feat/, fix/, docs/)`
+- `should reject invalid branch names`
+- `should validate git operation permissions`
+- `should log branch creation to Activity Journal`
+
+**git_commit Tool:**
+- `should commit changes with trace_id in message`
+- `should return commit SHA`
+- `should log commit to Activity Journal with files`
+- `should reject commit if no changes staged`
+- `should validate git operation permissions`
+
+**git_status Tool:**
+- `should return portal git status`
+- `should detect uncommitted changes`
+- `should detect untracked files`
+
+**Operation Restrictions:**
+- `should block git tools if 'git' not in operations`
+- `should block write_file if 'write' not in operations`
+- `should allow read_file with only 'read' permission`
+
+**Security Mode Tests:**
+- `should enforce sandboxed mode (no file access)`
+- `should enforce hybrid mode (read-only + audit)`
+- `should detect unauthorized changes in hybrid mode`
+- `should revert unauthorized changes in hybrid mode`
+
+### 5.2 MCP Integration Tests
+
+**tests/integration/15_plan_execution_mcp_test.ts:**
+
+**Complete MCP Flow:**
+- `should execute plan via MCP server (stdio transport)`
+- `should execute plan via MCP server (SSE transport)`
+- `should create feature branch via MCP`
+- `should commit changes via MCP`
+- `should register changeset after MCP execution`
+
+**Sandboxed Mode:**
+- `should run agent with no file system access`
+- `should block agent from reading files directly`
+- `should block agent from writing files directly`
+- `should force all operations through MCP tools`
+
+**Hybrid Mode:**
+- `should allow agent to read portal files directly`
+- `should require MCP tools for write operations`
+- `should detect unauthorized file changes`
+- `should revert unauthorized changes automatically`
+- `should log security violations to Activity Journal`
+
+**Permission Validation:**
+- `should reject agent not in agents_allowed list`
+- `should enforce operation restrictions (read/write/git)`
+- `should validate portal existence before execution`
+
+**Error Scenarios:**
+- `should handle MCP server connection failures`
+- `should handle MCP tool invocation errors`
+- `should handle git operation failures`
+- `should preserve plan state on execution errors`
+
+### 5.3 MCP Security Tests
+
+**tests/security/mcp_security_test.ts:**
+
+**Sandboxed Mode Security:**
+- `should prevent file system access bypass attempts`
+- `should prevent network access from agent subprocess`
+- `should prevent environment variable access`
+- `should log all security violations`
+
+**Hybrid Mode Security:**
+- `should detect file writes outside MCP tools`
+- `should detect directory creation outside MCP tools`
+- `should detect file deletion outside MCP tools`
+- `should audit git operations not via MCP`
+
+**Permission Enforcement:**
+- `should block portal access for unlisted agents`
+- `should block operations not in allowed list`
+- `should validate all tool parameters`
+- `should prevent path traversal attacks`
+
+---
+
+## 6. v1.0 Test Scope
+
+### 6.1 In Scope (Must Have)
 
 | Category                | Items                                                                | Status      |
 | ----------------------- | -------------------------------------------------------------------- | ----------- |
 | **Unit Tests**          | Config, Database, Watcher, Context Loader, Git Service + 12 more     | ✅ Complete |
+| **MCP Unit Tests**      | MCP server (25+ tests), MCP tools (30+ tests)                        | 📋 Planned  |
 | **Integration Tests**   | Scenarios 1-10 (all 10 scenarios implemented)                        | ✅ Complete |
+| **MCP Integration**     | Scenarios 11-13 (MCP execution, security modes)                      | 📋 Planned  |
 | **Security Tests**      | Path traversal, Network exfil, Env theft, Shell injection (29 tests) | ✅ Complete |
+| **MCP Security Tests**  | Sandboxed/Hybrid mode enforcement, unauthorized access               | 📋 Planned  |
 | **Documentation Tests** | User Guide sections, CLI coverage                                    | ✅ Complete |
 | **Manual QA**           | All 14 scenarios on Ubuntu (see Manual Test Scenarios doc)           | 🔲 Planned  |
 
@@ -818,26 +982,29 @@ The template includes:
 
 ---
 
-## 6. Risk-to-Test Traceability
+## 7. Risk-to-Test Traceability
 
 Every identified risk maps to at least one automated test:
 
-| Risk ID   | Risk                           | Test File                              | Test Type |
-| --------- | ------------------------------ | -------------------------------------- | --------- |
-| T-PATH    | Path traversal attack          | `tests/security/permission_test.ts`    | Security  |
-| T-LEASE   | Lease starvation (deadlock)    | `tests/leases/heartbeat_test.ts`       | Unit      |
-| T-CONTEXT | Context overflow crashes agent | `tests/context/context_loader_test.ts` | Unit      |
-| T-GIT     | Git identity drift             | `tests/git/git_service_test.ts`        | Unit      |
-| T-WATCH   | Watcher misses file events     | `tests/watcher/stability_test.ts`      | Unit      |
-| T-DOC     | Documentation outdated         | `tests/docs/user_guide_test.ts`        | Docs      |
-| T-NET     | Unauthorized network access    | `tests/security/permission_test.ts`    | Security  |
-| T-ENV     | Env variable theft             | `tests/security/permission_test.ts`    | Security  |
+| Risk ID    | Risk                           | Test File                              | Test Type  |
+| ---------- | ------------------------------ | -------------------------------------- | ---------- |
+| T-PATH     | Path traversal attack          | `tests/security/permission_test.ts`    | Security   |
+| T-LEASE    | Lease starvation (deadlock)    | `tests/leases/heartbeat_test.ts`       | Unit       |
+| T-CONTEXT  | Context overflow crashes agent | `tests/context/context_loader_test.ts` | Unit       |
+| T-GIT      | Git identity drift             | `tests/git/git_service_test.ts`        | Unit       |
+| T-WATCH    | Watcher misses file events     | `tests/watcher/stability_test.ts`      | Unit       |
+| T-DOC      | Documentation outdated         | `tests/docs/user_guide_test.ts`        | Docs       |
+| T-NET      | Unauthorized network access    | `tests/security/permission_test.ts`    | Security   |
+| T-ENV      | Env variable theft             | `tests/security/permission_test.ts`    | Security   |
+| T-MCP-BYPS | Agent bypasses MCP tools       | `tests/mcp/tools_test.ts`              | MCP        |
+| T-MCP-PERM | Unauthorized portal access     | `tests/security/mcp_security_test.ts`  | MCP        |
+| T-MCP-AUDT | Undetected unauthorized change | `tests/integration/15_*_mcp_test.ts`   | Integration|
 
 ---
 
-## 7. Test Maintenance
+## 8. Test Maintenance
 
-### 7.1 Adding New Tests
+### 8.1 Adding New Tests
 
 1. Create test file in appropriate directory (`tests/<category>/`)
 2. Follow naming convention: `<feature>_test.ts`

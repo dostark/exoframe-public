@@ -32,7 +32,7 @@ graph TB
         ReqWatch[Request Watcher<br/>Inbox/Requests]
         PlanWatch[Plan Watcher<br/>System/Active]
         ReqProc[Request Processor]
-        PlanExec[Plan Executor<br/>5.12.1-5.12.2 ✅]
+        PlanExec[Plan Executor]
         AgentRun[Agent Runner]
         FlowEng[Flow Engine]
         ExecLoop[Execution Loop]
@@ -196,7 +196,7 @@ sequenceDiagram
 
 ---
 
-## Plan Execution Flow (Step 5.12)
+## Plan Execution Flow
 
 **Architecture Change:** LLM agents connect to ExoFrame's **MCP (Model Context Protocol) server** and use standardized tools for portal operations. This eliminates response parsing, provides strong security boundaries, and supports configurable security modes (sandboxed or hybrid).
 
@@ -207,9 +207,9 @@ sequenceDiagram
     participant Plans as Inbox/Plans
     participant Active as System/Active
     participant W as Plan Watcher
-    participant Detect as Detection (5.12.1)
-    participant Parse as Parsing (5.12.2)
-    participant Exec as Agent Executor (5.12.3)
+    participant Detect as Detection
+    participant Parse as Parsing
+    participant Exec as Agent Executor
     participant MCP as ExoFrame MCP Server
     participant Agent as LLM Agent<br/>(Sandboxed/Hybrid Mode)
     participant Portal as Portal Repository
@@ -301,7 +301,7 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    subgraph Detection["5.12.1 Detection ✅"]
+    subgraph Detection[Detection]
         D1[File Watcher<br/>System/Active/]
         D2[Filter _plan.md files]
         D3[Parse YAML frontmatter]
@@ -309,7 +309,7 @@ graph TB
         D5[Log plan.detected]
     end
     
-    subgraph Parsing["5.12.2 Parsing ✅"]
+    subgraph Parsing[Parsing]
         P1[Extract body section]
         P2[Regex: ## Step N: Title]
         P3[Validate sequential numbering]
@@ -318,7 +318,7 @@ graph TB
         P6[Log plan.parsed]
     end
     
-    subgraph Orchestration["5.12.3 Agent Orchestration via MCP 📋"]
+    subgraph Orchestration[Agent Orchestration via MCP]
         O1[Validate portal permissions]
         O2[Start ExoFrame MCP Server]
         O3[Register MCP tools & resources]
@@ -350,20 +350,20 @@ graph TB
         SM2[Hybrid: Read-only + audit]
     end
     
-    subgraph Registry["5.12.4 Changeset Registry 📋"]
+    subgraph Registry[Changeset Registry]
         R1[Register changeset record]
         R2[Store commit SHA]
         R3[Link to trace_id]
         R4[Set status = pending]
     end
     
-    subgraph Status["5.12.5 Status Update 📋"]
+    subgraph Status[Status Update]
         S1[Mark plan executed]
         S2[Move to Archive]
         S3[Log completion]
     end
     
-    subgraph Error["5.12.6 Error Handling 📋"]
+    subgraph Error[Error Handling]
         E1[Catch agent errors]
         E2[Catch Git errors]
         E3[Log failures]
@@ -890,9 +890,9 @@ graph LR
 | **CLI Layer**          | Human interface for system control | `src/cli/*.ts`                      |
 | **Daemon**             | Background orchestration engine    | `src/main.ts`                       |
 | **Request Watcher**    | Detect new requests in Inbox       | `src/services/watcher.ts`           |
-| **Plan Watcher**       | Detect approved plans (5.12.1)     | `src/services/watcher.ts`           |
+| **Plan Watcher**       | Detect approved plans              | `src/services/watcher.ts`           |
 | **Request Processor**  | Parse requests, generate plans     | `src/services/request_processor.ts` |
-| **Plan Executor**      | Execute approved plans (5.12)      | `src/main.ts` (in-progress)         |
+| **Plan Executor**      | Execute approved plans             | `src/main.ts` (in-progress)         |
 | **Agent Runner**       | Execute agent logic with LLM       | `src/services/agent_runner.ts`      |
 | **Event Logger**       | Write to Activity Journal          | `src/services/event_logger.ts`      |
 | **Config Service**     | Load and validate exo.config.toml  | `src/config/service.ts`             |
