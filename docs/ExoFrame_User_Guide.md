@@ -1,7 +1,7 @@
 # ExoFrame User Guide
 
-- **Version:** 1.7.0
-- **Date:** 2025-12-02
+- **Version:** 1.8.0
+- **Date:** 2025-12-03
 
 ## 1. Introduction
 
@@ -379,6 +379,8 @@ $ exoctl request list
 
 Review and approve plans before agents execute them:
 
+> **⚠️ IMPLEMENTATION STATUS:** Plan approval moves plans to `System/Active/` where they are detected and parsed (Steps 5.12.1-5.12.2 ✅). Automatic code generation and changeset creation (Steps 5.12.3-5.12.6) are in development. See [ExoFrame Architecture](./ExoFrame_Architecture.md#plan-execution-flow-step-512) for details.
+
 ```bash
 # List all plans awaiting review
 exoctl plan list
@@ -387,7 +389,7 @@ exoctl plan list --status review          # Filter by status
 # Show plan details
 exoctl plan show <plan-id>
 
-# Approve a plan (moves to /System/Active for execution)
+# Approve a plan (moves to /System/Active for detection and parsing)
 exoctl plan approve <plan-id>
 
 # Reject a plan with reason
@@ -421,7 +423,11 @@ $ exoctl plan show implement-auth
 $ exoctl plan approve implement-auth
 ✓ Plan 'implement-auth' approved
   Moved to: /System/Active/implement-auth.md
-  Next: ExecutionLoop will process this plan automatically
+  Status: Plan detected and parsed (automatic execution in development)
+  
+  Note: Currently, approved plans are detected and validated but require
+  manual execution via changesets. Full automatic execution (Step 5.12.3-5.12.6)
+  is in development.
 ```
 
 #### **Changeset Commands** - Review agent-generated code
@@ -1104,18 +1110,26 @@ exoctl plan show implement-auth
 # 4. Approve the plan
 exoctl plan approve implement-auth
 
-# 5. Agent executes and creates a branch
-# Wait for execution...
+# Note: Currently, plan approval moves the plan to System/Active/ where it is
+# detected and parsed. Automatic code generation and changeset creation
+# (Steps 5.12.3-5.12.6) are in development.
 
-# 6. Review the code changes
-exoctl changeset list
-exoctl changeset show implement-auth
+# 5. (Future) Review automatically generated code changes
+# exoctl changeset list
+# exoctl changeset show implement-auth
 
-# 7. Approve the changeset to merge
-exoctl changeset approve implement-auth
+# 6. (Future) Approve the changeset to merge
+# exoctl changeset approve implement-auth
 
-# Done! Changes are now in main branch
-# All steps logged to Activity Journal with trace_id
+# Current Status:
+# ✅ Request creation automated
+# ✅ Plan generation automated  
+# ✅ Plan approval workflow complete
+# ✅ Plan detection and parsing implemented
+# 🚧 Automatic code generation in development
+# 🚧 Automatic changeset creation in development
+
+# All completed steps logged to Activity Journal with trace_id
 ```
 
 ## 5. Operational Procedures

@@ -1,7 +1,7 @@
 # Project ExoFrame: Technical Specification & Architecture
 
-- **Version:** 1.7.0
-- **Release Date:** 2025-12-02
+- **Version:** 1.8.0
+- **Release Date:** 2025-12-03
 - **Status:** Engineering Specification
 - **Reference:** [ExoFrame White Paper](./ExoFrame_White_Paper.md)
 - **Architecture:** [ExoFrame Architecture Diagrams](./ExoFrame_Architecture.md)
@@ -626,6 +626,288 @@ export default class ExoFramePlugin extends Plugin {
 
 ---
 
+## 5.8. Plan Execution Engine (Step 5.12)
+
+### 5.8.1. Overview
+
+The Plan Execution Engine automatically executes approved plans moved to `System/Active/`. It consists of six sub-steps, with Detection (5.12.1) and Parsing (5.12.2) currently implemented.
+
+**Implementation Status:**
+
+| Sub-Step | Name               | Status         | Description                                |
+| -------- | ------------------ | -------------- | ------------------------------------------ |
+| 5.12.1   | Detection          | ✅ Implemented | Monitors System/Active for approved plans  |
+| 5.12.2   | Parsing            | ✅ Implemented | Extracts and validates plan structure      |
+| 5.12.3   | Code Generation    | 📋 Planned     | LLM generates file changes from plan steps |
+| 5.12.4   | Changeset Creation | 📋 Planned     | Creates feature branch with changes        |
+| 5.12.5   | Status Update      | 📋 Planned     | Marks plan executed, moves to archive      |
+| 5.12.6   | Error Handling     | 📋 Planned     | Handles LLM/Git errors gracefully          |
+
+### 5.8.2. Dual FileWatcher Architecture
+
+The daemon runs two independent FileWatcher instances:
+
+**Request Watcher (Existing):**
+
+- Path: `Inbox/Requests/`
+- Purpose: Detects new user requests
+- Handler: RequestProcessor
+
+**Plan Watcher (New - Step 5.12.1):**
+
+- Path: `System/Active/`
+- Purpose: Detects approved plans ready for execution
+- Handler: Plan Executor (in-progress)
+- Filter: Only processes files ending in `_plan.md`
+
+**Implementation (src/main.ts):**
+
+```typescript
+// Request watcher for new requests
+const requestWatcher = new FileWatcher(config, async (event) => {
+  await requestProcessor.process(event.path);
+}, db);
+
+// Plan watcher for approved plans (custom watch path)
+const planWatcher = new FileWatcher(
+  config,
+  async (event) => {
+    // Detection and parsing logic (Steps 5.12.1-5.12.2)
+  },
+  db,
+  activePath, // Custom watch path: System/Active/
+);
+
+// Start both watchers concurrently
+await Promise.all([requestWatcher.start(), planWatcher.start()]);
+```
+
+### 5.8.3. Step 5.12.1: Detection (✅ Implemented)
+
+**Purpose:** Detect approved plans in `System/Active/` and validate required metadata.
+
+**Detection Flow:**
+
+1. FileWatcher detects file creation in `System/Active/`
+2. Filter files by `_plan.md` suffix (ignore other files)
+3. Read file content
+4. Parse YAML frontmatter using `@std/yaml`
+5. Validate required field: `trace_id`
+6. Log detection events
+
+**Validation Checks:**
+
+- ✓ File has YAML frontmatter (delimited by `---`)
+- ✓ Frontmatter is valid YAML
+- ✓ `trace_id` field exists and is non-empty
+
+**Activity Journal Events:**
+
+| Event                      | Condition         | Payload                  |
+| -------------------------- | ----------------- | ------------------------ |
+| `plan.detected`            | Plan file found   | `{trace_id, request_id}` |
+| `plan.ready_for_execution` | Valid plan parsed | `{trace_id, request_id}` |
+| `plan.invalid_frontmatter` | YAML parse error  | `{error}`                |
+| `plan.missing_trace_id`    | No trace_id field | `{frontmatter}`          |
+| `plan.detection_failed`    | Unexpected error  | `{error}`                |
+
+**Error Handling:**
+
+- Invalid YAML: Log error, preserve file, skip processing
+- Missing trace_id: Log error, preserve file, skip processing
+- File read error: Log error, retry on next watcher cycle
+- All errors non-fatal: daemon continues running
+
+### 5.8.4. Step 5.12.2: Parsing (✅ Implemented)
+
+**Purpose:** Extract plan structure (steps, context) from approved plan body.
+
+**Parsing Flow:**
+
+1. Extract body section after YAML frontmatter
+2. Use regex to extract all steps: `## Step (\d+): ([^\n]+)`
+3. Validate step numbering is sequential (1, 2, 3...)
+4. Validate all steps have non-empty titles
+5. Build structured step objects
+6. Log parsing results
+
+**Step Extraction Regex:**
+
+```typescript
+const stepMatches = [...body.matchAll(
+  /## Step (\d+): ([^\n]+)\n([\s\S]*?)(?=## Step \d+:|$)/g,
+)];
+```
+
+**Parsed Structure:**
+
+```typescript
+interface ParsedPlan {
+  context: {
+    trace_id: string;
+    request_id?: string;
+    agent?: string;
+    status?: string;
+    created_at?: Date;
+  };
+  steps: Array<{
+    number: number; // 1, 2, 3...
+    title: string; // "Create User Model"
+    content: string; // Full step body with tasks
+  }>;
+}
+```
+
+**Validation Checks:**
+
+- ✓ Body section exists after frontmatter
+- ✓ At least one step found
+- ✓ Step numbering is sequential (warns if gaps detected)
+- ✓ All steps have non-empty titles
+- ✓ Step content can be empty (valid for title-only steps)
+
+**Activity Journal Events:**
+
+| Event                       | Condition            | Payload                                                               |
+| --------------------------- | -------------------- | --------------------------------------------------------------------- |
+| `plan.parsed`               | Successful parsing   | `{trace_id, request_id, agent, step_count, steps: ["1. Title", ...]}` |
+| `plan.parsing_failed`       | No body/steps/titles | `{error, trace_id}`                                                   |
+| `plan.non_sequential_steps` | Step number gaps     | `{trace_id, step_numbers: [1,3,5], expected: [1,2,3]}`                |
+
+**Error Handling:**
+
+- No body section: Log `plan.parsing_failed`, skip execution
+- No steps found: Log `plan.parsing_failed`, skip execution
+- Empty step titles: Log `plan.parsing_failed`, skip execution
+- Non-sequential steps: Log warning, continue execution
+
+### 5.8.5. Plan File Structure
+
+Approved plans follow this standardized structure:
+
+```markdown
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+request_id: "implement-auth"
+agent: "senior-coder"
+status: "approved"
+created_at: 2025-12-03T10:00:00Z
+---
+
+# Implementation Plan: User Authentication
+
+## Background
+
+This plan implements JWT-based user authentication.
+
+## Step 1: Create User Model
+
+Create the database schema and TypeScript types.
+
+**Files to modify:**
+
+- src/models/user.ts (create new)
+- src/database/schema.sql (update)
+
+**Tasks:**
+
+- Define User interface
+- Create migration
+- Add validation
+
+## Step 2: Implement Auth Service
+
+Build the core authentication logic.
+
+**Tasks:**
+
+- Add signup function
+- Add login function
+- Generate JWT tokens
+
+## Step 3: Add API Endpoints
+
+Create REST API routes.
+
+**Tasks:**
+
+- POST /api/auth/signup
+- POST /api/auth/login
+- Add validation middleware
+```
+
+**Parsing Output:**
+
+```typescript
+{
+  context: {
+    trace_id: "550e8400-e29b-41d4-a716-446655440000",
+    request_id: "implement-auth",
+    agent: "senior-coder",
+    status: "approved"
+  },
+  steps: [
+    {
+      number: 1,
+      title: "Create User Model",
+      content: "Create the database schema...\n\n**Files to modify:**\n..."
+    },
+    {
+      number: 2,
+      title: "Implement Auth Service",
+      content: "Build the core authentication logic...\n\n**Tasks:**\n..."
+    },
+    {
+      number: 3,
+      title: "Add API Endpoints",
+      content: "Create REST API routes...\n\n**Tasks:**\n..."
+    }
+  ]
+}
+```
+
+### 5.8.6. Integration Points
+
+**Current (Steps 5.12.1-5.12.2):**
+
+- Detection runs on FileWatcher event
+- Parsing runs immediately after successful detection
+- Parsed plan structure logged to Activity Journal
+- Plan remains in `System/Active/` awaiting execution
+
+**Future (Steps 5.12.3-5.12.6):**
+
+- Code Generation: Load agent blueprint, call LLM with parsed steps
+- Changeset Creation: Create feature branch, apply file changes
+- Status Update: Mark executed, move to `System/Archive/`
+- Error Handling: Catch LLM/Git errors, preserve plan state
+
+### 5.8.7. Testing
+
+**Unit Tests (tests/plan_executor_parsing_test.ts):**
+
+- 19 test cases covering detection and parsing
+- File detection, YAML parsing, step extraction
+- Validation logic, error handling
+- File system integration
+
+**Integration Tests (tests/integration/14_plan_execution_parsing_test.ts):**
+
+- 5 end-to-end test scenarios
+- Complete multi-step plan parsing
+- Minimal plan structure handling
+- Invalid plan detection
+- Context extraction validation
+
+**Test Coverage:**
+
+- All 24 test cases passing
+- Detection logic fully validated
+- Parsing logic fully validated
+- Error handling verified
+
+---
+
 ## 6. Storage Architecture
 
 ### Tier 1: The Activity Journal (SQLite)
@@ -709,6 +991,17 @@ All portal operations are logged to Activity Journal:
 - `portal.verified` - Verification check with results
 - `portal.refreshed` - Context card regenerated
 - All actions tagged with `actor='human'`, `via='cli'`
+
+**Plan Execution Events (Step 5.12):**
+
+- `plan.detected` - Approved plan found in System/Active
+- `plan.ready_for_execution` - Valid plan parsed, ready for execution
+- `plan.parsed` - Plan structure successfully extracted
+- `plan.invalid_frontmatter` - YAML frontmatter parsing failed
+- `plan.missing_trace_id` - Required trace_id field not found
+- `plan.parsing_failed` - Plan body/steps validation failed
+- `plan.non_sequential_steps` - Warning for gaps in step numbering
+- `plan.detection_failed` - Unexpected error during detection
 
 ### 6.2. Path Safety
 
