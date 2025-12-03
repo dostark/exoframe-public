@@ -379,7 +379,7 @@ $ exoctl request list
 
 Review and approve plans before agents execute them:
 
-> **⚠️ IMPLEMENTATION STATUS:** Plan approval moves plans to `System/Active/` where they are detected and parsed (Steps 5.12.1-5.12.2 ✅). Automatic code generation and changeset creation (Steps 5.12.3-5.12.6) are in development. See [ExoFrame Architecture](./ExoFrame_Architecture.md#plan-execution-flow-step-512) for details.
+> **⚠️ IMPLEMENTATION STATUS:** Plan approval moves plans to `System/Active/` where they are detected and parsed (Steps 5.12.1-5.12.2 ✅). Automatic agent-driven execution (Steps 5.12.3-5.12.6) is in development. In the agent-driven model, LLM agents will have direct portal access through scoped tools (read_file, write_file, git_create_branch, git_commit) and will create changesets themselves. See [ExoFrame Architecture](./ExoFrame_Architecture.md#plan-execution-flow-step-512) for details.
 
 ```bash
 # List all plans awaiting review
@@ -423,11 +423,11 @@ $ exoctl plan show implement-auth
 $ exoctl plan approve implement-auth
 ✓ Plan 'implement-auth' approved
   Moved to: /System/Active/implement-auth.md
-  Status: Plan detected and parsed (automatic execution in development)
+  Status: Plan detected and parsed (agent-driven execution in development)
   
-  Note: Currently, approved plans are detected and validated but require
-  manual execution via changesets. Full automatic execution (Step 5.12.3-5.12.6)
-  is in development.
+  Note: Currently, approved plans are detected and validated. Future: agents
+  will have portal access to create changesets directly. Agent-driven execution
+  (Step 5.12.3-5.12.6) is in development.
 ```
 
 #### **Changeset Commands** - Review agent-generated code
@@ -1111,10 +1111,10 @@ exoctl plan show implement-auth
 exoctl plan approve implement-auth
 
 # Note: Currently, plan approval moves the plan to System/Active/ where it is
-# detected and parsed. Automatic code generation and changeset creation
-# (Steps 5.12.3-5.12.6) are in development.
+# detected and parsed. Agent-driven execution (Steps 5.12.3-5.12.6) is in
+# development. Agents will have direct portal access and create changesets.
 
-# 5. (Future) Review automatically generated code changes
+# 5. (Future) Review changesets created by agents
 # exoctl changeset list
 # exoctl changeset show implement-auth
 
@@ -1126,8 +1126,8 @@ exoctl plan approve implement-auth
 # ✅ Plan generation automated  
 # ✅ Plan approval workflow complete
 # ✅ Plan detection and parsing implemented
-# 🚧 Automatic code generation in development
-# 🚧 Automatic changeset creation in development
+# 🚧 Agent-driven execution in development
+# 🚧 Portal-scoped tools for agents in development
 
 # All completed steps logged to Activity Journal with trace_id
 ```

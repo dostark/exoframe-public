@@ -630,7 +630,7 @@ export default class ExoFramePlugin extends Plugin {
 
 ### 5.8.1. Overview
 
-The Plan Execution Engine automatically executes approved plans moved to `System/Active/`. It consists of six sub-steps, with Detection (5.12.1) and Parsing (5.12.2) currently implemented.
+The Plan Execution Engine automatically executes approved plans moved to `System/Active/`. It uses an **agent-driven architecture** where LLM agents have direct portal access through scoped tools, eliminating fragile response parsing. It consists of six sub-steps, with Detection (5.12.1) and Parsing (5.12.2) currently implemented.
 
 **Implementation Status:**
 
@@ -638,10 +638,10 @@ The Plan Execution Engine automatically executes approved plans moved to `System
 | -------- | ------------------ | -------------- | ------------------------------------------ |
 | 5.12.1   | Detection          | ✅ Implemented | Monitors System/Active for approved plans  |
 | 5.12.2   | Parsing            | ✅ Implemented | Extracts and validates plan structure      |
-| 5.12.3   | Code Generation    | 📋 Planned     | LLM generates file changes from plan steps |
-| 5.12.4   | Changeset Creation | 📋 Planned     | Creates feature branch with changes        |
+| 5.12.3   | Agent Orchestration| 📋 Planned     | Invokes LLM agent with portal-scoped tools |
+| 5.12.4   | Changeset Registry | 📋 Planned     | Registers changeset created by agent       |
 | 5.12.5   | Status Update      | 📋 Planned     | Marks plan executed, moves to archive      |
-| 5.12.6   | Error Handling     | 📋 Planned     | Handles LLM/Git errors gracefully          |
+| 5.12.6   | Error Handling     | 📋 Planned     | Handles agent/Git errors gracefully        |
 
 ### 5.8.2. Dual FileWatcher Architecture
 
@@ -877,10 +877,11 @@ Create REST API routes.
 
 **Future (Steps 5.12.3-5.12.6):**
 
-- Code Generation: Load agent blueprint, call LLM with parsed steps
-- Changeset Creation: Create feature branch, apply file changes
+- Agent Orchestration: Invoke LLM agent with portal-scoped tools (read_file, write_file, git_create_branch, git_commit)
+- Agent creates feature branch and commits changes directly to portal
+- Changeset Registry: Record changeset with commit SHA and created_by (agent name)
 - Status Update: Mark executed, move to `System/Archive/`
-- Error Handling: Catch LLM/Git errors, preserve plan state
+- Error Handling: Catch agent/Git errors, preserve plan state
 
 ### 5.8.7. Testing
 

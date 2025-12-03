@@ -198,6 +198,8 @@ sequenceDiagram
 
 ## Plan Execution Flow (Step 5.12)
 
+**Architecture Change:** LLM agents now have direct portal access through scoped tools instead of ExoFrame parsing responses.
+
 ```mermaid
 sequenceDiagram
     participant U as User
@@ -207,8 +209,10 @@ sequenceDiagram
     participant W as Plan Watcher
     participant Detect as Detection (5.12.1)
     participant Parse as Parsing (5.12.2)
-    participant Gen as Code Generation (5.12.3)
-    participant CS as Changeset (5.12.4)
+    participant Exec as Agent Executor (5.12.3)
+    participant Agent as LLM Agent<br/>(with scoped tools)
+    participant Portal as Portal Repository
+    participant CS as Changeset Registry
     participant DB as Activity Journal
     
     U->>CLI: exoctl plan approve {uuid}
@@ -235,15 +239,45 @@ sequenceDiagram
     
     alt Parsing Success
         Parse->>DB: Log plan.parsed
-        Parse->>Parse: Build step objects:<br/>{number, title, content}
-        Parse->>Gen: Pass parsed plan
-        Note over Gen: TODO: Step 5.12.3<br/>Code Generation
+        Parse->>Exec: Pass parsed plan + portal
+        Exec->>Exec: Validate portal permissions
+        Exec->>Exec: Create scoped tool registry
+        Exec->>DB: Log plan.executing
+        Exec->>Agent: Invoke with tools:<br/>read_file, write_file,<br/>git_create_branch, git_commit
+        
+        Agent->>Portal: read_file(path)
+        Portal-->>Agent: File contents
+        Agent->>DB: Log agent.tool.invoked
+        
+        Agent->>Portal: git_create_branch(feat/xyz)
+        Portal-->>Agent: Branch created
+        Agent->>DB: Log agent.git.branch_created
+        
+        Agent->>Portal: write_file(path, content)
+        Portal-->>Agent: File written
+        Agent->>DB: Log agent.tool.invoked
+        
+        Agent->>Portal: git_commit(message, files)
+        Portal-->>Agent: Commit SHA
+        Agent->>DB: Log agent.git.commit
+        
+        Agent->>Exec: report_completion({<br/>branch, commit_sha,<br/>files_changed, description})
+        
+        Exec->>CS: Register changeset
+        CS->>DB: Record changeset
+        CS->>DB: Log changeset.created
+        Exec->>DB: Log plan.executed
+        Exec-->>U: Changeset created ✓
+        
     else Parsing Failed
         Parse->>DB: Log plan.parsing_failed
         Parse-->>U: Parsing error logged
     end
     
-    Note over Gen,CS: Future Implementation:<br/>5.12.3-5.12.6
+    alt Portal Access Denied
+        Exec->>DB: Log portal.access_denied
+        Exec-->>U: Permission error
+    end
 ```
 
 ### Plan Execution Components
@@ -267,18 +301,29 @@ graph TB
         P6[Log plan.parsed]
     end
     
-    subgraph Generation["5.12.3 Code Generation 📋"]
-        G1[Load agent blueprint]
-        G2[Call LLM with context]
-        G3[Generate file changes]
-        G4[Validate generated code]
+    subgraph Orchestration["5.12.3 Agent Orchestration 📋"]
+        O1[Validate portal permissions]
+        O2[Create scoped tool registry]
+        O3[Invoke LLM agent with tools]
+        O4[Monitor agent actions]
+        O5[Receive changeset details]
     end
     
-    subgraph Changeset["5.12.4 Changeset Creation 📋"]
-        C1[Create feature branch]
-        C2[Apply file changes]
-        C3[Stage changes]
-        C4[Create changeset record]
+    subgraph AgentTools["Agent Tools (Portal-Scoped)"]
+        T1[read_file - Read files]
+        T2[write_file - Write files]
+        T3[list_directory - List dirs]
+        T4[git_create_branch - Create branch]
+        T5[git_commit - Commit changes]
+        T6[git_status - Check status]
+        T7[report_completion - Signal done]
+    end
+    
+    subgraph Registry["5.12.4 Changeset Registry 📋"]
+        R1[Register changeset record]
+        R2[Store commit SHA]
+        R3[Link to trace_id]
+        R4[Set status = pending]
     end
     
     subgraph Status["5.12.5 Status Update 📋"]
@@ -288,7 +333,7 @@ graph TB
     end
     
     subgraph Error["5.12.6 Error Handling 📋"]
-        E1[Catch LLM errors]
+        E1[Catch agent errors]
         E2[Catch Git errors]
         E3[Log failures]
         E4[Preserve plan state]

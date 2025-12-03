@@ -3339,22 +3339,26 @@ Currently, ExoFrame can:
 
 The `exoctl changeset` and `exoctl git` commands are fully implemented, but there's no automatic execution engine that:
 - Detects approved plans in `System/Active/`
-- Executes plan steps using LLM provider
-- Generates code changes in Portal repositories
-- Creates feature branches with trace_id
-- Registers changesets for review
+- Delegates plan steps to LLM agents with portal access
+- Agents create feature branches and commit changes directly
+- Registers changesets created by agents for review
 
-**The Solution: Plan Execution Engine**
+**The Solution: Agent-Driven Plan Execution**
 
-Implement a `PlanExecutor` service that:
+Implement a `PlanExecutor` service that orchestrates LLM agents with direct git access:
 
 1. Watches `System/Active/` for approved plans
-2. Parses plan steps and generates execution prompts
-3. Calls LLM provider (real or mock) to generate code changes
-4. Applies changes to Portal repository in a feature branch
-5. Creates changeset record linking to trace_id
-6. Updates plan status to `executed`
-7. Logs all activities to Activity Journal
+2. Parses plan steps and prepares execution context
+3. Invokes LLM agent with portal-scoped tools (read/write files, git operations)
+4. Agent creates feature branch, makes changes, and commits directly
+5. Agent reports completion with changeset details
+6. PlanExecutor registers changeset record linking to trace_id
+7. Updates plan status to `executed`
+8. Logs all activities to Activity Journal
+
+**Key Architectural Change:**
+
+Instead of ExoFrame parsing LLM markdown responses and applying changes, **LLM agents have direct access to portal repositories through scoped tools**. This eliminates fragile response parsing and gives agents full control over their git workflow.
 
 **Architecture:**
 
@@ -3362,13 +3366,17 @@ Implement a `PlanExecutor` service that:
 ┌─────────────────────────────────────────────────────────────┐
 │                      PlanExecutor                           │
 │  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐   │
-│  │ Plan Parser  │  │ Code         │  │ Changeset       │   │
-│  │              │→ │ Generator    │→ │ Manager         │   │
+│  │ Plan Parser  │  │ Agent        │  │ Changeset       │   │
+│  │              │→ │ Orchestrator │→ │ Registry        │   │
 │  └──────────────┘  └──────────────┘  └─────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
-│              LLM Provider (Real or Mock)                    │
+│         LLM Agent with Scoped Tools                         │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │ read_file | write_file | git_branch | git_commit    │   │
+│  └──────────────────────────────────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
 │              Portal Repository (Git)                        │
+│         (Agent has direct read/write access)                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -3376,46 +3384,71 @@ Implement a `PlanExecutor` service that:
 
 | File                                 | Purpose                                           |
 |--------------------------------------|---------------------------------------------------|
-| `src/services/plan_executor.ts`      | PlanExecutor class - main execution engine        |
-| `src/services/changeset_manager.ts`  | ChangesetManager - git branch and changeset CRUD  |
+| `src/services/plan_executor.ts`      | PlanExecutor class - orchestrates agent execution |
+| `src/services/agent_executor.ts`     | Invokes LLM agent with portal-scoped tools        |
+| `src/services/scoped_tools.ts`       | Portal-scoped tool wrapper (read/write/git)       |
+| `src/services/portal_permissions.ts` | Portal access validation and permissions          |
+| `src/services/changeset_registry.ts` | Changeset registration and tracking               |
 | `src/schemas/changeset.ts`           | Changeset schema and types                        |
 | `src/main.ts`                        | Integration: watch Active/ directory              |
-| `tests/plan_executor_test.ts`        | TDD unit tests (real LLM)                         |
-| `tests/plan_executor_mock_test.ts`   | TDD unit tests (MockLLMProvider)                  |
-| `tests/changeset_manager_test.ts`    | TDD unit tests for changeset operations           |
+| `tests/plan_executor_test.ts`        | TDD unit tests (agent-driven execution)           |
+| `tests/agent_executor_test.ts`       | TDD unit tests (agent tool invocation)            |
+| `tests/scoped_tools_test.ts`         | TDD unit tests (portal-scoped tools)              |
+| `tests/portal_permissions_test.ts`   | TDD unit tests (permission validation)            |
 
 **PlanExecutor Interface:**
 
 ```typescript
 interface PlanExecutor {
   /**
-   * Execute an approved plan and generate code changes
+   * Execute an approved plan by delegating to LLM agent
    * @param planPath - Absolute path to plan file in System/Active/
    * @returns Changeset ID or null if execution failed
    */
   execute(planPath: string): Promise<string | null>;
 }
+
+/**
+ * AgentExecutor invokes LLM agent with portal-scoped tools
+ */
+interface AgentExecutor {
+  /**
+   * Execute a plan step using LLM agent with git access
+   * @param agent - Agent blueprint name
+   * @param portal - Portal name where changes will be made
+   * @param step - Plan step to execute
+   * @param context - Execution context (request, plan, trace_id)
+   * @returns Changeset details from agent
+   */
+  executeStep(
+    agent: string,
+    portal: string,
+    step: PlanStep,
+    context: ExecutionContext
+  ): Promise<ChangesetResult>;
+}
 ```
 
-**ChangesetManager Interface:**
+**ChangesetRegistry Interface:**
 
 ```typescript
-interface ChangesetManager {
+interface ChangesetRegistry {
   /**
-   * Create a new changeset with feature branch
+   * Register a changeset created by agent
    * @param traceId - Request trace ID
-   * @param portalName - Portal where changes are made
+   * @param portalName - Portal where changes were made
+   * @param branch - Feature branch name created by agent
    * @param description - Changeset description
+   * @param createdBy - Agent that created the changeset
    * @returns Changeset ID
    */
-  create(traceId: string, portalName: string, description: string): Promise<string>;
-
-  /**
-   * Apply code changes to a changeset's feature branch
-   * @param changesetId - Changeset identifier
-   * @param changes - Array of file changes
-   */
-  applyChanges(changesetId: string, changes: FileChange[]): Promise<void>;
+  register(
+    traceId: string,
+    portalName: string,
+    branch: string,
+    description: string,
+    createdBy: string
+  ): Promise<string>;
 
   /**
    * List all changesets with optional filtering
@@ -3446,6 +3479,35 @@ interface ChangesetManager {
    */
   reject(changesetId: string, reason: string): Promise<boolean>;
 }
+
+/**
+ * Portal Permissions validator
+ */
+interface PortalPermissions {
+  /**
+   * Check if agent can access portal
+   * @param agent - Agent blueprint name
+   * @param portal - Portal name
+   * @returns True if access allowed
+   */
+  canAccess(agent: string, portal: string): boolean;
+
+  /**
+   * Get allowed operations for agent in portal
+   * @param agent - Agent blueprint name
+   * @param portal - Portal name
+   * @returns Array of allowed operations (read, write, git)
+   */
+  getAllowedOperations(agent: string, portal: string): Operation[];
+
+  /**
+   * Validate git operation is allowed
+   * @param portal - Portal name
+   * @param branch - Branch name (must start with feat/, fix/, etc.)
+   * @returns True if operation allowed
+   */
+  validateGitOperation(portal: string, branch: string): boolean;
+}
 ```
 
 **Changeset Schema:**
@@ -3455,17 +3517,10 @@ interface ChangesetManager {
 import { z } from "zod";
 
 export const ChangesetStatusSchema = z.enum([
-  "pending",    // Created, awaiting review
+  "pending",    // Created by agent, awaiting review
   "approved",   // Approved, merged to main
   "rejected",   // Rejected, branch deleted
 ]);
-
-export const FileChangeSchema = z.object({
-  path: z.string(),                    // Relative path in portal
-  operation: z.enum(["create", "modify", "delete"]),
-  content: z.string().optional(),      // New/modified content
-  oldContent: z.string().optional(),   // Original content (for modify)
-});
 
 export const ChangesetSchema = z.object({
   id: z.string().uuid(),               // Changeset UUID
@@ -3474,9 +3529,10 @@ export const ChangesetSchema = z.object({
   branch: z.string(),                  // Feature branch name
   status: ChangesetStatusSchema,
   description: z.string(),
-  changes: z.array(FileChangeSchema),
+  commit_sha: z.string().optional(),   // Latest commit by agent
+  files_changed: z.number(),           // Number of files modified
   created: z.string().datetime(),
-  created_by: z.string(),              // Actor who approved plan
+  created_by: z.string(),              // Agent that created changeset
   approved_at: z.string().datetime().optional(),
   approved_by: z.string().optional(),
   rejected_at: z.string().datetime().optional(),
@@ -3485,7 +3541,6 @@ export const ChangesetSchema = z.object({
 });
 
 export type Changeset = z.infer<typeof ChangesetSchema>;
-export type FileChange = z.infer<typeof FileChangeSchema>;
 export type ChangesetStatus = z.infer<typeof ChangesetStatusSchema>;
 ```
 
@@ -3501,9 +3556,10 @@ CREATE TABLE IF NOT EXISTS changesets (
   branch TEXT NOT NULL,             -- Git branch name (feat/<desc>-<trace>)
   status TEXT NOT NULL,             -- pending, approved, rejected
   description TEXT NOT NULL,
-  changes TEXT NOT NULL,            -- JSON array of FileChange objects
+  commit_sha TEXT,                  -- Latest commit SHA from agent
+  files_changed INTEGER DEFAULT 0,  -- Number of files in commit
   created TEXT NOT NULL,
-  created_by TEXT NOT NULL,
+  created_by TEXT NOT NULL,         -- Agent blueprint name
   approved_at TEXT,
   approved_by TEXT,
   rejected_at TEXT,
@@ -3514,6 +3570,7 @@ CREATE TABLE IF NOT EXISTS changesets (
 CREATE INDEX IF NOT EXISTS idx_changesets_trace_id ON changesets(trace_id);
 CREATE INDEX IF NOT EXISTS idx_changesets_status ON changesets(status);
 CREATE INDEX IF NOT EXISTS idx_changesets_portal ON changesets(portal);
+CREATE INDEX IF NOT EXISTS idx_changesets_created_by ON changesets(created_by);
 ```
 
 **Plan Execution Flow:**
@@ -3527,127 +3584,176 @@ CREATE INDEX IF NOT EXISTS idx_changesets_portal ON changesets(portal);
    - Extract trace_id, request content, plan steps
    - Load associated request from `Inbox/Requests/`
    - Determine target portal (from request or plan)
+   - Validate portal exists and agent has permissions
 
-3. **Code Generation:**
+3. **Agent Invocation:**
    - For each plan step:
-     * Construct execution prompt combining request + plan + step
-     * Call LLM provider (real or mock)
-     * Parse response for code changes
-     * Validate file paths are within portal
+     * Load agent blueprint (model, capabilities, prompt)
+     * Create scoped tool registry for portal
+     * Construct execution prompt with request + plan + step
+     * Invoke agent with portal-scoped tools:
+       - `read_file(path)` - Read files in portal
+       - `write_file(path, content)` - Write files in portal
+       - `list_directory(path)` - List portal directories
+       - `git_create_branch(name)` - Create feature branch
+       - `git_commit(message, files)` - Commit changes
+       - `git_status()` - Check working tree status
+       - `report_completion(changeset_details)` - Signal done
 
-4. **Changeset Creation:**
-   - Create feature branch: `feat/<description>-<trace_id_short>`
-   - Apply code changes to branch
-   - Commit with message linking to trace_id
-   - Register changeset in database
+4. **Agent Execution:**
+   - Agent reads portal files to understand context
+   - Agent creates feature branch: `feat/<description>-<trace_id_short>`
+   - Agent modifies/creates files using `write_file` tool
+   - Agent commits changes with message linking to trace_id
+   - Agent reports completion with changeset details
 
-5. **Status Update:**
+5. **Changeset Registration:**
+   - PlanExecutor receives changeset details from agent
+   - Register changeset in database with:
+     * trace_id, portal, branch, commit_sha
+     * created_by = agent blueprint name
+     * status = "pending"
+   - Log `changeset.created` to Activity Journal
+
+6. **Status Update:**
    - Update plan status to `executed`
    - Log `plan.executed` to Activity Journal
-   - Log `changeset.created` with changeset_id
+   - Move plan to `System/Archive/` (optional)
 
-6. **Error Handling:**
-   - LLM errors → mark plan as `failed`, log error
-   - Git errors → mark plan as `failed`, log error
-   - Invalid code → create changeset but flag for review
+7. **Error Handling:**
+   - Agent errors → mark plan as `failed`, log error
+   - Portal permission errors → log error, skip step
+   - Git errors → agent reports failure, log error
+   - Invalid branch names → reject before execution
    - No portal specified → use default or skip execution
 
-**MockLLMProvider Integration:**
+**Portal Permissions Configuration:**
 
-The MockLLMProvider must support code generation responses for plan execution:
+Portals must specify which agents are allowed access in `exo.config.toml`:
+
+```toml
+[[portals]]
+name = "MyApp"
+path = "/home/user/projects/MyApp"
+agents_allowed = ["senior-coder", "code-reviewer"]  # Whitelist
+operations = ["read", "write", "git"]  # Capabilities
+
+[[portals]]
+name = "PublicDocs"
+path = "/home/user/projects/docs"
+agents_allowed = ["*"]  # All agents
+operations = ["read", "write"]  # No git access
+```
+
+**Security Model:**
+- Agents can only access portals listed in their `agents_allowed` array
+- Operations restricted to specified capabilities (read, write, git)
+- All agent actions logged to Activity Journal with agent name
+- File paths validated against portal boundaries (no `../` escapes)
+- Git branch names must follow pattern: `feat/`, `fix/`, `docs/`, etc.
+
+**Agent Tool Interface:**
+
+Agents receive these tools during plan execution:
 
 ```typescript
-// Example mock response for code generation
-const mockCodeResponse = {
-  thought: "Analyzing the request to implement authentication...",
-  content: `
-## File Changes
-
-### src/auth.ts (create)
-\`\`\`typescript
-export function authenticate(token: string): boolean {
-  // Implementation
-  return token === "valid-token";
+// Available to agent during execution
+interface AgentTools {
+  // File operations (scoped to portal)
+  read_file(path: string): Promise<string>
+  write_file(path: string, content: string): Promise<void>
+  list_directory(path: string): Promise<string[]>
+  
+  // Git operations (within portal)
+  git_create_branch(branch_name: string): Promise<void>
+  git_commit(message: string, files: string[]): Promise<string>  // Returns commit SHA
+  git_status(): Promise<{ branch: string; modified: string[]; untracked: string[] }>
+  
+  // Progress reporting
+  report_completion(changeset: {
+    branch: string;
+    commit_sha: string;
+    files_changed: number;
+    description: string;
+  }): Promise<void>
 }
-\`\`\`
-
-### tests/auth_test.ts (create)
-\`\`\`typescript
-import { authenticate } from "../src/auth.ts";
-import { assertEquals } from "jsr:@std/assert";
-
-Deno.test("authenticate - valid token", () => {
-  assertEquals(authenticate("valid-token"), true);
-});
-\`\`\`
-  `,
-};
 ```
 
 **Activity Logging Events:**
 
-| Event                  | Payload                                                |
-|------------------------|--------------------------------------------------------|
-| `plan.executing`       | `{ trace_id, plan_id, portal }`                        |
-| `plan.executed`        | `{ trace_id, plan_id, changeset_id, duration_ms }`     |
-| `plan.execution.failed`| `{ trace_id, plan_id, error, step_index }`             |
-| `changeset.created`    | `{ changeset_id, trace_id, portal, branch, changes_count }` |
-| `changeset.applied`    | `{ changeset_id, files_modified }`                     |
+| Event                     | Payload                                                |
+|---------------------------|--------------------------------------------------------|
+| `plan.executing`          | `{ trace_id, plan_id, portal, agent }`                 |
+| `plan.executed`           | `{ trace_id, plan_id, changeset_id, duration_ms }`     |
+| `plan.execution.failed`   | `{ trace_id, plan_id, error, step_index, agent }`      |
+| `agent.tool.invoked`      | `{ agent, tool_name, portal, trace_id }`               |
+| `agent.git.branch_created`| `{ agent, portal, branch, trace_id }`                  |
+| `agent.git.commit`        | `{ agent, portal, branch, commit_sha, files, trace_id }`|
+| `changeset.created`       | `{ changeset_id, trace_id, portal, branch, created_by }`|
+| `portal.access_denied`    | `{ agent, portal, reason }`                            |
 
 **Success Criteria:**
 
 **Core Implementation:**
 1. [ ] `PlanExecutor.execute()` reads approved plan from `System/Active/`
 2. [ ] Plan parser extracts steps and request context
-3. [ ] LLM provider called with execution prompt
-4. [ ] Code generation response parsed into FileChange objects
-5. [ ] Invalid file paths (outside portal) rejected with error
-6. [ ] ChangesetManager creates feature branch with trace_id
-7. [ ] Code changes applied to feature branch
-8. [ ] Git commit created with trace_id in message
-9. [ ] Changeset record created in database
+3. [ ] Portal permissions validated before agent invocation
+4. [ ] AgentExecutor creates scoped tool registry for portal
+5. [ ] Agent receives tools: read_file, write_file, git_create_branch, git_commit
+6. [ ] Agent creates feature branch with trace_id in name
+7. [ ] Agent commits changes with trace_id in commit message
+8. [ ] Agent reports completion with changeset details
+9. [ ] ChangesetRegistry records changeset with commit_sha
 10. [ ] Plan status updated to `executed`
-11. [ ] Activity Journal logs all execution events
+11. [ ] Activity Journal logs all agent actions
 
-**MockLLMProvider Support:**
-12. [ ] MockLLMProvider returns deterministic code generation responses
-13. [ ] Mock strategy "code_generation" added to MockLLMProvider
-14. [ ] Mock responses include file paths and code content
-15. [ ] Mock responses parseable by PlanExecutor
-16. [ ] Unit tests use MockLLMProvider for fast, deterministic testing
+**Portal Permissions:**
+12. [ ] Portal config defines `agents_allowed` array
+13. [ ] Portal config defines `operations` array (read, write, git)
+14. [ ] PortalPermissions validates agent access before execution
+15. [ ] Unauthorized agents receive access denied error
+16. [ ] Tools enforce operation restrictions (e.g., no git if not allowed)
 
-**Real LLM Integration:**
-17. [ ] PlanExecutor works with AnthropicProvider
-18. [ ] PlanExecutor works with OpenAIProvider
-19. [ ] PlanExecutor works with OllamaProvider
-20. [ ] Real LLM responses parsed successfully
-21. [ ] Token usage logged for real LLM calls
+**Scoped Tools:**
+17. [ ] ScopedToolRegistry wraps existing ToolRegistry
+18. [ ] File operations scoped to portal root directory
+19. [ ] Path validation blocks `../` escapes
+20. [ ] Git operations only affect portal repository
+21. [ ] Tool invocations logged to Activity Journal
+
+**Agent Integration:**
+22. [ ] AgentExecutor works with AnthropicProvider
+23. [ ] AgentExecutor works with OpenAIProvider
+24. [ ] AgentExecutor works with OllamaProvider
+25. [ ] AgentExecutor works with MockLLMProvider (simulated git ops)
+26. [ ] Agent receives execution context (request, plan, step)
 
 **Error Handling:**
-22. [ ] LLM errors don't crash PlanExecutor
-23. [ ] Git errors logged with clear messages
-24. [ ] Invalid code changes flagged but changeset still created
-25. [ ] Missing portal handled gracefully
-26. [ ] Malformed plan files logged and skipped
+27. [ ] Agent errors don't crash PlanExecutor
+28. [ ] Portal access errors logged with clear messages
+29. [ ] Git errors reported by agent and logged
+30. [ ] Invalid branch names rejected before execution
+31. [ ] Missing portal handled gracefully
 
 **Integration:**
-27. [ ] Daemon detects new approved plans in `System/Active/`
-28. [ ] Execution triggered automatically after plan approval
-29. [ ] `exoctl changeset list` shows created changesets
-30. [ ] `exoctl changeset show <id>` displays diff
-31. [ ] MT-08 manual test scenario fully passes
+32. [ ] Daemon detects new approved plans in `System/Active/`
+33. [ ] Execution triggered automatically after plan approval
+34. [ ] `exoctl changeset list` shows changesets created by agents
+35. [ ] `exoctl changeset show <id>` displays git diff
+36. [ ] MT-08 manual test scenario fully passes
 
 **Testing:**
-32. [ ] Write `tests/plan_executor_test.ts` (15+ tests with real LLM mocked)
-33. [ ] Write `tests/plan_executor_mock_test.ts` (20+ tests with MockLLMProvider)
-34. [ ] Write `tests/changeset_manager_test.ts` (18+ tests)
-35. [ ] Integration test: full flow from request → plan → execution → changeset
-36. [ ] All tests pass with 70%+ coverage
+37. [ ] Write `tests/plan_executor_test.ts` (15+ tests)
+38. [ ] Write `tests/agent_executor_test.ts` (20+ tests)
+39. [ ] Write `tests/scoped_tools_test.ts` (18+ tests)
+40. [ ] Write `tests/portal_permissions_test.ts` (12+ tests)
+41. [ ] Integration test: full flow from request → plan → execution → changeset
+42. [ ] All tests pass with 70%+ coverage
 
 **TDD Test Cases:**
 
 ```typescript
-// tests/plan_executor_test.ts (Real LLM Interface Tests)
+// tests/plan_executor_test.ts (Plan Orchestration)
 
 // Plan Parsing
 "should parse approved plan with trace_id and steps";
@@ -3655,22 +3761,20 @@ Deno.test("authenticate - valid token", () => {
 "should determine target portal from plan frontmatter";
 "should fallback to default portal if not specified";
 
-// Execution Prompt Construction
-"should construct execution prompt with request + plan + step";
-"should include portal context in prompt";
-"should include blueprint capabilities in prompt";
+// Portal Validation
+"should validate portal exists before execution";
+"should check agent has portal access permission";
+"should reject execution if agent not in agents_allowed";
 
-// LLM Provider Integration
-"should call LLM provider with execution prompt";
-"should handle LLM timeout gracefully";
-"should retry on transient LLM errors";
-"should log token usage for real LLM calls";
+// Agent Invocation
+"should invoke AgentExecutor with plan step";
+"should pass portal-scoped tools to agent";
+"should include execution context (request, plan, trace_id)";
 
-// Code Parsing
-"should parse code blocks from LLM response";
-"should extract file paths and operations (create/modify/delete)";
-"should validate file paths are within portal";
-"should reject paths with ../ traversal";
+// Changeset Registration
+"should register changeset created by agent";
+"should record agent name as created_by";
+"should store commit_sha from agent response";
 
 // Status Updates
 "should update plan status to executed on success";
@@ -3682,63 +3786,88 @@ Deno.test("authenticate - valid token", () => {
 "should log plan.executed on success with changeset_id";
 "should log plan.execution.failed on error";
 
-// tests/plan_executor_mock_test.ts (MockLLMProvider Tests)
+// tests/agent_executor_test.ts (Agent Tool Invocation)
 
-// Mock Code Generation
-"should execute plan using MockLLMProvider";
-"should parse mock code generation response";
-"should create changeset from mock response";
-"should handle multiple file changes in mock response";
+// Tool Registry Setup
+"should create scoped tool registry for portal";
+"should restrict tools to allowed operations";
+"should pass tools to LLM agent via prompt";
 
-// Mock Strategies
-"should support 'code_generation' mock strategy";
-"should return deterministic code for same request type";
-"should include thought and content in mock response";
+// Agent Execution
+"should invoke agent with execution prompt";
+"should provide read_file tool to agent";
+"should provide write_file tool to agent";
+"should provide git_create_branch tool to agent";
+"should provide git_commit tool to agent";
 
-// Edge Cases
-"should handle empty mock response gracefully";
-"should handle mock response with no file changes";
-"should handle mock response with syntax errors in code";
-
-// Performance
-"should execute mock plans faster than real LLM (<100ms)";
-"should not make external API calls with mock provider";
-
-// tests/changeset_manager_test.ts
-
-// Changeset Creation
-"should create changeset record in database";
-"should generate unique changeset ID (UUID)";
-"should create feature branch with trace_id suffix";
-"should validate branch name format (feat/<desc>-<trace>)";
-
-// File Changes
-"should apply create operation to new file";
-"should apply modify operation to existing file";
-"should apply delete operation to existing file";
-"should reject changes outside portal directory";
-
-// Git Operations
-"should create git branch from main";
-"should commit changes with trace_id in message";
-"should push branch to remote (if configured)";
-
-// Changeset Retrieval
-"should list all changesets";
-"should filter changesets by status";
-"should filter changesets by portal";
-"should get changeset by ID with full details";
-
-// Approval/Rejection
-"should merge changeset to main on approval";
-"should delete feature branch on rejection";
-"should log approval with user identity";
-"should log rejection with reason";
+// Agent Responses
+"should parse agent tool invocations from response";
+"should execute tool calls in sequence";
+"should capture changeset details from agent";
+"should return ChangesetResult on completion";
 
 // Error Handling
-"should handle git merge conflicts gracefully";
-"should handle missing portal directory";
-"should handle invalid changeset ID";
+"should handle agent timeout gracefully";
+"should handle agent tool errors";
+"should log all agent actions to Activity Journal";
+
+// LLM Provider Integration
+"should work with AnthropicProvider";
+"should work with OpenAIProvider";
+"should work with OllamaProvider";
+"should work with MockLLMProvider";
+
+// tests/scoped_tools_test.ts (Portal-Scoped Tools)
+
+// read_file Tool
+"should read file within portal boundaries";
+"should reject path with ../ traversal";
+"should reject absolute paths";
+"should log tool invocation to Activity Journal";
+
+// write_file Tool
+"should write file within portal boundaries";
+"should create parent directories if needed";
+"should reject path outside portal";
+"should log file writes to Activity Journal";
+
+// git_create_branch Tool
+"should create feature branch in portal repo";
+"should validate branch name format (feat/, fix/, etc.)";
+"should reject invalid branch names";
+"should log branch creation to Activity Journal";
+
+// git_commit Tool
+"should commit changes with trace_id in message";
+"should return commit SHA";
+"should log commit to Activity Journal with files";
+"should reject commit if no changes staged";
+
+// Operation Restrictions
+"should block git tools if 'git' not in operations";
+"should block write_file if 'write' not in operations";
+"should allow read_file with only 'read' permission";
+
+// tests/portal_permissions_test.ts (Access Control)
+
+// Permission Validation
+"should allow agent in agents_allowed array";
+"should reject agent not in agents_allowed";
+"should allow all agents with wildcard '*'";
+"should check operation permissions (read, write, git)";
+
+// Configuration
+"should load portal config from exo.config.toml";
+"should handle missing portals section";
+"should validate portal path exists";
+
+// Error Handling
+"should log access denied events to Activity Journal";
+"should include agent and portal in denial log";
+"should return clear error message to user";
+
+// Integration Test
+"should prevent unauthorized agent from executing plan";
 ```
 
 **Daemon Integration:**
@@ -3760,7 +3889,7 @@ const activeWatcher = new FileWatcher({
     try {
       const changesetId = await planExecutor.execute(event.path);
       if (changesetId) {
-        console.log(`✅ Changeset created: ${changesetId}`);
+        console.log(`✅ Changeset created by agent: ${changesetId}`);
       }
     } catch (error) {
       console.error(`❌ Plan execution failed: ${error.message}`);
@@ -3774,8 +3903,15 @@ const activeWatcher = new FileWatcher({
 After implementation, MT-08 should be updated to test:
 
 ```bash
-# 1. Create and approve a plan
-$ exoctl request "Add hello world function to utils.ts" --agent mock-agent
+# 1. Configure portal permissions in exo.config.toml
+[[portals]]
+name = "TestApp"
+path = "/tmp/test-portal"
+agents_allowed = ["senior-coder"]
+operations = ["read", "write", "git"]
+
+# 2. Create and approve a plan
+$ exoctl request "Add hello world function to utils.ts" --agent senior-coder --portal TestApp
 $ sleep 5
 $ exoctl plan list
 $ exoctl plan approve <plan-id>
