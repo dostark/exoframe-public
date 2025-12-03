@@ -3343,41 +3343,66 @@ The `exoctl changeset` and `exoctl git` commands are fully implemented, but ther
 - Agents create feature branches and commit changes directly
 - Registers changesets created by agents for review
 
-**The Solution: Agent-Driven Plan Execution**
+**The Solution: Agent-Driven Plan Execution via MCP Server**
 
-Implement a `PlanExecutor` service that orchestrates LLM agents with direct git access:
+Implement a `PlanExecutor` service that orchestrates LLM agents through an **MCP (Model Context Protocol) server**:
 
 1. Watches `System/Active/` for approved plans
 2. Parses plan steps and prepares execution context
-3. Invokes LLM agent with portal-scoped tools (read/write files, git operations)
-4. Agent creates feature branch, makes changes, and commits directly
-5. Agent reports completion with changeset details
-6. PlanExecutor registers changeset record linking to trace_id
-7. Updates plan status to `executed`
-8. Logs all activities to Activity Journal
+3. Exposes MCP server with portal-scoped tools (read_file, write_file, git_create_branch, git_commit)
+4. Invokes LLM agent with MCP tool access
+5. Agent uses MCP tools to create feature branch, make changes, and commit
+6. Agent reports completion through MCP interface
+7. PlanExecutor registers changeset record linking to trace_id
+8. Updates plan status to `executed`
+9. Logs all activities to Activity Journal
 
 **Key Architectural Change:**
 
-Instead of ExoFrame parsing LLM markdown responses and applying changes, **LLM agents have direct access to portal repositories through scoped tools**. This eliminates fragile response parsing and gives agents full control over their git workflow.
+Instead of ExoFrame parsing LLM markdown responses and applying changes, **LLM agents connect to ExoFrame's MCP server** and use standardized tools for portal operations. This eliminates fragile response parsing, provides strong security boundaries, and follows the Model Context Protocol standard.
+
+**MCP Server Benefits:**
+- Standard protocol (compatible with Claude Desktop, Cline, etc.)
+- Tools, Resources, and Prompts exposed via MCP
+- Configurable security modes (sandboxed vs hybrid)
+- All agent actions validated and logged
+- No direct file system access required
 
 **Architecture:**
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      PlanExecutor                           │
-│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐   │
-│  │ Plan Parser  │  │ Agent        │  │ Changeset       │   │
-│  │              │→ │ Orchestrator │→ │ Registry        │   │
-│  └──────────────┘  └──────────────┘  └─────────────────┘   │
-├─────────────────────────────────────────────────────────────┤
-│         LLM Agent with Scoped Tools                         │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │ read_file | write_file | git_branch | git_commit    │   │
-│  └──────────────────────────────────────────────────────┘   │
-├─────────────────────────────────────────────────────────────┤
-│              Portal Repository (Git)                        │
-│         (Agent has direct read/write access)                │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                      PlanExecutor                               │
+│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐       │
+│  │ Plan Parser  │  │ Agent        │  │ Changeset       │       │
+│  │              │→ │ Orchestrator │→ │ Registry        │       │
+│  └──────────────┘  └──────────────┘  └─────────────────┘       │
+└─────────────────────────────────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                   ExoFrame MCP Server                           │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ Tools: read_file, write_file, list_directory,           │   │
+│  │        git_create_branch, git_commit, git_status        │   │
+│  ├─────────────────────────────────────────────────────────┤   │
+│  │ Resources: portal://PortalName/path/to/file             │   │
+│  ├─────────────────────────────────────────────────────────┤   │
+│  │ Prompts: execute_plan, create_changeset                 │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│  Transport: stdio or SSE                                        │
+└─────────────────────────────────────────────────────────────────┘
+                             ↕ MCP Protocol
+┌─────────────────────────────────────────────────────────────────┐
+│         LLM Agent (Anthropic/OpenAI/Ollama)                     │
+│  Security Mode: Sandboxed (no file access) OR                   │
+│                 Hybrid (read-only portal access)                │
+│  Accessed ONLY through MCP tools (validated & logged)           │
+└─────────────────────────────────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────┐
+│              Portal Repository (Git)                            │
+│         (Modified via MCP tools with permission checks)         │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 **Implementation Files:**
@@ -3385,15 +3410,19 @@ Instead of ExoFrame parsing LLM markdown responses and applying changes, **LLM a
 | File                                 | Purpose                                           |
 |--------------------------------------|---------------------------------------------------|
 | `src/services/plan_executor.ts`      | PlanExecutor class - orchestrates agent execution |
-| `src/services/agent_executor.ts`     | Invokes LLM agent with portal-scoped tools        |
-| `src/services/scoped_tools.ts`       | Portal-scoped tool wrapper (read/write/git)       |
+| `src/services/agent_executor.ts`     | Invokes LLM agent with MCP server connection      |
+| `src/mcp/server.ts`                  | ExoFrame MCP server implementation                |
+| `src/mcp/tools.ts`                   | MCP tool handlers (read_file, write_file, git_*)  |
+| `src/mcp/resources.ts`               | MCP resource handlers (portal file URIs)          |
+| `src/mcp/prompts.ts`                 | MCP prompt templates (execute_plan, etc.)         |
 | `src/services/portal_permissions.ts` | Portal access validation and permissions          |
 | `src/services/changeset_registry.ts` | Changeset registration and tracking               |
 | `src/schemas/changeset.ts`           | Changeset schema and types                        |
 | `src/main.ts`                        | Integration: watch Active/ directory              |
 | `tests/plan_executor_test.ts`        | TDD unit tests (agent-driven execution)           |
-| `tests/agent_executor_test.ts`       | TDD unit tests (agent tool invocation)            |
-| `tests/scoped_tools_test.ts`         | TDD unit tests (portal-scoped tools)              |
+| `tests/agent_executor_test.ts`       | TDD unit tests (agent MCP invocation)             |
+| `tests/mcp/server_test.ts`           | TDD unit tests (MCP server)                       |
+| `tests/mcp/tools_test.ts`            | TDD unit tests (MCP tool handlers)                |
 | `tests/portal_permissions_test.ts`   | TDD unit tests (permission validation)            |
 
 **PlanExecutor Interface:**
@@ -3409,11 +3438,11 @@ interface PlanExecutor {
 }
 
 /**
- * AgentExecutor invokes LLM agent with portal-scoped tools
+ * AgentExecutor invokes LLM agent via MCP server
  */
 interface AgentExecutor {
   /**
-   * Execute a plan step using LLM agent with git access
+   * Execute a plan step using LLM agent with MCP tools
    * @param agent - Agent blueprint name
    * @param portal - Portal name where changes will be made
    * @param step - Plan step to execute
@@ -3426,6 +3455,37 @@ interface AgentExecutor {
     step: PlanStep,
     context: ExecutionContext
   ): Promise<ChangesetResult>;
+}
+
+/**
+ * MCPServer exposes ExoFrame tools to LLM agents
+ */
+interface MCPServer {
+  /**
+   * Start MCP server on stdio or SSE transport
+   * @param transport - Transport type (stdio, sse)
+   * @returns Server instance
+   */
+  start(transport: 'stdio' | 'sse'): Promise<void>;
+  
+  /**
+   * Register portal-scoped tools
+   * @param portal - Portal configuration
+   */
+  registerPortalTools(portal: PortalConfig): void;
+  
+  /**
+   * Handle tool invocation from agent
+   * @param toolName - Tool to invoke
+   * @param args - Tool arguments
+   * @param agent - Agent making the request
+   * @returns Tool execution result
+   */
+  handleToolCall(
+    toolName: string,
+    args: Record<string, unknown>,
+    agent: string
+  ): Promise<unknown>;
 }
 ```
 
@@ -3627,56 +3687,207 @@ CREATE INDEX IF NOT EXISTS idx_changesets_created_by ON changesets(created_by);
    - Invalid branch names → reject before execution
    - No portal specified → use default or skip execution
 
-**Portal Permissions Configuration:**
+**MCP Server Configuration:**
 
-Portals must specify which agents are allowed access in `exo.config.toml`:
+Configure MCP server and portal security modes in `exo.config.toml`:
 
 ```toml
+# MCP Server Settings
+[mcp]
+enabled = true
+transport = "stdio"  # or "sse" for HTTP transport
+server_name = "exoframe"
+version = "1.0.0"
+
+# Portal configurations with security modes
 [[portals]]
 name = "MyApp"
 path = "/home/user/projects/MyApp"
 agents_allowed = ["senior-coder", "code-reviewer"]  # Whitelist
 operations = ["read", "write", "git"]  # Capabilities
 
+# Security mode configuration
+[portals.MyApp.security]
+mode = "sandboxed"  # or "hybrid"
+audit_enabled = true
+log_all_actions = true
+
 [[portals]]
 name = "PublicDocs"
 path = "/home/user/projects/docs"
 agents_allowed = ["*"]  # All agents
 operations = ["read", "write"]  # No git access
+
+[portals.PublicDocs.security]
+mode = "hybrid"
+audit_enabled = true
 ```
 
-**Security Model:**
+**Security Modes:**
+
+**1. Sandboxed Mode (Recommended for Production):**
+- Agent has **NO direct file system access**
+- Agent connects to ExoFrame MCP server
+- All file operations go through MCP tools
+- Tools validate permissions and log actions
+- Impossible for agent to bypass ExoFrame
+- Implementation: Agent runs in Deno subprocess with `--allow-read=NONE --allow-write=NONE`
+
+**2. Hybrid Mode (Performance Optimized):**
+- Agent has **read-only access** to portal path
+- Agent can examine files directly (fast)
+- Agent **MUST use MCP tools** for modifications
+- After execution, ExoFrame audits changes via git diff
+- Unauthorized changes detected and reverted
+- Implementation: Agent gets portal path + MCP tools, with post-execution audit
+
+**Security Enforcement:**
 - Agents can only access portals listed in their `agents_allowed` array
 - Operations restricted to specified capabilities (read, write, git)
 - All agent actions logged to Activity Journal with agent name
 - File paths validated against portal boundaries (no `../` escapes)
 - Git branch names must follow pattern: `feat/`, `fix/`, `docs/`, etc.
+- In sandboxed mode: bypass impossible (no file access)
+- In hybrid mode: unauthorized changes reverted + security violation logged
 
-**Agent Tool Interface:**
+**MCP Tools Specification:**
 
-Agents receive these tools during plan execution:
+ExoFrame MCP server exposes these tools to agents:
 
 ```typescript
-// Available to agent during execution
-interface AgentTools {
-  // File operations (scoped to portal)
-  read_file(path: string): Promise<string>
-  write_file(path: string, content: string): Promise<void>
-  list_directory(path: string): Promise<string[]>
-  
-  // Git operations (within portal)
-  git_create_branch(branch_name: string): Promise<void>
-  git_commit(message: string, files: string[]): Promise<string>  // Returns commit SHA
-  git_status(): Promise<{ branch: string; modified: string[]; untracked: string[] }>
-  
-  // Progress reporting
-  report_completion(changeset: {
-    branch: string;
-    commit_sha: string;
-    files_changed: number;
-    description: string;
-  }): Promise<void>
-}
+// MCP Tool Definitions (src/mcp/tools.ts)
+
+const READ_FILE_TOOL = {
+  name: "read_file",
+  description: "Read a file from portal (scoped to allowed portals)",
+  inputSchema: {
+    type: "object",
+    properties: {
+      portal: { type: "string", description: "Portal name" },
+      path: { type: "string", description: "Relative path in portal" },
+    },
+    required: ["portal", "path"],
+  },
+};
+
+const WRITE_FILE_TOOL = {
+  name: "write_file",
+  description: "Write a file to portal (validated and logged)",
+  inputSchema: {
+    type: "object",
+    properties: {
+      portal: { type: "string", description: "Portal name" },
+      path: { type: "string", description: "Relative path in portal" },
+      content: { type: "string", description: "File content" },
+    },
+    required: ["portal", "path", "content"],
+  },
+};
+
+const LIST_DIRECTORY_TOOL = {
+  name: "list_directory",
+  description: "List files and directories in portal path",
+  inputSchema: {
+    type: "object",
+    properties: {
+      portal: { type: "string", description: "Portal name" },
+      path: { type: "string", description: "Relative path in portal (optional, defaults to root)" },
+    },
+    required: ["portal"],
+  },
+};
+
+const GIT_CREATE_BRANCH_TOOL = {
+  name: "git_create_branch",
+  description: "Create a feature branch in portal repository",
+  inputSchema: {
+    type: "object",
+    properties: {
+      portal: { type: "string", description: "Portal name" },
+      branch: { type: "string", description: "Branch name (must start with feat/, fix/, docs/, etc.)" },
+    },
+    required: ["portal", "branch"],
+  },
+};
+
+const GIT_COMMIT_TOOL = {
+  name: "git_commit",
+  description: "Commit changes to portal repository",
+  inputSchema: {
+    type: "object",
+    properties: {
+      portal: { type: "string", description: "Portal name" },
+      message: { type: "string", description: "Commit message (should include trace_id)" },
+      files: { 
+        type: "array", 
+        items: { type: "string" },
+        description: "Files to commit (optional, commits all staged if omitted)"
+      },
+    },
+    required: ["portal", "message"],
+  },
+};
+
+const GIT_STATUS_TOOL = {
+  name: "git_status",
+  description: "Check git status of portal repository",
+  inputSchema: {
+    type: "object",
+    properties: {
+      portal: { type: "string", description: "Portal name" },
+    },
+    required: ["portal"],
+  },
+};
+```
+
+**MCP Resources:**
+
+ExoFrame exposes portal files as MCP resources:
+
+```typescript
+// Resource URI format: portal://PortalName/path/to/file.ts
+
+const portalResources = [
+  {
+    uri: "portal://MyApp/src/auth.ts",
+    name: "MyApp: src/auth.ts",
+    mimeType: "text/x-typescript",
+    description: "Authentication module",
+  },
+  {
+    uri: "portal://MyApp/package.json",
+    name: "MyApp: package.json",
+    mimeType: "application/json",
+    description: "Package configuration",
+  },
+  // ... dynamically discovered from portal
+];
+```
+
+**MCP Prompts:**
+
+High-level prompts for common workflows:
+
+```typescript
+const EXECUTE_PLAN_PROMPT = {
+  name: "execute_plan",
+  description: "Execute an approved ExoFrame plan",
+  arguments: [
+    { name: "plan_id", description: "Plan UUID", required: true },
+    { name: "portal", description: "Target portal name", required: true },
+  ],
+};
+
+const CREATE_CHANGESET_PROMPT = {
+  name: "create_changeset",
+  description: "Create a changeset for code changes",
+  arguments: [
+    { name: "portal", description: "Portal name", required: true },
+    { name: "description", description: "Changeset description", required: true },
+    { name: "trace_id", description: "Request trace ID", required: true },
+  ],
+};
 ```
 
 **Activity Logging Events:**
@@ -3694,61 +3905,86 @@ interface AgentTools {
 
 **Success Criteria:**
 
+**MCP Server:**
+1. [ ] ExoFrame MCP server starts with `mcp.enabled = true`
+2. [ ] MCP server registers 6 tools (read_file, write_file, list_directory, git_*)
+3. [ ] MCP server exposes portal files as Resources (portal:// URIs)
+4. [ ] MCP server provides execute_plan and create_changeset Prompts
+5. [ ] MCP transport supports stdio and SSE modes
+6. [ ] Agent connects to MCP server via configured transport
+
 **Core Implementation:**
-1. [ ] `PlanExecutor.execute()` reads approved plan from `System/Active/`
-2. [ ] Plan parser extracts steps and request context
-3. [ ] Portal permissions validated before agent invocation
-4. [ ] AgentExecutor creates scoped tool registry for portal
-5. [ ] Agent receives tools: read_file, write_file, git_create_branch, git_commit
-6. [ ] Agent creates feature branch with trace_id in name
-7. [ ] Agent commits changes with trace_id in commit message
-8. [ ] Agent reports completion with changeset details
-9. [ ] ChangesetRegistry records changeset with commit_sha
-10. [ ] Plan status updated to `executed`
-11. [ ] Activity Journal logs all agent actions
+7. [ ] `PlanExecutor.execute()` reads approved plan from `System/Active/`
+8. [ ] Plan parser extracts steps and request context
+9. [ ] Portal permissions validated before agent invocation
+10. [ ] AgentExecutor starts MCP server with portal scope
+11. [ ] Agent receives MCP tools: read_file, write_file, git_create_branch, git_commit
+12. [ ] Agent creates feature branch with trace_id in name
+13. [ ] Agent commits changes with trace_id in commit message
+14. [ ] Agent reports completion with changeset details
+15. [ ] ChangesetRegistry records changeset with commit_sha
+16. [ ] Plan status updated to `executed`
+17. [ ] Activity Journal logs all agent actions
 
 **Portal Permissions:**
-12. [ ] Portal config defines `agents_allowed` array
-13. [ ] Portal config defines `operations` array (read, write, git)
-14. [ ] PortalPermissions validates agent access before execution
-15. [ ] Unauthorized agents receive access denied error
-16. [ ] Tools enforce operation restrictions (e.g., no git if not allowed)
+18. [ ] Portal config defines `agents_allowed` array
+19. [ ] Portal config defines `operations` array (read, write, git)
+20. [ ] Portal config defines `security.mode` (sandboxed or hybrid)
+21. [ ] PortalPermissions validates agent access before execution
+22. [ ] Unauthorized agents receive access denied error
+23. [ ] MCP tools enforce operation restrictions (e.g., no git if not allowed)
 
-**Scoped Tools:**
-17. [ ] ScopedToolRegistry wraps existing ToolRegistry
-18. [ ] File operations scoped to portal root directory
-19. [ ] Path validation blocks `../` escapes
-20. [ ] Git operations only affect portal repository
-21. [ ] Tool invocations logged to Activity Journal
+**Security Modes:**
+24. [ ] Sandboxed mode: agent runs with NO file system access
+25. [ ] Sandboxed mode: agent subprocess uses --allow-read=NONE --allow-write=NONE
+26. [ ] Sandboxed mode: all file operations go through MCP tools
+27. [ ] Hybrid mode: agent has read-only access to portal path
+28. [ ] Hybrid mode: agent MUST use MCP tools for writes
+29. [ ] Hybrid mode: post-execution audit detects unauthorized changes
+30. [ ] Security violations logged to Activity Journal
+
+**MCP Tools:**
+31. [ ] MCP read_file validates portal permissions
+32. [ ] MCP read_file blocks path traversal (../)
+33. [ ] MCP write_file validates portal permissions
+34. [ ] MCP write_file logs file changes to Activity Journal
+35. [ ] MCP list_directory returns portal file structure
+36. [ ] MCP git_create_branch validates branch naming
+37. [ ] MCP git_commit includes trace_id in message
+38. [ ] All tool invocations logged to Activity Journal
 
 **Agent Integration:**
-22. [ ] AgentExecutor works with AnthropicProvider
-23. [ ] AgentExecutor works with OpenAIProvider
-24. [ ] AgentExecutor works with OllamaProvider
-25. [ ] AgentExecutor works with MockLLMProvider (simulated git ops)
-26. [ ] Agent receives execution context (request, plan, step)
+39. [ ] AgentExecutor works with AnthropicProvider via MCP
+40. [ ] AgentExecutor works with OpenAIProvider via MCP
+41. [ ] AgentExecutor works with OllamaProvider via MCP
+42. [ ] AgentExecutor works with MockLLMProvider (simulated git ops)
+43. [ ] Agent receives execution context (request, plan, step)
 
 **Error Handling:**
-27. [ ] Agent errors don't crash PlanExecutor
-28. [ ] Portal access errors logged with clear messages
-29. [ ] Git errors reported by agent and logged
-30. [ ] Invalid branch names rejected before execution
-31. [ ] Missing portal handled gracefully
+44. [ ] Agent errors don't crash PlanExecutor
+45. [ ] Portal access errors logged with clear messages
+46. [ ] MCP server errors handled gracefully
+47. [ ] Git errors reported by agent and logged
+48. [ ] Invalid branch names rejected before execution
+49. [ ] Missing portal handled gracefully
 
 **Integration:**
-32. [ ] Daemon detects new approved plans in `System/Active/`
-33. [ ] Execution triggered automatically after plan approval
-34. [ ] `exoctl changeset list` shows changesets created by agents
-35. [ ] `exoctl changeset show <id>` displays git diff
-36. [ ] MT-08 manual test scenario fully passes
+50. [ ] Daemon detects new approved plans in `System/Active/`
+51. [ ] Execution triggered automatically after plan approval
+52. [ ] `exoctl changeset list` shows changesets created by agents
+53. [ ] `exoctl changeset show <id>` displays git diff
+54. [ ] MT-08 manual test scenario fully passes
 
 **Testing:**
-37. [ ] Write `tests/plan_executor_test.ts` (15+ tests)
-38. [ ] Write `tests/agent_executor_test.ts` (20+ tests)
-39. [ ] Write `tests/scoped_tools_test.ts` (18+ tests)
-40. [ ] Write `tests/portal_permissions_test.ts` (12+ tests)
-41. [ ] Integration test: full flow from request → plan → execution → changeset
-42. [ ] All tests pass with 70%+ coverage
+55. [ ] Write `tests/plan_executor_test.ts` (15+ tests)
+56. [ ] Write `tests/agent_executor_test.ts` (20+ tests)
+57. [ ] Write `tests/mcp/server_test.ts` (25+ tests for MCP server)
+58. [ ] Write `tests/mcp/tools_test.ts` (30+ tests for MCP tools)
+59. [ ] Write `tests/portal_permissions_test.ts` (12+ tests)
+60. [ ] Integration test: full flow from request → plan → MCP execution → changeset
+61. [ ] Test sandboxed mode security enforcement
+62. [ ] Test hybrid mode audit detection
+63. [ ] All tests pass with 70%+ coverage
 
 **TDD Test Cases:**
 
@@ -3788,36 +4024,140 @@ interface AgentTools {
 
 // tests/agent_executor_test.ts (Agent Tool Invocation)
 
-// Tool Registry Setup
-"should create scoped tool registry for portal";
-"should restrict tools to allowed operations";
-"should pass tools to LLM agent via prompt";
+// MCP Server Setup
+"should start MCP server with portal scope";
+"should register all MCP tools on server start";
+"should expose portal resources via MCP";
+"should provide execute_plan prompt";
+
+// MCP Tool Registry
+"should register read_file MCP tool";
+"should register write_file MCP tool";
+"should register list_directory MCP tool";
+"should register git_create_branch MCP tool";
+"should register git_commit MCP tool";
+"should register git_status MCP tool";
 
 // Agent Execution
-"should invoke agent with execution prompt";
-"should provide read_file tool to agent";
-"should provide write_file tool to agent";
-"should provide git_create_branch tool to agent";
-"should provide git_commit tool to agent";
+"should invoke agent with MCP server connection";
+"should agent connects via stdio transport";
+"should agent connects via SSE transport";
+"should provide execution context via MCP";
 
 // Agent Responses
-"should parse agent tool invocations from response";
-"should execute tool calls in sequence";
+"should parse agent MCP tool invocations";
+"should execute MCP tool calls in sequence";
 "should capture changeset details from agent";
 "should return ChangesetResult on completion";
 
 // Error Handling
 "should handle agent timeout gracefully";
-"should handle agent tool errors";
+"should handle MCP tool errors";
+"should handle MCP server connection errors";
 "should log all agent actions to Activity Journal";
 
 // LLM Provider Integration
-"should work with AnthropicProvider";
-"should work with OpenAIProvider";
-"should work with OllamaProvider";
+"should work with AnthropicProvider via MCP";
+"should work with OpenAIProvider via MCP";
+"should work with OllamaProvider via MCP";
 "should work with MockLLMProvider";
 
-// tests/scoped_tools_test.ts (Portal-Scoped Tools)
+// tests/mcp/server_test.ts (MCP Server Implementation)
+
+// Server Initialization
+"should start MCP server with config";
+"should register tools on start";
+"should register resources on start";
+"should register prompts on start";
+"should support stdio transport";
+"should support SSE transport";
+
+// Tool Registration
+"should expose 6 tools (read_file, write_file, list_directory, git_*)";
+"should validate tool schemas";
+"should handle tool invocations";
+"should return tool results";
+
+// Resource Handling
+"should discover portal files as resources";
+"should format URIs as portal://PortalName/path";
+"should return resource content when requested";
+"should handle missing resources gracefully";
+
+// Prompt Handling
+"should provide execute_plan prompt";
+"should provide create_changeset prompt";
+"should validate prompt arguments";
+
+// Security
+"should validate portal permissions before tool execution";
+"should log all tool invocations";
+"should reject unauthorized portal access";
+
+// Error Handling
+"should handle invalid tool names";
+"should handle invalid tool parameters";
+"should handle tool execution errors";
+"should return clear error messages";
+
+// Integration
+"should work with agent connections";
+"should maintain state across tool calls";
+"should cleanup on disconnection";
+
+// tests/mcp/tools_test.ts (MCP Tool Handlers)
+
+// read_file Tool
+"should read file within portal boundaries";
+"should reject path with ../ traversal";
+"should reject absolute paths";
+"should validate portal permissions";
+"should log tool invocation to Activity Journal";
+
+// write_file Tool
+"should write file within portal boundaries";
+"should create parent directories if needed";
+"should reject path outside portal";
+"should validate portal write permissions";
+"should log file writes to Activity Journal";
+
+// list_directory Tool
+"should list files in portal directory";
+"should handle missing directories";
+"should respect portal boundaries";
+"should return file metadata";
+
+// git_create_branch Tool
+"should create feature branch in portal repo";
+"should validate branch name format (feat/, fix/, etc.)";
+"should reject invalid branch names";
+"should validate git operation permissions";
+"should log branch creation to Activity Journal";
+
+// git_commit Tool
+"should commit changes with trace_id in message";
+"should return commit SHA";
+"should log commit to Activity Journal with files";
+"should reject commit if no changes staged";
+"should validate git operation permissions";
+
+// git_status Tool
+"should return portal git status";
+"should detect uncommitted changes";
+"should detect untracked files";
+
+// Operation Restrictions
+"should block git tools if 'git' not in operations";
+"should block write_file if 'write' not in operations";
+"should allow read_file with only 'read' permission";
+
+// Security Mode Tests
+"should enforce sandboxed mode (no file access)";
+"should enforce hybrid mode (read-only + audit)";
+"should detect unauthorized changes in hybrid mode";
+"should revert unauthorized changes";
+
+// tests/scoped_tools_test.ts (Deprecated - kept for reference)
 
 // read_file Tool
 "should read file within portal boundaries";

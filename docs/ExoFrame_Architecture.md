@@ -198,7 +198,7 @@ sequenceDiagram
 
 ## Plan Execution Flow (Step 5.12)
 
-**Architecture Change:** LLM agents now have direct portal access through scoped tools instead of ExoFrame parsing responses.
+**Architecture Change:** LLM agents connect to ExoFrame's **MCP (Model Context Protocol) server** and use standardized tools for portal operations. This eliminates response parsing, provides strong security boundaries, and supports configurable security modes (sandboxed or hybrid).
 
 ```mermaid
 sequenceDiagram
@@ -210,7 +210,8 @@ sequenceDiagram
     participant Detect as Detection (5.12.1)
     participant Parse as Parsing (5.12.2)
     participant Exec as Agent Executor (5.12.3)
-    participant Agent as LLM Agent<br/>(with scoped tools)
+    participant MCP as ExoFrame MCP Server
+    participant Agent as LLM Agent<br/>(Sandboxed/Hybrid Mode)
     participant Portal as Portal Repository
     participant CS as Changeset Registry
     participant DB as Activity Journal
@@ -241,27 +242,43 @@ sequenceDiagram
         Parse->>DB: Log plan.parsed
         Parse->>Exec: Pass parsed plan + portal
         Exec->>Exec: Validate portal permissions
-        Exec->>Exec: Create scoped tool registry
+        Exec->>MCP: Start MCP server with portal scope
+        MCP->>MCP: Register tools (read_file,<br/>write_file, git_*, list_directory)
+        MCP->>MCP: Register resources (portal:// URIs)
         Exec->>DB: Log plan.executing
-        Exec->>Agent: Invoke with tools:<br/>read_file, write_file,<br/>git_create_branch, git_commit
+        Exec->>Agent: Connect via MCP (stdio/SSE)
+        Agent->>MCP: List available tools
+        MCP-->>Agent: Tools specification
         
-        Agent->>Portal: read_file(path)
-        Portal-->>Agent: File contents
-        Agent->>DB: Log agent.tool.invoked
+        Agent->>MCP: read_file(portal, path)
+        MCP->>MCP: Validate permissions
+        MCP->>Portal: Read file
+        Portal-->>MCP: File contents
+        MCP-->>Agent: File contents
+        MCP->>DB: Log agent.tool.invoked
         
-        Agent->>Portal: git_create_branch(feat/xyz)
-        Portal-->>Agent: Branch created
-        Agent->>DB: Log agent.git.branch_created
+        Agent->>MCP: git_create_branch(portal, feat/xyz)
+        MCP->>MCP: Validate branch name
+        MCP->>Portal: Create branch
+        Portal-->>MCP: Branch created
+        MCP-->>Agent: Success
+        MCP->>DB: Log agent.git.branch_created
         
-        Agent->>Portal: write_file(path, content)
-        Portal-->>Agent: File written
-        Agent->>DB: Log agent.tool.invoked
+        Agent->>MCP: write_file(portal, path, content)
+        MCP->>MCP: Validate write permissions
+        MCP->>Portal: Write file
+        Portal-->>MCP: File written
+        MCP-->>Agent: Success
+        MCP->>DB: Log agent.tool.invoked
         
-        Agent->>Portal: git_commit(message, files)
-        Portal-->>Agent: Commit SHA
-        Agent->>DB: Log agent.git.commit
+        Agent->>MCP: git_commit(portal, message, files)
+        MCP->>MCP: Validate commit message
+        MCP->>Portal: Commit changes
+        Portal-->>MCP: Commit SHA
+        MCP-->>Agent: Commit SHA
+        MCP->>DB: Log agent.git.commit
         
-        Agent->>Exec: report_completion({<br/>branch, commit_sha,<br/>files_changed, description})
+        Agent->>Exec: Report completion via MCP
         
         Exec->>CS: Register changeset
         CS->>DB: Record changeset
@@ -301,22 +318,36 @@ graph TB
         P6[Log plan.parsed]
     end
     
-    subgraph Orchestration["5.12.3 Agent Orchestration 📋"]
+    subgraph Orchestration["5.12.3 Agent Orchestration via MCP 📋"]
         O1[Validate portal permissions]
-        O2[Create scoped tool registry]
-        O3[Invoke LLM agent with tools]
-        O4[Monitor agent actions]
-        O5[Receive changeset details]
+        O2[Start ExoFrame MCP Server]
+        O3[Register MCP tools & resources]
+        O4[Connect agent via MCP]
+        O5[Monitor agent MCP tool calls]
+        O6[Receive changeset details]
     end
     
-    subgraph AgentTools["Agent Tools (Portal-Scoped)"]
-        T1[read_file - Read files]
-        T2[write_file - Write files]
-        T3[list_directory - List dirs]
+    subgraph MCPServer["ExoFrame MCP Server"]
+        M1[MCP Protocol Handler]
+        M2[Tool Registry]
+        M3[Resource Registry]
+        M4[Prompt Registry]
+        M5[Permission Validator]
+        M6[Action Logger]
+    end
+    
+    subgraph MCPTools["MCP Tools (Portal-Scoped)"]
+        T1[read_file - Read portal files]
+        T2[write_file - Write portal files]
+        T3[list_directory - List portal dirs]
         T4[git_create_branch - Create branch]
         T5[git_commit - Commit changes]
-        T6[git_status - Check status]
-        T7[report_completion - Signal done]
+        T6[git_status - Check git status]
+    end
+    
+    subgraph Security["Security Modes"]
+        SM1[Sandboxed: No file access]
+        SM2[Hybrid: Read-only + audit]
     end
     
     subgraph Registry["5.12.4 Changeset Registry 📋"]
