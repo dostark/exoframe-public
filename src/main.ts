@@ -52,11 +52,13 @@ if (import.meta.main) {
       source: providerInfo.source,
     });
 
-    // Ensure Inbox/Requests and Inbox/Plans directories exist
+    // Ensure required directories exist
     const requestsPath = join(config.system.root, config.paths.inbox, "Requests");
     const plansPath = join(config.system.root, config.paths.inbox, "Plans");
+    const activePath = join(config.system.root, "System", "Active");
     await ensureDir(requestsPath);
     await ensureDir(plansPath);
+    await ensureDir(activePath);
 
     // Initialize Request Processor
     const requestProcessor = new RequestProcessor(
@@ -78,8 +80,8 @@ if (import.meta.main) {
     // Create child logger for watcher events
     const watcherLogger = logger.child({ actor: "system" });
 
-    // Start file watcher
-    const watcher = new FileWatcher(config, async (event) => {
+    // Start file watcher for new requests (Inbox/Requests)
+    const requestWatcher = new FileWatcher(config, async (event) => {
       watcherLogger.info("file.detected", event.path, {
         size: event.content.length,
       });
@@ -103,6 +105,59 @@ if (import.meta.main) {
       }
     });
 
+    // Start file watcher for approved plans (System/Active)
+    // Detection for Step 5.12: Plan Execution Flow
+    const planWatcher = new FileWatcher(
+      config,
+      async (event) => {
+        // Only process plan files (_plan.md suffix)
+        if (!event.path.includes("_plan.md")) {
+          return;
+        }
+
+        watcherLogger.info("plan.detected", event.path, {
+          size: event.content.length,
+        });
+
+        // Parse plan file to extract trace_id
+        try {
+          const content = await Deno.readTextFile(event.path);
+          const yamlMatch = content.match(/^---\n([\s\S]*?)\n---/);
+
+          if (!yamlMatch) {
+            watcherLogger.error("plan.invalid_frontmatter", event.path, {
+              error: "No YAML frontmatter found",
+            });
+            return;
+          }
+
+          const { parse: parseYaml } = await import("@std/yaml");
+          const frontmatter = parseYaml(yamlMatch[1]) as Record<string, unknown>;
+
+          if (!frontmatter.trace_id) {
+            watcherLogger.error("plan.missing_trace_id", event.path, {
+              error: "trace_id field missing in frontmatter",
+            });
+            return;
+          }
+
+          watcherLogger.info("plan.ready_for_execution", event.path, {
+            trace_id: frontmatter.trace_id,
+            request_id: frontmatter.request_id || "unknown",
+          });
+
+          // TODO: Execute plan (Step 5.12.3 - Code Generation)
+          // const changesetId = await planExecutor.execute(event.path);
+        } catch (error) {
+          watcherLogger.error("plan.detection_failed", event.path, {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      },
+      undefined, // No separate db instance needed, watcherLogger handles it
+      activePath, // Custom watch path
+    );
+
     // Handle graceful shutdown
     const shutdown = () => {
       logger.log({
@@ -112,7 +167,8 @@ if (import.meta.main) {
         icon: "🛑",
       });
 
-      watcher.stop();
+      requestWatcher.stop();
+      planWatcher.stop();
       dbService.close();
       Deno.exit(0);
     };
@@ -126,14 +182,15 @@ if (import.meta.main) {
       payload: {
         provider: providerInfo.id,
         model: providerInfo.model,
-        watching: requestsPath,
+        watching_requests: requestsPath,
+        watching_plans: activePath,
         status: "active",
       },
       icon: "✅",
     });
 
-    // Start watching (this will run indefinitely)
-    await watcher.start();
+    // Start watching both directories (this will run indefinitely)
+    await Promise.all([requestWatcher.start(), planWatcher.start()]);
   } catch (error) {
     console.error("❌ Fatal Error:", error);
     Deno.exit(1);

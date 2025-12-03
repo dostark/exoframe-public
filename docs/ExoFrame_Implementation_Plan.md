@@ -3321,6 +3321,497 @@ private async loadBlueprint(agentId: string): Promise<Blueprint | null> {
 
 ---
 
+### Step 5.12: Automatic Plan Execution Engine
+
+- **Dependencies:** Step 5.9 (Request Processor Pipeline), Step 5.11 (Blueprint Management), Step 6.8 (MockLLMProvider)
+- **Rollback:** Disable automatic execution, require manual `exoctl plan execute` command
+- **Action:** Implement automatic plan execution after approval that generates code changes and creates changesets
+- **Location:** `src/services/plan_executor.ts`, `src/services/changeset_manager.ts`, `src/main.ts`
+- **Status:** 📋 PLANNED
+
+**Problem Statement:**
+
+Currently, ExoFrame can:
+1. ✅ Create requests via `exoctl request`
+2. ✅ Generate plans automatically via RequestProcessor
+3. ✅ Approve/reject plans via `exoctl plan approve/reject`
+4. ❌ Execute approved plans (MT-08 shows commands exist but execution engine is not implemented)
+
+The `exoctl changeset` and `exoctl git` commands are fully implemented, but there's no automatic execution engine that:
+- Detects approved plans in `System/Active/`
+- Executes plan steps using LLM provider
+- Generates code changes in Portal repositories
+- Creates feature branches with trace_id
+- Registers changesets for review
+
+**The Solution: Plan Execution Engine**
+
+Implement a `PlanExecutor` service that:
+
+1. Watches `System/Active/` for approved plans
+2. Parses plan steps and generates execution prompts
+3. Calls LLM provider (real or mock) to generate code changes
+4. Applies changes to Portal repository in a feature branch
+5. Creates changeset record linking to trace_id
+6. Updates plan status to `executed`
+7. Logs all activities to Activity Journal
+
+**Architecture:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      PlanExecutor                           │
+│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐   │
+│  │ Plan Parser  │  │ Code         │  │ Changeset       │   │
+│  │              │→ │ Generator    │→ │ Manager         │   │
+│  └──────────────┘  └──────────────┘  └─────────────────┘   │
+├─────────────────────────────────────────────────────────────┤
+│              LLM Provider (Real or Mock)                    │
+├─────────────────────────────────────────────────────────────┤
+│              Portal Repository (Git)                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Implementation Files:**
+
+| File                                 | Purpose                                           |
+|--------------------------------------|---------------------------------------------------|
+| `src/services/plan_executor.ts`      | PlanExecutor class - main execution engine        |
+| `src/services/changeset_manager.ts`  | ChangesetManager - git branch and changeset CRUD  |
+| `src/schemas/changeset.ts`           | Changeset schema and types                        |
+| `src/main.ts`                        | Integration: watch Active/ directory              |
+| `tests/plan_executor_test.ts`        | TDD unit tests (real LLM)                         |
+| `tests/plan_executor_mock_test.ts`   | TDD unit tests (MockLLMProvider)                  |
+| `tests/changeset_manager_test.ts`    | TDD unit tests for changeset operations           |
+
+**PlanExecutor Interface:**
+
+```typescript
+interface PlanExecutor {
+  /**
+   * Execute an approved plan and generate code changes
+   * @param planPath - Absolute path to plan file in System/Active/
+   * @returns Changeset ID or null if execution failed
+   */
+  execute(planPath: string): Promise<string | null>;
+}
+```
+
+**ChangesetManager Interface:**
+
+```typescript
+interface ChangesetManager {
+  /**
+   * Create a new changeset with feature branch
+   * @param traceId - Request trace ID
+   * @param portalName - Portal where changes are made
+   * @param description - Changeset description
+   * @returns Changeset ID
+   */
+  create(traceId: string, portalName: string, description: string): Promise<string>;
+
+  /**
+   * Apply code changes to a changeset's feature branch
+   * @param changesetId - Changeset identifier
+   * @param changes - Array of file changes
+   */
+  applyChanges(changesetId: string, changes: FileChange[]): Promise<void>;
+
+  /**
+   * List all changesets with optional filtering
+   * @param status - Filter by status (pending, approved, rejected)
+   * @returns Array of changesets
+   */
+  list(status?: ChangesetStatus): Promise<Changeset[]>;
+
+  /**
+   * Get changeset details including diff
+   * @param changesetId - Changeset identifier
+   * @returns Changeset with full details
+   */
+  get(changesetId: string): Promise<Changeset | null>;
+
+  /**
+   * Approve changeset and merge to main
+   * @param changesetId - Changeset identifier
+   * @returns Success status
+   */
+  approve(changesetId: string): Promise<boolean>;
+
+  /**
+   * Reject changeset and delete branch
+   * @param changesetId - Changeset identifier
+   * @param reason - Rejection reason
+   * @returns Success status
+   */
+  reject(changesetId: string, reason: string): Promise<boolean>;
+}
+```
+
+**Changeset Schema:**
+
+```typescript
+// src/schemas/changeset.ts
+import { z } from "zod";
+
+export const ChangesetStatusSchema = z.enum([
+  "pending",    // Created, awaiting review
+  "approved",   // Approved, merged to main
+  "rejected",   // Rejected, branch deleted
+]);
+
+export const FileChangeSchema = z.object({
+  path: z.string(),                    // Relative path in portal
+  operation: z.enum(["create", "modify", "delete"]),
+  content: z.string().optional(),      // New/modified content
+  oldContent: z.string().optional(),   // Original content (for modify)
+});
+
+export const ChangesetSchema = z.object({
+  id: z.string().uuid(),               // Changeset UUID
+  trace_id: z.string().uuid(),         // Link to request
+  portal: z.string(),                  // Portal name
+  branch: z.string(),                  // Feature branch name
+  status: ChangesetStatusSchema,
+  description: z.string(),
+  changes: z.array(FileChangeSchema),
+  created: z.string().datetime(),
+  created_by: z.string(),              // Actor who approved plan
+  approved_at: z.string().datetime().optional(),
+  approved_by: z.string().optional(),
+  rejected_at: z.string().datetime().optional(),
+  rejected_by: z.string().optional(),
+  rejection_reason: z.string().optional(),
+});
+
+export type Changeset = z.infer<typeof ChangesetSchema>;
+export type FileChange = z.infer<typeof FileChangeSchema>;
+export type ChangesetStatus = z.infer<typeof ChangesetStatusSchema>;
+```
+
+**Database Schema Addition:**
+
+```sql
+-- Add to migrations/001_init.sql or create 002_changesets.sql
+
+CREATE TABLE IF NOT EXISTS changesets (
+  id TEXT PRIMARY KEY,              -- UUID
+  trace_id TEXT NOT NULL,           -- Link to request/plan
+  portal TEXT NOT NULL,             -- Portal name
+  branch TEXT NOT NULL,             -- Git branch name (feat/<desc>-<trace>)
+  status TEXT NOT NULL,             -- pending, approved, rejected
+  description TEXT NOT NULL,
+  changes TEXT NOT NULL,            -- JSON array of FileChange objects
+  created TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  approved_at TEXT,
+  approved_by TEXT,
+  rejected_at TEXT,
+  rejected_by TEXT,
+  rejection_reason TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_changesets_trace_id ON changesets(trace_id);
+CREATE INDEX IF NOT EXISTS idx_changesets_status ON changesets(status);
+CREATE INDEX IF NOT EXISTS idx_changesets_portal ON changesets(portal);
+```
+
+**Plan Execution Flow:**
+
+1. **Detection:**
+   - FileWatcher detects new file in `System/Active/` (approved plan)
+   - OR daemon polls `System/Active/` every 30 seconds
+
+2. **Plan Parsing:**
+   - Read plan file YAML frontmatter + body
+   - Extract trace_id, request content, plan steps
+   - Load associated request from `Inbox/Requests/`
+   - Determine target portal (from request or plan)
+
+3. **Code Generation:**
+   - For each plan step:
+     * Construct execution prompt combining request + plan + step
+     * Call LLM provider (real or mock)
+     * Parse response for code changes
+     * Validate file paths are within portal
+
+4. **Changeset Creation:**
+   - Create feature branch: `feat/<description>-<trace_id_short>`
+   - Apply code changes to branch
+   - Commit with message linking to trace_id
+   - Register changeset in database
+
+5. **Status Update:**
+   - Update plan status to `executed`
+   - Log `plan.executed` to Activity Journal
+   - Log `changeset.created` with changeset_id
+
+6. **Error Handling:**
+   - LLM errors → mark plan as `failed`, log error
+   - Git errors → mark plan as `failed`, log error
+   - Invalid code → create changeset but flag for review
+   - No portal specified → use default or skip execution
+
+**MockLLMProvider Integration:**
+
+The MockLLMProvider must support code generation responses for plan execution:
+
+```typescript
+// Example mock response for code generation
+const mockCodeResponse = {
+  thought: "Analyzing the request to implement authentication...",
+  content: `
+## File Changes
+
+### src/auth.ts (create)
+\`\`\`typescript
+export function authenticate(token: string): boolean {
+  // Implementation
+  return token === "valid-token";
+}
+\`\`\`
+
+### tests/auth_test.ts (create)
+\`\`\`typescript
+import { authenticate } from "../src/auth.ts";
+import { assertEquals } from "jsr:@std/assert";
+
+Deno.test("authenticate - valid token", () => {
+  assertEquals(authenticate("valid-token"), true);
+});
+\`\`\`
+  `,
+};
+```
+
+**Activity Logging Events:**
+
+| Event                  | Payload                                                |
+|------------------------|--------------------------------------------------------|
+| `plan.executing`       | `{ trace_id, plan_id, portal }`                        |
+| `plan.executed`        | `{ trace_id, plan_id, changeset_id, duration_ms }`     |
+| `plan.execution.failed`| `{ trace_id, plan_id, error, step_index }`             |
+| `changeset.created`    | `{ changeset_id, trace_id, portal, branch, changes_count }` |
+| `changeset.applied`    | `{ changeset_id, files_modified }`                     |
+
+**Success Criteria:**
+
+**Core Implementation:**
+1. [ ] `PlanExecutor.execute()` reads approved plan from `System/Active/`
+2. [ ] Plan parser extracts steps and request context
+3. [ ] LLM provider called with execution prompt
+4. [ ] Code generation response parsed into FileChange objects
+5. [ ] Invalid file paths (outside portal) rejected with error
+6. [ ] ChangesetManager creates feature branch with trace_id
+7. [ ] Code changes applied to feature branch
+8. [ ] Git commit created with trace_id in message
+9. [ ] Changeset record created in database
+10. [ ] Plan status updated to `executed`
+11. [ ] Activity Journal logs all execution events
+
+**MockLLMProvider Support:**
+12. [ ] MockLLMProvider returns deterministic code generation responses
+13. [ ] Mock strategy "code_generation" added to MockLLMProvider
+14. [ ] Mock responses include file paths and code content
+15. [ ] Mock responses parseable by PlanExecutor
+16. [ ] Unit tests use MockLLMProvider for fast, deterministic testing
+
+**Real LLM Integration:**
+17. [ ] PlanExecutor works with AnthropicProvider
+18. [ ] PlanExecutor works with OpenAIProvider
+19. [ ] PlanExecutor works with OllamaProvider
+20. [ ] Real LLM responses parsed successfully
+21. [ ] Token usage logged for real LLM calls
+
+**Error Handling:**
+22. [ ] LLM errors don't crash PlanExecutor
+23. [ ] Git errors logged with clear messages
+24. [ ] Invalid code changes flagged but changeset still created
+25. [ ] Missing portal handled gracefully
+26. [ ] Malformed plan files logged and skipped
+
+**Integration:**
+27. [ ] Daemon detects new approved plans in `System/Active/`
+28. [ ] Execution triggered automatically after plan approval
+29. [ ] `exoctl changeset list` shows created changesets
+30. [ ] `exoctl changeset show <id>` displays diff
+31. [ ] MT-08 manual test scenario fully passes
+
+**Testing:**
+32. [ ] Write `tests/plan_executor_test.ts` (15+ tests with real LLM mocked)
+33. [ ] Write `tests/plan_executor_mock_test.ts` (20+ tests with MockLLMProvider)
+34. [ ] Write `tests/changeset_manager_test.ts` (18+ tests)
+35. [ ] Integration test: full flow from request → plan → execution → changeset
+36. [ ] All tests pass with 70%+ coverage
+
+**TDD Test Cases:**
+
+```typescript
+// tests/plan_executor_test.ts (Real LLM Interface Tests)
+
+// Plan Parsing
+"should parse approved plan with trace_id and steps";
+"should extract request context from original request file";
+"should determine target portal from plan frontmatter";
+"should fallback to default portal if not specified";
+
+// Execution Prompt Construction
+"should construct execution prompt with request + plan + step";
+"should include portal context in prompt";
+"should include blueprint capabilities in prompt";
+
+// LLM Provider Integration
+"should call LLM provider with execution prompt";
+"should handle LLM timeout gracefully";
+"should retry on transient LLM errors";
+"should log token usage for real LLM calls";
+
+// Code Parsing
+"should parse code blocks from LLM response";
+"should extract file paths and operations (create/modify/delete)";
+"should validate file paths are within portal";
+"should reject paths with ../ traversal";
+
+// Status Updates
+"should update plan status to executed on success";
+"should update plan status to failed on error";
+"should preserve original plan file in Active/";
+
+// Activity Logging
+"should log plan.executing at start";
+"should log plan.executed on success with changeset_id";
+"should log plan.execution.failed on error";
+
+// tests/plan_executor_mock_test.ts (MockLLMProvider Tests)
+
+// Mock Code Generation
+"should execute plan using MockLLMProvider";
+"should parse mock code generation response";
+"should create changeset from mock response";
+"should handle multiple file changes in mock response";
+
+// Mock Strategies
+"should support 'code_generation' mock strategy";
+"should return deterministic code for same request type";
+"should include thought and content in mock response";
+
+// Edge Cases
+"should handle empty mock response gracefully";
+"should handle mock response with no file changes";
+"should handle mock response with syntax errors in code";
+
+// Performance
+"should execute mock plans faster than real LLM (<100ms)";
+"should not make external API calls with mock provider";
+
+// tests/changeset_manager_test.ts
+
+// Changeset Creation
+"should create changeset record in database";
+"should generate unique changeset ID (UUID)";
+"should create feature branch with trace_id suffix";
+"should validate branch name format (feat/<desc>-<trace>)";
+
+// File Changes
+"should apply create operation to new file";
+"should apply modify operation to existing file";
+"should apply delete operation to existing file";
+"should reject changes outside portal directory";
+
+// Git Operations
+"should create git branch from main";
+"should commit changes with trace_id in message";
+"should push branch to remote (if configured)";
+
+// Changeset Retrieval
+"should list all changesets";
+"should filter changesets by status";
+"should filter changesets by portal";
+"should get changeset by ID with full details";
+
+// Approval/Rejection
+"should merge changeset to main on approval";
+"should delete feature branch on rejection";
+"should log approval with user identity";
+"should log rejection with reason";
+
+// Error Handling
+"should handle git merge conflicts gracefully";
+"should handle missing portal directory";
+"should handle invalid changeset ID";
+```
+
+**Daemon Integration:**
+
+```typescript
+// src/main.ts (after implementation)
+const planExecutor = new PlanExecutor(config, llmProvider, dbService);
+
+// Watch for approved plans
+const activeWatcher = new FileWatcher({
+  ...config,
+  paths: {
+    inbox: join(config.system.root, "System/Active"),
+  },
+}, async (event) => {
+  if (event.path.includes("_plan.md")) {
+    console.log(`🚀 Executing approved plan: ${event.path}`);
+    
+    try {
+      const changesetId = await planExecutor.execute(event.path);
+      if (changesetId) {
+        console.log(`✅ Changeset created: ${changesetId}`);
+      }
+    } catch (error) {
+      console.error(`❌ Plan execution failed: ${error.message}`);
+    }
+  }
+});
+```
+
+**Manual Test Validation:**
+
+After implementation, MT-08 should be updated to test:
+
+```bash
+# 1. Create and approve a plan
+$ exoctl request "Add hello world function to utils.ts" --agent mock-agent
+$ sleep 5
+$ exoctl plan list
+$ exoctl plan approve <plan-id>
+
+# 2. Wait for automatic execution
+$ sleep 10
+
+# 3. Verify changeset was created
+$ exoctl changeset list
+✅ Changeset created
+
+# 4. View changeset details
+$ exoctl changeset show <changeset-id>
+Branch: feat/hello-world-abc123
+Files Changed: 1
+Status: pending
+
+# 5. Check git branches
+$ exoctl git branches
+feat/hello-world-abc123
+
+# 6. View diff
+$ exoctl changeset show <changeset-id> --diff
+```
+
+**Future Enhancements (Not in Scope for Step 5.12):**
+
+- Multi-step plan execution with dependencies
+- Parallel execution of independent steps
+- Human-in-the-loop approval between steps
+- Rollback/revert changeset operations
+- Changeset squashing before merge
+- CI/CD integration (run tests before creating changeset)
+
+---
+
 ## Phase 6: Testing & Quality Assurance
 
 > **Status:** ✅ IN PROGRESS\

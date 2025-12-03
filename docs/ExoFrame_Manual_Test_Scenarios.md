@@ -460,13 +460,13 @@ unset EDITOR
 ### Steps
 
 ```bash
-# Step 1: Create default blueprint (if not exists)
-exoctl blueprint create default \
-  --name "Default Agent" \
-  --template default
+# Step 1: Create mock blueprint (if not exists)
+exoctl blueprint create mock-agent \
+  --name "Mock Agent" \
+  --template mock
 
-# Step 2: Create a simple request
-exoctl request "Add a hello world function to utils.ts"
+# Step 2: Create a simple request using mock agent
+exoctl request "Add a hello world function to utils.ts" --agent mock-agent
 
 # Step 3: List requests
 exoctl request list
@@ -480,7 +480,7 @@ ls -la ~/ExoFrame/Inbox/Requests/
 **Step 1:**
 
 - Blueprint created successfully (or already exists message)
-- Default agent available for requests
+- Mock agent available for requests
 
 **Step 2:**
 
@@ -511,7 +511,7 @@ cat ~/ExoFrame/Inbox/Requests/request-*.md
 # created: "2025-12-01T10:00:00.000Z"
 # status: pending
 # priority: normal
-# agent: default
+# agent: mock-agent
 # source: cli
 # created_by: "user@example.com"
 # ---
@@ -826,72 +826,119 @@ cat ~/ExoFrame/Inbox/Plans/*_rejected.md 2>/dev/null
 
 ---
 
-## Scenario MT-08: Plan Execution (Mock LLM)
+## Scenario MT-08: Changeset Management
 
-**Purpose:** Verify approved plan executes and generates changeset.
+**Purpose:** Verify changeset and git management commands work correctly.
 
-**Status:** ⚠️ **NOT IMPLEMENTED** - Plan execution engine and changeset management are planned features (Phase 8-9). This scenario is a placeholder for future implementation.
+**Status:** ✅ **IMPLEMENTED** - The `exoctl changeset` and `exoctl git` commands are fully functional. Automatic plan execution (which would create changesets from approved plans) is planned for a future release. This scenario tests the available changeset workflow commands.
 
 ### Preconditions
 
-- Approved plan exists (MT-06 complete or create new)
-- Daemon running
-- Plan execution engine implemented
+- Daemon running (MT-02 complete)
+- At least one plan created (MT-05 complete, optional)
+- Git repository initialized in a Portal (optional, for git command testing)
 
 ### Steps
 
 ```bash
-# Step 1: If needed, approve a plan
-exoctl plan approve <plan-id>
+# Step 1: Verify changeset commands are available
+exoctl changeset --help
 
-# Step 2: Wait for execution (mock is fast)
-sleep 10
+# Step 2: List existing changesets
+exoctl changeset list
 
-# Step 3: Check for changeset (agent-created branch)
-exoctl changeset list 2>/dev/null || echo "Command not implemented yet"
-exoctl changeset show <changeset-id> 2>/dev/null || echo "Command not implemented yet"
+# Step 3: Verify git commands are available
+exoctl git --help
 
-# Step 4: Verify git branch created
-exoctl git branches 2>/dev/null || echo "Command not implemented yet"
+# Step 4: Check git branches (if Portal with git repo exists)
+exoctl git branches
+
+# Step 5: Check git status (if Portal with git repo exists)
+exoctl git status
+
+# Step 6: Test git log search (use any trace_id from your requests)
+exoctl git log <trace-id>
+
+# Note: To test the full changeset workflow (show, approve, reject),
+# you would need to manually create a feature branch with changes in a Portal,
+# or wait for future implementation of automatic plan execution.
 ```
 
 ### Expected Results
 
+**Step 1:**
+
+- Shows help with subcommands: `list`, `show`, `approve`, `reject`
+- No errors
+
 **Step 2:**
 
-- Execution completes (visible in daemon logs)
-- No errors during execution
+- Shows message: "No changesets found" with `count: 0`
+- OR lists existing changesets if any manual branches were created
 
 **Step 3:**
 
-- Changeset created and listed
-- Shows files changed, branch name, commits
+- Shows help with subcommands: `branches`, `status`, `log`
+- No errors
 
 **Step 4:**
 
-- Feature branch exists (e.g., `feat/add-hello-world-a1b2c3d4`)
+- Lists all branches in Portal git repositories
+- Shows "No portals with git repositories found" if no Portals configured
+- May show feature branches if created manually
+
+**Step 5:**
+
+- Shows git repository status for each Portal
+- Displays clean working tree or any pending changes
+
+**Step 6:**
+
+- Searches for commits containing the specified trace_id
+- Shows matching commits or empty result if none found
 
 ### Verification
 
 ```bash
-# Check changeset details
-exoctl changeset show <changeset-id>
-# Shows: branch name, files changed, commit list, diff preview
+# Verify all changeset subcommands exist
+exoctl changeset --help | grep -E "list|show|approve|reject"
+# Should show all 4 subcommands
 
-# Check git branch exists
-exoctl git branches --pattern "feat/*"
-# Should list the agent-created branch
+# Verify all git subcommands exist
+exoctl git --help | grep -E "branches|status|log"
+# Should show all 3 subcommands
 
-# Check daemon logs for execution
-tail -50 ~/ExoFrame/System/daemon.log | grep -i "execution\|completed"
+# Test changeset list returns valid JSON-like output
+exoctl changeset list
+# Expected: Clean message with count field
+
+# Test git commands don't error (even without Portals)
+exoctl git branches 2>&1
+exoctl git status 2>&1
+# Should return gracefully with appropriate message
 ```
+
+### Future Functionality
+
+When automatic plan execution is implemented, this scenario will also verify:
+
+- Approved plans automatically trigger code generation
+- Changesets are created with agent's code changes in a feature branch
+- `exoctl changeset show <id>` displays diff preview
+- `exoctl changeset approve <id>` merges changes to main branch
+- `exoctl changeset reject <id>` deletes the feature branch
+- Git branch naming follows format: `feat/<description>-<trace-id>`
 
 ### Pass Criteria
 
-- [ ] Changeset created after execution
-- [ ] Git branch created with trace_id in name
-- [ ] `exoctl changeset list` shows pending changeset
-- [ ] Daemon logs show successful execution
+- [ ] `exoctl changeset --help` shows all 4 subcommands (list, show, approve, reject)
+- [ ] `exoctl changeset list` executes without errors
+- [ ] `exoctl git --help` shows all 3 subcommands (branches, status, log)
+- [ ] `exoctl git branches` executes without errors
+- [ ] `exoctl git status` executes without errors
+- [ ] `exoctl git log <trace-id>` executes without errors
+- [ ] All commands return appropriate messages (even when no data available)
+- [ ] No command crashes or returns unexpected errors
 
 ---
 
@@ -1348,7 +1395,7 @@ trace_id: "00000000-0000-0000-0000-00000000000$i"
 created: "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
 status: pending
 priority: normal
-agent: default
+agent: mock-agent
 source: manual-test
 ---
 

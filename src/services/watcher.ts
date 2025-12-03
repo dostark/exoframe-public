@@ -32,8 +32,10 @@ export class FileWatcher {
     config: Config,
     onFileReady: (event: FileReadyEvent) => void | Promise<void>,
     db?: DatabaseService,
+    customWatchPath?: string,
   ) {
-    this.watchPath = join(config.system.root, config.paths.inbox, "Requests");
+    this.watchPath = customWatchPath ||
+      join(config.system.root, config.paths.inbox, "Requests");
     this.debounceMs = config.watcher.debounce_ms;
     this.stabilityCheck = config.watcher.stability_check;
     this.onFileReady = onFileReady;
