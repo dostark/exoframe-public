@@ -16,80 +16,50 @@ import { join } from "@std/path";
 import { PortalCommands } from "../../src/cli/portal_commands.ts";
 import { initTestDbService } from "../helpers/db.ts";
 import { createMockConfig, createTestConfigService } from "../helpers/config.ts";
+import {
+  createTestPortal,
+  getPortalCardPath,
+  getPortalSymlinkPath,
+  initPortalTest,
+  verifyContextCard,
+  verifySymlink,
+} from "./helpers/test_setup.ts";
 
 Deno.test("PortalCommands: adds portal successfully", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-add-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { tempRoot, targetDir, commands, cleanup } = await initPortalTest({
+    targetFiles: {
+      "README.md": "# Test Project",
+      "package.json": '{"name":"test"}',
+    },
+  });
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+    await createTestPortal(commands, targetDir, "TestPortal");
 
-    // Create some files in target
-    await Deno.writeTextFile(join(targetDir, "README.md"), "# Test Project");
-    await Deno.writeTextFile(join(targetDir, "package.json"), '{"name":"test"}');
-
-    const commands = new PortalCommands({ config, db });
-    await commands.add(targetDir, "TestPortal");
-
-    // Verify symlink created
-    const symlinkPath = join(tempRoot, "Portals", "TestPortal");
-    const symlinkInfo = await Deno.lstat(symlinkPath);
-    assertEquals(symlinkInfo.isSymlink, true);
-
-    // Verify context card created
-    const cardPath = join(tempRoot, "Knowledge", "Portals", "TestPortal.md");
-    const cardExists = await Deno.stat(cardPath).then(() => true).catch(() => false);
-    assertEquals(cardExists, true);
-
-    // Verify logged to database
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    // Note: Activity logging is non-blocking, so we just verify no errors occurred
-    // The actual logging can be verified in integration tests
+    assertEquals(await verifySymlink(tempRoot, "TestPortal"), true);
+    assertEquals(await verifyContextCard(tempRoot, "TestPortal"), true);
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: rejects non-existent target path", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-noexist-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { tempRoot, commands, cleanup } = await initPortalTest({ createTarget: false });
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-
-    const commands = new PortalCommands({ config, db });
-
     await assertRejects(
       async () => await commands.add("/nonexistent/path", "BadPortal"),
       Error,
       "Target path does not exist",
     );
 
-    // Verify no symlink created
-    const symlinkPath = join(tempRoot, "Portals", "BadPortal");
-    const exists = await Deno.stat(symlinkPath).then(() => true).catch(() => false);
-    assertEquals(exists, false);
+    assertEquals(await verifySymlink(tempRoot, "BadPortal"), false);
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: rejects invalid alias characters", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-invalid-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    const commands = new PortalCommands({ config, db });
-
     await assertRejects(
       async () => await commands.add(targetDir, "Bad Portal!"),
       Error,
@@ -103,20 +73,12 @@ Deno.test("PortalCommands: rejects invalid alias characters", async () => {
     );
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: rejects reserved alias names", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-reserved-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    const commands = new PortalCommands({ config, db });
-
     await assertRejects(
       async () => await commands.add(targetDir, "System"),
       Error,
@@ -130,63 +92,37 @@ Deno.test("PortalCommands: rejects reserved alias names", async () => {
     );
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: rejects duplicate alias", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-dup-" });
-  const targetDir1 = await Deno.makeTempDir({ prefix: "portal-target-1-" });
-  const targetDir2 = await Deno.makeTempDir({ prefix: "portal-target-2-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const env1 = await initPortalTest();
+  const env2 = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+    await createTestPortal(env1.commands, env1.targetDir, "DupePortal");
 
-    const commands = new PortalCommands({ config, db });
-
-    // Add first portal
-    await commands.add(targetDir1, "DupePortal");
-
-    // Try to add second with same alias
     await assertRejects(
-      async () => await commands.add(targetDir2, "DupePortal"),
+      async () => await env1.commands.add(env2.targetDir, "DupePortal"),
       Error,
       "already exists",
     );
   } finally {
-    await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir1, { recursive: true });
-    await Deno.remove(targetDir2, { recursive: true });
+    await env1.cleanup();
+    await env2.cleanup();
   }
 });
 
 Deno.test("PortalCommands: lists all portals with status", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-list-" });
-  const targetDir1 = await Deno.makeTempDir({ prefix: "portal-target-1-" });
-  const targetDir2 = await Deno.makeTempDir({ prefix: "portal-target-2-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const env1 = await initPortalTest();
+  const env2 = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+    await createTestPortal(env1.commands, env1.targetDir, "Portal1");
+    await createTestPortal(env1.commands, env2.targetDir, "Portal2");
 
-    const commands = new PortalCommands({ config, db });
-
-    // Add two portals
-    await commands.add(targetDir1, "Portal1");
-    await commands.add(targetDir2, "Portal2");
-
-    const portals = await commands.list();
+    const portals = await env1.commands.list();
 
     assertEquals(portals.length, 2);
 
-    // Sort to ensure consistent ordering
     portals.sort((a, b) => a.alias.localeCompare(b.alias));
 
     assertEquals(portals[0].alias, "Portal1");
@@ -194,29 +130,16 @@ Deno.test("PortalCommands: lists all portals with status", async () => {
     assertEquals(portals[1].alias, "Portal2");
     assertEquals(portals[1].status, "active");
   } finally {
-    await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir1, { recursive: true });
-    await Deno.remove(targetDir2, { recursive: true });
+    await env1.cleanup();
+    await env2.cleanup();
   }
 });
 
 Deno.test("PortalCommands: detects broken portals", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-broken-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+    await createTestPortal(commands, targetDir, "BrokenPortal");
 
-    const commands = new PortalCommands({ config, db });
-
-    // Add portal
-    await commands.add(targetDir, "BrokenPortal");
-
-    // Remove target directory to break the portal
     await Deno.remove(targetDir, { recursive: true });
 
     const portals = await commands.list();
@@ -226,22 +149,13 @@ Deno.test("PortalCommands: detects broken portals", async () => {
     assertEquals(portals[0].status, "broken");
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: shows portal details", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-show-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
-
-    const commands = new PortalCommands({ config, db });
-    await commands.add(targetDir, "ShowPortal");
+    await createTestPortal(commands, targetDir, "ShowPortal");
 
     const details = await commands.show("ShowPortal");
 
@@ -253,19 +167,12 @@ Deno.test("PortalCommands: shows portal details", async () => {
     assertExists(details.contextCardPath);
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: show throws error for non-existent portal", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-show-err-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { commands, cleanup } = await initPortalTest({ createTarget: false });
   try {
-    const config = createMockConfig(tempRoot);
-    const commands = new PortalCommands({ config, db });
-
     await assertRejects(
       async () => await commands.show("NonExistent"),
       Error,
@@ -273,93 +180,54 @@ Deno.test("PortalCommands: show throws error for non-existent portal", async () 
     );
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: removes portal and archives context card", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-remove-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { tempRoot, targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
-
-    const commands = new PortalCommands({ config, db });
-    await commands.add(targetDir, "RemovePortal");
+    await createTestPortal(commands, targetDir, "RemovePortal");
 
     await commands.remove("RemovePortal");
 
-    // Verify symlink removed
-    const symlinkPath = join(tempRoot, "Portals", "RemovePortal");
-    const symlinkExists = await Deno.stat(symlinkPath).then(() => true).catch(() => false);
-    assertEquals(symlinkExists, false);
+    assertEquals(await verifySymlink(tempRoot, "RemovePortal"), false);
 
-    // Verify context card archived
     const archivedDir = join(tempRoot, "Knowledge", "Portals", "_archived");
     const archivedExists = await Deno.stat(archivedDir).then(() => true).catch(() => false);
     assertEquals(archivedExists, true);
 
-    // Verify logged
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await new Promise((resolve) => setTimeout(resolve, 50));
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: remove with --keep-card preserves context card", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-keep-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { tempRoot, targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
-
-    const commands = new PortalCommands({ config, db });
-    await commands.add(targetDir, "KeepCardPortal");
+    await createTestPortal(commands, targetDir, "KeepCardPortal");
 
     await commands.remove("KeepCardPortal", { keepCard: true });
 
-    // Verify context card NOT archived (still in place)
-    const cardPath = join(tempRoot, "Knowledge", "Portals", "KeepCardPortal.md");
-    const cardExists = await Deno.stat(cardPath).then(() => true).catch(() => false);
-    assertEquals(cardExists, true);
+    assertEquals(await verifyContextCard(tempRoot, "KeepCardPortal"), true);
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: verifies all portals", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-verify-all-" });
-  const targetDir1 = await Deno.makeTempDir({ prefix: "portal-target-1-" });
-  const targetDir2 = await Deno.makeTempDir({ prefix: "portal-target-2-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const env1 = await initPortalTest();
+  const env2 = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+    await createTestPortal(env1.commands, env1.targetDir, "Portal1");
+    await createTestPortal(env1.commands, env2.targetDir, "Portal2");
 
-    const commands = new PortalCommands({ config, db });
-    await commands.add(targetDir1, "Portal1");
-    await commands.add(targetDir2, "Portal2");
+    await Deno.remove(env2.targetDir, { recursive: true });
 
-    // Break one portal
-    await Deno.remove(targetDir2, { recursive: true });
-
-    const results = await commands.verify();
+    const results = await env1.commands.verify();
 
     assertEquals(results.length, 2);
 
-    // Find each portal in results
     const portal1 = results.find((r) => r.alias === "Portal1");
     const portal2 = results.find((r) => r.alias === "Portal2");
 
@@ -371,24 +239,15 @@ Deno.test("PortalCommands: verifies all portals", async () => {
     assertExists(portal2.issues);
     assertEquals(portal2.issues!.length > 0, true);
   } finally {
-    await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir1, { recursive: true });
+    await env1.cleanup();
+    await env2.cleanup();
   }
 });
 
 Deno.test("PortalCommands: verifies specific portal", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-verify-one-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
-
-    const commands = new PortalCommands({ config, db });
-    await commands.add(targetDir, "VerifyPortal");
+    await createTestPortal(commands, targetDir, "VerifyPortal");
 
     const results = await commands.verify("VerifyPortal");
 
@@ -397,52 +256,30 @@ Deno.test("PortalCommands: verifies specific portal", async () => {
     assertEquals(results[0].status, "ok");
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: refresh regenerates context card", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-refresh-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+    await createTestPortal(commands, targetDir, "RefreshPortal");
 
-    const commands = new PortalCommands({ config, db });
-    await commands.add(targetDir, "RefreshPortal");
-
-    // Add new file to target
     await Deno.writeTextFile(join(targetDir, "NEW_FILE.md"), "# New Feature");
 
     await commands.refresh("RefreshPortal");
 
-    // Verify logged
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await new Promise((resolve) => setTimeout(resolve, 50));
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: handles missing database gracefully", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-nodb-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-
+  const { tempRoot, targetDir, config } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
-
-    // Create commands without database
     const commands = new PortalCommands({ config });
     await commands.add(targetDir, "NoDB");
 
-    // Should still work
     const portals = await commands.list();
     assertEquals(portals.length, 1);
   } finally {
@@ -452,16 +289,9 @@ Deno.test("PortalCommands: handles missing database gracefully", async () => {
 });
 
 Deno.test("PortalCommands: rejects target that is a file not directory", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-file-" });
+  const { commands, cleanup } = await initPortalTest({ createTarget: false });
   const targetFile = await Deno.makeTempFile({ prefix: "portal-file-" });
-  const { db, cleanup } = await initTestDbService();
-
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-
-    const commands = new PortalCommands({ config, db });
-
     await assertRejects(
       async () => await commands.add(targetFile, "FilePortal"),
       Error,
@@ -469,41 +299,26 @@ Deno.test("PortalCommands: rejects target that is a file not directory", async (
     );
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetFile);
+    await Deno.remove(targetFile).catch(() => {});
   }
 });
 
 Deno.test("PortalCommands: rejects empty alias", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-empty-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    const commands = new PortalCommands({ config, db });
-
     await assertRejects(
       async () => await commands.add(targetDir, ""),
       Error,
-      "cannot be empty",
+      "Alias cannot be empty",
     );
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: rejects alias exceeding 50 characters", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-long-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    const commands = new PortalCommands({ config, db });
-
     const longAlias = "a".repeat(51);
     await assertRejects(
       async () => await commands.add(targetDir, longAlias),
@@ -512,64 +327,38 @@ Deno.test("PortalCommands: rejects alias exceeding 50 characters", async () => {
     );
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: list handles empty portals directory", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-empty-list-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { commands, cleanup } = await initPortalTest({ createTarget: false });
   try {
-    const config = createMockConfig(tempRoot);
-    // Don't create Portals directory
-
-    const commands = new PortalCommands({ config, db });
     const portals = await commands.list();
 
     assertEquals(portals.length, 0);
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: list skips non-symlink entries", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-nonsym-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { tempRoot, commands, cleanup } = await initPortalTest({ createTarget: false });
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-
-    // Create a regular file in Portals directory
     await Deno.writeTextFile(join(tempRoot, "Portals", "README.md"), "Not a portal");
 
-    const commands = new PortalCommands({ config, db });
     const portals = await commands.list();
 
     assertEquals(portals.length, 0);
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: show handles broken symlink with unknown target", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-unknown-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+    await createTestPortal(commands, targetDir, "BrokenShow");
 
-    const commands = new PortalCommands({ config, db });
-    await commands.add(targetDir, "BrokenShow");
-
-    // Remove target to break symlink
     await Deno.remove(targetDir, { recursive: true });
 
     const details = await commands.show("BrokenShow");
@@ -577,85 +366,48 @@ Deno.test("PortalCommands: show handles broken symlink with unknown target", asy
     assertEquals(details.status, "broken");
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: show detects read-only permissions", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-readonly-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+    await createTestPortal(commands, targetDir, "ReadOnlyPortal");
 
-    const commands = new PortalCommands({ config, db });
-    await commands.add(targetDir, "ReadOnlyPortal");
-
-    // Make directory read-only (permissions 555)
     await Deno.chmod(targetDir, 0o555);
 
     const details = await commands.show("ReadOnlyPortal");
 
-    // Should detect as read-only or broken depending on OS
     assertExists(details.permissions);
 
-    // Restore permissions for cleanup
     await Deno.chmod(targetDir, 0o755);
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: remove handles missing context card gracefully", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-nocard-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { tempRoot, targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+    await createTestPortal(commands, targetDir, "NoCard");
 
-    const commands = new PortalCommands({ config, db });
-    await commands.add(targetDir, "NoCard");
-
-    // Delete context card manually
-    const cardPath = join(tempRoot, "Knowledge", "Portals", "NoCard.md");
+    const cardPath = getPortalCardPath(tempRoot, "NoCard");
     await Deno.remove(cardPath);
 
-    // Should still remove successfully
     await commands.remove("NoCard");
 
-    const symlinkPath = join(tempRoot, "Portals", "NoCard");
-    const symlinkExists = await Deno.stat(symlinkPath).then(() => true).catch(() => false);
-    assertEquals(symlinkExists, false);
+    assertEquals(await verifySymlink(tempRoot, "NoCard"), false);
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: verify detects missing symlink", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-nosym-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { tempRoot, targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+    await createTestPortal(commands, targetDir, "NoSymlink");
 
-    const commands = new PortalCommands({ config, db });
-    await commands.add(targetDir, "NoSymlink");
-
-    // Remove just the symlink
-    const symlinkPath = join(tempRoot, "Portals", "NoSymlink");
+    const symlinkPath = getPortalSymlinkPath(tempRoot, "NoSymlink");
     await Deno.remove(symlinkPath);
 
     const results = await commands.verify("NoSymlink");
@@ -666,26 +418,15 @@ Deno.test("PortalCommands: verify detects missing symlink", async () => {
     assertEquals(results[0].issues!.some((i) => i.includes("Symlink")), true);
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: verify detects missing context card", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-nocard-verify-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { tempRoot, targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+    await createTestPortal(commands, targetDir, "NoCardVerify");
 
-    const commands = new PortalCommands({ config, db });
-    await commands.add(targetDir, "NoCardVerify");
-
-    // Remove context card
-    const cardPath = join(tempRoot, "Knowledge", "Portals", "NoCardVerify.md");
+    const cardPath = getPortalCardPath(tempRoot, "NoCardVerify");
     await Deno.remove(cardPath);
 
     const results = await commands.verify("NoCardVerify");
@@ -696,43 +437,26 @@ Deno.test("PortalCommands: verify detects missing context card", async () => {
     assertEquals(results[0].issues!.some((i) => i.includes("Context card")), true);
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: rollback on symlink creation failure", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-rollback-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { tempRoot, targetDir, commands, cleanup } = await initPortalTest();
   try {
-    const config = createMockConfig(tempRoot);
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
-
-    // Pre-create a file where symlink would go to cause conflict
-    const symlinkPath = join(tempRoot, "Portals", "RollbackTest");
+    const symlinkPath = getPortalSymlinkPath(tempRoot, "RollbackTest");
     await Deno.writeTextFile(symlinkPath, "existing file");
-
-    const commands = new PortalCommands({ config, db });
 
     try {
       await commands.add(targetDir, "RollbackTest");
-      // Should not reach here
       assertEquals(true, false, "Should have thrown error");
     } catch (error) {
-      // Expected to fail
       assertExists(error);
     }
 
-    // Verify original file still exists (wasn't deleted by rollback attempt)
     const content = await Deno.readTextFile(symlinkPath);
     assertEquals(content, "existing file");
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 

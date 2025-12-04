@@ -3,22 +3,15 @@
  */
 
 import { assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
-import { createMockConfig } from "../helpers/config.ts";
-import { initTestDbService } from "../helpers/db.ts";
-import { MCPServer } from "../../src/mcp/server.ts";
+import { initSimpleMCPServer } from "./helpers/test_setup.ts";
 
 // ============================================================================
 // Prompts List Tests
 // ============================================================================
 
 Deno.test("MCP Server: handles prompts/list request", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-prompts-list-" });
-  const { db, cleanup } = await initTestDbService();
+  const { server, cleanup } = await initSimpleMCPServer();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
-    await server.start();
-
     const response = await server.handleRequest({
       jsonrpc: "2.0",
       id: 1,
@@ -34,22 +27,14 @@ Deno.test("MCP Server: handles prompts/list request", async () => {
     const promptNames = result.prompts.map((p) => p.name);
     assertEquals(promptNames.includes("execute_plan"), true);
     assertEquals(promptNames.includes("create_changeset"), true);
-
-    await server.stop();
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 
 Deno.test("MCP Server: prompts/list includes descriptions and arguments", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-prompts-meta-" });
-  const { db, cleanup } = await initTestDbService();
+  const { server, cleanup } = await initSimpleMCPServer();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
-    await server.start();
-
     const response = await server.handleRequest({
       jsonrpc: "2.0",
       id: 1,
@@ -71,11 +56,8 @@ Deno.test("MCP Server: prompts/list includes descriptions and arguments", async 
     assertExists(executePlan.description);
     assertExists(executePlan.arguments);
     assertEquals(executePlan.arguments!.length, 2);
-
-    await server.stop();
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 
@@ -84,13 +66,8 @@ Deno.test("MCP Server: prompts/list includes descriptions and arguments", async 
 // ============================================================================
 
 Deno.test("MCP Server: handles prompts/get for execute_plan", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-prompts-get-" });
-  const { db, cleanup } = await initTestDbService();
+  const { server, cleanup } = await initSimpleMCPServer();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
-    await server.start();
-
     const response = await server.handleRequest({
       jsonrpc: "2.0",
       id: 1,
@@ -114,22 +91,14 @@ Deno.test("MCP Server: handles prompts/get for execute_plan", async () => {
     assertEquals(result.messages[0].role, "user");
     assertStringIncludes(result.messages[0].content.text, "test-plan-123");
     assertStringIncludes(result.messages[0].content.text, "MyApp");
-
-    await server.stop();
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 
 Deno.test("MCP Server: handles prompts/get for create_changeset", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-prompts-changeset-" });
-  const { db, cleanup } = await initTestDbService();
+  const { server, cleanup } = await initSimpleMCPServer();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
-    await server.start();
-
     const response = await server.handleRequest({
       jsonrpc: "2.0",
       id: 1,
@@ -150,22 +119,14 @@ Deno.test("MCP Server: handles prompts/get for create_changeset", async () => {
     assertStringIncludes(result.messages[0].content.text, "MyApp");
     assertStringIncludes(result.messages[0].content.text, "Add authentication");
     assertStringIncludes(result.messages[0].content.text, "trace-789");
-
-    await server.stop();
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 
 Deno.test("MCP Server: prompts/get rejects unknown prompt", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-prompts-unknown-" });
-  const { db, cleanup } = await initTestDbService();
+  const { server, cleanup } = await initSimpleMCPServer();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
-    await server.start();
-
     const response = await server.handleRequest({
       jsonrpc: "2.0",
       id: 1,
@@ -176,22 +137,14 @@ Deno.test("MCP Server: prompts/get rejects unknown prompt", async () => {
     assertExists(response.error);
     assertEquals(response.error.code, -32602);
     assertStringIncludes(response.error.message, "not found");
-
-    await server.stop();
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 
 Deno.test("MCP Server: prompts/get logs to Activity Journal", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-prompts-log-" });
-  const { db, cleanup } = await initTestDbService();
+  const { server, db, cleanup } = await initSimpleMCPServer();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
-    await server.start();
-
     await server.handleRequest({
       jsonrpc: "2.0",
       id: 1,
@@ -209,10 +162,7 @@ Deno.test("MCP Server: prompts/get logs to Activity Journal", async () => {
 
     const log = logs[0] as { target: string };
     assertEquals(log.target, "log-test-plan");
-
-    await server.stop();
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });

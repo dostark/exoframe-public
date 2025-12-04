@@ -111,17 +111,13 @@ export async function initMCPTest(
   const server = new MCPServer({ config, db, transport: "stdio" });
   await server.start();
 
-  return {
-    tempDir,
-    portalPath,
-    server,
-    db,
-    cleanup: async () => {
-      await server.stop();
-      await dbCleanup();
-      await Deno.remove(tempDir, { recursive: true }).catch(() => {});
-    },
+  const cleanup = async () => {
+    await server.stop();
+    await dbCleanup();
+    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
   };
+
+  return { tempDir, portalPath, server, db, cleanup };
 }
 
 /**
@@ -137,16 +133,13 @@ export async function initMCPTestWithoutPortal(): Promise<
   const server = new MCPServer({ config, db, transport: "stdio" });
   await server.start();
 
-  return {
-    tempDir,
-    server,
-    db,
-    cleanup: async () => {
-      await server.stop();
-      await dbCleanup();
-      await Deno.remove(tempDir, { recursive: true }).catch(() => {});
-    },
+  const cleanup = async () => {
+    await server.stop();
+    await dbCleanup();
+    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
   };
+
+  return { tempDir, server, db, cleanup };
 }
 
 /**
@@ -371,6 +364,29 @@ export async function initToolPermissionTest(
     db,
     permissions,
     cleanup: async () => {
+      await dbCleanup();
+      await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+    },
+  };
+}
+
+/**
+ * Initialize simple MCP server for prompts/resources tests without portals
+ */
+export async function initSimpleMCPServer() {
+  const tempDir = await Deno.makeTempDir({ prefix: "mcp-simple-" });
+  const { db, cleanup: dbCleanup } = await initTestDbService();
+  
+  const config = createMockConfig(tempDir);
+  const server = new MCPServer({ config, db, transport: "stdio" });
+  await server.start();
+
+  return {
+    tempDir,
+    server,
+    db,
+    cleanup: async () => {
+      await server.stop();
       await dbCleanup();
       await Deno.remove(tempDir, { recursive: true }).catch(() => {});
     },
