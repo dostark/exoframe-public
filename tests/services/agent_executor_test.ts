@@ -119,7 +119,7 @@ function getServices() {
     {
       alias: "TestPortal",
       target_path: portalDir,
-      agents_allowed: ["test-agent"],
+      agents_allowed: ["test-agent", "ollama-agent"],
       operations: ["read", "write", "git"],
       security: {
         mode: "sandboxed",
@@ -1293,6 +1293,215 @@ Test agent for completion handling.`;
       assertEquals(payload.files_changed, 1); // Note: logged as count, not array
       assertEquals(payload.tool_calls, 2);
       assertExists(payload.completed_at);
+    } finally {
+      await cleanup();
+    }
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "AgentExecutor: executes with OllamaProvider when available (criterion 16)",
+  fn: async () => {
+    await setup();
+    try {
+      const { db, logger, pathResolver, permissions } = getServices();
+
+      // Import OllamaProvider
+      const { OllamaProvider } = await import("../../src/ai/providers.ts");
+
+      // Create test blueprint
+      const blueprintContent = `---
+model: llama2
+provider: ollama
+capabilities:
+  - code_generation
+---
+
+# Ollama Test Agent
+
+You are a test agent using Ollama provider.`;
+
+      await Deno.writeTextFile(
+        join(blueprintsDir, "ollama-agent.md"),
+        blueprintContent,
+      );
+
+      // Mock Ollama API response
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = async (input: string | URL | Request, _init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+        
+        if (url.includes("/api/generate")) {
+          return new Response(JSON.stringify({
+            response: `\`\`\`json
+{
+  "branch": "feat/ollama-test",
+  "commit_sha": "1234567890abcdef1234567890abcdef12345678",
+  "files_changed": ["ollama.ts"],
+  "description": "Implemented via Ollama",
+  "tool_calls": 5,
+  "execution_time_ms": 2000
+}
+\`\`\``,
+          }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        
+        return originalFetch(input as RequestInfo, _init);
+      };
+
+      try {
+        const ollamaProvider = new OllamaProvider({
+          baseUrl: "http://localhost:11434",
+          model: "llama2",
+          timeoutMs: 5000,
+        });
+
+        const executor = new AgentExecutor(
+          testConfig,
+          db,
+          logger,
+          pathResolver,
+          permissions,
+          ollamaProvider,
+        );
+
+        const context: ExecutionContext = {
+          trace_id: crypto.randomUUID(),
+          request_id: "ollama-test-123",
+          request: "Test Ollama integration",
+          plan: "Execute via Ollama provider",
+          portal: "TestPortal",
+        };
+
+        const options: AgentExecutionOptions = {
+          agent_id: "ollama-agent",
+          portal: "TestPortal",
+          security_mode: "sandboxed",
+          timeout_ms: 5000,
+          max_tool_calls: 50,
+          audit_enabled: true,
+        };
+
+        // Execute step with OllamaProvider
+        const result = await executor.executeStep(context, options);
+
+        // Verify result matches Ollama response
+        assertExists(result);
+        assertEquals(result.branch, "feat/ollama-test");
+        assertEquals(result.commit_sha, "1234567890abcdef1234567890abcdef12345678");
+        assertEquals(result.files_changed.length, 1);
+        assert(result.files_changed.includes("ollama.ts"));
+        assertEquals(result.description, "Implemented via Ollama");
+        assertEquals(result.tool_calls, 5);
+        assertExists(result.execution_time_ms);
+
+        // Verify activity was logged
+        await db.waitForFlush();
+        const activities = db.getActivitiesByTrace(context.trace_id);
+        assert(activities.length >= 2); // start and complete logs
+        
+        const completionLog = activities.find((a) => 
+          a.action_type === "agent.execution_completed"
+        );
+        assertExists(completionLog, "Ollama execution should be logged");
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    } finally {
+      await cleanup();
+    }
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "AgentExecutor: handles Ollama connection errors gracefully (criterion 16)",
+  fn: async () => {
+    await setup();
+    try {
+      const { db, logger, pathResolver, permissions } = getServices();
+
+      // Import OllamaProvider and ConnectionError
+      const { OllamaProvider, ConnectionError } = await import("../../src/ai/providers.ts");
+
+      // Create test blueprint
+      const blueprintContent = `---
+model: llama2
+provider: ollama
+---
+
+# Ollama Error Test Agent
+
+Test agent for error handling.`;
+
+      await Deno.writeTextFile(
+        join(blueprintsDir, "ollama-agent.md"),
+        blueprintContent,
+      );
+
+      // Mock Ollama API to return connection error
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = async (_input: string | URL | Request, _init?: RequestInit) => {
+        throw new TypeError("fetch failed");
+      };
+
+      try {
+        const ollamaProvider = new OllamaProvider({
+          baseUrl: "http://localhost:11434",
+          model: "llama2",
+          timeoutMs: 5000,
+        });
+
+        const executor = new AgentExecutor(
+          testConfig,
+          db,
+          logger,
+          pathResolver,
+          permissions,
+          ollamaProvider,
+        );
+
+        const context: ExecutionContext = {
+          trace_id: crypto.randomUUID(),
+          request_id: "ollama-error-test",
+          request: "Test Ollama error handling",
+          plan: "Should fail with connection error",
+          portal: "TestPortal",
+        };
+
+        const options: AgentExecutionOptions = {
+          agent_id: "ollama-agent",
+          portal: "TestPortal",
+          security_mode: "sandboxed",
+          timeout_ms: 5000,
+          max_tool_calls: 50,
+          audit_enabled: true,
+        };
+
+        // Execute should throw ConnectionError
+        await assertRejects(
+          async () => await executor.executeStep(context, options),
+          Error,
+          "Failed to connect to Ollama",
+        );
+
+        // Verify error was logged
+        await db.waitForFlush();
+        const activities = db.getActivitiesByTrace(context.trace_id);
+        
+        const errorLog = activities.find((a) => 
+          a.action_type === "agent.execution_failed"
+        );
+        assertExists(errorLog, "Error should be logged");
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
     } finally {
       await cleanup();
     }

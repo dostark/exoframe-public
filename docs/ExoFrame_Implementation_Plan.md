@@ -3908,15 +3908,15 @@ The agent orchestration infrastructure is fully implemented and functional with 
    - `getLatestCommitSha()`: Extracts commit SHA from git log
    - `getChangedFiles()`: Lists modified files from git diff
 
-6. **Comprehensive Test Suite** (`tests/services/agent_executor_test.ts`, 1300+ lines):
-   - 25 tests covering: blueprint loading, permission validation, security modes, changeset validation, activity logging, unauthorized change detection & reversion, MockLLMProvider integration, execution context passing, completion signal handling, configuration
-   - 25/25 passing (100%)
+6. **Comprehensive Test Suite** (`tests/services/agent_executor_test.ts`, 1500+ lines):
+   - 27 tests covering: blueprint loading, permission validation, security modes, changeset validation, activity logging, unauthorized change detection & reversion, MockLLMProvider integration, OllamaProvider integration, execution context passing, completion signal handling, configuration
+   - 27/27 passing (100%)
    - Follows ExoFrame patterns: `initTestDbService()` helper, setup/cleanup pattern
-   - Tests MockProvider with valid JSON and error handling for invalid responses
-   - Explicit tests for criterion 6 (execution context via prompt) and criterion 8 (completion handling)
+   - Tests MockProvider and OllamaProvider with valid JSON and error handling for invalid responses
+   - Explicit tests for criterion 6 (execution context via prompt), criterion 8 (completion handling), and criterion 16 (OllamaProvider integration)
 
 📋 **Intentionally Deferred (Marked as TODO):**
-- Commercial LLM provider integration (Anthropic, OpenAI, Ollama)
+- Commercial LLM provider integration (Anthropic, OpenAI)
 - These can be added later following the same IModelProvider interface pattern
 
 **Dependencies:**
@@ -3938,13 +3938,13 @@ The agent orchestration infrastructure is fully implemented and functional with 
 10. [x] Agent error handling with AgentExecutionError types
 11. [x] MCP tool error types defined
 12. [x] Security violations detection via permission validation
-13. [x] 25 comprehensive tests, 25 passing (100%)
+13. [x] 27 comprehensive tests, 27 passing (100%)
 14. [ ] Integration with AnthropicProvider (TODO: deferred)
 15. [ ] Integration with OpenAIProvider (TODO: deferred)
-16. [ ] Integration with OllamaProvider (TODO: deferred)
+16. [x] Integration with OllamaProvider
 17. [x] Integration with MockLLMProvider
 
-**Status Summary:** 15/17 criteria met (88%). Core infrastructure complete and tested with MockLLMProvider. Execution context is passed via LLM prompt and completion is handled via response parsing. 2 criteria intentionally deferred (commercial LLM provider integration) for future work.
+**Status Summary:** 16/17 criteria met (94%). Core infrastructure complete and tested with MockLLMProvider and OllamaProvider. Execution context is passed via LLM prompt and completion is handled via response parsing. 2 criteria intentionally deferred (Anthropic and OpenAI provider integration) for future work.
 
 ---
 
