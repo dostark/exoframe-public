@@ -5,8 +5,8 @@
  * Covers blueprint loading, subprocess spawning, MCP connection, and git audit.
  */
 
-import { assert, assertEquals, assertExists, assertRejects, assertStringIncludes } from "jsr:@std/assert";
-import { join } from "jsr:@std/path";
+import { assert, assertEquals, assertExists, assertRejects, assertStringIncludes, assertThrows } from "jsr:@std/assert@1";
+import { join } from "jsr:@std/path@1";
 import { AgentExecutor } from "../../src/services/agent_executor.ts";
 import { Config } from "../../src/config/schema.ts";
 import { initTestDbService } from "../helpers/db.ts";
@@ -76,47 +76,29 @@ async function setup() {
   testConfig = {
     system: {
       root: testDir,
-      knowledge: join(testDir, "Knowledge"),
+      log_level: "info" as const,
+    },
+    paths: {
       inbox: join(testDir, "Inbox"),
-      system_dir: join(testDir, "System"),
-      blueprints: blueprintsDir,
+      knowledge: join(testDir, "Knowledge"),
+      system: join(testDir, "System"),
+      blueprints: join(testDir, "Blueprints"),
     },
     watcher: {
-      enabled: false,
       debounce_ms: 200,
-    },
-    llm: {
-      default_provider: "mock",
-      providers: {
-        mock: {
-          type: "mock",
-          model: "mock-model",
-        },
-      },
+      stability_check: false,
     },
     portals: [
       {
-        name: "TestPortal",
-        path: portalDir,
-        agents_allowed: ["test-agent"],
-        operations: ["read", "write", "git"],
-        security: {
-          mode: "sandboxed",
-          audit_enabled: true,
-        },
+        alias: "TestPortal",
+        target_path: portalDir,
       },
     ],
-    mcp: {
-      enabled: true,
-      transport: "stdio",
-      server_name: "exoframe-test",
-      version: "1.0.0",
-    },
     database: {
       batch_flush_ms: 100,
       batch_max_size: 100,
     },
-  };
+  } as Config;
 }
 
 // Cleanup after all tests
@@ -282,6 +264,9 @@ Deno.test({
       agent_id: "test-agent",
       portal: "NonexistentPortal",
       security_mode: "sandboxed",
+      timeout_ms: 300000,
+      max_tool_calls: 100,
+      audit_enabled: true,
     };
 
     await assertRejects(
@@ -325,6 +310,9 @@ Deno.test({
         agent_id: "unauthorized-agent", // Not in agents_allowed
         portal: "TestPortal",
         security_mode: "sandboxed",
+        timeout_ms: 300000,
+        max_tool_calls: 100,
+        audit_enabled: true,
       };
 
       await assertRejects(
@@ -720,7 +708,9 @@ Deno.test({
       agent_id: "test-agent",
       portal: "TestPortal",
       security_mode: "sandboxed",
+      timeout_ms: 300000,
       max_tool_calls: 10,
+      audit_enabled: true,
     };
 
     // Simulate 11 tool calls
@@ -795,8 +785,8 @@ Deno.test({
         description: "Implement feature",
       };
 
-      await assertRejects(
-        async () => {
+      assertThrows(
+        () => {
           executor.validateChangesetResult(invalidResult);
         },
         Error,
@@ -882,7 +872,7 @@ Deno.test({
     await setup();
     try {
       const { db, logger, pathResolver, permissions } = getServices();
-      const executor = new AgentExecutor(
+      const _executor = new AgentExecutor(
         testConfig,
         db,
         logger,
@@ -895,6 +885,8 @@ Deno.test({
         portal: "TestPortal",
         security_mode: "sandboxed",
         timeout_ms: 30000, // 30 seconds
+        max_tool_calls: 100,
+        audit_enabled: true,
       };
 
       assertEquals(options.timeout_ms, 30000);
@@ -912,7 +904,7 @@ Deno.test({
     await setup();
     try {
       const { db, logger, pathResolver, permissions } = getServices();
-      const executor = new AgentExecutor(
+      const _executor = new AgentExecutor(
         testConfig,
         db,
         logger,
@@ -924,6 +916,8 @@ Deno.test({
         agent_id: "test-agent",
         portal: "TestPortal",
         security_mode: "hybrid",
+        timeout_ms: 300000,
+        max_tool_calls: 100,
         audit_enabled: true,
       };
 
@@ -931,11 +925,182 @@ Deno.test({
         agent_id: "test-agent",
         portal: "TestPortal",
         security_mode: "hybrid",
+        timeout_ms: 300000,
+        max_tool_calls: 100,
         audit_enabled: false,
       };
 
       assert(optionsWithAudit.audit_enabled);
       assert(!optionsWithoutAudit.audit_enabled);
+    } finally {
+      await cleanup();
+    }
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "AgentExecutor: executes with MockLLMProvider",
+  fn: async () => {
+    await setup();
+    try {
+      const { db, logger, pathResolver, permissions } = getServices();
+
+      // Import MockProvider
+      const { MockProvider } = await import("../../src/ai/providers.ts");
+
+      // Create test blueprint
+      const blueprintContent = `---
+model: mock-model
+provider: mock
+capabilities:
+  - code_generation
+  - git_operations
+---
+
+# Test Agent
+
+You are a test agent for ExoFrame testing.`;
+
+      await Deno.writeTextFile(
+        join(blueprintsDir, "test-agent.md"),
+        blueprintContent,
+      );
+
+      // Create MockProvider with a valid JSON response
+      const mockResponse = `\`\`\`json
+{
+  "branch": "feat/test-feature",
+  "commit_sha": "abc1234567890abcdef1234567890abcdef1234",
+  "files_changed": ["src/test.ts", "src/helper.ts"],
+  "description": "Implemented test feature",
+  "tool_calls": 3,
+  "execution_time_ms": 1500
+}
+\`\`\``;
+
+      const mockProvider = new MockProvider(mockResponse);
+
+      // Create executor with MockProvider
+      const executor = new AgentExecutor(
+        testConfig,
+        db,
+        logger,
+        pathResolver,
+        permissions,
+        mockProvider,
+      );
+
+      const context: ExecutionContext = {
+        trace_id: crypto.randomUUID(),
+        request_id: "test-request-123",
+        request: "Implement a test feature",
+        plan: "Create test files and implement feature logic",
+        portal: "TestPortal",
+      };
+
+      const options: AgentExecutionOptions = {
+        agent_id: "test-agent",
+        portal: "TestPortal",
+        security_mode: "sandboxed",
+        timeout_ms: 5000,
+        max_tool_calls: 50,
+        audit_enabled: true,
+      };
+
+      // Execute step with MockProvider
+      const result = await executor.executeStep(context, options);
+
+      // Verify result matches mock response
+      assertExists(result);
+      assertEquals(result.branch, "feat/test-feature");
+      assertEquals(result.commit_sha, "abc1234567890abcdef1234567890abcdef1234");
+      assertEquals(result.files_changed.length, 2);
+      assert(result.files_changed.includes("src/test.ts"));
+      assert(result.files_changed.includes("src/helper.ts"));
+      assertEquals(result.description, "Implemented test feature");
+      assertEquals(result.tool_calls, 3);
+      assertExists(result.execution_time_ms);
+
+      // Verify activity was logged
+      await db.waitForFlush();
+      const activities = db.getActivitiesByTrace(context.trace_id);
+      assert(activities.length >= 2); // start and complete logs
+    } finally {
+      await cleanup();
+    }
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "AgentExecutor: handles invalid JSON from MockLLMProvider gracefully",
+  fn: async () => {
+    await setup();
+    try {
+      const { db, logger, pathResolver, permissions } = getServices();
+
+      // Import MockProvider
+      const { MockProvider } = await import("../../src/ai/providers.ts");
+
+      // Create test blueprint
+      const blueprintContent = `---
+model: mock-model
+provider: mock
+capabilities:
+  - code_generation
+---
+
+# Test Agent
+
+You are a test agent.`;
+
+      await Deno.writeTextFile(
+        join(blueprintsDir, "test-agent.md"),
+        blueprintContent,
+      );
+
+      // Create MockProvider with invalid response
+      const mockProvider = new MockProvider("This is not valid JSON");
+
+      // Create executor with MockProvider
+      const executor = new AgentExecutor(
+        testConfig,
+        db,
+        logger,
+        pathResolver,
+        permissions,
+        mockProvider,
+      );
+
+      const context: ExecutionContext = {
+        trace_id: crypto.randomUUID(),
+        request_id: "test-request-456",
+        request: "Test invalid response handling",
+        plan: "Handle invalid JSON gracefully",
+        portal: "TestPortal",
+      };
+
+      const options: AgentExecutionOptions = {
+        agent_id: "test-agent",
+        portal: "TestPortal",
+        security_mode: "sandboxed",
+        timeout_ms: 5000,
+        max_tool_calls: 50,
+        audit_enabled: true,
+      };
+
+      // Execute step - should handle gracefully
+      const result = await executor.executeStep(context, options);
+
+      // Should return default result when parsing fails
+      assertExists(result);
+      assertStringIncludes(result.branch, "feat/test-request-456");
+      assertEquals(result.commit_sha, "0000000000000000000000000000000000000000");
+      assertEquals(result.files_changed.length, 0);
+      assertExists(result.execution_time_ms);
     } finally {
       await cleanup();
     }

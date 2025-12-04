@@ -3864,14 +3864,14 @@ interface ChangesetResult {
 | File                                      | Purpose                              | Status      |
 | ----------------------------------------- | ------------------------------------ | ----------- |
 | `src/schemas/agent_executor.ts`           | Execution schemas (Zod validation)   | ✅ Complete |
-| `src/services/agent_executor.ts`          | AgentExecutor class (367 lines)      | ✅ Complete |
-| `tests/services/agent_executor_test.ts`   | Comprehensive tests (21 tests, 940+ lines) | ✅ 21/21 passing |
+| `src/services/agent_executor.ts`          | AgentExecutor class (486 lines)      | ✅ Complete |
+| `tests/services/agent_executor_test.ts`   | Comprehensive tests (23 tests, 1100+ lines) | ✅ 23/23 passing |
 
 **Implementation Summary:**
 
 ✅ **Core Infrastructure Complete (100% Test Coverage):**
 
-The agent orchestration infrastructure is fully implemented and functional:
+The agent orchestration infrastructure is fully implemented and functional with MockLLMProvider integration:
 
 1. **Type-Safe Schemas** (`src/schemas/agent_executor.ts`, 105 lines):
    - `SecurityModeSchema`: "sandboxed" | "hybrid"
@@ -3880,33 +3880,41 @@ The agent orchestration infrastructure is fully implemented and functional:
    - `ChangesetResultSchema`: branch, commit_sha, files_changed[], description, tool_calls, execution_time_ms
    - `AgentExecutionErrorSchema`: timeout, blueprint_not_found, permission_denied, security_violation, etc.
 
-2. **AgentExecutor Service** (`src/services/agent_executor.ts`, 367 lines):
+2. **AgentExecutor Service** (`src/services/agent_executor.ts`, 486 lines):
    - `loadBlueprint(agentName)`: Parses agent .md files with YAML frontmatter
-   - `executeStep(context, options)`: Main orchestration with permission validation
+   - `executeStep(context, options)`: Main orchestration with permission validation and LLM execution
+   - `buildExecutionPrompt()`: Constructs prompt for LLM with execution context
+   - `parseAgentResponse()`: Extracts changeset result from LLM response JSON
    - `buildSubprocessPermissions(mode, portalPath)`: Returns Deno flags for security modes
    - `auditGitChanges(portalPath, authorizedFiles)`: Detects unauthorized modifications
    - `revertUnauthorizedChanges(portalPath, unauthorizedFiles)`: Reverts unauthorized changes in hybrid mode
    - Activity Journal integration via EventLogger (execution lifecycle logging)
 
-3. **Security Mode Enforcement:**
+3. **MockLLMProvider Integration:**
+   - Optional `IModelProvider` parameter in constructor
+   - `executeStep()` uses provider.generate() when available
+   - Graceful fallback to mock results when provider not supplied
+   - JSON parsing with error handling for malformed responses
+
+4. **Security Mode Enforcement:**
    - **Sandboxed**: `--allow-read=NONE --allow-write=NONE` (agent has no file access)
    - **Hybrid**: `--allow-read=<portal_path>` (read-only portal access)
 
-4. **Git Audit & Reversion Capability:**
+5. **Git Audit & Reversion Capability:**
    - `auditGitChanges()`: Detects unauthorized file modifications via `git status --porcelain`
    - `revertUnauthorizedChanges()`: Reverts tracked file changes and deletes untracked files
    - `getLatestCommitSha()`: Extracts commit SHA from git log
    - `getChangedFiles()`: Lists modified files from git diff
 
-5. **Comprehensive Test Suite** (`tests/services/agent_executor_test.ts`, 940+ lines):
-   - 21 tests covering: blueprint loading, permission validation, security modes, changeset validation, activity logging, unauthorized change detection & reversion, configuration
-   - 21/21 passing (100%)
+6. **Comprehensive Test Suite** (`tests/services/agent_executor_test.ts`, 1100+ lines):
+   - 23 tests covering: blueprint loading, permission validation, security modes, changeset validation, activity logging, unauthorized change detection & reversion, MockLLMProvider integration, configuration
+   - 23/23 passing (100%)
    - Follows ExoFrame patterns: `initTestDbService()` helper, setup/cleanup pattern
+   - Tests MockProvider with valid JSON and error handling for invalid responses
 
 📋 **Intentionally Deferred (Marked as TODO):**
-- Actual agent subprocess spawning (requires LLM provider integration)
-- MCP server connection logic (requires transport layer)
-- These are marked as TODO in the code and will be implemented when LLM integration is added
+- Actual agent subprocess spawning via MCP (infrastructure ready, needs transport layer)
+- Commercial LLM provider integration (Anthropic, OpenAI, Ollama)
 
 **Dependencies:**
 - ✅ Step 6.2 (MCP Server): Schema defined, connection logic TODO
@@ -3927,19 +3935,19 @@ The agent orchestration infrastructure is fully implemented and functional:
 10. [x] Agent error handling with AgentExecutionError types
 11. [x] MCP tool error types defined
 12. [x] Security violations detection via permission validation
-13. [x] 19 comprehensive tests, 16 passing (84%)
+13. [x] 23 comprehensive tests, 23 passing (100%)
 14. [ ] Integration with AnthropicProvider (TODO: deferred)
 15. [ ] Integration with OpenAIProvider (TODO: deferred)
 16. [ ] Integration with OllamaProvider (TODO: deferred)
-17. [ ] Integration with MockLLMProvider (TODO: deferred)
+17. [x] Integration with MockLLMProvider
 
-**Status Summary:** 12/17 criteria met (71%). Core infrastructure complete and tested. 5 criteria intentionally deferred (subprocess spawning, MCP connection, LLM provider integration) as TODO items for future work when actual agent execution is needed.
+**Status Summary:** 13/17 criteria met (76%). Core infrastructure complete and tested with MockLLMProvider integration. 4 criteria intentionally deferred (subprocess spawning, MCP connection, commercial LLM provider integration) as TODO items for future work.
 
 ---
 
 ### Step 6.5: Changeset Registry & Status Updates 📋 PLANNED
 
-- **Dependencies:** Step 5.15 (Agent Orchestration & Execution)
+- **Dependencies:** Step 6.4 (Agent Orchestration & Execution)
 - **Rollback:** Disable changeset registration, execution results not persisted
 - **Action:** Implement changeset registration and plan status updates
 - **Location:** `src/services/changeset_registry.ts`, `src/schemas/changeset.ts`
