@@ -379,11 +379,8 @@ Always respond with valid JSON containing a plan with actionable steps.`;
    * Create a RequestProcessor with MockLLMProvider
    */
   createRequestProcessor(options?: {
-    providerMode?: "recorded" | "mock";
-    recordings?: Array<{
-      request: { model: string; messages: Array<{ role: string; content: string }> };
-      response: { choices: Array<{ message: { content: string } }> };
-    }>;
+    providerMode?: "recorded" | "scripted" | "pattern" | "failing" | "slow";
+    recordings?: any[];
     includeReasoning?: boolean;
     inboxPath?: string;
     blueprintsPath?: string;
@@ -415,11 +412,8 @@ Always respond with valid JSON containing a plan with actionable steps.`;
    * Create a mock LLM provider with optional recordings
    */
   createMockProvider(
-    mode: "recorded" | "mock" = "recorded",
-    recordings: Array<{
-      request: { model: string; messages: Array<{ role: string; content: string }> };
-      response: { choices: Array<{ message: { content: string } }> };
-    }> = [],
+    mode: "recorded" | "scripted" | "pattern" | "failing" | "slow" = "recorded",
+    recordings: any[] = [],
   ): MockLLMProvider {
     return new MockLLMProvider(mode, { recordings });
   }

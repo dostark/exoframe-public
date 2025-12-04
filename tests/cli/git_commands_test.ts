@@ -407,7 +407,7 @@ describe("GitCommands", () => {
       await assertRejects(
         async () => await gitCommands.diff("invalid-ref-12345"),
         Error,
-        "Failed to get diff",
+        "Git command failed",
       );
     });
 

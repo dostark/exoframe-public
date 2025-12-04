@@ -151,7 +151,7 @@ Deno.test("migrate_db.ts up is idempotent", async () => {
       dbPath,
       "SELECT COUNT(*) FROM schema_migrations;",
     );
-    assertEquals(count.trim(), "1", "Should have exactly 1 migration applied");
+    assertEquals(count.trim(), "2", "Should have exactly 2 migrations applied");
   } finally {
     await Deno.remove(tmp, { recursive: true }).catch(() => {});
   }
@@ -175,7 +175,7 @@ Deno.test("migrate_db.ts down reverts last migration", async () => {
       dbPath,
       "SELECT COUNT(*) FROM schema_migrations;",
     );
-    assertEquals(count.trim(), "0", "Should have 0 migrations after revert");
+    assertEquals(count.trim(), "1", "Should have 1 migration after reverting last one");
   } finally {
     await Deno.remove(tmp, { recursive: true }).catch(() => {});
   }
@@ -238,16 +238,17 @@ DROP TABLE IF EXISTS test_order_table;
 
     assertEquals(result.code, 0, `migrate up failed: ${result.stderr}`);
 
-    // Verify both migrations were applied in order
+    // Verify all migrations were applied in order
     const dbPath = join(tmp, "System", "journal.db");
     const migrations = await queryDb(
       dbPath,
       "SELECT version FROM schema_migrations ORDER BY id;",
     );
     const versions = migrations.trim().split("\n");
-    assertEquals(versions.length, 2);
+    assertEquals(versions.length, 3);
     assertEquals(versions[0], "001_init.sql");
-    assertEquals(versions[1], "002_test_order.sql");
+    assertEquals(versions[1], "002_changesets.sql");
+    assertEquals(versions[2], "002_test_order.sql");
 
     // Verify test table was created
     const tables = await queryDb(

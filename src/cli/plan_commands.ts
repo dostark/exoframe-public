@@ -51,14 +51,8 @@ export class PlanCommands extends BaseCommand {
     const sourcePath = join(this.inboxPlansDir, `${planId}.md`);
     const targetPath = join(this.systemActiveDir, `${planId}.md`);
 
-    // Validate plan exists
-    if (!await exists(sourcePath)) {
-      throw new Error(`Plan not found: ${planId}`);
-    }
-
-    // Read and parse plan
-    const content = await Deno.readTextFile(sourcePath);
-    const { frontmatter, body } = this.extractFrontmatterWithBody(content);
+    // Load and parse plan
+    const { frontmatter, body } = await this.loadPlan(sourcePath);
 
     // Validate status
     if (frontmatter.status !== "review") {
@@ -72,10 +66,8 @@ export class PlanCommands extends BaseCommand {
       throw new Error(`Target path already exists: ${targetPath}`);
     }
 
-    // Get user identity and action logger
-    const actor = await this.getUserIdentity();
-    const actionLogger = await this.getActionLogger();
-    const now = new Date().toISOString();
+    // Get user context
+    const { actor, actionLogger, now } = await this.getUserContext();
 
     // Update frontmatter
     const updatedFrontmatter = {
@@ -113,19 +105,11 @@ export class PlanCommands extends BaseCommand {
     const sourcePath = join(this.inboxPlansDir, `${planId}.md`);
     const targetPath = join(this.inboxRejectedDir, `${planId}_rejected.md`);
 
-    // Validate plan exists
-    if (!await exists(sourcePath)) {
-      throw new Error(`Plan not found: ${planId}`);
-    }
+    // Load and parse plan
+    const { frontmatter, body } = await this.loadPlan(sourcePath);
 
-    // Read and parse plan
-    const content = await Deno.readTextFile(sourcePath);
-    const { frontmatter, body } = this.extractFrontmatterWithBody(content);
-
-    // Get user identity and action logger
-    const actor = await this.getUserIdentity();
-    const actionLogger = await this.getActionLogger();
-    const now = new Date().toISOString();
+    // Get user context
+    const { actor, actionLogger, now } = await this.getUserContext();
 
     // Update frontmatter
     const updatedFrontmatter = {
@@ -164,19 +148,11 @@ export class PlanCommands extends BaseCommand {
 
     const planPath = join(this.inboxPlansDir, `${planId}.md`);
 
-    // Validate plan exists
-    if (!await exists(planPath)) {
-      throw new Error(`Plan not found: ${planId}`);
-    }
+    // Load and parse plan
+    const { frontmatter, body } = await this.loadPlan(planPath);
 
-    // Read and parse plan
-    const content = await Deno.readTextFile(planPath);
-    const { frontmatter, body } = this.extractFrontmatterWithBody(content);
-
-    // Get user identity and action logger
-    const actor = await this.getUserIdentity();
-    const actionLogger = await this.getActionLogger();
-    const now = new Date().toISOString();
+    // Get user context
+    const { actor, actionLogger, now } = await this.getUserContext();
 
     // Update frontmatter
     const updatedFrontmatter = {
@@ -378,5 +354,41 @@ export class PlanCommands extends BaseCommand {
     }
 
     return { frontmatter, body };
+  }
+
+  /**
+   * Load and parse a plan file
+   * @private
+   */
+  private async loadPlan(planPath: string): Promise<{
+    content: string;
+    frontmatter: Record<string, unknown>;
+    body: string;
+  }> {
+    if (!await exists(planPath)) {
+      const planId = planPath.split("/").pop()?.replace(".md", "") || "unknown";
+      throw new Error(`Plan not found: ${planId}`);
+    }
+
+    const content = await Deno.readTextFile(planPath);
+    const { frontmatter, body } = this.extractFrontmatterWithBody(content);
+
+    return { content, frontmatter, body };
+  }
+
+  /**
+   * Get current user identity and action logger
+   * @private
+   */
+  private async getUserContext(): Promise<{
+    actor: string;
+    actionLogger: Awaited<ReturnType<BaseCommand["getActionLogger"]>>;
+    now: string;
+  }> {
+    const actor = await this.getUserIdentity();
+    const actionLogger = await this.getActionLogger();
+    const now = new Date().toISOString();
+
+    return { actor, actionLogger, now };
   }
 }

@@ -49,18 +49,8 @@ export class GitCommands extends BaseCommand {
       args.push("--list", pattern);
     }
 
-    const cmd = new Deno.Command("git", {
-      args,
-      stdout: "piped",
-      stderr: "piped",
-    });
-
-    const { stdout, success } = await cmd.output();
-    if (!success) {
-      throw new Error("Failed to list branches");
-    }
-
-    const lines = new TextDecoder().decode(stdout).trim().split("\n").filter((l) => l);
+    const output = await this.runGitCommand(args);
+    const lines = output.trim().split("\n").filter((l) => l);
     const branches: BranchInfo[] = [];
 
     for (const line of lines) {
@@ -263,6 +253,14 @@ export class GitCommands extends BaseCommand {
       args.push(`${ref}^..${ref}`);
     }
 
+    return await this.runGitCommand(args);
+  }
+
+  /**
+   * Execute a git command and return stdout
+   * @private
+   */
+  private async runGitCommand(args: string[]): Promise<string> {
     const cmd = new Deno.Command("git", {
       args,
       stdout: "piped",
@@ -271,7 +269,7 @@ export class GitCommands extends BaseCommand {
 
     const { stdout, success } = await cmd.output();
     if (!success) {
-      throw new Error(`Failed to get diff for ${ref}`);
+      throw new Error(`Git command failed: git ${args.join(" ")}`);
     }
 
     return new TextDecoder().decode(stdout);
