@@ -139,6 +139,18 @@ export abstract class ToolHandler {
   }
 
   /**
+   * Validates that a portal has a git repository
+   * @throws Error if .git directory doesn't exist
+   */
+  protected async validateGitRepository(portalPath: string, portalName: string): Promise<void> {
+    try {
+      await Deno.stat(join(portalPath, ".git"));
+    } catch {
+      throw new Error(`Not a git repository: ${portalName}`);
+    }
+  }
+
+  /**
    * Execute the tool with validated arguments
    * Implemented by subclasses
    */
@@ -475,11 +487,7 @@ export class GitCreateBranchTool extends ToolHandler {
       const portalPath = this.validatePortalExists(portal);
 
       // Check if git repository exists
-      try {
-        await Deno.stat(join(portalPath, ".git"));
-      } catch {
-        throw new Error(`Not a git repository: ${portal}`);
-      }
+      await this.validateGitRepository(portalPath, portal);
 
       // Create branch using git command
       const cmd = new Deno.Command("git", {
@@ -562,11 +570,7 @@ export class GitCommitTool extends ToolHandler {
       const portalPath = this.validatePortalExists(portal);
 
       // Check if git repository exists
-      try {
-        await Deno.stat(join(portalPath, ".git"));
-      } catch {
-        throw new Error(`Not a git repository: ${portal}`);
-      }
+      await this.validateGitRepository(portalPath, portal);
 
       // Stage files
       let stageArgs: string[];
@@ -672,11 +676,7 @@ export class GitStatusTool extends ToolHandler {
       const portalPath = this.validatePortalExists(portal);
 
       // Check if git repository exists
-      try {
-        await Deno.stat(join(portalPath, ".git"));
-      } catch {
-        throw new Error(`Not a git repository: ${portal}`);
-      }
+      await this.validateGitRepository(portalPath, portal);
 
       // Get git status
       const cmd = new Deno.Command("git", {
