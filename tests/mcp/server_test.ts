@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertExists, assertRejects } from "jsr:@std/assert@^1.0.0";
+import { assert, assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
 import { MCPServer } from "../../src/mcp/server.ts";
 import { createMockConfig } from "../helpers/config.ts";
 import { initTestDbService } from "../helpers/db.ts";
@@ -75,9 +75,10 @@ Deno.test("MCP Server: handles initialize request", async () => {
     });
 
     assertExists(response.result);
-    assertEquals(response.result.protocolVersion, "2024-11-05");
-    assertExists(response.result.serverInfo);
-    assertEquals(response.result.serverInfo.name, "exoframe");
+    const result = response.result as { protocolVersion: string; serverInfo: { name: string; version: string } };
+    assertEquals(result.protocolVersion, "2024-11-05");
+    assertExists(result.serverInfo);
+    assertEquals(result.serverInfo.name, "exoframe");
 
     await server.stop();
   } finally {
@@ -104,12 +105,14 @@ Deno.test("MCP Server: handles tools/list request", async () => {
     });
 
     assertExists(response.result);
-    assertExists(response.result.tools);
-    assertEquals(Array.isArray(response.result.tools), true);
+    assertExists(response.result);
+    const result = response.result as { tools: Array<{ name: string; description: string }> };
+    assertExists(result.tools);
+    assertEquals(Array.isArray(result.tools), true);
 
     // Phase 4: Should have 6 tools (read_file, write_file, list_directory, git_create_branch, git_commit, git_status)
-    assertEquals(response.result.tools.length, 6);
-    const toolNames = response.result.tools.map((t: { name: string }) => t.name);
+    assertEquals(result.tools.length, 6);
+    const toolNames = result.tools.map((t: { name: string }) => t.name);
     assert(toolNames.includes("read_file"));
     assert(toolNames.includes("write_file"));
     assert(toolNames.includes("list_directory"));

@@ -3,7 +3,6 @@ import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "../services/db.ts";
 import {
   ReadFileToolArgsSchema,
-  type ReadFileToolArgs,
   type MCPToolResponse,
 } from "../schemas/mcp.ts";
 
@@ -111,7 +110,7 @@ export abstract class ToolHandler {
 export class ReadFileTool extends ToolHandler {
   async execute(args: unknown): Promise<MCPToolResponse> {
     // Validate arguments with Zod schema
-    const validatedArgs = ReadFileToolArgsSchema.parse(args) as ReadFileToolArgs;
+    const validatedArgs = ReadFileToolArgsSchema.parse(args);
     const { portal, path } = validatedArgs;
 
     try {

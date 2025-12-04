@@ -196,9 +196,9 @@ export class MCPServer {
     // Route to method handlers
     switch (request.method) {
       case "initialize":
-        return await this.handleInitialize(request);
+        return this.handleInitialize(request);
       case "tools/list":
-        return await this.handleToolsList(request);
+        return this.handleToolsList(request);
       case "tools/call":
         return await this.handleToolsCall(request);
       default:
@@ -216,9 +216,9 @@ export class MCPServer {
   /**
    * Handles initialize request (MCP protocol handshake)
    */
-  private async handleInitialize(
+  private handleInitialize(
     request: JSONRPCRequest,
-  ): Promise<JSONRPCResponse> {
+  ): JSONRPCResponse {
     const params = request.params as unknown as InitializeParams;
 
     // Log initialization
@@ -254,9 +254,9 @@ export class MCPServer {
    * Handles tools/list request
    * Returns all registered tools with their definitions
    */
-  private async handleToolsList(
+  private handleToolsList(
     request: JSONRPCRequest,
-  ): Promise<JSONRPCResponse> {
+  ): JSONRPCResponse {
     const toolDefinitions = Array.from(this.tools.values()).map((tool) =>
       tool.getToolDefinition()
     );
@@ -323,7 +323,7 @@ export class MCPServer {
       
       // Validation errors (Zod or parameter validation)
       if (errorMessage.includes("validation") || errorMessage.includes("Required") || 
-          errorMessage.includes("expected") || error.constructor?.name === "ZodError") {
+          errorMessage.includes("expected") || (error && typeof error === "object" && "constructor" in error && error.constructor?.name === "ZodError")) {
         errorCode = -32602; // Invalid params
       }
       // Portal/file not found errors

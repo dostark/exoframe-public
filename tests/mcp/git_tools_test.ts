@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
+import { assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { MCPServer } from "../../src/mcp/server.ts";
 import { createMockConfig } from "../helpers/config.ts";
 import { initTestDbService } from "../helpers/db.ts";
