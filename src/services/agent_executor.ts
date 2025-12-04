@@ -216,6 +216,45 @@ export class AgentExecutor {
   }
 
   /**
+   * Revert unauthorized changes in hybrid mode
+   * Uses git checkout to discard unauthorized modifications
+   */
+  async revertUnauthorizedChanges(
+    portalPath: string,
+    unauthorizedFiles: string[],
+  ): Promise<void> {
+    if (unauthorizedFiles.length === 0) {
+      return;
+    }
+
+    for (const file of unauthorizedFiles) {
+      // Check if file is tracked or untracked
+      const statusProcess = new Deno.Command("git", {
+        args: ["ls-files", "--error-unmatch", file],
+        cwd: portalPath,
+      });
+
+      const result = await statusProcess.output();
+
+      if (result.code === 0) {
+        // File is tracked - restore from HEAD
+        const checkoutProcess = new Deno.Command("git", {
+          args: ["checkout", "HEAD", "--", file],
+          cwd: portalPath,
+        });
+        await checkoutProcess.output();
+      } else {
+        // File is untracked - delete it
+        const cleanProcess = new Deno.Command("git", {
+          args: ["clean", "-f", file],
+          cwd: portalPath,
+        });
+        await cleanProcess.output();
+      }
+    }
+  }
+
+  /**
    * Get latest commit SHA from git log
    */
   async getLatestCommitSha(portalPath: string): Promise<string> {

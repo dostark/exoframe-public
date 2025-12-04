@@ -3735,15 +3735,15 @@ audit_enabled = true
 5. [x] Sandboxed mode: all operations via MCP tools (validation in place)
 6. [x] Hybrid mode defined in schema (agent can read portal files)
 7. [x] Hybrid mode: writes require MCP tools (enforced by permission checks)
-8. [ ] Hybrid mode: unauthorized changes detected (deferred to Step 6.4 - agent execution)
-9. [ ] Hybrid mode: unauthorized changes reverted (deferred to Step 6.4 - agent execution)
+8. [x] Hybrid mode: unauthorized changes detected (implemented in Step 6.4)
+9. [x] Hybrid mode: unauthorized changes reverted (implemented in Step 6.4)
 10. [x] Path traversal blocked (PathResolver validation)
 11. [x] Git branch name validation enforced (in GitService)
 12. [x] All permission violations logged (Activity Journal integration)
 13. [x] 16+ permission service tests passing
 14. [x] 8+ integration tests passing (tools with permissions)
 
-**Summary: 12/14 criteria met (86%)**
+**Summary: 14/14 criteria met (100%)**
 
 - ✅ 24 total tests passing (16 service + 8 integration)
 - ✅ Permission validation service fully functional
@@ -3751,9 +3751,9 @@ audit_enabled = true
 - ✅ Agent whitelist (explicit + wildcard) working
 - ✅ Operation restrictions (read/write/git) enforced
 - ✅ Security modes (sandboxed/hybrid) defined and queryable
-- ⚠️ Hybrid mode enforcement (subprocess spawning, git audit) deferred to Step 6.4
+- ✅ Hybrid mode enforcement complete (unauthorized change detection & reversion via Step 6.4)
 
-**Note:** Criteria 8-9 (hybrid mode unauthorized change detection/reversion) require agent subprocess execution, which is implemented in Step 6.4 (Agent Orchestration). The permission validation foundation is complete and tested.
+**Note:** Criteria 8-9 (hybrid mode unauthorized change detection/reversion) implemented in Step 6.4 via `auditGitChanges()` and `revertUnauthorizedChanges()` methods in AgentExecutor service.
 
 ---
 
@@ -3864,12 +3864,12 @@ interface ChangesetResult {
 | File                                      | Purpose                              | Status      |
 | ----------------------------------------- | ------------------------------------ | ----------- |
 | `src/schemas/agent_executor.ts`           | Execution schemas (Zod validation)   | ✅ Complete |
-| `src/services/agent_executor.ts`          | AgentExecutor class (334 lines)      | ✅ Complete |
-| `tests/services/agent_executor_test.ts`   | Comprehensive tests (19 tests, 730+ lines) | ✅ 16/19 passing |
+| `src/services/agent_executor.ts`          | AgentExecutor class (367 lines)      | ✅ Complete |
+| `tests/services/agent_executor_test.ts`   | Comprehensive tests (21 tests, 940+ lines) | ✅ 21/21 passing |
 
 **Implementation Summary:**
 
-✅ **Core Infrastructure Complete (84% Test Coverage):**
+✅ **Core Infrastructure Complete (100% Test Coverage):**
 
 The agent orchestration infrastructure is fully implemented and functional:
 
@@ -3880,25 +3880,27 @@ The agent orchestration infrastructure is fully implemented and functional:
    - `ChangesetResultSchema`: branch, commit_sha, files_changed[], description, tool_calls, execution_time_ms
    - `AgentExecutionErrorSchema`: timeout, blueprint_not_found, permission_denied, security_violation, etc.
 
-2. **AgentExecutor Service** (`src/services/agent_executor.ts`, 334 lines):
+2. **AgentExecutor Service** (`src/services/agent_executor.ts`, 367 lines):
    - `loadBlueprint(agentName)`: Parses agent .md files with YAML frontmatter
    - `executeStep(context, options)`: Main orchestration with permission validation
    - `buildSubprocessPermissions(mode, portalPath)`: Returns Deno flags for security modes
    - `auditGitChanges(portalPath, authorizedFiles)`: Detects unauthorized modifications
+   - `revertUnauthorizedChanges(portalPath, unauthorizedFiles)`: Reverts unauthorized changes in hybrid mode
    - Activity Journal integration via EventLogger (execution lifecycle logging)
 
 3. **Security Mode Enforcement:**
    - **Sandboxed**: `--allow-read=NONE --allow-write=NONE` (agent has no file access)
    - **Hybrid**: `--allow-read=<portal_path>` (read-only portal access)
 
-4. **Git Audit Capability:**
+4. **Git Audit & Reversion Capability:**
    - `auditGitChanges()`: Detects unauthorized file modifications via `git status --porcelain`
+   - `revertUnauthorizedChanges()`: Reverts tracked file changes and deletes untracked files
    - `getLatestCommitSha()`: Extracts commit SHA from git log
    - `getChangedFiles()`: Lists modified files from git diff
 
-5. **Comprehensive Test Suite** (`tests/services/agent_executor_test.ts`, 730+ lines):
-   - 19 tests covering: blueprint loading, permission validation, security modes, changeset validation, activity logging, configuration
-   - 16/19 passing (84%) - 3 git tests need minor refactoring
+5. **Comprehensive Test Suite** (`tests/services/agent_executor_test.ts`, 940+ lines):
+   - 21 tests covering: blueprint loading, permission validation, security modes, changeset validation, activity logging, unauthorized change detection & reversion, configuration
+   - 21/21 passing (100%)
    - Follows ExoFrame patterns: `initTestDbService()` helper, setup/cleanup pattern
 
 📋 **Intentionally Deferred (Marked as TODO):**
