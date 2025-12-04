@@ -1,7 +1,7 @@
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "../services/db.ts";
 import { MCPConfigSchema, type MCPTool } from "../schemas/mcp.ts";
-import { ToolHandler, ReadFileTool } from "./tools.ts";
+import { ToolHandler, ReadFileTool, WriteFileTool, ListDirectoryTool } from "./tools.ts";
 
 /**
  * MCP Server Implementation (Step 6.2)
@@ -76,6 +76,8 @@ export class MCPServer {
 
     // Register tools
     this.registerTool(new ReadFileTool(this.config, this.db));
+    this.registerTool(new WriteFileTool(this.config, this.db));
+    this.registerTool(new ListDirectoryTool(this.config, this.db));
   }
 
   /**

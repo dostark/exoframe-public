@@ -180,3 +180,188 @@ export class ReadFileTool extends ToolHandler {
     };
   }
 }
+
+/**
+ * WriteFileTool - Writes file content to a portal
+ *
+ * Security:
+ * - Validates portal exists
+ * - Prevents path traversal
+ * - Creates parent directories if needed
+ * - Logs all writes to Activity Journal
+ */
+export class WriteFileTool extends ToolHandler {
+  async execute(args: unknown): Promise<MCPToolResponse> {
+    // Import WriteFile schema and types
+    const { WriteFileToolArgsSchema } = await import("../schemas/mcp.ts");
+    const validatedArgs = WriteFileToolArgsSchema.parse(args) as {
+      portal: string;
+      path: string;
+      content: string;
+    };
+    const { portal, path, content } = validatedArgs;
+
+    try {
+      // Validate portal exists
+      const portalPath = this.validatePortalExists(portal);
+
+      // Resolve and validate path
+      const absolutePath = this.resolvePortalPath(portalPath, path);
+
+      // Create parent directories if needed
+      const dirname = await import("@std/path");
+      const parentDir = dirname.dirname(absolutePath);
+      await Deno.mkdir(parentDir, { recursive: true });
+
+      // Write file
+      await Deno.writeTextFile(absolutePath, content);
+
+      // Log successful execution
+      this.logToolExecution("write_file", portal, {
+        path,
+        success: true,
+        bytes: content.length,
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `File written successfully: ${path} (${content.length} bytes)`,
+          },
+        ],
+      };
+    } catch (error) {
+      // Log failed execution
+      this.logToolExecution("write_file", portal, {
+        path,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      throw error;
+    }
+  }
+
+  getToolDefinition() {
+    return {
+      name: "write_file",
+      description: "Write a file to a portal (validated and logged)",
+      inputSchema: {
+        type: "object",
+        properties: {
+          portal: {
+            type: "string",
+            description: "Portal name",
+          },
+          path: {
+            type: "string",
+            description: "Relative path within portal",
+          },
+          content: {
+            type: "string",
+            description: "File content to write",
+          },
+        },
+        required: ["portal", "path", "content"],
+      },
+    };
+  }
+}
+
+/**
+ * ListDirectoryTool - Lists files and directories in a portal path
+ *
+ * Security:
+ * - Validates portal exists
+ * - Prevents path traversal
+ * - Returns structured directory listing
+ * - Logs all operations to Activity Journal
+ */
+export class ListDirectoryTool extends ToolHandler {
+  async execute(args: unknown): Promise<MCPToolResponse> {
+    // Import ListDirectory schema and types
+    const { ListDirectoryToolArgsSchema } = await import("../schemas/mcp.ts");
+    const validatedArgs = ListDirectoryToolArgsSchema.parse(args) as {
+      portal: string;
+      path?: string;
+    };
+    const { portal, path } = validatedArgs;
+
+    try {
+      // Validate portal exists
+      const portalPath = this.validatePortalExists(portal);
+
+      // Resolve and validate path (defaults to portal root)
+      const listPath = path || "";
+      const absolutePath = this.resolvePortalPath(portalPath, listPath);
+
+      // Read directory
+      const entries: string[] = [];
+      for await (const entry of Deno.readDir(absolutePath)) {
+        const displayName = entry.isDirectory ? `${entry.name}/` : entry.name;
+        entries.push(displayName);
+      }
+
+      // Sort entries (directories first, then files)
+      entries.sort((a, b) => {
+        const aIsDir = a.endsWith("/");
+        const bIsDir = b.endsWith("/");
+        if (aIsDir && !bIsDir) return -1;
+        if (!aIsDir && bIsDir) return 1;
+        return a.localeCompare(b);
+      });
+
+      // Format listing
+      const listing = entries.length > 0
+        ? entries.join("\n")
+        : "(Directory is empty)";
+
+      // Log successful execution
+      this.logToolExecution("list_directory", portal, {
+        path: listPath || "/",
+        success: true,
+        entry_count: entries.length,
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: listing,
+          },
+        ],
+      };
+    } catch (error) {
+      // Log failed execution
+      this.logToolExecution("list_directory", portal, {
+        path: path || "/",
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      throw error;
+    }
+  }
+
+  getToolDefinition() {
+    return {
+      name: "list_directory",
+      description: "List files and directories in a portal path",
+      inputSchema: {
+        type: "object",
+        properties: {
+          portal: {
+            type: "string",
+            description: "Portal name",
+          },
+          path: {
+            type: "string",
+            description: "Relative path within portal (optional, defaults to root)",
+          },
+        },
+        required: ["portal"],
+      },
+    };
+  }
+}

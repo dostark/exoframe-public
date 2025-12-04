@@ -255,9 +255,13 @@ Deno.test("read_file: read_file appears in tools/list", async () => {
 
     assertExists(response.result);
     const result = response.result as { tools: Array<{ name: string; description: string }> };
-    assertEquals(result.tools.length, 1);
-    assertEquals(result.tools[0].name, "read_file");
-    assertStringIncludes(result.tools[0].description, "Read");
+    assertEquals(result.tools.length, 3);
+    const toolNames = result.tools.map(t => t.name);
+    assert(toolNames.includes("read_file"));
+    assert(toolNames.includes("write_file"));
+    assert(toolNames.includes("list_directory"));
+    const readTool = result.tools.find(t => t.name === "read_file")!;
+    assertStringIncludes(readTool.description, "Read");
 
     await server.stop();
   } finally {
@@ -297,3 +301,482 @@ Deno.test("read_file: rejects invalid arguments schema", async () => {
     await Deno.remove(tempDir, { recursive: true });
   }
 });
+
+// ============================================================================
+// write_file Tool Tests
+// ============================================================================
+
+Deno.test("write_file: successfully writes file to portal", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-write-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const portalPath = join(tempDir, "TestPortal");
+    await Deno.mkdir(portalPath, { recursive: true });
+
+    const config = createMockConfig(tempDir, {
+      portals: [{
+        alias: "TestPortal",
+        target_path: portalPath,
+      }],
+    });
+
+    const server = new MCPServer({ config, db, transport: "stdio" });
+    await server.start();
+
+    const response = await server.handleRequest({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "write_file",
+        arguments: {
+          portal: "TestPortal",
+          path: "output.txt",
+          content: "Hello from write_file!",
+        },
+      },
+    });
+
+    assertExists(response.result);
+    const result = response.result as { content: Array<{ type: string; text: string }> };
+    assertEquals(result.content[0].type, "text");
+    assertStringIncludes(result.content[0].text, "successfully");
+
+    // Verify file was actually written
+    const written = await Deno.readTextFile(join(portalPath, "output.txt"));
+    assertEquals(written, "Hello from write_file!");
+
+    await server.stop();
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("write_file: creates parent directories if needed", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-write-dirs-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const portalPath = join(tempDir, "TestPortal");
+    await Deno.mkdir(portalPath, { recursive: true });
+
+    const config = createMockConfig(tempDir, {
+      portals: [{
+        alias: "TestPortal",
+        target_path: portalPath,
+      }],
+    });
+
+    const server = new MCPServer({ config, db, transport: "stdio" });
+    await server.start();
+
+    await server.handleRequest({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "write_file",
+        arguments: {
+          portal: "TestPortal",
+          path: "deeply/nested/file.txt",
+          content: "Nested content",
+        },
+      },
+    });
+
+    // Verify file and directories were created
+    const written = await Deno.readTextFile(join(portalPath, "deeply/nested/file.txt"));
+    assertEquals(written, "Nested content");
+
+    await server.stop();
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("write_file: overwrites existing file", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-write-overwrite-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const portalPath = join(tempDir, "TestPortal");
+    await Deno.mkdir(portalPath, { recursive: true });
+    await Deno.writeTextFile(join(portalPath, "existing.txt"), "Old content");
+
+    const config = createMockConfig(tempDir, {
+      portals: [{
+        alias: "TestPortal",
+        target_path: portalPath,
+      }],
+    });
+
+    const server = new MCPServer({ config, db, transport: "stdio" });
+    await server.start();
+
+    await server.handleRequest({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "write_file",
+        arguments: {
+          portal: "TestPortal",
+          path: "existing.txt",
+          content: "New content",
+        },
+      },
+    });
+
+    const written = await Deno.readTextFile(join(portalPath, "existing.txt"));
+    assertEquals(written, "New content");
+
+    await server.stop();
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("write_file: rejects non-existent portal", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-write-portal-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const server = new MCPServer({ config, db, transport: "stdio" });
+    await server.start();
+
+    const response = await server.handleRequest({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "write_file",
+        arguments: {
+          portal: "NonExistent",
+          path: "test.txt",
+          content: "content",
+        },
+      },
+    });
+
+    assertExists(response.error);
+    assertEquals(response.error.code, -32602);
+    assertStringIncludes(response.error.message, "Portal");
+
+    await server.stop();
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("write_file: prevents path traversal", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-write-traversal-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const portalPath = join(tempDir, "TestPortal");
+    await Deno.mkdir(portalPath, { recursive: true });
+
+    const config = createMockConfig(tempDir, {
+      portals: [{
+        alias: "TestPortal",
+        target_path: portalPath,
+      }],
+    });
+
+    const server = new MCPServer({ config, db, transport: "stdio" });
+    await server.start();
+
+    const response = await server.handleRequest({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "write_file",
+        arguments: {
+          portal: "TestPortal",
+          path: "../escape.txt",
+          content: "malicious",
+        },
+      },
+    });
+
+    assertExists(response.error);
+    assertEquals(response.error.code, -32602);
+    assertStringIncludes(response.error.message, "Path traversal");
+
+    await server.stop();
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("write_file: logs invocation to Activity Journal", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-write-log-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const portalPath = join(tempDir, "TestPortal");
+    await Deno.mkdir(portalPath, { recursive: true });
+
+    const config = createMockConfig(tempDir, {
+      portals: [{
+        alias: "TestPortal",
+        target_path: portalPath,
+      }],
+    });
+
+    const server = new MCPServer({ config, db, transport: "stdio" });
+    await server.start();
+
+    await server.handleRequest({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "write_file",
+        arguments: {
+          portal: "TestPortal",
+          path: "logged.txt",
+          content: "content",
+        },
+      },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const logs = db.instance.prepare(
+      "SELECT * FROM activity WHERE action_type = ?",
+    ).all("mcp.tool.write_file");
+
+    assertEquals(logs.length, 1);
+    const log = logs[0] as { target: string; payload: string };
+    assertEquals(log.target, "TestPortal");
+    const payload = JSON.parse(log.payload);
+    assertEquals(payload.path, "logged.txt");
+    assertEquals(payload.success, true);
+
+    await server.stop();
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+// ============================================================================
+// list_directory Tool Tests
+// ============================================================================
+
+Deno.test("list_directory: lists files in portal root", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-list-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const portalPath = join(tempDir, "TestPortal");
+    await Deno.mkdir(portalPath, { recursive: true });
+    await Deno.writeTextFile(join(portalPath, "file1.txt"), "content1");
+    await Deno.writeTextFile(join(portalPath, "file2.txt"), "content2");
+    await Deno.mkdir(join(portalPath, "subdir"));
+
+    const config = createMockConfig(tempDir, {
+      portals: [{
+        alias: "TestPortal",
+        target_path: portalPath,
+      }],
+    });
+
+    const server = new MCPServer({ config, db, transport: "stdio" });
+    await server.start();
+
+    const response = await server.handleRequest({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "list_directory",
+        arguments: {
+          portal: "TestPortal",
+        },
+      },
+    });
+
+    assertExists(response.result);
+    const result = response.result as { content: Array<{ type: string; text: string }> };
+    assertEquals(result.content[0].type, "text");
+    
+    const listing = result.content[0].text;
+    assertStringIncludes(listing, "file1.txt");
+    assertStringIncludes(listing, "file2.txt");
+    assertStringIncludes(listing, "subdir/");
+
+    await server.stop();
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("list_directory: lists files in subdirectory", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-list-sub-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const portalPath = join(tempDir, "TestPortal");
+    await Deno.mkdir(join(portalPath, "subdir"), { recursive: true });
+    await Deno.writeTextFile(join(portalPath, "subdir/nested.txt"), "nested");
+
+    const config = createMockConfig(tempDir, {
+      portals: [{
+        alias: "TestPortal",
+        target_path: portalPath,
+      }],
+    });
+
+    const server = new MCPServer({ config, db, transport: "stdio" });
+    await server.start();
+
+    const response = await server.handleRequest({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "list_directory",
+        arguments: {
+          portal: "TestPortal",
+          path: "subdir",
+        },
+      },
+    });
+
+    assertExists(response.result);
+    const result = response.result as { content: Array<{ type: string; text: string }> };
+    assertStringIncludes(result.content[0].text, "nested.txt");
+
+    await server.stop();
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("list_directory: handles empty directory", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-list-empty-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const portalPath = join(tempDir, "TestPortal");
+    await Deno.mkdir(portalPath, { recursive: true });
+
+    const config = createMockConfig(tempDir, {
+      portals: [{
+        alias: "TestPortal",
+        target_path: portalPath,
+      }],
+    });
+
+    const server = new MCPServer({ config, db, transport: "stdio" });
+    await server.start();
+
+    const response = await server.handleRequest({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "list_directory",
+        arguments: {
+          portal: "TestPortal",
+        },
+      },
+    });
+
+    assertExists(response.result);
+    const result = response.result as { content: Array<{ type: string; text: string }> };
+    assertStringIncludes(result.content[0].text, "empty");
+
+    await server.stop();
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("list_directory: rejects non-existent portal", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-list-portal-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const config = createMockConfig(tempDir);
+    const server = new MCPServer({ config, db, transport: "stdio" });
+    await server.start();
+
+    const response = await server.handleRequest({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "list_directory",
+        arguments: {
+          portal: "NonExistent",
+        },
+      },
+    });
+
+    assertExists(response.error);
+    assertEquals(response.error.code, -32602);
+    assertStringIncludes(response.error.message, "Portal");
+
+    await server.stop();
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
+Deno.test("list_directory: prevents path traversal", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-list-traversal-" });
+  const { db, cleanup } = await initTestDbService();
+
+  try {
+    const portalPath = join(tempDir, "TestPortal");
+    await Deno.mkdir(portalPath, { recursive: true });
+
+    const config = createMockConfig(tempDir, {
+      portals: [{
+        alias: "TestPortal",
+        target_path: portalPath,
+      }],
+    });
+
+    const server = new MCPServer({ config, db, transport: "stdio" });
+    await server.start();
+
+    const response = await server.handleRequest({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: {
+        name: "list_directory",
+        arguments: {
+          portal: "TestPortal",
+          path: "../",
+        },
+      },
+    });
+
+    assertExists(response.error);
+    assertEquals(response.error.code, -32602);
+    assertStringIncludes(response.error.message, "Path traversal");
+
+    await server.stop();
+  } finally {
+    await cleanup();
+    await Deno.remove(tempDir, { recursive: true });
+  }
+});
+
