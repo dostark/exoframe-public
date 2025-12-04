@@ -48,13 +48,11 @@ Deno.test("generateExecutePlanPrompt: generates prompt with plan details", async
   const { db, cleanup } = await initTestDbService();
 
   try {
-    const config = createMockConfig("/tmp/test");
     const result = generateExecutePlanPrompt(
       {
         plan_id: "test-plan-123",
         portal: "MyApp",
       },
-      config,
       db,
     );
 
@@ -78,13 +76,11 @@ Deno.test("generateExecutePlanPrompt: includes tool usage guidance", async () =>
   const { db, cleanup } = await initTestDbService();
 
   try {
-    const config = createMockConfig("/tmp/test");
     const result = generateExecutePlanPrompt(
       {
         plan_id: "plan-456",
         portal: "TestPortal",
       },
-      config,
       db,
     );
 
@@ -106,13 +102,11 @@ Deno.test("generateExecutePlanPrompt: logs to Activity Journal", async () => {
   const { db, cleanup } = await initTestDbService();
 
   try {
-    const config = createMockConfig("/tmp/test");
     generateExecutePlanPrompt(
       {
         plan_id: "log-test-plan",
         portal: "TestPortal",
       },
-      config,
       db,
     );
 
@@ -142,14 +136,12 @@ Deno.test("generateCreateChangesetPrompt: generates prompt with changeset detail
   const { db, cleanup } = await initTestDbService();
 
   try {
-    const config = createMockConfig("/tmp/test");
     const result = generateCreateChangesetPrompt(
       {
         portal: "MyApp",
         description: "Add user authentication",
         trace_id: "trace-789",
       },
-      config,
       db,
     );
 
@@ -171,14 +163,12 @@ Deno.test("generateCreateChangesetPrompt: includes git workflow guidance", async
   const { db, cleanup } = await initTestDbService();
 
   try {
-    const config = createMockConfig("/tmp/test");
     const result = generateCreateChangesetPrompt(
       {
         portal: "TestPortal",
         description: "Fix bug",
         trace_id: "trace-123",
       },
-      config,
       db,
     );
 
@@ -199,14 +189,12 @@ Deno.test("generateCreateChangesetPrompt: logs to Activity Journal", async () =>
   const { db, cleanup } = await initTestDbService();
 
   try {
-    const config = createMockConfig("/tmp/test");
     generateCreateChangesetPrompt(
       {
         portal: "TestPortal",
         description: "Test changeset",
         trace_id: "log-trace-456",
       },
-      config,
       db,
     );
 

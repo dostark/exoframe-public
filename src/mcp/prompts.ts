@@ -99,7 +99,6 @@ export function getPrompt(name: string): MCPPrompt | null {
  */
 export function generateExecutePlanPrompt(
   args: { plan_id: string; portal: string },
-  config: Config,
   db: DatabaseService,
 ): MCPPromptResult {
   const { plan_id, portal } = args;
@@ -165,7 +164,6 @@ Begin executing the plan.`,
  */
 export function generateCreateChangesetPrompt(
   args: { portal: string; description: string; trace_id: string },
-  config: Config,
   db: DatabaseService,
 ): MCPPromptResult {
   const { portal, description, trace_id } = args;
@@ -238,20 +236,18 @@ Begin creating the changeset.`,
 export function generatePrompt(
   name: string,
   args: Record<string, unknown>,
-  config: Config,
+  _config: Config,
   db: DatabaseService,
 ): MCPPromptResult | null {
   switch (name) {
     case "execute_plan":
       return generateExecutePlanPrompt(
         args as { plan_id: string; portal: string },
-        config,
         db,
       );
     case "create_changeset":
       return generateCreateChangesetPrompt(
         args as { portal: string; description: string; trace_id: string },
-        config,
         db,
       );
     default:

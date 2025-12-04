@@ -107,7 +107,7 @@ export class MCPServer {
   /**
    * Starts the MCP server and logs to Activity Journal
    */
-  async start(): Promise<void> {
+  start(): void {
     if (this.running) {
       throw new Error("MCP Server is already running");
     }
@@ -130,7 +130,7 @@ export class MCPServer {
   /**
    * Stops the MCP server gracefully and logs to Activity Journal
    */
-  async stop(): Promise<void> {
+  stop(): void {
     if (!this.running) {
       return;
     }

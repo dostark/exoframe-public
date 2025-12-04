@@ -5,7 +5,7 @@
  * Resources are dynamically discovered from configured portals.
  */
 
-import { join, relative } from "@std/path";
+import { relative } from "@std/path";
 import { walk } from "@std/fs";
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "../services/db.ts";

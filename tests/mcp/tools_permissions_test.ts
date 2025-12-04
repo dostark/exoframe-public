@@ -4,7 +4,7 @@
  * Tests that MCP tools respect portal permissions and operation restrictions.
  */
 
-import { assertEquals, assertExists, assertRejects } from "jsr:@std/assert@^1.0.0";
+import { assertExists, assertRejects } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { ensureDir } from "@std/fs";
 import { createMockConfig } from "../helpers/config.ts";

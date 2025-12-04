@@ -59,6 +59,12 @@ function createTestConfig(aiConfig?: Partial<AiConfig>): Config {
       timeout_sec: 60,
     },
     portals: [],
+    mcp: {
+      enabled: true,
+      transport: "stdio" as const,
+      server_name: "exoframe",
+      version: "1.0.0",
+    },
     ai: parsedAi,
   };
 }

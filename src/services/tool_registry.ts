@@ -97,6 +97,7 @@ export class ToolRegistry {
       watcher: { debounce_ms: 200, stability_check: true },
       agents: { default_model: "gpt-4o", timeout_sec: 60 },
       portals: [],
+      mcp: { enabled: true, transport: "stdio", server_name: "exoframe", version: "1.0.0" },
     };
     this.db = options?.db;
     this.traceId = options?.traceId;
