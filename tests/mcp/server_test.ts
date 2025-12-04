@@ -107,9 +107,9 @@ Deno.test("MCP Server: handles tools/list request", async () => {
     assertExists(response.result.tools);
     assertEquals(Array.isArray(response.result.tools), true);
 
-    // Initially should have no tools (walking skeleton)
-    // We'll add tools incrementally in Phase 2
-    assertEquals(response.result.tools.length, 0);
+    // Phase 2: Should have 1 tool (read_file)
+    assertEquals(response.result.tools.length, 1);
+    assertEquals(response.result.tools[0].name, "read_file");
 
     await server.stop();
   } finally {

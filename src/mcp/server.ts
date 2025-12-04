@@ -1,21 +1,23 @@
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "../services/db.ts";
 import { MCPConfigSchema, type MCPTool } from "../schemas/mcp.ts";
+import { ToolHandler, ReadFileTool } from "./tools.ts";
 
 /**
  * MCP Server Implementation (Step 6.2)
  *
- * Walking Skeleton Phase 1: Minimal server with handshake support
+ * Phase 2: First tool implementation (read_file)
  *
  * Provides Model Context Protocol interface for agent tool execution.
  * Currently supports:
  * - stdio transport
  * - initialize handshake
- * - tools/list (returns empty array initially)
+ * - tools/list with registered tools
+ * - tools/call for read_file
  * - Activity Journal logging
  *
  * Future phases will add:
- * - Tool implementations (read_file, write_file, etc.)
+ * - Additional tools (write_file, list_directory, git_*)
  * - Resource discovery (portal:// URIs)
  * - Prompt templates (execute_plan, create_changeset)
  */
@@ -60,6 +62,7 @@ export class MCPServer {
   private running = false;
   private serverName: string;
   private serverVersion: string;
+  private tools: Map<string, ToolHandler> = new Map();
 
   constructor(options: MCPServerOptions) {
     this.config = options.config;
@@ -70,6 +73,17 @@ export class MCPServer {
     const mcpConfig = MCPConfigSchema.parse(this.config.mcp);
     this.serverName = mcpConfig.server_name;
     this.serverVersion = mcpConfig.version;
+
+    // Register tools
+    this.registerTool(new ReadFileTool(this.config, this.db));
+  }
+
+  /**
+   * Registers a tool handler with the server
+   */
+  private registerTool(tool: ToolHandler): void {
+    const definition = tool.getToolDefinition();
+    this.tools.set(definition.name, tool);
   }
 
   /**
@@ -172,6 +186,8 @@ export class MCPServer {
         return await this.handleInitialize(request);
       case "tools/list":
         return await this.handleToolsList(request);
+      case "tools/call":
+        return await this.handleToolsCall(request);
       default:
         return {
           jsonrpc: "2.0",
@@ -223,19 +239,22 @@ export class MCPServer {
 
   /**
    * Handles tools/list request
-   * Returns empty array in Phase 1 (Walking Skeleton)
-   * Phase 2 will add read_file tool
+   * Returns all registered tools with their definitions
    */
   private async handleToolsList(
     request: JSONRPCRequest,
   ): Promise<JSONRPCResponse> {
+    const toolDefinitions = Array.from(this.tools.values()).map((tool) =>
+      tool.getToolDefinition()
+    );
+
     // Log tools list request
     this.db.logActivity(
       "mcp.server",
       "mcp.tools.list",
       null,
       {
-        tool_count: 0, // Phase 1: No tools yet
+        tool_count: toolDefinitions.length,
       },
     );
 
@@ -243,8 +262,74 @@ export class MCPServer {
       jsonrpc: "2.0",
       id: request.id,
       result: {
-        tools: [] as MCPTool[], // Empty in Phase 1
+        tools: toolDefinitions as MCPTool[],
       },
     };
+  }
+
+  /**
+   * Handles tools/call request
+   * Executes the specified tool with provided arguments
+   */
+  private async handleToolsCall(
+    request: JSONRPCRequest,
+  ): Promise<JSONRPCResponse> {
+    const params = request.params as {
+      name: string;
+      arguments: unknown;
+    };
+
+    // Validate tool exists
+    const tool = this.tools.get(params.name);
+    if (!tool) {
+      return {
+        jsonrpc: "2.0",
+        id: request.id,
+        error: {
+          code: -32602, // Invalid params
+          message: `Tool '${params.name}' not found`,
+        },
+      };
+    }
+
+    try {
+      // Execute tool
+      const result = await tool.execute(params.arguments);
+
+      return {
+        jsonrpc: "2.0",
+        id: request.id,
+        result,
+      };
+    } catch (error) {
+      // Handle tool execution errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Determine error code based on error type
+      let errorCode = -32603; // Internal error (default)
+      
+      // Validation errors (Zod or parameter validation)
+      if (errorMessage.includes("validation") || errorMessage.includes("Required") || 
+          errorMessage.includes("expected") || error.constructor?.name === "ZodError") {
+        errorCode = -32602; // Invalid params
+      }
+      // Portal/file not found errors
+      if (errorMessage.includes("not found") || errorMessage.includes("Portal")) {
+        errorCode = -32602; // Invalid params
+      }
+      // Path traversal attempts
+      if (errorMessage.includes("Path traversal")) {
+        errorCode = -32602; // Invalid params
+      }
+
+      return {
+        jsonrpc: "2.0",
+        id: request.id,
+        error: {
+          code: errorCode,
+          message: errorMessage,
+        },
+      };
+    }
   }
 }

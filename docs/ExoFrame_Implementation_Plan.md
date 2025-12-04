@@ -3419,13 +3419,14 @@ Implement the first phase of plan execution focusing on detection and parsing:
 
 ---
 
-### Step 6.2: MCP Server Implementation 📋 PLANNED
+### Step 6.2: MCP Server Implementation 🔄 IN PROGRESS
 
 - **Dependencies:** Step 5.12 (Plan Detection & Parsing)
 - **Rollback:** Set `mcp.enabled = false` in exo.config.toml
 - **Action:** Implement Model Context Protocol (MCP) server for agent-tool communication
 - **Location:** `src/mcp/server.ts`, `src/mcp/tools.ts`, `src/mcp/resources.ts`, `src/mcp/prompts.ts`
-- **Status:** 📋 PLANNED
+- **Status:** 🔄 IN PROGRESS (Phase 1 of 5 complete)
+- **Commit:** 140d307 - Phase 1 Walking Skeleton (8 tests passing)
 
 **Problem Statement:**
 
