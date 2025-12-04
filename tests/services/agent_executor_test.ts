@@ -5,7 +5,14 @@
  * Covers blueprint loading, subprocess spawning, MCP connection, and git audit.
  */
 
-import { assert, assertEquals, assertExists, assertRejects, assertStringIncludes, assertThrows } from "jsr:@std/assert@1";
+import {
+  assert,
+  assertEquals,
+  assertExists,
+  assertRejects,
+  assertStringIncludes,
+  assertThrows,
+} from "jsr:@std/assert@1";
 import { join } from "jsr:@std/path@1";
 import { AgentExecutor } from "../../src/services/agent_executor.ts";
 import { Config } from "../../src/config/schema.ts";
@@ -194,7 +201,7 @@ You are a test agent for ExoFrame testing.`;
         permissions,
       );
 
-    const blueprint = await executor.loadBlueprint("test-agent");
+      const blueprint = await executor.loadBlueprint("test-agent");
 
       assertExists(blueprint);
       assertEquals(blueprint.name, "test-agent");
@@ -253,26 +260,26 @@ Deno.test({
       );
 
       const context: ExecutionContext = {
-      trace_id: crypto.randomUUID(),
-      request_id: "test-request",
-      request: "Test request",
-      plan: "Test plan",
-      portal: "NonexistentPortal",
-    };
+        trace_id: crypto.randomUUID(),
+        request_id: "test-request",
+        request: "Test request",
+        plan: "Test plan",
+        portal: "NonexistentPortal",
+      };
 
-    const options: AgentExecutionOptions = {
-      agent_id: "test-agent",
-      portal: "NonexistentPortal",
-      security_mode: "sandboxed",
-      timeout_ms: 300000,
-      max_tool_calls: 100,
-      audit_enabled: true,
-    };
+      const options: AgentExecutionOptions = {
+        agent_id: "test-agent",
+        portal: "NonexistentPortal",
+        security_mode: "sandboxed",
+        timeout_ms: 300000,
+        max_tool_calls: 100,
+        audit_enabled: true,
+      };
 
-    await assertRejects(
-      async () => {
-        await executor.executeStep(context, options);
-      },
+      await assertRejects(
+        async () => {
+          await executor.executeStep(context, options);
+        },
         Error,
         "Portal not found",
       );
@@ -497,8 +504,7 @@ Deno.test({
 });
 
 Deno.test({
-  name:
-    "AgentExecutor: revertUnauthorizedChanges handles empty list gracefully",
+  name: "AgentExecutor: revertUnauthorizedChanges handles empty list gracefully",
   fn: async () => {
     await setup();
     try {
@@ -704,22 +710,22 @@ Deno.test({
         permissions,
       );
 
-    const options: AgentExecutionOptions = {
-      agent_id: "test-agent",
-      portal: "TestPortal",
-      security_mode: "sandboxed",
-      timeout_ms: 300000,
-      max_tool_calls: 10,
-      audit_enabled: true,
-    };
+      const options: AgentExecutionOptions = {
+        agent_id: "test-agent",
+        portal: "TestPortal",
+        security_mode: "sandboxed",
+        timeout_ms: 300000,
+        max_tool_calls: 10,
+        audit_enabled: true,
+      };
 
-    // Simulate 11 tool calls
-    const toolCalls = Array(11).fill("read_file");
+      // Simulate 11 tool calls
+      const toolCalls = Array(11).fill("read_file");
 
-    const exceededLimit = executor.checkToolCallLimit(
-      toolCalls.length,
-      options.max_tool_calls,
-    );
+      const exceededLimit = executor.checkToolCallLimit(
+        toolCalls.length,
+        options.max_tool_calls,
+      );
 
       assert(exceededLimit);
     } finally {
@@ -1150,7 +1156,7 @@ You are a test agent for ExoFrame testing.`;
 \`\`\``;
 
       const mockProvider = new MockProvider(mockResponse);
-      
+
       // Wrap generate to capture the prompt
       const originalGenerate = mockProvider.generate.bind(mockProvider);
       mockProvider.generate = async (prompt: string, options?: any) => {
@@ -1279,13 +1285,11 @@ Test agent for completion handling.`;
       // Verify completion was logged
       await db.waitForFlush();
       const activities = db.getActivitiesByTrace(context.trace_id);
-      
-      const completionLog = activities.find((a) => 
-        a.action_type === "agent.execution_completed"
-      );
-      
+
+      const completionLog = activities.find((a) => a.action_type === "agent.execution_completed");
+
       assertExists(completionLog, "Completion should be logged");
-      
+
       // Verify payload contains completion details (payload is stored as JSON string)
       const payload = JSON.parse(completionLog.payload);
       assertEquals(payload.branch, "feat/completion-test");
@@ -1330,12 +1334,14 @@ You are a test agent using Ollama provider.`;
 
       // Mock Ollama API response
       const originalFetch = globalThis.fetch;
-      globalThis.fetch = async (input: string | URL | Request, _init?: RequestInit) => {
+      globalThis.fetch = (input: string | URL | Request, _init?: RequestInit) => {
         const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
-        
+
         if (url.includes("/api/generate")) {
-          return new Response(JSON.stringify({
-            response: `\`\`\`json
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({
+                response: `\`\`\`json
 {
   "branch": "feat/ollama-test",
   "commit_sha": "1234567890abcdef1234567890abcdef12345678",
@@ -1345,12 +1351,15 @@ You are a test agent using Ollama provider.`;
   "execution_time_ms": 2000
 }
 \`\`\``,
-          }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          });
+              }),
+              {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+              },
+            ),
+          );
         }
-        
+
         return originalFetch(input as RequestInfo, _init);
       };
 
@@ -1404,10 +1413,8 @@ You are a test agent using Ollama provider.`;
         await db.waitForFlush();
         const activities = db.getActivitiesByTrace(context.trace_id);
         assert(activities.length >= 2); // start and complete logs
-        
-        const completionLog = activities.find((a) => 
-          a.action_type === "agent.execution_completed"
-        );
+
+        const completionLog = activities.find((a) => a.action_type === "agent.execution_completed");
         assertExists(completionLog, "Ollama execution should be logged");
       } finally {
         globalThis.fetch = originalFetch;
@@ -1428,7 +1435,7 @@ Deno.test({
       const { db, logger, pathResolver, permissions } = getServices();
 
       // Import OllamaProvider and ConnectionError
-      const { OllamaProvider, ConnectionError } = await import("../../src/ai/providers.ts");
+      const { OllamaProvider } = await import("../../src/ai/providers.ts");
 
       // Create test blueprint
       const blueprintContent = `---
@@ -1447,8 +1454,8 @@ Test agent for error handling.`;
 
       // Mock Ollama API to return connection error
       const originalFetch = globalThis.fetch;
-      globalThis.fetch = async (_input: string | URL | Request, _init?: RequestInit) => {
-        throw new TypeError("fetch failed");
+      globalThis.fetch = (_input: string | URL | Request, _init?: RequestInit) => {
+        return Promise.reject(new TypeError("fetch failed"));
       };
 
       try {
@@ -1494,10 +1501,8 @@ Test agent for error handling.`;
         // Verify error was logged
         await db.waitForFlush();
         const activities = db.getActivitiesByTrace(context.trace_id);
-        
-        const errorLog = activities.find((a) => 
-          a.action_type === "agent.execution_failed"
-        );
+
+        const errorLog = activities.find((a) => a.action_type === "agent.execution_failed");
         assertExists(errorLog, "Error should be logged");
       } finally {
         globalThis.fetch = originalFetch;
