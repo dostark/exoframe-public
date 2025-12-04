@@ -10,6 +10,11 @@ import {
   GitCommitTool,
   GitStatusTool,
 } from "./tools.ts";
+import { 
+  discoverAllResources, 
+  parsePortalURI, 
+  type MCPResource 
+} from "./resources.ts";
 
 /**
  * MCP Server Implementation (Step 6.2)
@@ -201,6 +206,10 @@ export class MCPServer {
         return this.handleToolsList(request);
       case "tools/call":
         return await this.handleToolsCall(request);
+      case "resources/list":
+        return await this.handleResourcesList(request);
+      case "resources/read":
+        return await this.handleResourcesRead(request);
       default:
         return {
           jsonrpc: "2.0",
@@ -341,6 +350,111 @@ export class MCPServer {
         error: {
           code: errorCode,
           message: errorMessage,
+        },
+      };
+    }
+  }
+
+  /**
+   * Handles resources/list request
+   * Returns all portal resources as URIs
+   */
+  private async handleResourcesList(
+    request: JSONRPCRequest,
+  ): Promise<JSONRPCResponse> {
+    try {
+      // Discover resources from all portals
+      const resources = await discoverAllResources(this.config, this.db, {
+        maxDepth: 3,
+        includeHidden: false,
+        extensions: ["ts", "tsx", "js", "jsx", "py", "rs", "go", "md", "json", "toml"],
+      });
+
+      return {
+        jsonrpc: "2.0",
+        id: request.id,
+        result: {
+          resources,
+        },
+      };
+    } catch (error) {
+      return {
+        jsonrpc: "2.0",
+        id: request.id,
+        error: {
+          code: -32603,
+          message: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
+  }
+
+  /**
+   * Handles resources/read request
+   * Reads a resource by portal:// URI
+   */
+  private async handleResourcesRead(
+    request: JSONRPCRequest,
+  ): Promise<JSONRPCResponse> {
+    const params = request.params as { uri: string };
+
+    try {
+      // Parse portal:// URI
+      const parsed = parsePortalURI(params.uri);
+      if (!parsed) {
+        return {
+          jsonrpc: "2.0",
+          id: request.id,
+          error: {
+            code: -32602,
+            message: `Invalid portal URI: ${params.uri}`,
+          },
+        };
+      }
+
+      // Use read_file tool to fetch content
+      const readTool = this.tools.get("read_file");
+      if (!readTool) {
+        return {
+          jsonrpc: "2.0",
+          id: request.id,
+          error: {
+            code: -32603,
+            message: "read_file tool not available",
+          },
+        };
+      }
+
+      const result = await readTool.execute({
+        portal: parsed.portal,
+        path: parsed.path,
+      });
+
+      // Log resource read
+      this.db.logActivity(
+        "mcp.resources",
+        "mcp.resources.read",
+        params.uri,
+        {
+          portal: parsed.portal,
+          path: parsed.path,
+        },
+      );
+
+      return {
+        jsonrpc: "2.0",
+        id: request.id,
+        result: {
+          contents: result.content,
+        },
+      };
+    } catch (error) {
+      return {
+        jsonrpc: "2.0",
+        id: request.id,
+        error: {
+          code: -32603,
+          message: error instanceof Error ? error.message : String(error),
         },
       };
     }
