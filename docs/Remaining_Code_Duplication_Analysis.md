@@ -16,21 +16,25 @@ After comprehensive refactoring efforts, we've reduced duplication from **6.13% 
 **Completed Phases:**
 
 **Phase 1 Complete ✅:**
+
 - db.ts: Eliminated 87 lines (38% → 0% internal duplication)
 - tool_registry.ts: Eliminated 74 lines (14% → 0% internal duplication)
 - mcp/tools.ts: Eliminated 30 lines (9% → reduced)
 - **Total Phase 1 Impact:** -77 duplicated lines, -3 clones
 
 **Phase 2 Complete ✅:**
+
 - git_service_test.ts: Refactored all 19/19 tests with GitTestHelper
 - **Total Phase 2 Impact:** ~150+ lines eliminated
 
 **Phase 3 Complete ✅:**
+
 - watcher_test.ts: Refactored 7 FileWatcher tests with WatcherTestHelper
 - Created comprehensive test helper infrastructure
 - **Total Phase 3 Impact:** -55 lines, -6 clones
 
 **Phase 4 Complete ✅:**
+
 - portal_commands_test.ts: Refactored 5 config-based tests with PortalConfigTestHelper
 - Created PortalConfigTestHelper with comprehensive utilities
 - **Total Phase 4 Impact:** -67 lines, -4 clones
@@ -45,25 +49,27 @@ After comprehensive refactoring efforts, we've reduced duplication from **6.13% 
 **Approach:** Create PortalConfigTestHelper for config-based portal tests
 
 **Created Infrastructure:**
+
 ```typescript
 // tests/helpers/portal_test_helper.ts (132 lines)
 export class PortalConfigTestHelper {
-  static async create(prefix: string): Promise<PortalConfigTestHelper>
-  async createAdditionalTarget(): Promise<string>
-  async addPortal(alias: string, targetPath?: string): Promise<void>
-  async removePortal(alias: string): Promise<void>
-  async listPortals()
-  async verifyPortal(alias?: string)
-  getSymlinkPath(alias: string): string
-  getCardPath(alias: string): string
-  getRefreshedCommands(): PortalCommands
-  async cleanup(additionalDirs: string[]): Promise<void>
+  static async create(prefix: string): Promise<PortalConfigTestHelper>;
+  async createAdditionalTarget(): Promise<string>;
+  async addPortal(alias: string, targetPath?: string): Promise<void>;
+  async removePortal(alias: string): Promise<void>;
+  async listPortals();
+  async verifyPortal(alias?: string);
+  getSymlinkPath(alias: string): string;
+  getCardPath(alias: string): string;
+  getRefreshedCommands(): PortalCommands;
+  async cleanup(additionalDirs: string[]): Promise<void>;
 }
 
-export async function createPortalConfigTestContext(prefix)
+export async function createPortalConfigTestContext(prefix);
 ```
 
 **Tests Refactored:**
+
 1. ✅ "adds portal to config file" (14 lines → 7 lines)
 2. ✅ "removes portal from config file" (17 lines → 8 lines)
 3. ✅ "list includes created timestamp from config" (19 lines → 10 lines)
@@ -71,12 +77,14 @@ export async function createPortalConfigTestContext(prefix)
 5. ✅ "verify detects missing config entry" (21 lines → 11 lines)
 
 **Impact:**
+
 - Eliminated repeated setup: tempRoot, targetDir, db, configService initialization
 - Eliminated repeated cleanup: 3-5 Deno.remove() calls per test
 - Simplified test logic with helper methods: addPortal(), removePortal(), verifyPortal()
 - All 31/31 portal tests passing
 
 **Before Pattern (repeated 5 times):**
+
 ```typescript
 const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-..." });
 const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
@@ -93,6 +101,7 @@ await Deno.remove(targetDir, { recursive: true });
 ```
 
 **After Pattern:**
+
 ```typescript
 const { helper, cleanup } = await createPortalConfigTestContext("config-add");
 try {
@@ -360,21 +369,23 @@ class GitTestHelper {
 **Status:** ✅ Refactored - Created WatcherTestHelper
 
 **Completed Work:**
+
 - ✅ Created `tests/helpers/watcher_test_helper.ts` (133 lines)
 - ✅ `createWatcherTestContext()` - automated test setup/cleanup
 - ✅ `WatcherTestHelper` class - comprehensive helper methods
 - ✅ Refactored 7 FileWatcher tests to use helper
 
 **Helper Methods Include:**
+
 ```typescript
 class WatcherTestHelper {
-  async createInboxStructure(): Promise<void>
-  createWatcher(callback, options): FileWatcher
-  async startWatcher(watcher): Promise<void>
-  async stopWatcher(watcher): Promise<void>
-  async writeFile(filename, content, waitMs): Promise<string>
-  async writeFiles(files, waitMs): Promise<string[]>
-  async cleanup(): Promise<void>
+  async createInboxStructure(): Promise<void>;
+  createWatcher(callback, options): FileWatcher;
+  async startWatcher(watcher): Promise<void>;
+  async stopWatcher(watcher): Promise<void>;
+  async writeFile(filename, content, waitMs): Promise<string>;
+  async writeFiles(files, waitMs): Promise<string[]>;
+  async cleanup(): Promise<void>;
 }
 ```
 
@@ -434,22 +445,23 @@ export function createToolContext(
 ---
 
 ### 4. Portal Commands Tests (tests/cli/portal_commands_test.ts)
-  ): Promise<void> {
-    const filePath = join(watchPath, filename);
-    await Deno.writeTextFile(filePath, content);
-    // Wait for debounce
-    await new Promise((resolve) => setTimeout(resolve, 300));
-  }
 
-  async cleanup(): Promise<void> {
-    if (this.watcher) {
-      await this.watcher.stop();
-      this.watcher = undefined;
-    }
-  }
+): Promise<void> {
+const filePath = join(watchPath, filename);
+await Deno.writeTextFile(filePath, content);
+// Wait for debounce
+await new Promise((resolve) => setTimeout(resolve, 300));
 }
-```
 
+async cleanup(): Promise<void> {
+if (this.watcher) {
+await this.watcher.stop();
+this.watcher = undefined;
+}
+}
+}
+
+````
 **Estimated Effort:** 2.5 hours\
 **Impact:** Standardizes watcher test patterns
 
@@ -495,7 +507,7 @@ export async function createPortalWithVerification(
 
   return { portalPath, issues };
 }
-```
+````
 
 **Estimated Effort:** 1.5 hours\
 **Impact:** Further reduces portal test duplication

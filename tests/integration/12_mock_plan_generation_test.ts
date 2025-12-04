@@ -38,7 +38,7 @@ Always respond with:
 `,
     );
 
-    const { provider, processor } = env.createRequestProcessor();
+    const { processor } = env.createRequestProcessor();
 
     // ========================================================================
     // Test: Full integration - Request → Blueprint → MockProvider → Plan
@@ -97,7 +97,7 @@ Deno.test("Integration: Concurrent Requests with Shared MockLLMProvider", async 
       `# Senior Coder Blueprint\n\nYou are an expert software developer.\n\n## Response Format\n\nAlways respond with:\n- <thought> tags containing your analysis\n- <content> tags containing the implementation plan\n`,
     );
 
-    const { provider, processor } = env.createRequestProcessor();
+    const { processor } = env.createRequestProcessor();
 
     // Create and process multiple requests concurrently
     const requests = await Promise.all([
@@ -148,7 +148,7 @@ Deno.test("Integration: Mock Plan Generation - Activity Logging", async () => {
       `# Senior Coder Blueprint\n\nYou are an expert software developer.\n\n## Response Format\n\nAlways respond with:\n- <thought> tags containing your analysis\n- <content> tags containing the implementation plan\n`,
     );
 
-    const { provider, processor } = env.createRequestProcessor();
+    const { processor } = env.createRequestProcessor();
 
     const result = await env.createRequest("Implement feature X");
     await processor.process(result.filePath);

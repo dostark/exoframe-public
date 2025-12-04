@@ -1,6 +1,5 @@
 import { join } from "@std/path";
 import { FileWatcher } from "../../src/services/watcher.ts";
-import type { Config } from "../../src/config/schema.ts";
 import type { DatabaseService } from "../../src/services/db.ts";
 import { createMockConfig } from "./config.ts";
 
@@ -90,10 +89,8 @@ export class WatcherTestHelper {
     files: Array<{ name: string; content: string }>,
     waitMs: number = 200,
   ): Promise<string[]> {
-    const paths = await Promise.all(
-      files.map((f) =>
-        Deno.writeTextFile(join(this.inboxPath, f.name), f.content)
-      ),
+    const _paths = await Promise.all(
+      files.map((f) => Deno.writeTextFile(join(this.inboxPath, f.name), f.content)),
     );
     await new Promise((resolve) => setTimeout(resolve, waitMs));
     return files.map((f) => join(this.inboxPath, f.name));

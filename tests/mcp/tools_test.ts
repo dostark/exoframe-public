@@ -1,13 +1,13 @@
 import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import {
-  initMCPTest,
-  initMCPTestWithoutPortal,
-  createToolCallRequest,
-  createMCPRequest,
+  assertMCPContentIncludes,
   assertMCPError,
   assertMCPSuccess,
-  assertMCPContentIncludes,
+  createMCPRequest,
+  createToolCallRequest,
+  initMCPTest,
+  initMCPTestWithoutPortal,
 } from "./helpers/test_setup.ts";
 
 /**
@@ -37,7 +37,7 @@ Deno.test("read_file: successfully reads file from portal", async () => {
 
     const response = await ctx.server.handleRequest(request);
     const result = assertMCPSuccess<{ content: Array<{ type: string; text: string }> }>(response);
-    
+
     assertEquals(result.content.length, 1);
     assertEquals(result.content[0].type, "text");
     assertEquals(result.content[0].text, "Hello from portal!");
@@ -305,7 +305,7 @@ Deno.test("list_directory: lists files in portal root", async () => {
     fileContent: {
       "file1.txt": "content1",
       "file2.txt": "content2",
-      "subdir/placeholder.txt": "",  // Creates subdir
+      "subdir/placeholder.txt": "", // Creates subdir
     },
   });
   try {
@@ -349,7 +349,7 @@ Deno.test("list_directory: lists files in subdirectory", async () => {
 });
 
 Deno.test("list_directory: handles empty directory", async () => {
-  const ctx = await initMCPTest();  // Empty portal
+  const ctx = await initMCPTest(); // Empty portal
   try {
     const request = createToolCallRequest("list_directory", {
       portal: "TestPortal",

@@ -1,8 +1,5 @@
 import { assert, assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
-import {
-  initMCPTestWithoutPortal,
-  createMCPRequest,
-} from "./helpers/test_setup.ts";
+import { createMCPRequest, initMCPTestWithoutPortal } from "./helpers/test_setup.ts";
 
 /**
  * Tests for  MCP Server Implementation

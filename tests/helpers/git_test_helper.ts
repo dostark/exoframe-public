@@ -1,4 +1,4 @@
-import { assertEquals, assert } from "jsr:@std/assert@^1.0.0";
+import { assert, assertEquals } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { GitService } from "../../src/services/git_service.ts";
 import { createMockConfig } from "./config.ts";
@@ -8,7 +8,7 @@ import type { Config } from "../../src/config/schema.ts";
 
 /**
  * Git Test Helper
- * 
+ *
  * Provides utilities for testing git operations with automatic setup/cleanup.
  */
 

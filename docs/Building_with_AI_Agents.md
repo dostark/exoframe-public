@@ -203,6 +203,7 @@ Agent: [updates all tests to account for async flushing]
 **The Setup**: After months of TDD, the codebase had grown to 767 passing tests. Success! But with growth came duplication—especially in test setup/teardown code.
 
 **The Measurement**:
+
 ```bash
 npx jscpd src tests --reporters json --output ./report
 ```
@@ -210,6 +211,7 @@ npx jscpd src tests --reporters json --output ./report
 **Initial State**: 6.13% duplication (2,444 lines, 206 clones)
 
 **The Pattern**: Repeated test setup code appeared everywhere:
+
 ```typescript
 // Repeated 31 times with variations
 const tempDir = await Deno.makeTempDir({ prefix: "test-..." });
@@ -232,6 +234,7 @@ try {
 4. **Refactor incrementally**, keeping all tests green
 
 **The Transformation**:
+
 ```typescript
 // After: Using ToolRegistryTestHelper
 const { helper, cleanup } = await createToolRegistryTestContext("test");
@@ -247,18 +250,21 @@ try {
 ```
 
 **The Results**:
+
 - **Phase 1-4 Completed**: 6.13% → 2.35% (61.6% reduction)
 - **Lines Eliminated**: -1,507 duplicated lines
 - **Clones Removed**: -107 clones
 - **Tests**: All 767 tests still passing ✅
 
 **The Helpers Created**:
+
 1. `GitTestHelper` - Git operations setup/teardown
 2. `WatcherTestHelper` - FileWatcher test infrastructure
 3. `ToolRegistryTestHelper` - Tool registry test contexts
 4. `PortalConfigTestHelper` - Portal configuration tests
 
 **The Lesson**: Code quality isn't just about production code. Test code deserves the same care:
+
 - **DRY applies to tests** - Don't repeat setup/teardown
 - **Measure duplication** - Use jscpd to identify patterns
 - **Extract helpers systematically** - One test file at a time
@@ -266,6 +272,7 @@ try {
 - **Document patterns** - Future tests use the helpers
 
 **The Command Pattern**:
+
 ```bash
 # Measure current duplication
 npx jscpd src tests --reporters json --output ./report
@@ -284,6 +291,7 @@ npx jscpd src tests --reporters json --output ./report
 ```
 
 **When To Refactor**:
+
 - **After each major feature** - Don't let duplication accumulate
 - **When tests become hard to write** - Missing helpers is a code smell
 - **When duplication > 3%** - Set a threshold and enforce it

@@ -82,7 +82,7 @@ async function createTestPortal(basePath: string, portalName: string) {
 }
 
 Deno.test("Integration Test 16.1: Sandboxed Mode - File Access Blocked", async () => {
-  const { db: dbService, tempDir, cleanup: dbCleanup } = await initTestDbService();
+  const { db: dbService, cleanup: dbCleanup } = await initTestDbService();
   const testDir = await Deno.makeTempDir({ prefix: "test-exo-security-" });
 
   try {
@@ -153,7 +153,7 @@ Deno.test("Integration Test 16.1: Sandboxed Mode - File Access Blocked", async (
 });
 
 Deno.test("Integration Test 16.2: Hybrid Mode - Audit Detection", async () => {
-  const { db: dbService, tempDir, cleanup: dbCleanup } = await initTestDbService();
+  const { db: dbService, cleanup: dbCleanup } = await initTestDbService();
   const testDir = await Deno.makeTempDir({ prefix: "test-exo-security-" });
 
   try {
@@ -230,11 +230,11 @@ Deno.test("Integration Test 16.2: Hybrid Mode - Audit Detection", async () => {
 });
 
 Deno.test("Integration Test 16.3: Permission Validation - Agent Not Allowed", async () => {
-  const { db: dbService, tempDir, cleanup: dbCleanup } = await initTestDbService();
+  const { db: dbService, cleanup: dbCleanup } = await initTestDbService();
   const testDir = await Deno.makeTempDir({ prefix: "test-exo-security-" });
 
   try {
-    const portalPath = await createTestPortal(testDir, "RestrictedPortal");
+    const _portalPath = await createTestPortal(testDir, "RestrictedPortal");
     const eventLogger = new EventLogger({ db: dbService });
 
     const traceId = crypto.randomUUID();
@@ -324,7 +324,7 @@ Deno.test("Integration Test 16.4: Permission Validation - Operation Not Allowed"
 });
 
 Deno.test("Integration Test 16.5: Permission Validation - Portal Not Found", async () => {
-  const { db: dbService, tempDir, cleanup: dbCleanup } = await initTestDbService();
+  const { db: dbService, cleanup: dbCleanup } = await initTestDbService();
   const testDir = await Deno.makeTempDir({ prefix: "test-exo-security-" });
 
   try {
@@ -370,7 +370,7 @@ Deno.test("Integration Test 16.5: Permission Validation - Portal Not Found", asy
 });
 
 Deno.test("Integration Test 16.6: Hybrid Mode - Read Access Allowed", async () => {
-  const { db: dbService, tempDir, cleanup: dbCleanup } = await initTestDbService();
+  const { db: dbService, cleanup: dbCleanup } = await initTestDbService();
   const testDir = await Deno.makeTempDir({ prefix: "test-exo-security-" });
 
   try {

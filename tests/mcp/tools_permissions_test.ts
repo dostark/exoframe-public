@@ -5,7 +5,7 @@
  */
 
 import { assertExists, assertRejects } from "jsr:@std/assert@^1.0.0";
-import { ReadFileTool, WriteFileTool, GitStatusTool } from "../../src/mcp/tools.ts";
+import { GitStatusTool, ReadFileTool, WriteFileTool } from "../../src/mcp/tools.ts";
 import { PortalPermissionsService } from "../../src/services/portal_permissions.ts";
 import { initToolPermissionTest } from "./helpers/test_setup.ts";
 
@@ -207,4 +207,3 @@ Deno.test("MCP Tools: allows wildcard agent access", async () => {
     await ctx.cleanup();
   }
 });
-

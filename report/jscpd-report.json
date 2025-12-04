@@ -1,18 +1,18 @@
 {
   "statistics": {
-    "detectionDate": "2025-12-04T16:44:56.876Z",
+    "detectionDate": "2025-12-04T17:25:50.999Z",
     "formats": {
       "typescript": {
         "sources": {
           "tests/mcp/helpers/test_setup.ts": {
             "lines": 393,
-            "tokens": 2825,
+            "tokens": 2830,
             "sources": 1,
             "clones": 5,
             "duplicatedLines": 63,
             "duplicatedTokens": 563,
             "percentage": 16.03,
-            "percentageTokens": 19.93,
+            "percentageTokens": 19.89,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -20,17 +20,17 @@
             "lines": 477,
             "tokens": 3767,
             "sources": 1,
-            "clones": 1,
-            "duplicatedLines": 10,
-            "duplicatedTokens": 92,
-            "percentage": 2.1,
-            "percentageTokens": 2.44,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
           "tests/cli/helpers/test_setup.ts": {
-            "lines": 108,
-            "tokens": 902,
+            "lines": 106,
+            "tokens": 900,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -126,13 +126,13 @@
           },
           "tests/mcp/tools_test.ts": {
             "lines": 394,
-            "tokens": 3342,
+            "tokens": 3341,
             "sources": 1,
             "clones": 8,
             "duplicatedLines": 59,
             "duplicatedTokens": 735,
             "percentage": 14.97,
-            "percentageTokens": 21.99,
+            "percentageTokens": 22,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -149,14 +149,14 @@
             "newClones": 0
           },
           "tests/mcp/server_test.ts": {
-            "lines": 157,
-            "tokens": 1377,
+            "lines": 154,
+            "tokens": 1374,
             "sources": 1,
             "clones": 2,
             "duplicatedLines": 15,
             "duplicatedTokens": 199,
-            "percentage": 9.55,
-            "percentageTokens": 14.45,
+            "percentage": 9.74,
+            "percentageTokens": 14.48,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -197,14 +197,14 @@
             "newClones": 0
           },
           "tests/mcp/prompts_test.ts": {
-            "lines": 220,
-            "tokens": 1950,
+            "lines": 225,
+            "tokens": 1958,
             "sources": 1,
             "clones": 2,
             "duplicatedLines": 14,
             "duplicatedTokens": 152,
-            "percentage": 6.36,
-            "percentageTokens": 7.79,
+            "percentage": 6.22,
+            "percentageTokens": 7.76,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -222,13 +222,13 @@
           },
           "tests/integration/16_security_modes_test.ts": {
             "lines": 425,
-            "tokens": 3609,
+            "tokens": 3594,
             "sources": 1,
             "clones": 1,
             "duplicatedLines": 17,
             "duplicatedTokens": 131,
             "percentage": 4,
-            "percentageTokens": 3.63,
+            "percentageTokens": 3.64,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -270,7 +270,7 @@
           },
           "tests/integration/12_mock_plan_generation_test.ts": {
             "lines": 173,
-            "tokens": 1184,
+            "tokens": 1175,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -412,6 +412,42 @@
             "newDuplicatedLines": 0,
             "newClones": 0
           },
+          "tests/helpers/watcher_test_helper.ts": {
+            "lines": 127,
+            "tokens": 1023,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "tests/helpers/tool_registry_test_helper.ts": {
+            "lines": 133,
+            "tokens": 998,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "tests/helpers/portal_test_helper.ts": {
+            "lines": 133,
+            "tokens": 1048,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
           "tests/helpers/git_test_helper.ts": {
             "lines": 195,
             "tokens": 1461,
@@ -497,14 +533,14 @@
             "newClones": 0
           },
           "tests/cli/portal_commands_test.ts": {
-            "lines": 639,
-            "tokens": 6325,
+            "lines": 575,
+            "tokens": 5246,
             "sources": 1,
-            "clones": 16,
-            "duplicatedLines": 140,
-            "duplicatedTokens": 1844,
-            "percentage": 21.91,
-            "percentageTokens": 29.15,
+            "clones": 8,
+            "duplicatedLines": 44,
+            "duplicatedTokens": 568,
+            "percentage": 7.65,
+            "percentageTokens": 10.83,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -581,26 +617,26 @@
             "newClones": 0
           },
           "tests/watcher_test.ts": {
-            "lines": 755,
-            "tokens": 7402,
+            "lines": 667,
+            "tokens": 6039,
             "sources": 1,
-            "clones": 16,
-            "duplicatedLines": 153,
-            "duplicatedTokens": 1596,
-            "percentage": 20.26,
-            "percentageTokens": 21.56,
+            "clones": 4,
+            "duplicatedLines": 43,
+            "duplicatedTokens": 380,
+            "percentage": 6.45,
+            "percentageTokens": 6.29,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
           "tests/tool_registry_test.ts": {
-            "lines": 770,
-            "tokens": 7338,
+            "lines": 741,
+            "tokens": 6931,
             "sources": 1,
-            "clones": 16,
-            "duplicatedLines": 160,
-            "duplicatedTokens": 1458,
-            "percentage": 20.78,
-            "percentageTokens": 19.87,
+            "clones": 12,
+            "duplicatedLines": 122,
+            "duplicatedTokens": 1126,
+            "percentage": 16.46,
+            "percentageTokens": 16.25,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -737,14 +773,14 @@
             "newClones": 0
           },
           "tests/git_service_test.ts": {
-            "lines": 609,
-            "tokens": 5177,
+            "lines": 514,
+            "tokens": 4166,
             "sources": 1,
-            "clones": 5,
-            "duplicatedLines": 44,
-            "duplicatedTokens": 480,
-            "percentage": 7.22,
-            "percentageTokens": 9.27,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -1146,13 +1182,13 @@
           },
           "src/mcp/tools.ts": {
             "lines": 729,
-            "tokens": 4876,
+            "tokens": 4858,
             "sources": 1,
-            "clones": 4,
-            "duplicatedLines": 64,
-            "duplicatedTokens": 428,
-            "percentage": 8.78,
-            "percentageTokens": 8.78,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -1374,14 +1410,14 @@
           }
         },
         "total": {
-          "lines": 38674,
-          "tokens": 293028,
-          "sources": 114,
-          "clones": 116,
-          "duplicatedLines": 1118,
-          "duplicatedTokens": 11834,
-          "percentage": 2.89,
-          "percentageTokens": 4.04,
+          "lines": 38791,
+          "tokens": 292202,
+          "sources": 117,
+          "clones": 99,
+          "duplicatedLines": 937,
+          "duplicatedTokens": 9922,
+          "percentage": 2.42,
+          "percentageTokens": 3.4,
           "newDuplicatedLines": 0,
           "newClones": 0
         }
@@ -1468,14 +1504,14 @@
       }
     },
     "total": {
-      "lines": 39776,
-      "tokens": 299059,
-      "sources": 118,
-      "clones": 116,
-      "duplicatedLines": 1118,
-      "duplicatedTokens": 11834,
-      "percentage": 2.81,
-      "percentageTokens": 3.96,
+      "lines": 39893,
+      "tokens": 298233,
+      "sources": 121,
+      "clones": 99,
+      "duplicatedLines": 937,
+      "duplicatedTokens": 9922,
+      "percentage": 2.35,
+      "percentageTokens": 3.33,
       "newDuplicatedLines": 0,
       "newClones": 0
     }
@@ -1493,12 +1529,12 @@
         "startLoc": {
           "line": 132,
           "column": 8,
-          "position": 1017
+          "position": 1018
         },
         "endLoc": {
           "line": 142,
           "column": 7,
-          "position": 1138
+          "position": 1139
         }
       },
       "secondFile": {
@@ -1508,12 +1544,12 @@
         "startLoc": {
           "line": 109,
           "column": 2,
-          "position": 790
+          "position": 791
         },
         "endLoc": {
           "line": 120,
           "column": 11,
-          "position": 912
+          "position": 913
         }
       }
     },
@@ -1529,12 +1565,12 @@
         "startLoc": {
           "line": 273,
           "column": 19,
-          "position": 1925
+          "position": 1930
         },
         "endLoc": {
           "line": 286,
           "column": 7,
-          "position": 2020
+          "position": 2025
         }
       },
       "secondFile": {
@@ -1544,12 +1580,12 @@
         "startLoc": {
           "line": 64,
           "column": 7,
-          "position": 414
+          "position": 415
         },
         "endLoc": {
           "line": 77,
           "column": 6,
-          "position": 509
+          "position": 510
         }
       }
     },
@@ -1565,12 +1601,12 @@
         "startLoc": {
           "line": 286,
           "column": 22,
-          "position": 2360
+          "position": 2359
         },
         "endLoc": {
           "line": 292,
           "column": 13,
-          "position": 2443
+          "position": 2442
         }
       },
       "secondFile": {
@@ -1580,12 +1616,12 @@
         "startLoc": {
           "line": 67,
           "column": 21,
-          "position": 461
+          "position": 460
         },
         "endLoc": {
           "line": 73,
           "column": 15,
-          "position": 544
+          "position": 543
         }
       }
     },
@@ -1601,12 +1637,12 @@
         "startLoc": {
           "line": 353,
           "column": 3,
-          "position": 2959
+          "position": 2958
         },
         "endLoc": {
           "line": 362,
           "column": 21,
-          "position": 3057
+          "position": 3056
         }
       },
       "secondFile": {
@@ -1616,12 +1652,12 @@
         "startLoc": {
           "line": 311,
           "column": 3,
-          "position": 2559
+          "position": 2558
         },
         "endLoc": {
           "line": 320,
           "column": 6,
-          "position": 2657
+          "position": 2656
         }
       }
     },
@@ -1637,12 +1673,12 @@
         "startLoc": {
           "line": 355,
           "column": 13,
-          "position": 2982
+          "position": 2981
         },
         "endLoc": {
           "line": 362,
           "column": 8,
-          "position": 3069
+          "position": 3068
         }
       },
       "secondFile": {
@@ -1652,12 +1688,12 @@
         "startLoc": {
           "line": 338,
           "column": 9,
-          "position": 2810
+          "position": 2809
         },
         "endLoc": {
           "line": 345,
           "column": 13,
-          "position": 2897
+          "position": 2896
         }
       }
     },
@@ -1776,17 +1812,17 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/mcp/server_test.ts",
-        "start": 62,
-        "end": 70,
+        "start": 59,
+        "end": 67,
         "startLoc": {
-          "line": 62,
+          "line": 59,
           "column": 41,
-          "position": 453
+          "position": 450
         },
         "endLoc": {
-          "line": 70,
+          "line": 67,
           "column": 13,
-          "position": 569
+          "position": 566
         }
       },
       "secondFile": {
@@ -1796,12 +1832,12 @@
         "startLoc": {
           "line": 130,
           "column": 45,
-          "position": 999
+          "position": 998
         },
         "endLoc": {
           "line": 138,
           "column": 13,
-          "position": 1115
+          "position": 1114
         }
       }
     },
@@ -1812,17 +1848,17 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/mcp/server_test.ts",
-        "start": 75,
-        "end": 82,
+        "start": 72,
+        "end": 79,
         "startLoc": {
-          "line": 75,
+          "line": 72,
           "column": 2,
-          "position": 637
+          "position": 634
         },
         "endLoc": {
-          "line": 82,
+          "line": 79,
           "column": 2,
-          "position": 720
+          "position": 717
         }
       },
       "secondFile": {
@@ -1832,12 +1868,12 @@
         "startLoc": {
           "line": 139,
           "column": 2,
-          "position": 1143
+          "position": 1142
         },
         "endLoc": {
           "line": 146,
           "column": 6,
-          "position": 1226
+          "position": 1225
         }
       }
     },
@@ -2084,12 +2120,12 @@
         "startLoc": {
           "line": 269,
           "column": 2,
-          "position": 1889
+          "position": 1894
         },
         "endLoc": {
           "line": 77,
           "column": 6,
-          "position": 509
+          "position": 510
         }
       }
     },
@@ -2352,32 +2388,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/cli/portal_commands_test.ts",
-        "start": 218,
-        "end": 225,
+        "start": 219,
+        "end": 226,
         "startLoc": {
-          "line": 218,
+          "line": 219,
           "column": 39,
-          "position": 1862
+          "position": 1872
         },
         "endLoc": {
-          "line": 225,
+          "line": 226,
           "column": 6,
-          "position": 1946
+          "position": 1956
         }
       },
       "secondFile": {
         "name": "tests/cli/portal_commands_test.ts",
-        "start": 115,
-        "end": 122,
+        "start": 116,
+        "end": 123,
         "startLoc": {
-          "line": 115,
+          "line": 116,
           "column": 48,
-          "position": 844
+          "position": 854
         },
         "endLoc": {
-          "line": 122,
+          "line": 123,
           "column": 6,
-          "position": 928
+          "position": 938
         }
       }
     },
@@ -2388,140 +2424,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/cli/portal_commands_test.ts",
-        "start": 432,
-        "end": 437,
+        "start": 433,
+        "end": 438,
         "startLoc": {
-          "line": 432,
+          "line": 433,
           "column": 15,
-          "position": 3956
+          "position": 3966
         },
         "endLoc": {
-          "line": 437,
+          "line": 438,
           "column": 15,
-          "position": 4022
+          "position": 4032
         }
       },
       "secondFile": {
         "name": "tests/cli/portal_commands_test.ts",
-        "start": 413,
-        "end": 418,
+        "start": 414,
+        "end": 419,
         "startLoc": {
-          "line": 413,
+          "line": 414,
           "column": 12,
-          "position": 3752
+          "position": 3762
         },
         "endLoc": {
-          "line": 418,
+          "line": 419,
           "column": 10,
-          "position": 3818
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": "});\n  const targetDir = await Deno.makeTempDir({ prefix: \"portal-target-\" });\n  const { db, cleanup } = await initTestDbService();\n\n  try {\n    const configService = await createTestConfigService(tempRoot);\n    const config = configService.get();\n\n    await Deno.mkdir(join(tempRoot, \"Portals\"), { recursive: true });\n    await Deno.mkdir(join(tempRoot, \"Knowledge\", \"Portals\"), { recursive: true });\n\n    const commands = new PortalCommands({ config, db, configService });\n\n    // Add portal",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/cli/portal_commands_test.ts",
-        "start": 492,
-        "end": 505,
-        "startLoc": {
-          "line": 492,
-          "column": 2,
-          "position": 4628
-        },
-        "endLoc": {
-          "line": 505,
-          "column": 14,
-          "position": 4798
-        }
-      },
-      "secondFile": {
-        "name": "tests/cli/portal_commands_test.ts",
-        "start": 464,
-        "end": 476,
-        "startLoc": {
-          "line": 464,
-          "column": 2,
-          "position": 4273
-        },
-        "endLoc": {
-          "line": 476,
-          "column": 6,
-          "position": 4442
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": "});\n  const targetDir = await Deno.makeTempDir({ prefix: \"portal-target-\" });\n  const { db, cleanup } = await initTestDbService();\n\n  try {\n    const configService = await createTestConfigService(tempRoot);\n    const config = configService.get();\n\n    await Deno.mkdir(join(tempRoot, \"Portals\"), { recursive: true });\n    await Deno.mkdir(join(tempRoot, \"Knowledge\", \"Portals\"), { recursive: true });\n\n    const commands = new PortalCommands({ config, db, configService });\n    await commands.add(targetDir, \"TimestampTest\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/cli/portal_commands_test.ts",
-        "start": 523,
-        "end": 535,
-        "startLoc": {
-          "line": 523,
-          "column": 2,
-          "position": 4976
-        },
-        "endLoc": {
-          "line": 535,
-          "column": 16,
-          "position": 5154
-        }
-      },
-      "secondFile": {
-        "name": "tests/cli/portal_commands_test.ts",
-        "start": 464,
-        "end": 476,
-        "startLoc": {
-          "line": 464,
-          "column": 2,
-          "position": 4273
-        },
-        "endLoc": {
-          "line": 476,
-          "column": 13,
-          "position": 4451
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 13,
-      "fragment": "});\n  const { db, cleanup } = await initTestDbService();\n\n  try {\n    const configService = await createTestConfigService(tempRoot);\n    const config = configService.get();\n\n    await Deno.mkdir(join(tempRoot, \"Portals\"), { recursive: true });\n    await Deno.mkdir(join(tempRoot, \"Knowledge\", \"Portals\"), { recursive: true });\n\n    const commands = new PortalCommands({ config, db, configService });\n\n    // Add portal normally",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/cli/portal_commands_test.ts",
-        "start": 559,
-        "end": 571,
-        "startLoc": {
-          "line": 559,
-          "column": 2,
-          "position": 5439
-        },
-        "endLoc": {
-          "line": 571,
-          "column": 23,
-          "position": 5585
-        }
-      },
-      "secondFile": {
-        "name": "tests/cli/portal_commands_test.ts",
-        "start": 465,
-        "end": 476,
-        "startLoc": {
-          "line": 465,
-          "column": 2,
-          "position": 4297
-        },
-        "endLoc": {
-          "line": 476,
-          "column": 6,
-          "position": 4442
+          "position": 3828
         }
       }
     },
@@ -2532,68 +2460,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/cli/portal_commands_test.ts",
-        "start": 588,
-        "end": 593,
+        "start": 540,
+        "end": 545,
         "startLoc": {
-          "line": 588,
+          "line": 540,
           "column": 15,
-          "position": 5718
+          "position": 4912
         },
         "endLoc": {
-          "line": 593,
+          "line": 545,
           "column": 18,
-          "position": 5785
+          "position": 4979
         }
       },
       "secondFile": {
         "name": "tests/cli/portal_commands_test.ts",
-        "start": 413,
-        "end": 418,
+        "start": 414,
+        "end": 419,
         "startLoc": {
-          "line": 413,
+          "line": 414,
           "column": 12,
-          "position": 3752
+          "position": 3762
         },
         "endLoc": {
-          "line": 418,
+          "line": 419,
           "column": 10,
-          "position": 3818
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": "});\n  const targetDir = await Deno.makeTempDir({ prefix: \"portal-target-\" });\n  const { db, cleanup } = await initTestDbService();\n\n  try {\n    const configService = await createTestConfigService(tempRoot);\n    const config = configService.get();\n\n    await Deno.mkdir(join(tempRoot, \"Portals\"), { recursive: true });\n    await Deno.mkdir(join(tempRoot, \"Knowledge\", \"Portals\"), { recursive: true });\n\n    // Create symlink manually without adding to config",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/cli/portal_commands_test.ts",
-        "start": 605,
-        "end": 616,
-        "startLoc": {
-          "line": 605,
-          "column": 2,
-          "position": 5920
-        },
-        "endLoc": {
-          "line": 616,
-          "column": 52,
-          "position": 6064
-        }
-      },
-      "secondFile": {
-        "name": "tests/cli/portal_commands_test.ts",
-        "start": 464,
-        "end": 475,
-        "startLoc": {
-          "line": 464,
-          "column": 2,
-          "position": 4273
-        },
-        "endLoc": {
-          "line": 475,
-          "column": 6,
-          "position": 4417
+          "position": 3828
         }
       }
     },
@@ -2604,32 +2496,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/cli/portal_commands_test.ts",
-        "start": 627,
-        "end": 632,
+        "start": 565,
+        "end": 570,
         "startLoc": {
-          "line": 627,
+          "line": 565,
           "column": 11,
-          "position": 6183
+          "position": 5146
         },
         "endLoc": {
-          "line": 632,
+          "line": 570,
           "column": 29,
-          "position": 6250
+          "position": 5213
         }
       },
       "secondFile": {
         "name": "tests/cli/portal_commands_test.ts",
-        "start": 413,
-        "end": 418,
+        "start": 414,
+        "end": 419,
         "startLoc": {
-          "line": 413,
+          "line": 414,
           "column": 12,
-          "position": 3752
+          "position": 3762
         },
         "endLoc": {
-          "line": 418,
+          "line": 419,
           "column": 10,
-          "position": 3818
+          "position": 3828
         }
       }
     },
@@ -2856,284 +2748,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/watcher_test.ts",
-        "start": 265,
-        "end": 271,
+        "start": 266,
+        "end": 272,
         "startLoc": {
-          "line": 265,
+          "line": 266,
           "column": 5,
-          "position": 2342
+          "position": 2355
         },
         "endLoc": {
-          "line": 271,
+          "line": 272,
           "column": 67,
-          "position": 2416
+          "position": 2429
         }
       },
       "secondFile": {
         "name": "tests/watcher_test.ts",
-        "start": 244,
-        "end": 250,
+        "start": 245,
+        "end": 251,
         "startLoc": {
-          "line": 244,
+          "line": 245,
           "column": 5,
-          "position": 2134
+          "position": 2147
         },
         "endLoc": {
-          "line": 250,
+          "line": 251,
           "column": 40,
-          "position": 2208
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 7,
-      "fragment": "});\n  try {\n    const inboxPath = join(tempDir, \"Inbox\", \"Requests\");\n    await Deno.mkdir(inboxPath, { recursive: true });\n\n    const config = createMockConfig(tempDir, {\n      watcher: { debounce_ms: 50, stability_check: false }, // Disabled",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/watcher_test.ts",
-        "start": 470,
-        "end": 476,
-        "startLoc": {
-          "line": 470,
-          "column": 2,
-          "position": 4407
-        },
-        "endLoc": {
-          "line": 476,
-          "column": 12,
-          "position": 4491
-        }
-      },
-      "secondFile": {
-        "name": "tests/watcher_test.ts",
-        "start": 408,
-        "end": 415,
-        "startLoc": {
-          "line": 408,
-          "column": 2,
-          "position": 3777
-        },
-        "endLoc": {
-          "line": 415,
-          "column": 2,
-          "position": 3862
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 10,
-      "fragment": "});\n  try {\n    const inboxPath = join(tempDir, \"Inbox\", \"Requests\");\n    await Deno.mkdir(inboxPath, { recursive: true });\n\n    const config = createMockConfig(tempDir, {\n      watcher: { debounce_ms: 50, stability_check: false },\n    });\n\n    let",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/watcher_test.ts",
-        "start": 505,
-        "end": 514,
-        "startLoc": {
-          "line": 505,
-          "column": 2,
-          "position": 4768
-        },
-        "endLoc": {
-          "line": 514,
-          "column": 4,
-          "position": 4859
-        }
-      },
-      "secondFile": {
-        "name": "tests/watcher_test.ts",
-        "start": 408,
-        "end": 417,
-        "startLoc": {
-          "line": 408,
-          "column": 2,
-          "position": 3777
-        },
-        "endLoc": {
-          "line": 417,
-          "column": 6,
-          "position": 3868
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 10,
-      "fragment": "});\n  try {\n    const inboxPath = join(tempDir, \"Inbox\", \"Requests\");\n    await Deno.mkdir(inboxPath, { recursive: true });\n\n    const config = createMockConfig(tempDir, {\n      watcher: { debounce_ms: 50, stability_check: false },\n    });\n\n    const watcher",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/watcher_test.ts",
-        "start": 576,
-        "end": 585,
-        "startLoc": {
-          "line": 576,
-          "column": 2,
-          "position": 5552
-        },
-        "endLoc": {
-          "line": 585,
-          "column": 8,
-          "position": 5645
-        }
-      },
-      "secondFile": {
-        "name": "tests/watcher_test.ts",
-        "start": 408,
-        "end": 417,
-        "startLoc": {
-          "line": 408,
-          "column": 2,
-          "position": 3777
-        },
-        "endLoc": {
-          "line": 417,
-          "column": 15,
-          "position": 3870
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 10,
-      "fragment": "});\n  try {\n    const inboxPath = join(tempDir, \"Inbox\", \"Requests\");\n    await Deno.mkdir(inboxPath, { recursive: true });\n\n    const config = createMockConfig(tempDir, {\n      watcher: { debounce_ms: 50, stability_check: false },\n    });\n\n    // Create a callback that throws a non-Error object",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/watcher_test.ts",
-        "start": 610,
-        "end": 619,
-        "startLoc": {
-          "line": 610,
-          "column": 2,
-          "position": 5903
-        },
-        "endLoc": {
-          "line": 619,
-          "column": 52,
-          "position": 5994
-        }
-      },
-      "secondFile": {
-        "name": "tests/watcher_test.ts",
-        "start": 408,
-        "end": 417,
-        "startLoc": {
-          "line": 408,
-          "column": 2,
-          "position": 3777
-        },
-        "endLoc": {
-          "line": 417,
-          "column": 6,
-          "position": 3868
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": "});\n\n    const watcherPromise = watcher.start();\n    await new Promise((resolve) => setTimeout(resolve, 100));\n\n    await Deno.writeTextFile(join(inboxPath, \"test.md\"), \"content\");\n    await new Promise((resolve) => setTimeout(resolve, 200));\n\n    watcher.stop();\n    await watcherPromise.catch(() => {});\n\n    // Should handle non-Error exceptions gracefully",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/watcher_test.ts",
-        "start": 623,
-        "end": 634,
-        "startLoc": {
-          "line": 623,
-          "column": 5,
-          "position": 6029
-        },
-        "endLoc": {
-          "line": 634,
-          "column": 49,
-          "position": 6143
-        }
-      },
-      "secondFile": {
-        "name": "tests/watcher_test.ts",
-        "start": 518,
-        "end": 529,
-        "startLoc": {
-          "line": 518,
-          "column": 5,
-          "position": 4909
-        },
-        "endLoc": {
-          "line": 529,
-          "column": 51,
-          "position": 5023
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": "});\n  try {\n    const inboxPath = join(tempDir, \"Inbox\", \"Requests\");\n    await Deno.mkdir(inboxPath, { recursive: true });\n\n    const config = createMockConfig(tempDir, {\n      watcher: { debounce_ms: 50, stability_check: false },\n    });\n\n    const eventsReceived: string[] = [];\n    const watcher = new FileWatcher(config, (event) => {\n      eventsReceived.push(event.content",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/watcher_test.ts",
-        "start": 681,
-        "end": 692,
-        "startLoc": {
-          "line": 681,
-          "column": 2,
-          "position": 6613
-        },
-        "endLoc": {
-          "line": 692,
-          "column": 8,
-          "position": 6748
-        }
-      },
-      "secondFile": {
-        "name": "tests/watcher_test.ts",
-        "start": 408,
-        "end": 419,
-        "startLoc": {
-          "line": 408,
-          "column": 2,
-          "position": 3777
-        },
-        "endLoc": {
-          "line": 419,
-          "column": 5,
-          "position": 3912
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": "});\n  const { db, cleanup } = await initTestDbService();\n\n  try {\n    const config = createMockConfig(tempDir);\n    const registry = new ToolRegistry({ config, db });\n\n    const result = await registry.execute(\"read_file\", {\n      path: join",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/tool_registry_test.ts",
-        "start": 93,
-        "end": 101,
-        "startLoc": {
-          "line": 93,
-          "column": 2,
-          "position": 858
-        },
-        "endLoc": {
-          "line": 101,
-          "column": 5,
-          "position": 947
-        }
-      },
-      "secondFile": {
-        "name": "tests/tool_registry_test.ts",
-        "start": 73,
-        "end": 81,
-        "startLoc": {
-          "line": 73,
-          "column": 2,
-          "position": 638
-        },
-        "endLoc": {
-          "line": 81,
-          "column": 19,
-          "position": 727
+          "position": 2221
         }
       }
     },
@@ -3144,68 +2784,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/tool_registry_test.ts",
-        "start": 145,
-        "end": 161,
+        "start": 126,
+        "end": 142,
         "startLoc": {
-          "line": 145,
+          "line": 126,
           "column": 2,
-          "position": 1425
+          "position": 1194
         },
         "endLoc": {
-          "line": 161,
+          "line": 142,
           "column": 63,
-          "position": 1554
+          "position": 1323
         }
       },
       "secondFile": {
         "name": "tests/tool_registry_test.ts",
-        "start": 120,
-        "end": 136,
+        "start": 101,
+        "end": 117,
         "startLoc": {
-          "line": 120,
+          "line": 101,
           "column": 10,
-          "position": 1170
+          "position": 939
         },
         "endLoc": {
-          "line": 136,
+          "line": 117,
           "column": 54,
-          "position": 1299
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": ",\n    });\n\n    assertEquals(result.success, false);\n    assertExists(result.error);\n  } finally {\n    await cleanup();\n    await Deno.remove(tempDir, { recursive: true });\n  }\n});\n\nDeno.test(\"ToolRegistry: run_command - executes whitelisted command\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/tool_registry_test.ts",
-        "start": 222,
-        "end": 233,
-        "startLoc": {
-          "line": 222,
-          "column": 12,
-          "position": 2225
-        },
-        "endLoc": {
-          "line": 233,
-          "column": 59,
-          "position": 2302
-        }
-      },
-      "secondFile": {
-        "name": "tests/tool_registry_test.ts",
-        "start": 171,
-        "end": 182,
-        "startLoc": {
-          "line": 171,
-          "column": 6,
-          "position": 1683
-        },
-        "endLoc": {
-          "line": 182,
-          "column": 57,
-          "position": 1760
+          "position": 1068
         }
       }
     },
@@ -3216,32 +2820,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/tool_registry_test.ts",
-        "start": 253,
-        "end": 261,
+        "start": 224,
+        "end": 232,
         "startLoc": {
-          "line": 253,
+          "line": 224,
           "column": 67,
-          "position": 2492
+          "position": 2085
         },
         "endLoc": {
-          "line": 261,
+          "line": 232,
           "column": 5,
-          "position": 2592
+          "position": 2185
         }
       },
       "secondFile": {
         "name": "tests/tool_registry_test.ts",
-        "start": 233,
-        "end": 241,
+        "start": 204,
+        "end": 212,
         "startLoc": {
-          "line": 233,
+          "line": 204,
           "column": 59,
-          "position": 2303
+          "position": 1896
         },
         "endLoc": {
-          "line": 241,
+          "line": 212,
           "column": 7,
-          "position": 2403
+          "position": 1996
         }
       }
     },
@@ -3252,32 +2856,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/tool_registry_test.ts",
-        "start": 300,
-        "end": 307,
+        "start": 271,
+        "end": 278,
         "startLoc": {
-          "line": 300,
+          "line": 271,
           "column": 57,
-          "position": 2999
+          "position": 2592
         },
         "endLoc": {
-          "line": 307,
+          "line": 278,
           "column": 19,
-          "position": 3090
+          "position": 2683
         }
       },
       "secondFile": {
         "name": "tests/tool_registry_test.ts",
-        "start": 233,
-        "end": 240,
+        "start": 204,
+        "end": 211,
         "startLoc": {
-          "line": 233,
+          "line": 204,
           "column": 59,
-          "position": 2303
+          "position": 1896
         },
         "endLoc": {
-          "line": 240,
+          "line": 211,
           "column": 14,
-          "position": 2394
+          "position": 1987
         }
       }
     },
@@ -3288,32 +2892,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/tool_registry_test.ts",
-        "start": 374,
-        "end": 385,
+        "start": 345,
+        "end": 356,
         "startLoc": {
-          "line": 374,
+          "line": 345,
           "column": 7,
-          "position": 3781
+          "position": 3374
         },
         "endLoc": {
-          "line": 385,
+          "line": 356,
           "column": 64,
-          "position": 3858
+          "position": 3451
         }
       },
       "secondFile": {
         "name": "tests/tool_registry_test.ts",
-        "start": 171,
-        "end": 182,
+        "start": 193,
+        "end": 204,
         "startLoc": {
-          "line": 171,
-          "column": 6,
-          "position": 1683
+          "line": 193,
+          "column": 12,
+          "position": 1818
         },
         "endLoc": {
-          "line": 182,
-          "column": 57,
-          "position": 1760
+          "line": 204,
+          "column": 59,
+          "position": 1895
         }
       }
     },
@@ -3324,32 +2928,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/tool_registry_test.ts",
-        "start": 432,
-        "end": 440,
+        "start": 403,
+        "end": 411,
         "startLoc": {
-          "line": 432,
+          "line": 403,
           "column": 2,
-          "position": 4316
+          "position": 3909
         },
         "endLoc": {
-          "line": 440,
+          "line": 411,
           "column": 5,
-          "position": 4405
+          "position": 3998
         }
       },
       "secondFile": {
         "name": "tests/tool_registry_test.ts",
-        "start": 214,
-        "end": 222,
+        "start": 185,
+        "end": 193,
         "startLoc": {
-          "line": 214,
+          "line": 185,
           "column": 2,
-          "position": 2135
+          "position": 1728
         },
         "endLoc": {
-          "line": 222,
+          "line": 193,
           "column": 12,
-          "position": 2224
+          "position": 1817
         }
       }
     },
@@ -3360,32 +2964,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/tool_registry_test.ts",
-        "start": 440,
-        "end": 451,
+        "start": 411,
+        "end": 422,
         "startLoc": {
-          "line": 440,
+          "line": 411,
           "column": 2,
-          "position": 4412
+          "position": 4005
         },
         "endLoc": {
-          "line": 451,
+          "line": 422,
           "column": 56,
-          "position": 4489
+          "position": 4082
         }
       },
       "secondFile": {
         "name": "tests/tool_registry_test.ts",
-        "start": 171,
-        "end": 182,
+        "start": 193,
+        "end": 204,
         "startLoc": {
-          "line": 171,
-          "column": 6,
-          "position": 1683
+          "line": 193,
+          "column": 12,
+          "position": 1818
         },
         "endLoc": {
-          "line": 182,
-          "column": 57,
-          "position": 1760
+          "line": 204,
+          "column": 59,
+          "position": 1895
         }
       }
     },
@@ -4435,114 +4039,6 @@
     },
     {
       "format": "typescript",
-      "lines": 11,
-      "fragment": ");\n    await new Deno.Command(\"git\", {\n      args: [\"add\", \".\"],\n      cwd: tempDir,\n    }).output();\n    await new Deno.Command(\"git\", {\n      args: [\"commit\", \"-m\", \"Initial commit\"],\n      cwd: tempDir,\n    }).output();\n\n    // Create a branch first",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 450,
-        "end": 460,
-        "startLoc": {
-          "line": 450,
-          "column": 10,
-          "position": 3763
-        },
-        "endLoc": {
-          "line": 460,
-          "column": 25,
-          "position": 3855
-        }
-      },
-      "secondFile": {
-        "name": "tests/integration/helpers/test_environment.ts",
-        "start": 89,
-        "end": 98,
-        "startLoc": {
-          "line": 89,
-          "column": 3,
-          "position": 785
-        },
-        "endLoc": {
-          "line": 98,
-          "column": 2,
-          "position": 876
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 8,
-      "fragment": "const logResult = await new Deno.Command(\"git\", {\n      args: [\"log\", \"-1\", \"--pretty=%B\"],\n      cwd: tempDir,\n      stdout: \"piped\",\n    }).output();\n    const commitMsg = new TextDecoder().decode(logResult.stdout);\n\n    assertEquals(commitMsg.includes(\"feat: add file\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 550,
-        "end": 557,
-        "startLoc": {
-          "line": 550,
-          "column": 5,
-          "position": 4619
-        },
-        "endLoc": {
-          "line": 557,
-          "column": 17,
-          "position": 4705
-        }
-      },
-      "secondFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 418,
-        "end": 425,
-        "startLoc": {
-          "line": 418,
-          "column": 5,
-          "position": 3458
-        },
-        "endLoc": {
-          "line": 425,
-          "column": 11,
-          "position": 3544
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "await Deno.writeTextFile(join(tempDir, \"init.txt\"), \"initial\");\n    await new Deno.Command(\"git\", {\n      args: [\"add\", \".\"],\n      cwd: tempDir,\n    }).output();\n    await new Deno.Command(\"git\", {\n      args: [\"commit\", \"-m\", \"Initial commit\"],\n      cwd: tempDir,\n    }).output();\n\n    // Create branch with trace context",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 579,
-        "end": 589,
-        "startLoc": {
-          "line": 579,
-          "column": 5,
-          "position": 4906
-        },
-        "endLoc": {
-          "line": 589,
-          "column": 36,
-          "position": 5014
-        }
-      },
-      "secondFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 450,
-        "end": 98,
-        "startLoc": {
-          "line": 450,
-          "column": 5,
-          "position": 3747
-        },
-        "endLoc": {
-          "line": 98,
-          "column": 2,
-          "position": 876
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 10,
       "fragment": ", async () => {\n  const { db, cleanup } = await initTestDbService();\n  const logs: string[] = [];\n  const originalLog = console.log;\n  console.log = (...args: unknown[]) => logs.push(args.join(\" \"));\n\n  try {\n    const logger = new EventLogger({ db, prefix: \"[Test]\" });\n\n    logger.info(\"daemon.started\"",
       "tokens": 0,
@@ -5103,17 +4599,17 @@
       },
       "secondFile": {
         "name": "tests/watcher_test.ts",
-        "start": 21,
-        "end": 33,
+        "start": 22,
+        "end": 34,
         "startLoc": {
-          "line": 21,
+          "line": 22,
           "column": 3,
-          "position": 130
+          "position": 143
         },
         "endLoc": {
-          "line": 33,
+          "line": 34,
           "column": 36,
-          "position": 260
+          "position": 273
         }
       }
     },
@@ -5139,17 +4635,17 @@
       },
       "secondFile": {
         "name": "tests/watcher_test.ts",
-        "start": 40,
-        "end": 59,
+        "start": 41,
+        "end": 60,
         "startLoc": {
-          "line": 40,
+          "line": 41,
           "column": 7,
-          "position": 312
+          "position": 325
         },
         "endLoc": {
-          "line": 59,
+          "line": 60,
           "column": 6,
-          "position": 414
+          "position": 427
         }
       }
     },
@@ -5330,78 +4826,6 @@
           "line": 249,
           "column": 4,
           "position": 1509
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 17,
-      "fragment": ", agent_id } = validatedArgs;\n\n    try {\n      // All tools make permission checking for portal operations\n      this.validatePermission(portal, agent_id, \"git\");\n\n      // Validate portal exists\n      const portalPath = this.validatePortalExists(portal);\n\n      // Check if git repository exists\n      try {\n        await Deno.stat(join(portalPath, \".git\"));\n      } catch {\n        throw new Error(`Not a git repository: ${portal}`);\n      }\n\n      // Stage files",
-      "tokens": 0,
-      "firstFile": {
-        "name": "src/mcp/tools.ts",
-        "start": 555,
-        "end": 571,
-        "startLoc": {
-          "line": 555,
-          "column": 6,
-          "position": 3605
-        },
-        "endLoc": {
-          "line": 571,
-          "column": 15,
-          "position": 3712
-        }
-      },
-      "secondFile": {
-        "name": "src/mcp/tools.ts",
-        "start": 468,
-        "end": 484,
-        "startLoc": {
-          "line": 468,
-          "column": 7,
-          "position": 3008
-        },
-        "endLoc": {
-          "line": 484,
-          "column": 35,
-          "position": 3115
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 17,
-      "fragment": ", agent_id } = validatedArgs;\n\n    try {\n      // All tools make permission checking for portal operations\n      this.validatePermission(portal, agent_id, \"git\");\n\n      // Validate portal exists\n      const portalPath = this.validatePortalExists(portal);\n\n      // Check if git repository exists\n      try {\n        await Deno.stat(join(portalPath, \".git\"));\n      } catch {\n        throw new Error(`Not a git repository: ${portal}`);\n      }\n\n      // Get git status",
-      "tokens": 0,
-      "firstFile": {
-        "name": "src/mcp/tools.ts",
-        "start": 665,
-        "end": 681,
-        "startLoc": {
-          "line": 665,
-          "column": 7,
-          "position": 4382
-        },
-        "endLoc": {
-          "line": 681,
-          "column": 18,
-          "position": 4489
-        }
-      },
-      "secondFile": {
-        "name": "src/mcp/tools.ts",
-        "start": 468,
-        "end": 484,
-        "startLoc": {
-          "line": 468,
-          "column": 7,
-          "position": 3008
-        },
-        "endLoc": {
-          "line": 484,
-          "column": 35,
-          "position": 3115
         }
       }
     },

@@ -1,6 +1,6 @@
 /**
  * MCP Test Helpers
- * 
+ *
  * Consolidated test utilities to reduce duplication across MCP test files.
  * Provides standardized setup, request creation, and assertion helpers.
  */
@@ -34,7 +34,7 @@ export interface PortalTestOptions {
 
 /**
  * Initialize MCP server test environment with portal
- * 
+ *
  * @example
  * const ctx = await initMCPTest({ createFiles: true });
  * try {
@@ -44,7 +44,7 @@ export interface PortalTestOptions {
  * }
  */
 export async function initMCPTest(
-  options: PortalTestOptions = {}
+  options: PortalTestOptions = {},
 ): Promise<MCPTestContext> {
   const {
     portalAlias = "TestPortal",
@@ -144,7 +144,7 @@ export async function initMCPTestWithoutPortal(): Promise<
 
 /**
  * Create MCP tool call request
- * 
+ *
  * @example
  * const request = createToolCallRequest("read_file", {
  *   portal: "TestPortal",
@@ -154,7 +154,7 @@ export async function initMCPTestWithoutPortal(): Promise<
 export function createToolCallRequest(
   toolName: string,
   args: Record<string, unknown>,
-  id: number | string = 1
+  id: number | string = 1,
 ) {
   return {
     jsonrpc: "2.0" as const,
@@ -169,7 +169,7 @@ export function createToolCallRequest(
 
 /**
  * Create MCP request for any method
- * 
+ *
  * @example
  * const request = createMCPRequest("initialize", {
  *   protocolVersion: "2024-11-05",
@@ -179,7 +179,7 @@ export function createToolCallRequest(
 export function createMCPRequest(
   method: string,
   params?: Record<string, unknown>,
-  id: number | string = 1
+  id: number | string = 1,
 ) {
   return {
     jsonrpc: "2.0" as const,
@@ -191,26 +191,26 @@ export function createMCPRequest(
 
 /**
  * Assert MCP error response with specific code
- * 
+ *
  * @throws AssertionError if response is not an error or code doesn't match
  */
 export function assertMCPError(
   response: any,
   expectedCode: number,
-  messageContains?: string
+  messageContains?: string,
 ): void {
   assertExists(response.error, "Expected error in response");
   assertEquals(
     response.error.code,
     expectedCode,
-    `Expected error code ${expectedCode}, got ${response.error.code}: ${response.error.message}`
+    `Expected error code ${expectedCode}, got ${response.error.code}: ${response.error.message}`,
   );
-  
+
   if (messageContains) {
     const message = response.error.message as string;
     if (!message.includes(messageContains)) {
       throw new Error(
-        `Expected error message to contain "${messageContains}", got: "${message}"`
+        `Expected error message to contain "${messageContains}", got: "${message}"`,
       );
     }
   }
@@ -218,17 +218,17 @@ export function assertMCPError(
 
 /**
  * Assert MCP success response and return result
- * 
+ *
  * @throws AssertionError if response contains an error
  * @returns The result object from the response
  */
 export function assertMCPSuccess<T = any>(response: any): T {
   if (response.error) {
     throw new Error(
-      `Expected success, got error ${response.error.code}: ${response.error.message}`
+      `Expected success, got error ${response.error.code}: ${response.error.message}`,
     );
   }
-  
+
   assertExists(response.result, "Expected result in response");
   return response.result as T;
 }
@@ -239,13 +239,13 @@ export function assertMCPSuccess<T = any>(response: any): T {
 export function assertMCPContentIncludes(response: any, text: string): void {
   const result = assertMCPSuccess(response);
   assertExists(result.content, "Expected content array in result");
-  
+
   const content = result.content as Array<{ type: string; text: string }>;
   const hasText = content.some((item) => item.text?.includes(text));
-  
+
   if (!hasText) {
     throw new Error(
-      `Expected content to include "${text}", got: ${JSON.stringify(content)}`
+      `Expected content to include "${text}", got: ${JSON.stringify(content)}`,
     );
   }
 }
@@ -255,7 +255,7 @@ export function assertMCPContentIncludes(response: any, text: string): void {
  */
 export async function createGitPortal(
   tempDir: string,
-  portalName: string = "TestPortal"
+  portalName: string = "TestPortal",
 ): Promise<string> {
   const portalPath = join(tempDir, portalName);
   await ensureDir(portalPath);
@@ -289,7 +289,7 @@ export async function createGitPortal(
 /**
  * Initialize test environment for tool permission tests
  * Creates portal with specific permissions for testing tool authorization
- * 
+ *
  * @example
  * const ctx = await initToolPermissionTest({
  *   operations: ["read"],
@@ -315,7 +315,7 @@ export interface ToolPermissionOptions {
 }
 
 export async function initToolPermissionTest(
-  options: ToolPermissionOptions = {}
+  options: ToolPermissionOptions = {},
 ): Promise<ToolPermissionTestContext> {
   const {
     portalAlias = "TestPortal",
@@ -376,7 +376,7 @@ export async function initToolPermissionTest(
 export async function initSimpleMCPServer() {
   const tempDir = await Deno.makeTempDir({ prefix: "mcp-simple-" });
   const { db, cleanup: dbCleanup } = await initTestDbService();
-  
+
   const config = createMockConfig(tempDir);
   const server = new MCPServer({ config, db, transport: "stdio" });
   await server.start();

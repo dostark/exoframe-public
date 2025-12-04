@@ -3,6 +3,7 @@ import { join } from "@std/path";
 import { ToolRegistry } from "../src/services/tool_registry.ts";
 import { createMockConfig } from "./helpers/config.ts";
 import { initTestDbService } from "./helpers/db.ts";
+import { createToolRegistryTestContext } from "./helpers/tool_registry_test_helper.ts";
 
 /**
  * Tests for Step 4.1: The Tool Registry
@@ -34,50 +35,31 @@ Deno.test("ToolRegistry: registers tools with JSON schemas", () => {
 });
 
 Deno.test("ToolRegistry: read_file - successful read", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "tool-test-read-" });
-  const { db, cleanup } = await initTestDbService();
+  const { helper, cleanup } = await createToolRegistryTestContext("tool-test-read-");
 
   try {
-    const config = createMockConfig(tempDir);
-    // Create file inside Knowledge directory (within allowed roots)
-    const knowledgeDir = join(tempDir, "Knowledge");
-    await Deno.mkdir(knowledgeDir, { recursive: true });
-    const testFile = join(knowledgeDir, "test.txt");
-    await Deno.writeTextFile(testFile, "Hello, World!");
+    const testFile = await helper.createKnowledgeFile("test.txt", "Hello, World!");
 
-    const registry = new ToolRegistry({ config, db });
-
-    const result = await registry.execute("read_file", {
-      path: testFile,
-    });
+    const result = await helper.execute("read_file", { path: testFile });
 
     assertEquals(result.success, true);
     assertEquals(result.data?.content, "Hello, World!");
     assertEquals(result.error, undefined);
 
-    // Allow time for batched logging
-    await new Promise((resolve) => setTimeout(resolve, 150));
+    await helper.waitForLogging();
 
-    // Verify activity logged
-    const logs = db.instance.prepare(
-      "SELECT * FROM activity WHERE action_type = ?",
-    ).all("tool.read_file");
+    const logs = helper.getActivityLogs("tool.read_file");
     assertEquals(logs.length, 1);
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 
 Deno.test("[security] ToolRegistry: read_file - rejects path traversal", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "tool-test-traversal-" });
-  const { db, cleanup } = await initTestDbService();
+  const { helper, cleanup } = await createToolRegistryTestContext("tool-test-traversal-");
 
   try {
-    const config = createMockConfig(tempDir);
-    const registry = new ToolRegistry({ config, db });
-
-    const result = await registry.execute("read_file", {
+    const result = await helper.execute("read_file", {
       path: "../../etc/passwd",
     });
 
@@ -85,7 +67,6 @@ Deno.test("[security] ToolRegistry: read_file - rejects path traversal", async (
     assertEquals(result.error?.includes("denied") || result.error?.includes("outside"), true);
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 
@@ -159,14 +140,10 @@ Deno.test("ToolRegistry: write_file - overwrites existing file", async () => {
 });
 
 Deno.test("[security] ToolRegistry: write_file - rejects path traversal", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "tool-test-write-sec-" });
-  const { db, cleanup } = await initTestDbService();
+  const { helper, cleanup } = await createToolRegistryTestContext("tool-test-write-sec-");
 
   try {
-    const config = createMockConfig(tempDir);
-    const registry = new ToolRegistry({ config, db });
-
-    const result = await registry.execute("write_file", {
+    const result = await helper.execute("write_file", {
       path: "../../tmp/malicious.txt",
       content: "Bad",
     });
@@ -175,24 +152,19 @@ Deno.test("[security] ToolRegistry: write_file - rejects path traversal", async 
     assertExists(result.error);
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 
 Deno.test("ToolRegistry: list_directory - lists files and folders", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "tool-test-list-" });
-  const { db, cleanup } = await initTestDbService();
+  const { helper, cleanup } = await createToolRegistryTestContext("tool-test-list-");
 
   try {
-    const config = createMockConfig(tempDir);
-    await Deno.writeTextFile(join(tempDir, "file1.txt"), "content");
-    await Deno.writeTextFile(join(tempDir, "file2.md"), "content");
-    await Deno.mkdir(join(tempDir, "subfolder"));
+    await helper.createFile("file1.txt", "content");
+    await helper.createFile("file2.md", "content");
+    await helper.createDir("subfolder");
 
-    const registry = new ToolRegistry({ config, db });
-
-    const result = await registry.execute("list_directory", {
-      path: tempDir,
+    const result = await helper.execute("list_directory", {
+      path: helper.tempDir,
     });
 
     assertEquals(result.success, true);
@@ -206,7 +178,6 @@ Deno.test("ToolRegistry: list_directory - lists files and folders", async () => 
     assertEquals(typeof entry.isDirectory, "boolean");
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 

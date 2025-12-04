@@ -195,11 +195,16 @@ Deno.test("generatePrompt: routes to create_changeset generator", async () => {
   const { db, cleanup } = await initTestDbService();
   try {
     const config = createMockConfig("/tmp/test");
-    const result = generatePrompt("create_changeset", {
-      portal: "TestPortal",
-      description: "Test change",
-      trace_id: "trace-888",
-    }, config, db);
+    const result = generatePrompt(
+      "create_changeset",
+      {
+        portal: "TestPortal",
+        description: "Test change",
+        trace_id: "trace-888",
+      },
+      config,
+      db,
+    );
 
     assertExists(result);
     assertStringIncludes(result!.messages[0].content.text, "Test change");

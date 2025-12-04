@@ -15,9 +15,7 @@ export async function initPortalTest(options?: {
   targetFiles?: Record<string, string>;
 }) {
   const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-" });
-  const targetDir = options?.createTarget !== false
-    ? await Deno.makeTempDir({ prefix: "portal-target-" })
-    : "";
+  const targetDir = options?.createTarget !== false ? await Deno.makeTempDir({ prefix: "portal-target-" }) : "";
 
   const { db, cleanup: dbCleanup } = await initTestDbService();
 

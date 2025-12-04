@@ -218,6 +218,7 @@ python3 -c "import json; data=json.load(open('report/jscpd-report.json')); \
 ### Refactoring Guidelines
 
 **When adding new features**:
+
 1. Write tests and implementation in TDD manner
 2. After tests pass, measure duplication
 3. If duplication increases significantly (>0.2%), refactor before committing
@@ -226,6 +227,7 @@ python3 -c "import json; data=json.load(open('report/jscpd-report.json')); \
 6. Verify duplication decreased
 
 **Common duplication patterns to extract**:
+
 - **Error handling blocks** - Extract to helper methods
 - **Response formatting** - Create base class methods (e.g., `formatSuccess()`, `formatError()`)
 - **Transaction management** - Extract to utility functions
@@ -233,6 +235,7 @@ python3 -c "import json; data=json.load(open('report/jscpd-report.json')); \
 - **Configuration setup** - Extract to factory functions
 
 **Example - Before (duplicated 5 times)**:
+
 ```typescript
 try {
   const result = await operation();
@@ -246,6 +249,7 @@ try {
 ```
 
 **Example - After (extracted helper)**:
+
 ```typescript
 private formatSuccess(data: any): ToolResult {
   return { success: true, data };

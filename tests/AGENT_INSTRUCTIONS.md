@@ -250,7 +250,7 @@ export class MyFeatureTestHelper {
     const { db, cleanup: dbCleanup } = await initTestDbService();
     const config = createMockConfig(tempDir);
     const service = new MyService({ config, db });
-    
+
     return new MyFeatureTestHelper(
       tempDir,
       service,
@@ -312,6 +312,7 @@ python3 -c "import json; data=json.load(open('report/jscpd-report.json')); \
 6. **Measure improvement** - Confirm duplication decreased
 
 **Example - Before (repeated in 5 tests)**:
+
 ```typescript
 const tempDir = await Deno.makeTempDir({ prefix: "feature-test-" });
 const { db, cleanup: dbCleanup } = await initTestDbService();
@@ -326,6 +327,7 @@ try {
 ```
 
 **Example - After (using helper)**:
+
 ```typescript
 const { helper, cleanup } = await createMyFeatureTestContext("test-name");
 try {

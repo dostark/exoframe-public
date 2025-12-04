@@ -113,7 +113,7 @@ export class PortalConfigTestHelper {
     await this.dbCleanup();
     await Deno.remove(this.tempRoot, { recursive: true }).catch(() => {});
     await Deno.remove(this.targetDir, { recursive: true }).catch(() => {});
-    
+
     for (const dir of additionalDirs) {
       await Deno.remove(dir, { recursive: true }).catch(() => {});
     }

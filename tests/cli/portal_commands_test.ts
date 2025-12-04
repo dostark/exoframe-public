@@ -14,8 +14,6 @@
 import { assertEquals, assertExists, assertRejects } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { PortalCommands } from "../../src/cli/portal_commands.ts";
-import { initTestDbService } from "../helpers/db.ts";
-import { createTestConfigService } from "../helpers/config.ts";
 import {
   createTestPortal,
   getPortalCardPath,
