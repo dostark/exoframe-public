@@ -15,6 +15,17 @@ import {
   parsePortalURI,
 } from "../../src/mcp/resources.ts";
 
+// Helper for resource discovery tests
+async function createTestPortal(tempDir: string, portalName: string, files: Record<string, string>) {
+  const portalPath = join(tempDir, portalName);
+  for (const [filePath, content] of Object.entries(files)) {
+    const fullPath = join(portalPath, filePath);
+    await ensureDir(join(fullPath, ".."));
+    await Deno.writeTextFile(fullPath, content);
+  }
+  return portalPath;
+}
+
 // ============================================================================
 // URI Parsing Tests
 // ============================================================================
@@ -61,27 +72,20 @@ Deno.test("discoverPortalResources: discovers files in portal", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "mcp-resources-" });
 
   try {
-    // Create test portal structure
-    const portalPath = join(tempDir, "TestPortal");
-    await ensureDir(join(portalPath, "src"));
-    await Deno.writeTextFile(join(portalPath, "README.md"), "# Test");
-    await Deno.writeTextFile(join(portalPath, "src", "main.ts"), "console.log('test');");
-    await Deno.writeTextFile(join(portalPath, "src", "utils.ts"), "export {}");
+    const portalPath = await createTestPortal(tempDir, "TestPortal", {
+      "README.md": "# Test",
+      "src/main.ts": "console.log('test');",
+      "src/utils.ts": "export {}",
+    });
 
     const resources = await discoverPortalResources("TestPortal", portalPath);
 
-    // Should find all 3 files
     assertEquals(resources.length >= 2, true);
 
-    // Check URIs are correct format
     const uris = resources.map((r) => r.uri);
-    const hasReadme = uris.some((uri) => uri.includes("README.md"));
-    const hasMainTs = uris.some((uri) => uri.includes("main.ts"));
+    assertEquals(uris.some((uri) => uri.includes("README.md")), true);
+    assertEquals(uris.some((uri) => uri.includes("main.ts")), true);
 
-    assertEquals(hasReadme, true);
-    assertEquals(hasMainTs, true);
-
-    // Check MIME types
     const tsResource = resources.find((r) => r.uri.includes("main.ts"));
     assertExists(tsResource);
     assertEquals(tsResource.mimeType, "text/x-typescript");
@@ -94,26 +98,19 @@ Deno.test("discoverPortalResources: respects maxDepth option", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "mcp-resources-depth-" });
 
   try {
-    const portalPath = join(tempDir, "TestPortal");
-    await ensureDir(join(portalPath, "level1", "level2", "level3"));
-    await Deno.writeTextFile(join(portalPath, "root.txt"), "root");
-    await Deno.writeTextFile(join(portalPath, "level1", "file1.txt"), "level1");
-    await Deno.writeTextFile(join(portalPath, "level1", "level2", "file2.txt"), "level2");
-    await Deno.writeTextFile(join(portalPath, "level1", "level2", "level3", "file3.txt"), "level3");
-
-    const resources = await discoverPortalResources("TestPortal", portalPath, {
-      maxDepth: 2,
+    const portalPath = await createTestPortal(tempDir, "TestPortal", {
+      "root.txt": "root",
+      "level1/file1.txt": "level1",
+      "level1/level2/file2.txt": "level2",
+      "level1/level2/level3/file3.txt": "level3",
     });
 
-    // Should find root.txt and file1.txt, but not file2.txt or file3.txt (depth > 2)
-    const paths = resources.map((r) => {
-      const parsed = parsePortalURI(r.uri);
-      return parsed?.path;
-    });
+    const resources = await discoverPortalResources("TestPortal", portalPath, { maxDepth: 2 });
+
+    const paths = resources.map((r) => parsePortalURI(r.uri)?.path);
 
     assertEquals(paths.includes("root.txt"), true);
     assertEquals(paths.includes("level1/file1.txt"), true);
-    // Note: maxDepth includes the root, so depth 2 includes level1
   } finally {
     await Deno.remove(tempDir, { recursive: true });
   }
@@ -123,21 +120,18 @@ Deno.test("discoverPortalResources: filters by extensions", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "mcp-resources-ext-" });
 
   try {
-    const portalPath = join(tempDir, "TestPortal");
-    await ensureDir(portalPath);
-    await Deno.writeTextFile(join(portalPath, "code.ts"), "ts file");
-    await Deno.writeTextFile(join(portalPath, "script.js"), "js file");
-    await Deno.writeTextFile(join(portalPath, "data.json"), "{}");
-    await Deno.writeTextFile(join(portalPath, "README.md"), "# readme");
+    const portalPath = await createTestPortal(tempDir, "TestPortal", {
+      "code.ts": "ts file",
+      "script.js": "js file",
+      "data.json": "{}",
+      "README.md": "# readme",
+    });
 
     const resources = await discoverPortalResources("TestPortal", portalPath, {
       extensions: ["ts", "js"],
     });
 
-    const paths = resources.map((r) => {
-      const parsed = parsePortalURI(r.uri);
-      return parsed?.path;
-    });
+    const paths = resources.map((r) => parsePortalURI(r.uri)?.path);
 
     assertEquals(paths.includes("code.ts"), true);
     assertEquals(paths.includes("script.js"), true);
@@ -152,17 +146,14 @@ Deno.test("discoverPortalResources: skips hidden files by default", async () => 
   const tempDir = await Deno.makeTempDir({ prefix: "mcp-resources-hidden-" });
 
   try {
-    const portalPath = join(tempDir, "TestPortal");
-    await ensureDir(portalPath);
-    await Deno.writeTextFile(join(portalPath, "visible.ts"), "visible");
-    await Deno.writeTextFile(join(portalPath, ".hidden"), "hidden");
+    const portalPath = await createTestPortal(tempDir, "TestPortal", {
+      "visible.ts": "visible",
+      ".hidden": "hidden",
+    });
 
     const resources = await discoverPortalResources("TestPortal", portalPath);
 
-    const paths = resources.map((r) => {
-      const parsed = parsePortalURI(r.uri);
-      return parsed?.path;
-    });
+    const paths = resources.map((r) => parsePortalURI(r.uri)?.path);
 
     assertEquals(paths.includes("visible.ts"), true);
     assertEquals(paths.includes(".hidden"), false);
@@ -176,15 +167,8 @@ Deno.test("discoverAllResources: discovers from multiple portals", async () => {
   const { db, cleanup } = await initTestDbService();
 
   try {
-    // Create two test portals
-    const portal1Path = join(tempDir, "Portal1");
-    const portal2Path = join(tempDir, "Portal2");
-
-    await ensureDir(portal1Path);
-    await ensureDir(portal2Path);
-
-    await Deno.writeTextFile(join(portal1Path, "file1.ts"), "portal1");
-    await Deno.writeTextFile(join(portal2Path, "file2.ts"), "portal2");
+    const portal1Path = await createTestPortal(tempDir, "Portal1", { "file1.ts": "portal1" });
+    const portal2Path = await createTestPortal(tempDir, "Portal2", { "file2.ts": "portal2" });
 
     const config = createMockConfig(tempDir, {
       portals: [
@@ -195,7 +179,6 @@ Deno.test("discoverAllResources: discovers from multiple portals", async () => {
 
     const resources = await discoverAllResources(config, db);
 
-    // Should find files from both portals
     assertEquals(resources.length >= 2, true);
 
     const portal1Resources = resources.filter((r) => r.uri.startsWith("portal://Portal1/"));

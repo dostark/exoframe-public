@@ -46,27 +46,21 @@ Deno.test("getPrompt: returns null for unknown prompt", () => {
 
 Deno.test("generateExecutePlanPrompt: generates prompt with plan details", async () => {
   const { db, cleanup } = await initTestDbService();
-
   try {
-    const result = generateExecutePlanPrompt(
-      {
-        plan_id: "test-plan-123",
-        portal: "MyApp",
-      },
-      db,
-    );
+    const result = generateExecutePlanPrompt({ plan_id: "test-plan-123", portal: "MyApp" }, db);
 
     assertExists(result);
     assertExists(result.description);
     assertStringIncludes(result.description, "test-plan-123");
     assertStringIncludes(result.description, "MyApp");
-
     assertEquals(result.messages.length, 1);
     assertEquals(result.messages[0].role, "user");
-    assertStringIncludes(result.messages[0].content.text, "test-plan-123");
-    assertStringIncludes(result.messages[0].content.text, "MyApp");
-    assertStringIncludes(result.messages[0].content.text, "read_file");
-    assertStringIncludes(result.messages[0].content.text, "write_file");
+
+    const text = result.messages[0].content.text;
+    assertStringIncludes(text, "test-plan-123");
+    assertStringIncludes(text, "MyApp");
+    assertStringIncludes(text, "read_file");
+    assertStringIncludes(text, "write_file");
   } finally {
     await cleanup();
   }
@@ -74,19 +68,10 @@ Deno.test("generateExecutePlanPrompt: generates prompt with plan details", async
 
 Deno.test("generateExecutePlanPrompt: includes tool usage guidance", async () => {
   const { db, cleanup } = await initTestDbService();
-
   try {
-    const result = generateExecutePlanPrompt(
-      {
-        plan_id: "plan-456",
-        portal: "TestPortal",
-      },
-      db,
-    );
-
+    const result = generateExecutePlanPrompt({ plan_id: "plan-456", portal: "TestPortal" }, db);
     const text = result.messages[0].content.text;
 
-    // Should mention all available tools
     assertStringIncludes(text, "read_file");
     assertStringIncludes(text, "write_file");
     assertStringIncludes(text, "list_directory");
@@ -100,29 +85,17 @@ Deno.test("generateExecutePlanPrompt: includes tool usage guidance", async () =>
 
 Deno.test("generateExecutePlanPrompt: logs to Activity Journal", async () => {
   const { db, cleanup } = await initTestDbService();
-
   try {
-    generateExecutePlanPrompt(
-      {
-        plan_id: "log-test-plan",
-        portal: "TestPortal",
-      },
-      db,
-    );
-
-    // Allow time for batched logging
+    generateExecutePlanPrompt({ plan_id: "log-test-plan", portal: "TestPortal" }, db);
     await new Promise((resolve) => setTimeout(resolve, 150));
 
-    const logs = db.instance.prepare(
-      "SELECT * FROM activity WHERE action_type = ?",
-    ).all("mcp.prompts.execute_plan");
-
+    const logs = db.instance.prepare("SELECT * FROM activity WHERE action_type = ?")
+      .all("mcp.prompts.execute_plan");
     assertEquals(logs.length, 1);
+
     const log = logs[0] as { target: string; payload: string };
     assertEquals(log.target, "log-test-plan");
-
-    const payload = JSON.parse(log.payload);
-    assertEquals(payload.portal, "TestPortal");
+    assertEquals(JSON.parse(log.payload).portal, "TestPortal");
   } finally {
     await cleanup();
   }
@@ -134,26 +107,23 @@ Deno.test("generateExecutePlanPrompt: logs to Activity Journal", async () => {
 
 Deno.test("generateCreateChangesetPrompt: generates prompt with changeset details", async () => {
   const { db, cleanup } = await initTestDbService();
-
   try {
-    const result = generateCreateChangesetPrompt(
-      {
-        portal: "MyApp",
-        description: "Add user authentication",
-        trace_id: "trace-789",
-      },
-      db,
-    );
+    const result = generateCreateChangesetPrompt({
+      portal: "MyApp",
+      description: "Add user authentication",
+      trace_id: "trace-789",
+    }, db);
 
     assertExists(result);
     assertExists(result.description);
     assertStringIncludes(result.description, "Add user authentication");
-
     assertEquals(result.messages.length, 1);
     assertEquals(result.messages[0].role, "user");
-    assertStringIncludes(result.messages[0].content.text, "MyApp");
-    assertStringIncludes(result.messages[0].content.text, "Add user authentication");
-    assertStringIncludes(result.messages[0].content.text, "trace-789");
+
+    const text = result.messages[0].content.text;
+    assertStringIncludes(text, "MyApp");
+    assertStringIncludes(text, "Add user authentication");
+    assertStringIncludes(text, "trace-789");
   } finally {
     await cleanup();
   }
@@ -161,20 +131,14 @@ Deno.test("generateCreateChangesetPrompt: generates prompt with changeset detail
 
 Deno.test("generateCreateChangesetPrompt: includes git workflow guidance", async () => {
   const { db, cleanup } = await initTestDbService();
-
   try {
-    const result = generateCreateChangesetPrompt(
-      {
-        portal: "TestPortal",
-        description: "Fix bug",
-        trace_id: "trace-123",
-      },
-      db,
-    );
-
+    const result = generateCreateChangesetPrompt({
+      portal: "TestPortal",
+      description: "Fix bug",
+      trace_id: "trace-123",
+    }, db);
     const text = result.messages[0].content.text;
 
-    // Should mention git workflow steps
     assertStringIncludes(text, "feature branch");
     assertStringIncludes(text, "git_create_branch");
     assertStringIncludes(text, "git_status");
@@ -187,25 +151,18 @@ Deno.test("generateCreateChangesetPrompt: includes git workflow guidance", async
 
 Deno.test("generateCreateChangesetPrompt: logs to Activity Journal", async () => {
   const { db, cleanup } = await initTestDbService();
-
   try {
-    generateCreateChangesetPrompt(
-      {
-        portal: "TestPortal",
-        description: "Test changeset",
-        trace_id: "log-trace-456",
-      },
-      db,
-    );
-
-    // Allow time for batched logging
+    generateCreateChangesetPrompt({
+      portal: "TestPortal",
+      description: "Test changeset",
+      trace_id: "log-trace-456",
+    }, db);
     await new Promise((resolve) => setTimeout(resolve, 150));
 
-    const logs = db.instance.prepare(
-      "SELECT * FROM activity WHERE action_type = ?",
-    ).all("mcp.prompts.create_changeset");
-
+    const logs = db.instance.prepare("SELECT * FROM activity WHERE action_type = ?")
+      .all("mcp.prompts.create_changeset");
     assertEquals(logs.length, 1);
+
     const log = logs[0] as { target: string; payload: string };
     assertEquals(log.target, "log-trace-456");
 
@@ -223,18 +180,9 @@ Deno.test("generateCreateChangesetPrompt: logs to Activity Journal", async () =>
 
 Deno.test("generatePrompt: routes to execute_plan generator", async () => {
   const { db, cleanup } = await initTestDbService();
-
   try {
     const config = createMockConfig("/tmp/test");
-    const result = generatePrompt(
-      "execute_plan",
-      {
-        plan_id: "plan-999",
-        portal: "TestPortal",
-      },
-      config,
-      db,
-    );
+    const result = generatePrompt("execute_plan", { plan_id: "plan-999", portal: "TestPortal" }, config, db);
 
     assertExists(result);
     assertStringIncludes(result!.messages[0].content.text, "plan-999");
@@ -245,19 +193,13 @@ Deno.test("generatePrompt: routes to execute_plan generator", async () => {
 
 Deno.test("generatePrompt: routes to create_changeset generator", async () => {
   const { db, cleanup } = await initTestDbService();
-
   try {
     const config = createMockConfig("/tmp/test");
-    const result = generatePrompt(
-      "create_changeset",
-      {
-        portal: "TestPortal",
-        description: "Test change",
-        trace_id: "trace-888",
-      },
-      config,
-      db,
-    );
+    const result = generatePrompt("create_changeset", {
+      portal: "TestPortal",
+      description: "Test change",
+      trace_id: "trace-888",
+    }, config, db);
 
     assertExists(result);
     assertStringIncludes(result!.messages[0].content.text, "Test change");
@@ -268,15 +210,9 @@ Deno.test("generatePrompt: routes to create_changeset generator", async () => {
 
 Deno.test("generatePrompt: returns null for unknown prompt", async () => {
   const { db, cleanup } = await initTestDbService();
-
   try {
     const config = createMockConfig("/tmp/test");
-    const result = generatePrompt(
-      "unknown_prompt",
-      {},
-      config,
-      db,
-    );
+    const result = generatePrompt("unknown_prompt", {}, config, db);
 
     assertEquals(result, null);
   } finally {

@@ -80,9 +80,9 @@ async function createTestPortal(basePath: string) {
 }
 
 Deno.test("Integration Test 15.1: Happy Path - Sandboxed Mode", async () => {
-  const { db: dbService, tempDir, cleanup: dbCleanup } = await initTestDbService();
+  const { db: dbService, cleanup: dbCleanup } = await initTestDbService();
   const testDir = await Deno.makeTempDir({ prefix: "exoframe_test_" });
-  const portalPath = await createTestPortal(testDir);
+  const _portalPath = await createTestPortal(testDir);
 
   try {
     // Setup: Create System/Active directory
@@ -178,7 +178,7 @@ Create a simple hello world function in src/utils.ts
 });
 
 Deno.test("Integration Test 15.2: Happy Path - Hybrid Mode", async () => {
-  const { db: dbService, tempDir, cleanup: dbCleanup } = await initTestDbService();
+  const { db: dbService, cleanup: dbCleanup } = await initTestDbService();
   const testDir = await Deno.makeTempDir({ prefix: "exoframe_test_" });
   const portalPath = await createTestPortal(testDir);
 
@@ -255,7 +255,7 @@ Modify README.md with additional content
 });
 
 Deno.test("Integration Test 15.3: Plan Detection - Invalid YAML", async () => {
-  const { db: dbService, tempDir, cleanup: dbCleanup } = await initTestDbService();
+  const { db: dbService, cleanup: dbCleanup } = await initTestDbService();
   const testDir = await Deno.makeTempDir({ prefix: "test-exo-" });
 
   try {
@@ -474,7 +474,7 @@ Deno.test("Integration Test 15.6: Changeset Filtering", async () => {
 });
 
 Deno.test("Integration Test 15.7: Plan Parsing Errors", async () => {
-  const { db: dbService, tempDir, cleanup: dbCleanup } = await initTestDbService();
+  const { db: dbService, cleanup: dbCleanup } = await initTestDbService();
   const testDir = await Deno.makeTempDir({ prefix: "test-exo-" });
 
   try {
@@ -559,7 +559,7 @@ This step has no title
 });
 
 Deno.test("Integration Test 15.8: MCP Server Security", async () => {
-  const { db: dbService, tempDir, cleanup: dbCleanup } = await initTestDbService();
+  const { db: dbService, cleanup: dbCleanup } = await initTestDbService();
   const testDir = await Deno.makeTempDir({ prefix: "test-exo-" });
 
   try {
@@ -605,7 +605,7 @@ Deno.test("Integration Test 15.8: MCP Server Security", async () => {
 });
 
 Deno.test("Integration Test 15.9: Agent Orchestration Errors", async () => {
-  const { db: dbService, tempDir, cleanup: dbCleanup } = await initTestDbService();
+  const { db: dbService, cleanup: dbCleanup } = await initTestDbService();
   const testDir = await Deno.makeTempDir({ prefix: "test-exo-" });
 
   try {
@@ -664,7 +664,7 @@ Deno.test("Integration Test 15.10: Changeset Query Methods", async () => {
     const trace2 = crypto.randomUUID();
 
     // Create multiple changesets
-    const cs1 = await changesetRegistry.register({
+    const _cs1 = await changesetRegistry.register({
       trace_id: trace1,
       portal: "PortalA",
       branch: "feat/feature-a",
@@ -684,7 +684,7 @@ Deno.test("Integration Test 15.10: Changeset Query Methods", async () => {
       created_by: "agent-alpha",
     });
 
-    const cs3 = await changesetRegistry.register({
+    const _cs3 = await changesetRegistry.register({
       trace_id: trace2,
       portal: "PortalB",
       branch: "feat/feature-b",
@@ -721,7 +721,7 @@ Deno.test("Integration Test 15.10: Changeset Query Methods", async () => {
 });
 
 Deno.test("Integration Test 15.11: Multi-Step Plan Execution", async () => {
-  const { db: dbService, tempDir, cleanup: dbCleanup } = await initTestDbService();
+  const { db: dbService, cleanup: dbCleanup } = await initTestDbService();
   const testDir = await Deno.makeTempDir({ prefix: "test-exo-" });
 
   try {
@@ -819,7 +819,7 @@ Add usage examples to README
 });
 
 Deno.test("Integration Test 15.12: Performance & Concurrent Execution", async () => {
-  const { db: dbService, tempDir, cleanup: dbCleanup } = await initTestDbService();
+  const { db: dbService, cleanup: dbCleanup } = await initTestDbService();
 
   try {
     const eventLogger = new EventLogger({ db: dbService });

@@ -1,7 +1,8 @@
 import { assert, assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
-import { MCPServer } from "../../src/mcp/server.ts";
-import { createMockConfig } from "../helpers/config.ts";
-import { initTestDbService } from "../helpers/db.ts";
+import {
+  initMCPTestWithoutPortal,
+  createMCPRequest,
+} from "./helpers/test_setup.ts";
 
 /**
  * Tests for  MCP Server Implementation
@@ -15,102 +16,61 @@ import { initTestDbService } from "../helpers/db.ts";
  */
 
 Deno.test("MCP Server: initializes with stdio transport", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-init-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const ctx = await initMCPTestWithoutPortal();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
-
-    assertEquals(server.getTransport(), "stdio");
-    assertEquals(server.getServerName(), "exoframe");
-    assertExists(server.getVersion());
+    assertEquals(ctx.server.getTransport(), "stdio");
+    assertEquals(ctx.server.getServerName(), "exoframe");
+    assertExists(ctx.server.getVersion());
   } finally {
-    await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
+    await ctx.cleanup();
   }
 });
 
 Deno.test("MCP Server: starts successfully", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-start-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const ctx = await initMCPTestWithoutPortal();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
-
-    await server.start();
-
-    assertEquals(server.isRunning(), true);
-
-    await server.stop();
+    assertEquals(ctx.server.isRunning(), true);
   } finally {
-    await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
+    await ctx.cleanup();
   }
 });
 
 Deno.test("MCP Server: handles initialize request", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-initialize-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const ctx = await initMCPTestWithoutPortal();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
-
-    await server.start();
-
-    const response = await server.handleRequest({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "initialize",
-      params: {
-        protocolVersion: "2024-11-05",
-        capabilities: {},
-        clientInfo: {
-          name: "test-client",
-          version: "1.0.0",
-        },
+    const request = createMCPRequest("initialize", {
+      protocolVersion: "2024-11-05",
+      capabilities: {},
+      clientInfo: {
+        name: "test-client",
+        version: "1.0.0",
       },
     });
+
+    const response = await ctx.server.handleRequest(request);
 
     assertExists(response.result);
     const result = response.result as { protocolVersion: string; serverInfo: { name: string; version: string } };
     assertEquals(result.protocolVersion, "2024-11-05");
     assertExists(result.serverInfo);
     assertEquals(result.serverInfo.name, "exoframe");
-
-    await server.stop();
   } finally {
-    await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
+    await ctx.cleanup();
   }
 });
 
 Deno.test("MCP Server: handles tools/list request", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-tools-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const ctx = await initMCPTestWithoutPortal();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
+    const request = createMCPRequest("tools/list", {});
+    const response = await ctx.server.handleRequest(request);
 
-    await server.start();
-
-    const response = await server.handleRequest({
-      jsonrpc: "2.0",
-      id: 2,
-      method: "tools/list",
-      params: {},
-    });
-
-    assertExists(response.result);
     assertExists(response.result);
     const result = response.result as { tools: Array<{ name: string; description: string }> };
     assertExists(result.tools);
     assertEquals(Array.isArray(result.tools), true);
 
-    // Phase 4: Should have 6 tools (read_file, write_file, list_directory, git_create_branch, git_commit, git_status)
+    // Phase 4: Should have 6 tools
     assertEquals(result.tools.length, 6);
     const toolNames = result.tools.map((t: { name: string }) => t.name);
     assert(toolNames.includes("read_file"));
@@ -119,29 +79,19 @@ Deno.test("MCP Server: handles tools/list request", async () => {
     assert(toolNames.includes("git_create_branch"));
     assert(toolNames.includes("git_commit"));
     assert(toolNames.includes("git_status"));
-
-    await server.stop();
   } finally {
-    await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
+    await ctx.cleanup();
   }
 });
 
 Deno.test("MCP Server: logs startup to Activity Journal", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-logging-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const ctx = await initMCPTestWithoutPortal();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
-
-    await server.start();
-
     // Allow time for batched logging
     await new Promise((resolve) => setTimeout(resolve, 150));
 
     // Verify mcp.server.started logged
-    const logs = db.instance.prepare(
+    const logs = ctx.db.instance.prepare(
       "SELECT * FROM activity WHERE action_type = ?",
     ).all("mcp.server.started");
 
@@ -150,54 +100,37 @@ Deno.test("MCP Server: logs startup to Activity Journal", async () => {
     const payload = JSON.parse(log.payload);
     assertEquals(payload.transport, "stdio");
     assertEquals(payload.server_name, "exoframe");
-
-    await server.stop();
   } finally {
-    await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
+    await ctx.cleanup();
   }
 });
 
 Deno.test("MCP Server: stops gracefully", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-stop-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const ctx = await initMCPTestWithoutPortal();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
+    assertEquals(ctx.server.isRunning(), true);
 
-    await server.start();
-    assertEquals(server.isRunning(), true);
-
-    await server.stop();
-    assertEquals(server.isRunning(), false);
+    await ctx.server.stop();
+    assertEquals(ctx.server.isRunning(), false);
 
     // Allow time for batched logging
     await new Promise((resolve) => setTimeout(resolve, 150));
 
     // Verify mcp.server.stopped logged
-    const logs = db.instance.prepare(
+    const logs = ctx.db.instance.prepare(
       "SELECT * FROM activity WHERE action_type = ?",
     ).all("mcp.server.stopped");
 
     assertEquals(logs.length, 1);
   } finally {
-    await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
+    await ctx.cleanup();
   }
 });
 
 Deno.test("MCP Server: rejects invalid JSON-RPC request", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-invalid-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const ctx = await initMCPTestWithoutPortal();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
-
-    await server.start();
-
-    const response = await server.handleRequest({
+    const response = await ctx.server.handleRequest({
       // Missing jsonrpc field
       id: 1,
       method: "initialize",
@@ -206,37 +139,20 @@ Deno.test("MCP Server: rejects invalid JSON-RPC request", async () => {
 
     assertExists(response.error);
     assertEquals(response.error.code, -32600); // Invalid Request
-
-    await server.stop();
   } finally {
-    await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
+    await ctx.cleanup();
   }
 });
 
 Deno.test("MCP Server: rejects unknown method", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-test-unknown-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const ctx = await initMCPTestWithoutPortal();
   try {
-    const config = createMockConfig(tempDir);
-    const server = new MCPServer({ config, db, transport: "stdio" });
-
-    await server.start();
-
-    const response = await server.handleRequest({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "unknown/method",
-      params: {},
-    });
+    const request = createMCPRequest("unknown/method", {});
+    const response = await ctx.server.handleRequest(request);
 
     assertExists(response.error);
     assertEquals(response.error.code, -32601); // Method not found
-
-    await server.stop();
   } finally {
-    await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
+    await ctx.cleanup();
   }
 });
