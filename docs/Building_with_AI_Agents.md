@@ -198,6 +198,97 @@ Agent: [updates all tests to account for async flushing]
 
 **The Result**: 10-50x throughput improvement with configurable `batch_flush_ms` and `batch_max_size` settings.
 
+### The Deduplication Dance: Fighting Code Clones
+
+**The Setup**: After months of TDD, the codebase had grown to 767 passing tests. Success! But with growth came duplication—especially in test setup/teardown code.
+
+**The Measurement**:
+```bash
+npx jscpd src tests --reporters json --output ./report
+```
+
+**Initial State**: 6.13% duplication (2,444 lines, 206 clones)
+
+**The Pattern**: Repeated test setup code appeared everywhere:
+```typescript
+// Repeated 31 times with variations
+const tempDir = await Deno.makeTempDir({ prefix: "test-..." });
+const { db, cleanup } = await initTestDbService();
+try {
+  const config = createMockConfig(tempDir);
+  const registry = new ToolRegistry({ config, db });
+  // ... test logic ...
+} finally {
+  await cleanup();
+  await Deno.remove(tempDir, { recursive: true });
+}
+```
+
+**The Solution**: Extract test helpers with the same TDD rigor applied to production code:
+
+1. **Identify duplication patterns** using jscpd
+2. **Create helper classes** that encapsulate repeated setup
+3. **Provide semantic methods** that express test intent
+4. **Refactor incrementally**, keeping all tests green
+
+**The Transformation**:
+```typescript
+// After: Using ToolRegistryTestHelper
+const { helper, cleanup } = await createToolRegistryTestContext("test");
+try {
+  const testFile = await helper.createKnowledgeFile("test.txt", "content");
+  const result = await helper.execute("read_file", { path: testFile });
+  await helper.waitForLogging();
+  const logs = helper.getActivityLogs("tool.read_file");
+  assertEquals(result.success, true);
+} finally {
+  await cleanup();
+}
+```
+
+**The Results**:
+- **Phase 1-4 Completed**: 6.13% → 2.35% (61.6% reduction)
+- **Lines Eliminated**: -1,507 duplicated lines
+- **Clones Removed**: -107 clones
+- **Tests**: All 767 tests still passing ✅
+
+**The Helpers Created**:
+1. `GitTestHelper` - Git operations setup/teardown
+2. `WatcherTestHelper` - FileWatcher test infrastructure
+3. `ToolRegistryTestHelper` - Tool registry test contexts
+4. `PortalConfigTestHelper` - Portal configuration tests
+
+**The Lesson**: Code quality isn't just about production code. Test code deserves the same care:
+- **DRY applies to tests** - Don't repeat setup/teardown
+- **Measure duplication** - Use jscpd to identify patterns
+- **Extract helpers systematically** - One test file at a time
+- **Keep tests passing** - Refactor incrementally
+- **Document patterns** - Future tests use the helpers
+
+**The Command Pattern**:
+```bash
+# Measure current duplication
+npx jscpd src tests --reporters json --output ./report
+
+# Identify high-impact targets (most clones)
+python3 -c "import json; data=json.load(open('report/jscpd-report.json')); \
+  files={}; \
+  for d in data['duplicates']: \
+    for f in d['fragment']: \
+      files[f['loc']] = files.get(f['loc'], 0) + 1; \
+  sorted_files = sorted(files.items(), key=lambda x: x[1], reverse=True); \
+  [print(f'{count} clones: {file}') for file, count in sorted_files[:10]]"
+
+# After refactoring, verify improvement
+npx jscpd src tests --reporters json --output ./report
+```
+
+**When To Refactor**:
+- **After each major feature** - Don't let duplication accumulate
+- **When tests become hard to write** - Missing helpers is a code smell
+- **When duplication > 3%** - Set a threshold and enforce it
+- **During code review** - Spot patterns before they multiply
+
 ### The Config Philosophy
 
 **The Insight**: Every magic number should be a config option.

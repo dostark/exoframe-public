@@ -198,7 +198,147 @@ Deno.test("FeatureName: does something", async () => {
 });
 ```
 
-## Cleanup Patterns
+## Test Code Deduplication
+
+### ⚠️ CRITICAL: Avoid Duplicated Test Setup/Teardown
+
+**Target**: Keep overall duplication below **3%** (currently 2.35% ✅)
+
+### Use Existing Test Helpers
+
+**Before adding new tests**, check if a helper exists:
+
+1. **`tests/helpers/db.ts`** - Database initialization
+   - `initTestDbService()` - Full db setup with cleanup
+   - `initActivityTableSchema()` - Schema-only for reconnection tests
+
+2. **`tests/helpers/config.ts`** - Configuration
+   - `createMockConfig()` - Generate test configs
+   - `createTestConfigService()` - ConfigService instances
+
+3. **`tests/helpers/git_test_helper.ts`** - Git operations
+   - `GitTestHelper` class with repo setup, commit, branch operations
+   - `createGitTestContext()` factory function
+
+4. **`tests/helpers/watcher_test_helper.ts`** - FileWatcher tests
+   - `WatcherTestHelper` class for file watching scenarios
+   - `createWatcherTestContext()` factory function
+
+5. **`tests/helpers/tool_registry_test_helper.ts`** - ToolRegistry tests
+   - `ToolRegistryTestHelper` class for tool execution tests
+   - `createToolRegistryTestContext()` factory function
+
+6. **`tests/helpers/portal_test_helper.ts`** - Portal configuration tests
+   - `PortalConfigTestHelper` class for portal operations
+   - `createPortalConfigTestContext()` factory function
+
+### Create New Helpers When Needed
+
+**If you find yourself writing the same setup code 3+ times**, create a helper:
+
+```typescript
+// tests/helpers/my_feature_test_helper.ts
+export class MyFeatureTestHelper {
+  constructor(
+    public readonly tempDir: string,
+    public readonly service: MyService,
+    private readonly cleanup: () => Promise<void>,
+  ) {}
+
+  static async create(prefix: string): Promise<MyFeatureTestHelper> {
+    const tempDir = await Deno.makeTempDir({ prefix: `my-feature-${prefix}-` });
+    const { db, cleanup: dbCleanup } = await initTestDbService();
+    const config = createMockConfig(tempDir);
+    const service = new MyService({ config, db });
+    
+    return new MyFeatureTestHelper(
+      tempDir,
+      service,
+      async () => {
+        await dbCleanup();
+        await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+      },
+    );
+  }
+
+  async doCommonSetup(): Promise<void> {
+    // Common setup operations
+  }
+
+  async cleanup(): Promise<void> {
+    await this.cleanup();
+  }
+}
+
+export async function createMyFeatureTestContext(
+  prefix: string,
+): Promise<{ helper: MyFeatureTestHelper; cleanup: () => Promise<void> }> {
+  const helper = await MyFeatureTestHelper.create(prefix);
+  return {
+    helper,
+    cleanup: () => helper.cleanup(),
+  };
+}
+```
+
+### Measure Test Duplication
+
+After adding/modifying tests:
+
+```bash
+# Check overall duplication
+npx jscpd src tests --reporters json --output ./report
+
+# Identify test files with most duplication
+python3 -c "import json; data=json.load(open('report/jscpd-report.json')); \
+  files={}; \
+  for d in data['duplicates']: \
+    for f in d['fragment']: \
+      if 'tests/' in f['loc']: \
+        files[f['loc']] = files.get(f['loc'], 0) + 1; \
+  sorted_files = sorted(files.items(), key=lambda x: x[1], reverse=True); \
+  [print(f'{count} clones: {file}') for file, count in sorted_files[:10]]"
+```
+
+### Refactoring Test Code
+
+**When duplication is detected**:
+
+1. **Identify the pattern** - What's being repeated?
+2. **Check existing helpers** - Can you extend an existing helper?
+3. **Create or extend helper** - Extract to `tests/helpers/`
+4. **Refactor tests incrementally** - One test at a time
+5. **Verify all tests pass** - Run test suite after each change
+6. **Measure improvement** - Confirm duplication decreased
+
+**Example - Before (repeated in 5 tests)**:
+```typescript
+const tempDir = await Deno.makeTempDir({ prefix: "feature-test-" });
+const { db, cleanup: dbCleanup } = await initTestDbService();
+const config = createMockConfig(tempDir);
+const service = new MyService({ config, db });
+try {
+  // ... test logic ...
+} finally {
+  await dbCleanup();
+  await Deno.remove(tempDir, { recursive: true });
+}
+```
+
+**Example - After (using helper)**:
+```typescript
+const { helper, cleanup } = await createMyFeatureTestContext("test-name");
+try {
+  await helper.doCommonSetup();
+  // ... test logic ...
+} finally {
+  await cleanup();
+}
+```
+
+**Documentation**: See `docs/Remaining_Code_Duplication_Analysis.md` for refactoring patterns and helper examples.
+
+## Success Criteria
 
 ### With try/finally for cleanup
 

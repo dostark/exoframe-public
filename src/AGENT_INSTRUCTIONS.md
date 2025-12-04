@@ -185,6 +185,90 @@ constructor() {
 }
 ```
 
+## Code Deduplication
+
+### ⚠️ CRITICAL: Maintain Low Duplication Levels
+
+**Target**: Keep code duplication below **3%** as measured by jscpd.
+
+**Current Status**: 2.35% (937 lines, 99 clones) ✅
+
+### Measure Duplication
+
+Before and after significant changes, check duplication:
+
+```bash
+npx jscpd src tests --reporters json --output ./report
+```
+
+### Identify High-Impact Duplication
+
+Find files with the most clones:
+
+```bash
+python3 -c "import json; data=json.load(open('report/jscpd-report.json')); \
+  files={}; \
+  for d in data['duplicates']: \
+    for f in d['fragment']: \
+      files[f['loc']] = files.get(f['loc'], 0) + 1; \
+  sorted_files = sorted(files.items(), key=lambda x: x[1], reverse=True); \
+  [print(f'{count} clones: {file}') for file, count in sorted_files[:10]]"
+```
+
+### Refactoring Guidelines
+
+**When adding new features**:
+1. Write tests and implementation in TDD manner
+2. After tests pass, measure duplication
+3. If duplication increases significantly (>0.2%), refactor before committing
+4. Extract helper functions or base classes for repeated patterns
+5. Re-run tests to ensure refactoring didn't break functionality
+6. Verify duplication decreased
+
+**Common duplication patterns to extract**:
+- **Error handling blocks** - Extract to helper methods
+- **Response formatting** - Create base class methods (e.g., `formatSuccess()`, `formatError()`)
+- **Transaction management** - Extract to utility functions
+- **Validation logic** - Create reusable validator functions
+- **Configuration setup** - Extract to factory functions
+
+**Example - Before (duplicated 5 times)**:
+```typescript
+try {
+  const result = await operation();
+  return { success: true, data: result };
+} catch (error) {
+  if (error instanceof Deno.errors.NotFound) {
+    return { success: false, error: "Not found" };
+  }
+  return { success: false, error: error.message };
+}
+```
+
+**Example - After (extracted helper)**:
+```typescript
+private formatSuccess(data: any): ToolResult {
+  return { success: true, data };
+}
+
+private formatError(error: unknown): ToolResult {
+  if (error instanceof Deno.errors.NotFound) {
+    return { success: false, error: "Not found" };
+  }
+  return { success: false, error: error instanceof Error ? error.message : String(error) };
+}
+
+// Usage
+try {
+  const result = await operation();
+  return this.formatSuccess(result);
+} catch (error) {
+  return this.formatError(error);
+}
+```
+
+**Documentation**: See `docs/Remaining_Code_Duplication_Analysis.md` for detailed refactoring history and patterns.
+
 ## Activity Logging with EventLogger
 
 ### ⚠️ IMPORTANT: Use EventLogger for All Logging
