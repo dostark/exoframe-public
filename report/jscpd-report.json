@@ -1,6 +1,6 @@
 {
   "statistics": {
-    "detectionDate": "2025-12-04T16:35:55.556Z",
+    "detectionDate": "2025-12-04T16:44:56.876Z",
     "formats": {
       "typescript": {
         "sources": {
@@ -412,6 +412,18 @@
             "newDuplicatedLines": 0,
             "newClones": 0
           },
+          "tests/helpers/git_test_helper.ts": {
+            "lines": 195,
+            "tokens": 1461,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 8,
+            "duplicatedTokens": 84,
+            "percentage": 4.1,
+            "percentageTokens": 5.75,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
           "tests/helpers/db.ts": {
             "lines": 134,
             "tokens": 452,
@@ -512,11 +524,11 @@
             "lines": 453,
             "tokens": 5017,
             "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 24,
-            "duplicatedTokens": 226,
-            "percentage": 5.3,
-            "percentageTokens": 4.5,
+            "clones": 3,
+            "duplicatedLines": 32,
+            "duplicatedTokens": 310,
+            "percentage": 7.06,
+            "percentageTokens": 6.18,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -725,14 +737,14 @@
             "newClones": 0
           },
           "tests/git_service_test.ts": {
-            "lines": 699,
-            "tokens": 6422,
+            "lines": 609,
+            "tokens": 5177,
             "sources": 1,
-            "clones": 25,
-            "duplicatedLines": 252,
-            "duplicatedTokens": 2322,
-            "percentage": 36.05,
-            "percentageTokens": 36.16,
+            "clones": 5,
+            "duplicatedLines": 44,
+            "duplicatedTokens": 480,
+            "percentage": 7.22,
+            "percentageTokens": 9.27,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -1362,14 +1374,14 @@
           }
         },
         "total": {
-          "lines": 38569,
-          "tokens": 292812,
-          "sources": 113,
-          "clones": 125,
-          "duplicatedLines": 1214,
-          "duplicatedTokens": 12671,
-          "percentage": 3.15,
-          "percentageTokens": 4.33,
+          "lines": 38674,
+          "tokens": 293028,
+          "sources": 114,
+          "clones": 116,
+          "duplicatedLines": 1118,
+          "duplicatedTokens": 11834,
+          "percentage": 2.89,
+          "percentageTokens": 4.04,
           "newDuplicatedLines": 0,
           "newClones": 0
         }
@@ -1456,14 +1468,14 @@
       }
     },
     "total": {
-      "lines": 39671,
-      "tokens": 298843,
-      "sources": 117,
-      "clones": 125,
-      "duplicatedLines": 1214,
-      "duplicatedTokens": 12671,
-      "percentage": 3.06,
-      "percentageTokens": 4.24,
+      "lines": 39776,
+      "tokens": 299059,
+      "sources": 118,
+      "clones": 116,
+      "duplicatedLines": 1118,
+      "duplicatedTokens": 11834,
+      "percentage": 2.81,
+      "percentageTokens": 3.96,
       "newDuplicatedLines": 0,
       "newClones": 0
     }
@@ -2654,6 +2666,42 @@
           "line": 46,
           "column": 17,
           "position": 277
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 9,
+      "fragment": ",\n    stdout: \"piped\",\n    stderr: \"piped\",\n  });\n\n  const { stdout, success, stderr } = await cmd.output();\n  if (!success) {\n    const error = new TextDecoder().decode(stderr);\n    throw new Error(`Git",
+      "tokens": 0,
+      "firstFile": {
+        "name": "tests/cli/git_commands_test.ts",
+        "start": 438,
+        "end": 446,
+        "startLoc": {
+          "line": 438,
+          "column": 2,
+          "position": 4842
+        },
+        "endLoc": {
+          "line": 446,
+          "column": 5,
+          "position": 4926
+        }
+      },
+      "secondFile": {
+        "name": "tests/helpers/git_test_helper.ts",
+        "start": 53,
+        "end": 60,
+        "startLoc": {
+          "line": 53,
+          "column": 9,
+          "position": 418
+        },
+        "endLoc": {
+          "line": 60,
+          "column": 22,
+          "position": 501
         }
       }
     },
@@ -4388,345 +4436,21 @@
     {
       "format": "typescript",
       "lines": 11,
-      "fragment": "});\n  const { db, cleanup } = await initTestDbService();\n\n  try {\n    const config = createMockConfig(tempDir);\n    const git = new GitService({ config, db });\n\n    await git.ensureRepository();\n    await git.ensureIdentity();\n\n    const",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 80,
-        "end": 90,
-        "startLoc": {
-          "line": 80,
-          "column": 2,
-          "position": 685
-        },
-        "endLoc": {
-          "line": 90,
-          "column": 6,
-          "position": 774
-        }
-      },
-      "secondFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 49,
-        "end": 59,
-        "startLoc": {
-          "line": 49,
-          "column": 2,
-          "position": 380
-        },
-        "endLoc": {
-          "line": 59,
-          "column": 20,
-          "position": 469
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "});\n  const { db, cleanup } = await initTestDbService();\n\n  try {\n    const config = createMockConfig(tempDir);\n    const git = new GitService({ config, db });\n\n    await git.ensureRepository();\n    await git.ensureIdentity();\n\n    const branch1",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 114,
-        "end": 124,
-        "startLoc": {
-          "line": 114,
-          "column": 2,
-          "position": 1009
-        },
-        "endLoc": {
-          "line": 124,
-          "column": 8,
-          "position": 1100
-        }
-      },
-      "secondFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 49,
-        "end": 90,
-        "startLoc": {
-          "line": 49,
-          "column": 2,
-          "position": 380
-        },
-        "endLoc": {
-          "line": 90,
-          "column": 11,
-          "position": 776
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "});\n  const { db, cleanup } = await initTestDbService();\n\n  try {\n    const config = createMockConfig(tempDir);\n    const git = new GitService({ config, db });\n\n    await git.ensureRepository();\n    await git.ensureIdentity();\n\n    // Create a test file",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 145,
-        "end": 155,
-        "startLoc": {
-          "line": 145,
-          "column": 2,
-          "position": 1289
-        },
-        "endLoc": {
-          "line": 155,
-          "column": 22,
-          "position": 1378
-        }
-      },
-      "secondFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 49,
-        "end": 59,
-        "startLoc": {
-          "line": 49,
-          "column": 2,
-          "position": 380
-        },
-        "endLoc": {
-          "line": 59,
-          "column": 20,
-          "position": 469
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "});\n  const { db, cleanup } = await initTestDbService();\n\n  try {\n    const config = createMockConfig(tempDir);\n    const git = new GitService({ config, db });\n\n    await git.ensureRepository();\n    await git.ensureIdentity();\n\n    // Try to commit with no changes",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 181,
-        "end": 191,
-        "startLoc": {
-          "line": 181,
-          "column": 2,
-          "position": 1635
-        },
-        "endLoc": {
-          "line": 191,
-          "column": 33,
-          "position": 1724
-        }
-      },
-      "secondFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 49,
-        "end": 59,
-        "startLoc": {
-          "line": 49,
-          "column": 2,
-          "position": 380
-        },
-        "endLoc": {
-          "line": 59,
-          "column": 20,
-          "position": 469
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "});\n  const { db, cleanup } = await initTestDbService();\n\n  try {\n    const config = createMockConfig(tempDir);\n    const git = new GitService({ config, db });\n\n    await git.ensureRepository();\n    await git.ensureIdentity();\n\n    // Create and commit a file",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 263,
-        "end": 273,
-        "startLoc": {
-          "line": 263,
-          "column": 2,
-          "position": 2413
-        },
-        "endLoc": {
-          "line": 273,
-          "column": 28,
-          "position": 2502
-        }
-      },
-      "secondFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 49,
-        "end": 59,
-        "startLoc": {
-          "line": 49,
-          "column": 2,
-          "position": 380
-        },
-        "endLoc": {
-          "line": 59,
-          "column": 20,
-          "position": 469
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 9,
-      "fragment": "const cmd = new Deno.Command(\"git\", {\n      args: [\"log\", \"-1\", \"--pretty=%B\"],\n      cwd: tempDir,\n      stdout: \"piped\",\n    });\n    const { stdout } = await cmd.output();\n    const commitMsg = new TextDecoder().decode(stdout);\n\n    // Should have title, description, and trace footer",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 283,
-        "end": 291,
-        "startLoc": {
-          "line": 283,
-          "column": 5,
-          "position": 2565
-        },
-        "endLoc": {
-          "line": 291,
-          "column": 52,
-          "position": 2657
-        }
-      },
-      "secondFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 164,
-        "end": 172,
-        "startLoc": {
-          "line": 164,
-          "column": 5,
-          "position": 1434
-        },
-        "endLoc": {
-          "line": 172,
-          "column": 13,
-          "position": 1526
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": "});\n  const { db, cleanup } = await initTestDbService();\n\n  try {\n    const config = createMockConfig(tempDir);\n    const git = new GitService({ config, db });\n\n    await git.ensureRepository();\n    await git.ensureIdentity();\n\n    // Try to commit with no changes\n    await assertRejects(\n      async () =>\n        await",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 387,
-        "end": 400,
-        "startLoc": {
-          "line": 387,
-          "column": 2,
-          "position": 3543
-        },
-        "endLoc": {
-          "line": 400,
-          "column": 6,
-          "position": 3649
-        }
-      },
-      "secondFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 49,
-        "end": 193,
-        "startLoc": {
-          "line": 49,
-          "column": 2,
-          "position": 380
-        },
-        "endLoc": {
-          "line": 193,
-          "column": 2,
-          "position": 1740
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
-      "fragment": "});\n  const { db, cleanup } = await initTestDbService();\n\n  try {\n    const config = createMockConfig(tempDir);\n    const git = new GitService({ config, db });\n\n    await git.ensureRepository();\n    await git.ensureIdentity();\n\n    // Create a file",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 454,
-        "end": 464,
-        "startLoc": {
-          "line": 454,
-          "column": 2,
-          "position": 4155
-        },
-        "endLoc": {
-          "line": 464,
-          "column": 17,
-          "position": 4244
-        }
-      },
-      "secondFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 49,
-        "end": 59,
-        "startLoc": {
-          "line": 49,
-          "column": 2,
-          "position": 380
-        },
-        "endLoc": {
-          "line": 59,
-          "column": 20,
-          "position": 469
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 14,
-      "fragment": "await assertRejects(\n      async () =>\n        await git.commit(\n          { message: \"Test\", traceId: \"trace-123\" },\n        ),\n      Error,\n    );\n  } finally {\n    await cleanup();\n    await Deno.remove(tempDir, { recursive: true });\n  }\n});\n\nDeno.test(\"GitService: commit - includes description in commit message\"",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 471,
-        "end": 484,
-        "startLoc": {
-          "line": 471,
-          "column": 5,
-          "position": 4302
-        },
-        "endLoc": {
-          "line": 484,
-          "column": 62,
-          "position": 4400
-        }
-      },
-      "secondFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 398,
-        "end": 411,
-        "startLoc": {
-          "line": 398,
-          "column": 5,
-          "position": 3635
-        },
-        "endLoc": {
-          "line": 411,
-          "column": 60,
-          "position": 3733
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 11,
       "fragment": ");\n    await new Deno.Command(\"git\", {\n      args: [\"add\", \".\"],\n      cwd: tempDir,\n    }).output();\n    await new Deno.Command(\"git\", {\n      args: [\"commit\", \"-m\", \"Initial commit\"],\n      cwd: tempDir,\n    }).output();\n\n    // Create a branch first",
       "tokens": 0,
       "firstFile": {
         "name": "tests/git_service_test.ts",
-        "start": 540,
-        "end": 550,
+        "start": 450,
+        "end": 460,
         "startLoc": {
-          "line": 540,
+          "line": 450,
           "column": 10,
-          "position": 4930
+          "position": 3763
         },
         "endLoc": {
-          "line": 550,
+          "line": 460,
           "column": 25,
-          "position": 5022
+          "position": 3855
         }
       },
       "secondFile": {
@@ -4747,73 +4471,37 @@
     },
     {
       "format": "typescript",
-      "lines": 11,
-      "fragment": "});\n  const { db, cleanup } = await initTestDbService();\n\n  try {\n    const config = createMockConfig(tempDir);\n    const git = new GitService({ config, db });\n\n    await git.ensureRepository();\n    await git.ensureIdentity();\n\n    // Create initial file with multiline content",
-      "tokens": 0,
-      "firstFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 620,
-        "end": 630,
-        "startLoc": {
-          "line": 620,
-          "column": 2,
-          "position": 5678
-        },
-        "endLoc": {
-          "line": 630,
-          "column": 46,
-          "position": 5767
-        }
-      },
-      "secondFile": {
-        "name": "tests/git_service_test.ts",
-        "start": 49,
-        "end": 59,
-        "startLoc": {
-          "line": 49,
-          "column": 2,
-          "position": 380
-        },
-        "endLoc": {
-          "line": 59,
-          "column": 20,
-          "position": 469
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 8,
       "fragment": "const logResult = await new Deno.Command(\"git\", {\n      args: [\"log\", \"-1\", \"--pretty=%B\"],\n      cwd: tempDir,\n      stdout: \"piped\",\n    }).output();\n    const commitMsg = new TextDecoder().decode(logResult.stdout);\n\n    assertEquals(commitMsg.includes(\"feat: add file\"",
       "tokens": 0,
       "firstFile": {
         "name": "tests/git_service_test.ts",
-        "start": 640,
-        "end": 647,
+        "start": 550,
+        "end": 557,
         "startLoc": {
-          "line": 640,
+          "line": 550,
           "column": 5,
-          "position": 5826
+          "position": 4619
         },
         "endLoc": {
-          "line": 647,
+          "line": 557,
           "column": 17,
-          "position": 5912
+          "position": 4705
         }
       },
       "secondFile": {
         "name": "tests/git_service_test.ts",
-        "start": 508,
-        "end": 515,
+        "start": 418,
+        "end": 425,
         "startLoc": {
-          "line": 508,
+          "line": 418,
           "column": 5,
-          "position": 4605
+          "position": 3458
         },
         "endLoc": {
-          "line": 515,
+          "line": 425,
           "column": 11,
-          "position": 4691
+          "position": 3544
         }
       }
     },
@@ -4824,27 +4512,27 @@
       "tokens": 0,
       "firstFile": {
         "name": "tests/git_service_test.ts",
-        "start": 669,
-        "end": 679,
+        "start": 579,
+        "end": 589,
         "startLoc": {
-          "line": 669,
+          "line": 579,
           "column": 5,
-          "position": 6133
+          "position": 4906
         },
         "endLoc": {
-          "line": 679,
+          "line": 589,
           "column": 36,
-          "position": 6241
+          "position": 5014
         }
       },
       "secondFile": {
         "name": "tests/git_service_test.ts",
-        "start": 540,
+        "start": 450,
         "end": 98,
         "startLoc": {
-          "line": 540,
+          "line": 450,
           "column": 5,
-          "position": 4914
+          "position": 3747
         },
         "endLoc": {
           "line": 98,
