@@ -4,7 +4,7 @@ import { createMockConfig } from "../helpers/config.ts";
 import { initTestDbService } from "../helpers/db.ts";
 
 /**
- * Tests for Step 6.2: MCP Server Implementation
+ * Tests for  MCP Server Implementation
  *
  * Success Criteria (Phase 1 - Foundation):
  * - MCP server starts with stdio transport

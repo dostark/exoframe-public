@@ -1,5 +1,5 @@
 /**
- * MCP Server Resources Tests (Step 6.2 Phase 5)
+ * MCP Server Resources Tests
  */
 
 import { assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";

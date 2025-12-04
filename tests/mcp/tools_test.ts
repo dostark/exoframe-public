@@ -5,7 +5,7 @@ import { initTestDbService } from "../helpers/db.ts";
 import { join } from "@std/path";
 
 /**
- * Tests for Step 6.2 Phase 2: read_file Tool Implementation
+ * Tests for read_file Tool Implementation
  *
  * Success Criteria:
  * - read_file tool executes successfully for valid inputs

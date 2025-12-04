@@ -1,5 +1,5 @@
 /**
- * Portal Permissions Service (Step 6.3)
+ * Portal Permissions Service
  * 
  * Validates agent access to portals based on whitelist, operations,
  * and security modes.

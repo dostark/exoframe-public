@@ -5,7 +5,7 @@ import { initTestDbService } from "../helpers/db.ts";
 import { join } from "@std/path";
 
 /**
- * Tests for Step 6.2 Phase 4: Git Tool Implementations
+ * Tests for Git Tool Implementations
  *
  * Success Criteria:
  * - git_create_branch creates feature branches with validation

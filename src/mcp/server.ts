@@ -17,7 +17,7 @@ import {
 import { getPrompts, generatePrompt } from "./prompts.ts";
 
 /**
- * MCP Server Implementation (Step 6.2)
+ * MCP Server Implementation
  *
  * Phase 2: First tool implementation (read_file)
  *

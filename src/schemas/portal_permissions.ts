@@ -1,5 +1,5 @@
 /**
- * Portal Permissions Schema (Step 6.3)
+ * Portal Permissions Schema
  * 
  * Defines security modes and permission controls for portal access.
  */

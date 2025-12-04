@@ -1,5 +1,5 @@
 /**
- * MCP Tools Permission Tests (Step 6.3)
+ * MCP Tools Permission Tests
  * 
  * Tests that MCP tools respect portal permissions and operation restrictions.
  */

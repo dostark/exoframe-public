@@ -1,5 +1,5 @@
 /**
- * Portal Permissions Tests (Step 6.3)
+ * Portal Permissions Tests
  * 
  * Tests permission validation, agent whitelist, operation restrictions,
  * and security mode enforcement.

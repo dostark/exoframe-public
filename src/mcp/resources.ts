@@ -1,5 +1,5 @@
 /**
- * MCP Resources (Step 6.2 Phase 5)
+ * MCP Resources
  * 
  * Exposes portal files as MCP resources with portal:// URI scheme.
  * Resources are dynamically discovered from configured portals.

@@ -1,5 +1,5 @@
 /**
- * MCP Prompts (Step 6.2 Phase 5)
+ * MCP Prompts
  * 
  * Provides prompt templates for common ExoFrame operations.
  * Prompts guide LLM agents through structured workflows.
