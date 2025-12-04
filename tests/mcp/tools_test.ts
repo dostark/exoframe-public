@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertExists, assertRejects, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
+import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { MCPServer } from "../../src/mcp/server.ts";
 import { createMockConfig } from "../helpers/config.ts";
 import { initTestDbService } from "../helpers/db.ts";
@@ -255,11 +255,14 @@ Deno.test("read_file: read_file appears in tools/list", async () => {
 
     assertExists(response.result);
     const result = response.result as { tools: Array<{ name: string; description: string }> };
-    assertEquals(result.tools.length, 3);
+    assertEquals(result.tools.length, 6);
     const toolNames = result.tools.map(t => t.name);
     assert(toolNames.includes("read_file"));
     assert(toolNames.includes("write_file"));
     assert(toolNames.includes("list_directory"));
+    assert(toolNames.includes("git_create_branch"));
+    assert(toolNames.includes("git_commit"));
+    assert(toolNames.includes("git_status"));
     const readTool = result.tools.find(t => t.name === "read_file")!;
     assertStringIncludes(readTool.description, "Read");
 

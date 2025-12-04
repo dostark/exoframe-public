@@ -107,12 +107,15 @@ Deno.test("MCP Server: handles tools/list request", async () => {
     assertExists(response.result.tools);
     assertEquals(Array.isArray(response.result.tools), true);
 
-    // Phase 3: Should have 3 tools (read_file, write_file, list_directory)
-    assertEquals(response.result.tools.length, 3);
+    // Phase 4: Should have 6 tools (read_file, write_file, list_directory, git_create_branch, git_commit, git_status)
+    assertEquals(response.result.tools.length, 6);
     const toolNames = response.result.tools.map((t: { name: string }) => t.name);
     assert(toolNames.includes("read_file"));
     assert(toolNames.includes("write_file"));
     assert(toolNames.includes("list_directory"));
+    assert(toolNames.includes("git_create_branch"));
+    assert(toolNames.includes("git_commit"));
+    assert(toolNames.includes("git_status"));
 
     await server.stop();
   } finally {

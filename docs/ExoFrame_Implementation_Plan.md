@@ -3425,8 +3425,11 @@ Implement the first phase of plan execution focusing on detection and parsing:
 - **Rollback:** Set `mcp.enabled = false` in exo.config.toml
 - **Action:** Implement Model Context Protocol (MCP) server for agent-tool communication
 - **Location:** `src/mcp/server.ts`, `src/mcp/tools.ts`, `src/mcp/resources.ts`, `src/mcp/prompts.ts`
-- **Status:** 🔄 IN PROGRESS (Phase 1 of 5 complete)
-- **Commit:** 140d307 - Phase 1 Walking Skeleton (8 tests passing)
+- **Status:** 🔄 IN PROGRESS (Phases 1-3 of 5 complete)
+- **Commits:** 
+  - 140d307 - Phase 1 Walking Skeleton (8 tests)
+  - 55a52f9 - Phase 2 read_file tool (15 tests)
+  - 21e5818 - Phase 3 write_file & list_directory tools (26 tests)
 
 **Problem Statement:**
 

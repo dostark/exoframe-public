@@ -365,3 +365,304 @@ export class ListDirectoryTool extends ToolHandler {
     };
   }
 }
+
+/**
+ * GitCreateBranchTool - Creates feature branches in portal git repositories
+ *
+ * Security:
+ * - Validates portal exists
+ * - Validates branch name format (feat/, fix/, docs/, chore/, refactor/, test/)
+ * - Checks if git repository exists
+ * - Logs all operations to Activity Journal
+ */
+export class GitCreateBranchTool extends ToolHandler {
+  async execute(args: unknown): Promise<MCPToolResponse> {
+    const { GitCreateBranchToolArgsSchema } = await import("../schemas/mcp.ts");
+    const validatedArgs = GitCreateBranchToolArgsSchema.parse(args) as {
+      portal: string;
+      branch: string;
+    };
+    const { portal, branch } = validatedArgs;
+
+    try {
+      // Validate portal exists
+      const portalPath = this.validatePortalExists(portal);
+
+      // Check if git repository exists
+      try {
+        await Deno.stat(join(portalPath, ".git"));
+      } catch {
+        throw new Error(`Not a git repository: ${portal}`);
+      }
+
+      // Create branch using git command
+      const cmd = new Deno.Command("git", {
+        args: ["checkout", "-b", branch],
+        cwd: portalPath,
+        stdout: "piped",
+        stderr: "piped",
+      });
+
+      const { code, stderr } = await cmd.output();
+
+      if (code !== 0) {
+        const error = new TextDecoder().decode(stderr);
+        throw new Error(`Failed to create branch: ${error}`);
+      }
+
+      // Log successful execution
+      this.logToolExecution("git_create_branch", portal, {
+        branch,
+        success: true,
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Branch '${branch}' created and checked out successfully in portal '${portal}'`,
+          },
+        ],
+      };
+    } catch (error) {
+      // Log failed execution
+      this.logToolExecution("git_create_branch", portal, {
+        branch,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      throw error;
+    }
+  }
+
+  getToolDefinition() {
+    return {
+      name: "git_create_branch",
+      description: "Create a new git branch in a portal repository",
+      inputSchema: {
+        type: "object",
+        properties: {
+          portal: {
+            type: "string",
+            description: "Portal name",
+          },
+          branch: {
+            type: "string",
+            description: "Branch name (must start with feat/, fix/, docs/, chore/, refactor/, or test/)",
+          },
+        },
+        required: ["portal", "branch"],
+      },
+    };
+  }
+}
+
+/**
+ * GitCommitTool - Commits changes in portal git repositories
+ *
+ * Security:
+ * - Validates portal exists
+ * - Validates commit message not empty
+ * - Optionally commits specific files
+ * - Checks if git repository exists
+ * - Logs all operations to Activity Journal
+ */
+export class GitCommitTool extends ToolHandler {
+  async execute(args: unknown): Promise<MCPToolResponse> {
+    const { GitCommitToolArgsSchema } = await import("../schemas/mcp.ts");
+    const validatedArgs = GitCommitToolArgsSchema.parse(args) as {
+      portal: string;
+      message: string;
+      files?: string[];
+    };
+    const { portal, message, files } = validatedArgs;
+
+    try {
+      // Validate portal exists
+      const portalPath = this.validatePortalExists(portal);
+
+      // Check if git repository exists
+      try {
+        await Deno.stat(join(portalPath, ".git"));
+      } catch {
+        throw new Error(`Not a git repository: ${portal}`);
+      }
+
+      // Stage files
+      let stageArgs: string[];
+      if (files && files.length > 0) {
+        stageArgs = ["add", ...files];
+      } else {
+        stageArgs = ["add", "."];
+      }
+
+      const stageCmd = new Deno.Command("git", {
+        args: stageArgs,
+        cwd: portalPath,
+        stdout: "piped",
+        stderr: "piped",
+      });
+
+      await stageCmd.output();
+
+      // Commit changes
+      const commitCmd = new Deno.Command("git", {
+        args: ["commit", "-m", message],
+        cwd: portalPath,
+        stdout: "piped",
+        stderr: "piped",
+      });
+
+      const { code, stderr } = await commitCmd.output();
+
+      if (code !== 0) {
+        const error = new TextDecoder().decode(stderr);
+        throw new Error(`Failed to commit: ${error}`);
+      }
+
+      // Log successful execution
+      this.logToolExecution("git_commit", portal, {
+        message,
+        files: files?.length || "all",
+        success: true,
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Changes committed successfully in portal '${portal}': ${message}`,
+          },
+        ],
+      };
+    } catch (error) {
+      // Log failed execution
+      this.logToolExecution("git_commit", portal, {
+        message,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      throw error;
+    }
+  }
+
+  getToolDefinition() {
+    return {
+      name: "git_commit",
+      description: "Commit changes in a portal git repository",
+      inputSchema: {
+        type: "object",
+        properties: {
+          portal: {
+            type: "string",
+            description: "Portal name",
+          },
+          message: {
+            type: "string",
+            description: "Commit message",
+          },
+          files: {
+            type: "array",
+            items: { type: "string" },
+            description: "Optional: specific files to commit (defaults to all changes)",
+          },
+        },
+        required: ["portal", "message"],
+      },
+    };
+  }
+}
+
+/**
+ * GitStatusTool - Queries git repository status in portals
+ *
+ * Security:
+ * - Validates portal exists
+ * - Checks if git repository exists
+ * - Returns formatted status output
+ * - Logs all operations to Activity Journal
+ */
+export class GitStatusTool extends ToolHandler {
+  async execute(args: unknown): Promise<MCPToolResponse> {
+    const { GitStatusToolArgsSchema } = await import("../schemas/mcp.ts");
+    const validatedArgs = GitStatusToolArgsSchema.parse(args) as {
+      portal: string;
+    };
+    const { portal } = validatedArgs;
+
+    try {
+      // Validate portal exists
+      const portalPath = this.validatePortalExists(portal);
+
+      // Check if git repository exists
+      try {
+        await Deno.stat(join(portalPath, ".git"));
+      } catch {
+        throw new Error(`Not a git repository: ${portal}`);
+      }
+
+      // Get git status
+      const cmd = new Deno.Command("git", {
+        args: ["status", "--porcelain"],
+        cwd: portalPath,
+        stdout: "piped",
+        stderr: "piped",
+      });
+
+      const { code, stdout, stderr } = await cmd.output();
+
+      if (code !== 0) {
+        const error = new TextDecoder().decode(stderr);
+        throw new Error(`Failed to get status: ${error}`);
+      }
+
+      const output = new TextDecoder().decode(stdout);
+      const statusText = output.trim()
+        ? output
+        : "Working tree clean - no changes detected";
+
+      // Log successful execution
+      this.logToolExecution("git_status", portal, {
+        success: true,
+        has_changes: output.trim().length > 0,
+      });
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: statusText,
+          },
+        ],
+      };
+    } catch (error) {
+      // Log failed execution
+      this.logToolExecution("git_status", portal, {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      throw error;
+    }
+  }
+
+  getToolDefinition() {
+    return {
+      name: "git_status",
+      description: "Query git repository status in a portal",
+      inputSchema: {
+        type: "object",
+        properties: {
+          portal: {
+            type: "string",
+            description: "Portal name",
+          },
+        },
+        required: ["portal"],
+      },
+    };
+  }
+}
+
