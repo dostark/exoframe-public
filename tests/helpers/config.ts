@@ -38,6 +38,12 @@ export function createMockConfig(root: string, overrides: Partial<Config> = {}):
       ...overrides.agents,
     },
     portals: overrides.portals || [],
+    mcp: overrides.mcp || {
+      enabled: true,
+      transport: "stdio",
+      server_name: "exoframe",
+      version: "1.0.0",
+    },
   };
 }
 

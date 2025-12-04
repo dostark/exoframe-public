@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AiConfigSchema } from "./ai_config.ts";
+import { MCPConfigSchema } from "../schemas/mcp.ts";
 
 export const ConfigSchema = z.object({
   system: z.object({
@@ -32,6 +33,13 @@ export const ConfigSchema = z.object({
   })).default([]),
   /** AI/LLM provider configuration */
   ai: AiConfigSchema.optional(),
+  /** MCP (Model Context Protocol) server configuration */
+  mcp: MCPConfigSchema.optional().default({
+    enabled: true,
+    transport: "stdio",
+    server_name: "exoframe",
+    version: "1.0.0",
+  }),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

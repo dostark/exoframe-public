@@ -7,7 +7,7 @@
  * @module services/code_parser
  */
 
-import { join, normalize, relative } from "@std/path";
+import { join, normalize } from "@std/path";
 
 /**
  * File change operation types

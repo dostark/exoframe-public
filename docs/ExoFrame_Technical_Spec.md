@@ -634,14 +634,14 @@ The Plan Execution Engine automatically executes approved plans moved to `System
 
 **Implementation Status:**
 
-| Sub-Step | Name               | Status         | Description                                |
-| -------- | ------------------ | -------------- | ------------------------------------------ |
-| 5.12.1   | Detection          | ✅ Implemented | Monitors System/Active for approved plans  |
-| 5.12.2   | Parsing            | ✅ Implemented | Extracts and validates plan structure      |
-| 5.12.3   | Agent Orchestration| 📋 Planned     | Invokes LLM agent via MCP server with tools|
-| 5.12.4   | Changeset Registry | 📋 Planned     | Registers changeset created by agent       |
-| 5.12.5   | Status Update      | 📋 Planned     | Marks plan executed, moves to archive      |
-| 5.12.6   | Error Handling     | 📋 Planned     | Handles agent/MCP/Git errors gracefully    |
+| Sub-Step | Name                | Status         | Description                                 |
+| -------- | ------------------- | -------------- | ------------------------------------------- |
+| 5.12.1   | Detection           | ✅ Implemented | Monitors System/Active for approved plans   |
+| 5.12.2   | Parsing             | ✅ Implemented | Extracts and validates plan structure       |
+| 5.12.3   | Agent Orchestration | 📋 Planned     | Invokes LLM agent via MCP server with tools |
+| 5.12.4   | Changeset Registry  | 📋 Planned     | Registers changeset created by agent        |
+| 5.12.5   | Status Update       | 📋 Planned     | Marks plan executed, moves to archive       |
+| 5.12.6   | Error Handling      | 📋 Planned     | Handles agent/MCP/Git errors gracefully     |
 
 ### 5.8.2. Dual FileWatcher Architecture
 
@@ -936,14 +936,14 @@ Create REST API routes.
 
 **MCP Tools:**
 
-| Tool               | Description                        | Inputs                          |
-|--------------------|------------------------------------|---------------------------------|
-| `read_file`        | Read portal file                   | portal, path                    |
-| `write_file`       | Write portal file                  | portal, path, content           |
-| `list_directory`   | List portal directory              | portal, path (optional)         |
-| `git_create_branch`| Create feature branch              | portal, branch                  |
-| `git_commit`       | Commit changes                     | portal, message, files          |
-| `git_status`       | Check git status                   | portal                          |
+| Tool                | Description           | Inputs                  |
+| ------------------- | --------------------- | ----------------------- |
+| `read_file`         | Read portal file      | portal, path            |
+| `write_file`        | Write portal file     | portal, path, content   |
+| `list_directory`    | List portal directory | portal, path (optional) |
+| `git_create_branch` | Create feature branch | portal, branch          |
+| `git_commit`        | Commit changes        | portal, message, files  |
+| `git_status`        | Check git status      | portal                  |
 
 **MCP Resources:**
 
@@ -960,12 +960,14 @@ Create REST API routes.
 **Security Modes:**
 
 **Sandboxed (Recommended):**
+
 - Agent has NO file system access
 - Runs with `--allow-read=NONE --allow-write=NONE`
 - All operations through MCP tools
 - Impossible to bypass ExoFrame
 
 **Hybrid (Performance):**
+
 - Agent has read-only portal access
 - Can read files directly (faster)
 - MUST use MCP tools for writes
