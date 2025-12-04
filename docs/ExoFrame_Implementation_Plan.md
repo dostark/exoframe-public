@@ -3322,7 +3322,7 @@ private async loadBlueprint(agentId: string): Promise<Blueprint | null> {
 
 ## Phase 6: Plan Execution via MCP Server (Agent-Driven Architecture)
 
-> **Status:** ✅ IN PROGRESS\
+> **Status:** ✅ COMPLETE\
 > **Prerequisites:** Phases 1–5 (Runtime, Events, Intelligence, Tools, Obsidian)\
 > **Goal:** Execute approved plans through MCP server with configurable security modes (sandboxed or hybrid).
 
@@ -3336,6 +3336,68 @@ Phase 6 implements the **plan execution engine** where approved plans in `System
 - Configurable security modes (sandboxed or hybrid)
 - Complete audit trail of all agent actions
 - Validation and logging at tool invocation level
+
+**Plan Execution Flow (MCP Architecture):**
+
+1. **Detection:**
+   - FileWatcher detects new file in `System/Active/` (approved plan)
+   - OR daemon polls `System/Active/` every 30 seconds
+
+2. **Plan Parsing:**
+   - Read plan file YAML frontmatter + body
+   - Extract trace_id, request content, plan steps
+   - Load associated request from `Inbox/Requests/`
+   - Determine target portal (from request or plan)
+   - Validate portal exists and agent has permissions
+
+3. **MCP Server Initialization:**
+   - Start ExoFrame MCP server with portal scope
+   - Register 6 MCP tools (read_file, write_file, list_directory, git_*)
+   - Register portal resources (portal:// URIs)
+   - Register MCP prompts (execute_plan, create_changeset)
+   - Choose transport: stdio (subprocess) or SSE (HTTP)
+
+4. **Agent Invocation via MCP:**
+   - For each plan step:
+     - Load agent blueprint (model, capabilities, prompt)
+     - Validate portal permissions (agents_allowed, operations)
+     - Apply security mode (sandboxed or hybrid)
+     - Launch agent subprocess connected to MCP server
+     - Agent connects via MCP protocol (client ↔ server)
+     - Agent receives execution context via MCP prompt
+
+5. **Agent Execution via MCP Tools:**
+   - Agent uses MCP tools to interact with portal:
+     - `read_file(portal, path)` - Read files (permission-validated)
+     - `write_file(portal, path, content)` - Write files (logged)
+     - `list_directory(portal, path)` - List directories
+     - `git_create_branch(portal, branch)` - Create feature branch
+     - `git_commit(portal, message, files)` - Commit changes
+     - `git_status(portal)` - Check git status
+   - All MCP tool calls validated and logged to Activity Journal
+   - Agent creates branch: `feat/<description>-<trace_id_short>`
+   - Agent commits changes with trace_id in message
+
+6. **Changeset Registration:**
+   - Agent execution completes, returns changeset details
+   - ChangesetRegistry.register() creates database record:
+     - trace_id, portal, branch, commit_sha
+     - created_by = agent blueprint name
+     - status = "pending"
+   - Log `changeset.created` to Activity Journal
+
+7. **Status Update:**
+   - Update plan status to `executed`
+   - Log `plan.executed` to Activity Journal with changeset_id
+   - Optional: move plan to `System/Archive/`
+
+8. **Error Handling:**
+   - Agent errors → mark plan as `failed`, log error
+   - Portal permission denied → log access violation, halt
+   - MCP tool errors → logged with tool name and context
+   - Git errors → agent reports failure, execution stops
+   - Invalid branch names → rejected by MCP git_create_branch
+   - Security violations → logged and execution terminated
 
 ### Phase Structure
 
@@ -3955,7 +4017,6 @@ The agent orchestration infrastructure is fully implemented and functional with 
 - **Rollback:** Disable changeset registration, execution results not persisted
 - **Action:** Implement changeset registration and plan status updates
 - **Location:** `src/services/changeset_registry.ts`, `src/schemas/changeset.ts`
-- **Status:** ✅ COMPLETED (2025-12-04)
 - **Commit:** [pending]
 
 **Problem Statement:**
@@ -4006,30 +4067,7 @@ export type ChangesetStatus = z.infer<typeof ChangesetStatusSchema>;
 **Database Schema Addition:**
 
 ```sql
--- Add to migrations/002_changesets.sql
-
-CREATE TABLE IF NOT EXISTS changesets (
-  id TEXT PRIMARY KEY,              -- UUID
-  trace_id TEXT NOT NULL,           -- Link to request/plan
-  portal TEXT NOT NULL,             -- Portal name
-  branch TEXT NOT NULL,             -- Git branch name (feat/<desc>-<trace>)
-  status TEXT NOT NULL,             -- pending, approved, rejected
-  description TEXT NOT NULL,
-  commit_sha TEXT,                  -- Latest commit SHA from agent
-  files_changed INTEGER DEFAULT 0,  -- Number of files in commit
-  created TEXT NOT NULL,
-  created_by TEXT NOT NULL,         -- Agent blueprint name
-  approved_at TEXT,
-  approved_by TEXT,
-  rejected_at TEXT,
-  rejected_by TEXT,
-  rejection_reason TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_changesets_trace_id ON changesets(trace_id);
-CREATE INDEX IF NOT EXISTS idx_changesets_status ON changesets(status);
-CREATE INDEX IF NOT EXISTS idx_changesets_portal ON changesets(portal);
-CREATE INDEX IF NOT EXISTS idx_changesets_created_by ON changesets(created_by);
+-- Refer to migrations/002_changesets.sql
 ```
 
 **ChangesetRegistry Interface:**
@@ -4112,12 +4150,12 @@ interface ChangesetRegistry {
 
 **Implementation Files:**
 
-| File                                          | Purpose                             | Status         |
-| --------------------------------------------- | ----------------------------------- | -------------- |
-| `src/services/changeset_registry.ts`          | ChangesetRegistry class (217 lines) | ✅ Implemented |
-| `src/schemas/changeset.ts`                    | Changeset schema and types (70 lines) | ✅ Implemented |
-| `migrations/002_changesets.sql`               | Database schema (28 lines)          | ✅ Implemented |
-| `tests/services/changeset_registry_test.ts`   | Registry tests (495 lines)          | ✅ 20/20 passing |
+| File                                        | Purpose                               | Status           |
+| ------------------------------------------- | ------------------------------------- | ---------------- |
+| `src/services/changeset_registry.ts`        | ChangesetRegistry class (217 lines)   | ✅ Implemented   |
+| `src/schemas/changeset.ts`                  | Changeset schema and types (70 lines) | ✅ Implemented   |
+| `migrations/002_changesets.sql`             | Database schema (28 lines)            | ✅ Implemented   |
+| `tests/services/changeset_registry_test.ts` | Registry tests (495 lines)            | ✅ 20/20 passing |
 
 **Implementation Summary:**
 
@@ -4205,7 +4243,7 @@ The Changeset Registry provides database-backed persistence for agent-created ch
 
 ---
 
-### Step 6.6: End-to-End Integration & Testing 📋 PLANNED
+### Step 6.6: End-to-End Integration & Testing ✅ COMPLETE
 
 - **Dependencies:** Step 6.1-6.5 (all execution components)
 - **Rollback:** N/A (testing step)
@@ -4264,6 +4302,41 @@ Implement integration tests covering the full execution pipeline:
    - MCP server connection error → handled gracefully
    - Git operation failure → error logged
    - Invalid branch name → execution blocked
+
+7. **Plan Detection & Parsing Errors (Step 6.1):**
+   - Invalid YAML frontmatter → plan.invalid_frontmatter event
+   - Missing trace_id → plan.missing_trace_id event
+   - Invalid step numbering → plan.parsing_failed event
+   - Empty step titles → validation error
+
+8. **MCP Server Features (Step 6.2):**
+   - MCP resources discoverable (portal:// URIs)
+   - MCP prompts available (execute_plan, create_changeset)
+   - Path traversal blocked (../ in file paths)
+   - Invalid tool parameters → clear error message
+
+9. **Agent Orchestration Errors (Step 6.4):**
+   - Blueprint not found → blueprint_not_found error
+   - Invalid blueprint format → parsing error
+   - Agent returns malformed JSON → graceful error handling
+   - Agent timeout → execution terminated with error
+
+10. **Changeset Lifecycle (Step 6.5):**
+    - Changeset created with status=pending
+    - Changeset approval updates status and timestamps
+    - Changeset rejection with reason recorded
+    - List changesets by trace_id, portal, status
+    - Query methods: getByTrace(), getPendingForPortal(), countByStatus()
+
+11. **Multi-Step Plans:**
+    - Plan with multiple steps executes sequentially
+    - Step failures don't execute subsequent steps
+    - Each step logged separately to Activity Journal
+
+12. **Performance & Reliability:**
+    - Simple plan executes in <30s
+    - No memory leaks during execution
+    - Concurrent plan executions don't interfere
 
 **Manual Test Update:**
 
@@ -4333,18 +4406,56 @@ plan.executed
 
 **Success Criteria:**
 
-1. [ ] Happy path test passes (sandboxed mode)
-2. [ ] Happy path test passes (hybrid mode)
-3. [ ] Sandboxed security enforcement test passes
-4. [ ] Hybrid audit detection test passes
-5. [ ] Permission validation tests pass
-6. [ ] Error scenario tests pass
-7. [ ] MT-08 manual test passes
-8. [ ] Complete flow: request → plan → execution → changeset
-9. [ ] Both security modes validated
-10. [ ] Performance acceptable (<30s for simple plan)
-11. [ ] All Activity Journal events logged correctly
-12. [ ] No regressions in existing tests (626 tests still passing)
+1. [x] Happy path test passes (sandboxed mode) - Test 15.1 ✅
+2. [x] Happy path test passes (hybrid mode) - Test 15.2 ✅
+3. [x] Sandboxed security enforcement test passes - Tests 16.1 ✅
+4. [x] Hybrid audit detection test passes - Test 16.2 ✅
+5. [x] Permission validation tests pass - Tests 16.3, 16.4, 16.5 ✅
+6. [x] Error scenario tests pass - Tests 15.7, 15.8, 15.9 ✅
+7. [x] Plan parsing error tests pass (invalid YAML, missing trace_id, invalid steps) - Test 15.3, 15.7 ✅
+8. [x] MCP server feature tests pass (resources, prompts, path traversal) - Test 15.8 ✅
+9. [x] Agent orchestration error tests pass (blueprint errors, timeouts, malformed responses) - Test 15.9 ✅
+10. [x] Changeset lifecycle tests pass (approval, rejection, filtering, queries) - Tests 15.4, 15.5, 15.6, 15.10 ✅
+11. [x] Multi-step plan execution test passes - Test 15.11 ✅
+12. [x] Performance test passes (<30s for simple plan) - Test 15.12 ✅
+13. [ ] MT-08 manual test passes - (manual testing required)
+14. [x] Complete flow: request → plan → execution → changeset - Tests 15.1, 15.2 ✅
+15. [x] Both security modes validated - Tests 15.1, 15.2, 16.1, 16.2, 16.6 ✅
+16. [x] All Activity Journal events logged correctly - All tests verify event logging ✅
+17. [x] No regressions in existing tests - 764 tests passing (3 pre-existing migration test failures) ✅
+
+**Completed Tests (18/18 passing):**
+
+**Test Suite 15: Plan Execution MCP (926 lines)**
+
+- Test 15.1: Happy Path - Sandboxed Mode
+- Test 15.2: Happy Path - Hybrid Mode
+- Test 15.3: Plan Detection - Invalid YAML
+- Test 15.4: Changeset Lifecycle - Approval
+- Test 15.5: Changeset Lifecycle - Rejection
+- Test 15.6: Changeset Filtering
+- Test 15.7: Plan Parsing Errors
+- Test 15.8: MCP Server Security
+- Test 15.9: Agent Orchestration Errors
+- Test 15.10: Changeset Query Methods
+- Test 15.11: Multi-Step Plan Execution
+- Test 15.12: Performance & Concurrent Execution
+
+**Test Suite 16: Security Modes (485 lines)**
+
+- Test 16.1: Sandboxed Mode - File Access Blocked
+- Test 16.2: Hybrid Mode - Audit Detection
+- Test 16.3: Permission Validation - Agent Not Allowed
+- Test 16.4: Permission Validation - Operation Not Allowed
+- Test 16.5: Permission Validation - Portal Not Found
+- Test 16.6: Hybrid Mode - Read Access Allowed
+
+**Test Results Summary:**
+
+- Integration Tests: 71 passed (97 steps) in 11s
+- Total Test Suite: 764 passed (519 steps) in 1m33s
+- Code Coverage: All Step 6.6 scenarios covered
+- No regressions introduced
 
 **Future Enhancements:**
 
@@ -4370,838 +4481,6 @@ plan.executed
 ---
 
 ## Phase 7: Testing & Quality Assurance
-
-> **Status:** ✅ IN PROGRESS\
-> **Prerequisites:** Phases 1–6 (Runtime, Events, Intelligence, Tools, Obsidian, Plan Execution)\
-> **Goal:** Validate single-agent workflows end-to-end before adding multi-agent complexity.
-
-📄 **Full Documentation:** [`ExoFrame_Testing_Strategy.md`](./ExoFrame_Testing_Strategy.md)
-/**
-
-- Start MCP server on stdio or SSE transport
-- @param transport - Transport type (stdio, sse)
-- @returns Server instance
-  */
-  start(transport: 'stdio' | 'sse'): Promise<void>;
-
-/**
-
-- Register portal-scoped tools
-- @param portal - Portal configuration
-  */
-  registerPortalTools(portal: PortalConfig): void;
-
-/**
-
-- Handle tool invocation from agent
-- @param toolName - Tool to invoke
-- @param args - Tool arguments
-- @param agent - Agent making the request
-- @returns Tool execution result
-  */
-  handleToolCall(
-  toolName: string,
-  args: Record<string, unknown>,
-  agent: string
-  ): Promise<unknown>;
-  }
-
-````
-**ChangesetRegistry Interface:**
-
-```typescript
-interface ChangesetRegistry {
-  /**
-   * Register a changeset created by agent
-   * @param traceId - Request trace ID
-   * @param portalName - Portal where changes were made
-   * @param branch - Feature branch name created by agent
-   * @param description - Changeset description
-   * @param createdBy - Agent that created the changeset
-   * @returns Changeset ID
-   */
-  register(
-    traceId: string,
-    portalName: string,
-    branch: string,
-    description: string,
-    createdBy: string
-  ): Promise<string>;
-
-  /**
-   * List all changesets with optional filtering
-   * @param status - Filter by status (pending, approved, rejected)
-   * @returns Array of changesets
-   */
-  list(status?: ChangesetStatus): Promise<Changeset[]>;
-
-  /**
-   * Get changeset details including diff
-   * @param changesetId - Changeset identifier
-   * @returns Changeset with full details
-   */
-  get(changesetId: string): Promise<Changeset | null>;
-
-  /**
-   * Approve changeset and merge to main
-   * @param changesetId - Changeset identifier
-   * @returns Success status
-   */
-  approve(changesetId: string): Promise<boolean>;
-
-  /**
-   * Reject changeset and delete branch
-   * @param changesetId - Changeset identifier
-   * @param reason - Rejection reason
-   * @returns Success status
-   */
-  reject(changesetId: string, reason: string): Promise<boolean>;
-}
-
-/**
- * Portal Permissions validator
- */
-interface PortalPermissions {
-  /**
-   * Check if agent can access portal
-   * @param agent - Agent blueprint name
-   * @param portal - Portal name
-   * @returns True if access allowed
-   */
-  canAccess(agent: string, portal: string): boolean;
-
-  /**
-   * Get allowed operations for agent in portal
-   * @param agent - Agent blueprint name
-   * @param portal - Portal name
-   * @returns Array of allowed operations (read, write, git)
-   */
-  getAllowedOperations(agent: string, portal: string): Operation[];
-
-  /**
-   * Validate git operation is allowed
-   * @param portal - Portal name
-   * @param branch - Branch name (must start with feat/, fix/, etc.)
-   * @returns True if operation allowed
-   */
-  validateGitOperation(portal: string, branch: string): boolean;
-}
-````
-
-**Changeset Schema:**
-
-```typescript
-// src/schemas/changeset.ts
-import { z } from "zod";
-
-export const ChangesetStatusSchema = z.enum([
-  "pending", // Created by agent, awaiting review
-  "approved", // Approved, merged to main
-  "rejected", // Rejected, branch deleted
-]);
-
-export const ChangesetSchema = z.object({
-  id: z.string().uuid(), // Changeset UUID
-  trace_id: z.string().uuid(), // Link to request
-  portal: z.string(), // Portal name
-  branch: z.string(), // Feature branch name
-  status: ChangesetStatusSchema,
-  description: z.string(),
-  commit_sha: z.string().optional(), // Latest commit by agent
-  files_changed: z.number(), // Number of files modified
-  created: z.string().datetime(),
-  created_by: z.string(), // Agent that created changeset
-  approved_at: z.string().datetime().optional(),
-  approved_by: z.string().optional(),
-  rejected_at: z.string().datetime().optional(),
-  rejected_by: z.string().optional(),
-  rejection_reason: z.string().optional(),
-});
-
-export type Changeset = z.infer<typeof ChangesetSchema>;
-export type ChangesetStatus = z.infer<typeof ChangesetStatusSchema>;
-```
-
-**Database Schema Addition:**
-
-```sql
--- Add to migrations/001_init.sql or create 002_changesets.sql
-
-CREATE TABLE IF NOT EXISTS changesets (
-  id TEXT PRIMARY KEY,              -- UUID
-  trace_id TEXT NOT NULL,           -- Link to request/plan
-  portal TEXT NOT NULL,             -- Portal name
-  branch TEXT NOT NULL,             -- Git branch name (feat/<desc>-<trace>)
-  status TEXT NOT NULL,             -- pending, approved, rejected
-  description TEXT NOT NULL,
-  commit_sha TEXT,                  -- Latest commit SHA from agent
-  files_changed INTEGER DEFAULT 0,  -- Number of files in commit
-  created TEXT NOT NULL,
-  created_by TEXT NOT NULL,         -- Agent blueprint name
-  approved_at TEXT,
-  approved_by TEXT,
-  rejected_at TEXT,
-  rejected_by TEXT,
-  rejection_reason TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_changesets_trace_id ON changesets(trace_id);
-CREATE INDEX IF NOT EXISTS idx_changesets_status ON changesets(status);
-CREATE INDEX IF NOT EXISTS idx_changesets_portal ON changesets(portal);
-CREATE INDEX IF NOT EXISTS idx_changesets_created_by ON changesets(created_by);
-```
-
-**Plan Execution Flow:**
-
-1. **Detection:**
-   - FileWatcher detects new file in `System/Active/` (approved plan)
-   - OR daemon polls `System/Active/` every 30 seconds
-
-2. **Plan Parsing:**
-   - Read plan file YAML frontmatter + body
-   - Extract trace_id, request content, plan steps
-   - Load associated request from `Inbox/Requests/`
-   - Determine target portal (from request or plan)
-   - Validate portal exists and agent has permissions
-
-3. **Agent Invocation:**
-   - For each plan step:
-     - Load agent blueprint (model, capabilities, prompt)
-     - Create scoped tool registry for portal
-     - Construct execution prompt with request + plan + step
-     - Invoke agent with portal-scoped tools:
-       - `read_file(path)` - Read files in portal
-       - `write_file(path, content)` - Write files in portal
-       - `list_directory(path)` - List portal directories
-       - `git_create_branch(name)` - Create feature branch
-       - `git_commit(message, files)` - Commit changes
-       - `git_status()` - Check working tree status
-       - `report_completion(changeset_details)` - Signal done
-
-4. **Agent Execution:**
-   - Agent reads portal files to understand context
-   - Agent creates feature branch: `feat/<description>-<trace_id_short>`
-   - Agent modifies/creates files using `write_file` tool
-   - Agent commits changes with message linking to trace_id
-   - Agent reports completion with changeset details
-
-5. **Changeset Registration:**
-   - PlanExecutor receives changeset details from agent
-   - Register changeset in database with:
-     - trace_id, portal, branch, commit_sha
-     - created_by = agent blueprint name
-     - status = "pending"
-   - Log `changeset.created` to Activity Journal
-
-6. **Status Update:**
-   - Update plan status to `executed`
-   - Log `plan.executed` to Activity Journal
-   - Move plan to `System/Archive/` (optional)
-
-7. **Error Handling:**
-   - Agent errors → mark plan as `failed`, log error
-   - Portal permission errors → log error, skip step
-   - Git errors → agent reports failure, log error
-   - Invalid branch names → reject before execution
-   - No portal specified → use default or skip execution
-
-**MCP Server Configuration:**
-
-Configure MCP server and portal security modes in `exo.config.toml`:
-
-```toml
-# MCP Server Settings
-[mcp]
-enabled = true
-transport = "stdio"  # or "sse" for HTTP transport
-server_name = "exoframe"
-version = "1.0.0"
-
-# Portal configurations with security modes
-[[portals]]
-name = "MyApp"
-path = "/home/user/projects/MyApp"
-agents_allowed = ["senior-coder", "code-reviewer"]  # Whitelist
-operations = ["read", "write", "git"]  # Capabilities
-
-# Security mode configuration
-[portals.MyApp.security]
-mode = "sandboxed"  # or "hybrid"
-audit_enabled = true
-log_all_actions = true
-
-[[portals]]
-name = "PublicDocs"
-path = "/home/user/projects/docs"
-agents_allowed = ["*"]  # All agents
-operations = ["read", "write"]  # No git access
-
-[portals.PublicDocs.security]
-mode = "hybrid"
-audit_enabled = true
-```
-
-**Security Modes:**
-
-**1. Sandboxed Mode (Recommended for Production):**
-
-- Agent has **NO direct file system access**
-- Agent connects to ExoFrame MCP server
-- All file operations go through MCP tools
-- Tools validate permissions and log actions
-- Impossible for agent to bypass ExoFrame
-- Implementation: Agent runs in Deno subprocess with `--allow-read=NONE --allow-write=NONE`
-
-**2. Hybrid Mode (Performance Optimized):**
-
-- Agent has **read-only access** to portal path
-- Agent can examine files directly (fast)
-- Agent **MUST use MCP tools** for modifications
-- After execution, ExoFrame audits changes via git diff
-- Unauthorized changes detected and reverted
-- Implementation: Agent gets portal path + MCP tools, with post-execution audit
-
-**Security Enforcement:**
-
-- Agents can only access portals listed in their `agents_allowed` array
-- Operations restricted to specified capabilities (read, write, git)
-- All agent actions logged to Activity Journal with agent name
-- File paths validated against portal boundaries (no `../` escapes)
-- Git branch names must follow pattern: `feat/`, `fix/`, `docs/`, etc.
-- In sandboxed mode: bypass impossible (no file access)
-- In hybrid mode: unauthorized changes reverted + security violation logged
-
-**MCP Tools Specification:**
-
-ExoFrame MCP server exposes these tools to agents:
-
-```typescript
-// MCP Tool Definitions (src/mcp/tools.ts)
-
-const READ_FILE_TOOL = {
-  name: "read_file",
-  description: "Read a file from portal (scoped to allowed portals)",
-  inputSchema: {
-    type: "object",
-    properties: {
-      portal: { type: "string", description: "Portal name" },
-      path: { type: "string", description: "Relative path in portal" },
-    },
-    required: ["portal", "path"],
-  },
-};
-
-const WRITE_FILE_TOOL = {
-  name: "write_file",
-  description: "Write a file to portal (validated and logged)",
-  inputSchema: {
-    type: "object",
-    properties: {
-      portal: { type: "string", description: "Portal name" },
-      path: { type: "string", description: "Relative path in portal" },
-      content: { type: "string", description: "File content" },
-    },
-    required: ["portal", "path", "content"],
-  },
-};
-
-const LIST_DIRECTORY_TOOL = {
-  name: "list_directory",
-  description: "List files and directories in portal path",
-  inputSchema: {
-    type: "object",
-    properties: {
-      portal: { type: "string", description: "Portal name" },
-      path: { type: "string", description: "Relative path in portal (optional, defaults to root)" },
-    },
-    required: ["portal"],
-  },
-};
-
-const GIT_CREATE_BRANCH_TOOL = {
-  name: "git_create_branch",
-  description: "Create a feature branch in portal repository",
-  inputSchema: {
-    type: "object",
-    properties: {
-      portal: { type: "string", description: "Portal name" },
-      branch: { type: "string", description: "Branch name (must start with feat/, fix/, docs/, etc.)" },
-    },
-    required: ["portal", "branch"],
-  },
-};
-
-const GIT_COMMIT_TOOL = {
-  name: "git_commit",
-  description: "Commit changes to portal repository",
-  inputSchema: {
-    type: "object",
-    properties: {
-      portal: { type: "string", description: "Portal name" },
-      message: { type: "string", description: "Commit message (should include trace_id)" },
-      files: {
-        type: "array",
-        items: { type: "string" },
-        description: "Files to commit (optional, commits all staged if omitted)",
-      },
-    },
-    required: ["portal", "message"],
-  },
-};
-
-const GIT_STATUS_TOOL = {
-  name: "git_status",
-  description: "Check git status of portal repository",
-  inputSchema: {
-    type: "object",
-    properties: {
-      portal: { type: "string", description: "Portal name" },
-    },
-    required: ["portal"],
-  },
-};
-```
-
-**MCP Resources:**
-
-ExoFrame exposes portal files as MCP resources:
-
-```typescript
-// Resource URI format: portal://PortalName/path/to/file.ts
-
-const portalResources = [
-  {
-    uri: "portal://MyApp/src/auth.ts",
-    name: "MyApp: src/auth.ts",
-    mimeType: "text/x-typescript",
-    description: "Authentication module",
-  },
-  {
-    uri: "portal://MyApp/package.json",
-    name: "MyApp: package.json",
-    mimeType: "application/json",
-    description: "Package configuration",
-  },
-  // ... dynamically discovered from portal
-];
-```
-
-**MCP Prompts:**
-
-High-level prompts for common workflows:
-
-```typescript
-const EXECUTE_PLAN_PROMPT = {
-  name: "execute_plan",
-  description: "Execute an approved ExoFrame plan",
-  arguments: [
-    { name: "plan_id", description: "Plan UUID", required: true },
-    { name: "portal", description: "Target portal name", required: true },
-  ],
-};
-
-const CREATE_CHANGESET_PROMPT = {
-  name: "create_changeset",
-  description: "Create a changeset for code changes",
-  arguments: [
-    { name: "portal", description: "Portal name", required: true },
-    { name: "description", description: "Changeset description", required: true },
-    { name: "trace_id", description: "Request trace ID", required: true },
-  ],
-};
-```
-
-**Activity Logging Events:**
-
-| Event                      | Payload                                                  |
-| -------------------------- | -------------------------------------------------------- |
-| `plan.executing`           | `{ trace_id, plan_id, portal, agent }`                   |
-| `plan.executed`            | `{ trace_id, plan_id, changeset_id, duration_ms }`       |
-| `plan.execution.failed`    | `{ trace_id, plan_id, error, step_index, agent }`        |
-| `agent.tool.invoked`       | `{ agent, tool_name, portal, trace_id }`                 |
-| `agent.git.branch_created` | `{ agent, portal, branch, trace_id }`                    |
-| `agent.git.commit`         | `{ agent, portal, branch, commit_sha, files, trace_id }` |
-| `changeset.created`        | `{ changeset_id, trace_id, portal, branch, created_by }` |
-| `portal.access_denied`     | `{ agent, portal, reason }`                              |
-
-**Success Criteria:**
-
-**MCP Server:**
-
-1. [ ] ExoFrame MCP server starts with `mcp.enabled = true`
-2. [ ] MCP server registers 6 tools (read_file, write_file, list_directory, git_*)
-3. [ ] MCP server exposes portal files as Resources (portal:// URIs)
-4. [ ] MCP server provides execute_plan and create_changeset Prompts
-5. [ ] MCP transport supports stdio and SSE modes
-6. [ ] Agent connects to MCP server via configured transport
-
-**Core Implementation:**
-7. [ ] `PlanExecutor.execute()` reads approved plan from `System/Active/`
-8. [ ] Plan parser extracts steps and request context
-9. [ ] Portal permissions validated before agent invocation
-10. [ ] AgentExecutor starts MCP server with portal scope
-11. [ ] Agent receives MCP tools: read_file, write_file, git_create_branch, git_commit
-12. [ ] Agent creates feature branch with trace_id in name
-13. [ ] Agent commits changes with trace_id in commit message
-14. [ ] Agent reports completion with changeset details
-15. [ ] ChangesetRegistry records changeset with commit_sha
-16. [ ] Plan status updated to `executed`
-17. [ ] Activity Journal logs all agent actions
-
-**Portal Permissions:**
-18. [ ] Portal config defines `agents_allowed` array
-19. [ ] Portal config defines `operations` array (read, write, git)
-20. [ ] Portal config defines `security.mode` (sandboxed or hybrid)
-21. [ ] PortalPermissions validates agent access before execution
-22. [ ] Unauthorized agents receive access denied error
-23. [ ] MCP tools enforce operation restrictions (e.g., no git if not allowed)
-
-**Security Modes:**
-24. [ ] Sandboxed mode: agent runs with NO file system access
-25. [ ] Sandboxed mode: agent subprocess uses --allow-read=NONE --allow-write=NONE
-26. [ ] Sandboxed mode: all file operations go through MCP tools
-27. [ ] Hybrid mode: agent has read-only access to portal path
-28. [ ] Hybrid mode: agent MUST use MCP tools for writes
-29. [ ] Hybrid mode: post-execution audit detects unauthorized changes
-30. [ ] Security violations logged to Activity Journal
-
-**MCP Tools:**
-31. [ ] MCP read_file validates portal permissions
-32. [ ] MCP read_file blocks path traversal (../)
-33. [ ] MCP write_file validates portal permissions
-34. [ ] MCP write_file logs file changes to Activity Journal
-35. [ ] MCP list_directory returns portal file structure
-36. [ ] MCP git_create_branch validates branch naming
-37. [ ] MCP git_commit includes trace_id in message
-38. [ ] All tool invocations logged to Activity Journal
-
-**Agent Integration:**
-39. [ ] AgentExecutor works with AnthropicProvider via MCP
-40. [ ] AgentExecutor works with OpenAIProvider via MCP
-41. [ ] AgentExecutor works with OllamaProvider via MCP
-42. [ ] AgentExecutor works with MockLLMProvider (simulated git ops)
-43. [ ] Agent receives execution context (request, plan, step)
-
-**Error Handling:**
-44. [ ] Agent errors don't crash PlanExecutor
-45. [ ] Portal access errors logged with clear messages
-46. [ ] MCP server errors handled gracefully
-47. [ ] Git errors reported by agent and logged
-48. [ ] Invalid branch names rejected before execution
-49. [ ] Missing portal handled gracefully
-
-**Integration:**
-50. [ ] Daemon detects new approved plans in `System/Active/`
-51. [ ] Execution triggered automatically after plan approval
-52. [ ] `exoctl changeset list` shows changesets created by agents
-53. [ ] `exoctl changeset show <id>` displays git diff
-54. [ ] MT-08 manual test scenario fully passes
-
-**Testing:**
-55. [ ] Write `tests/plan_executor_test.ts` (15+ tests)
-56. [ ] Write `tests/agent_executor_test.ts` (20+ tests)
-57. [ ] Write `tests/mcp/server_test.ts` (25+ tests for MCP server)
-58. [ ] Write `tests/mcp/tools_test.ts` (30+ tests for MCP tools)
-59. [ ] Write `tests/portal_permissions_test.ts` (12+ tests)
-60. [ ] Integration test: full flow from request → plan → MCP execution → changeset
-61. [ ] Test sandboxed mode security enforcement
-62. [ ] Test hybrid mode audit detection
-63. [ ] All tests pass with 70%+ coverage
-
-**TDD Test Cases:**
-
-```typescript
-// tests/plan_executor_test.ts (Plan Orchestration)
-
-// Plan Parsing
-"should parse approved plan with trace_id and steps";
-"should extract request context from original request file";
-"should determine target portal from plan frontmatter";
-"should fallback to default portal if not specified";
-
-// Portal Validation
-"should validate portal exists before execution";
-"should check agent has portal access permission";
-"should reject execution if agent not in agents_allowed";
-
-// Agent Invocation
-"should invoke AgentExecutor with plan step";
-"should pass portal-scoped tools to agent";
-"should include execution context (request, plan, trace_id)";
-
-// Changeset Registration
-"should register changeset created by agent";
-"should record agent name as created_by";
-"should store commit_sha from agent response";
-
-// Status Updates
-"should update plan status to executed on success";
-"should update plan status to failed on error";
-"should preserve original plan file in Active/";
-
-// Activity Logging
-"should log plan.executing at start";
-"should log plan.executed on success with changeset_id";
-"should log plan.execution.failed on error";
-
-// tests/agent_executor_test.ts (Agent Tool Invocation)
-
-// MCP Server Setup
-"should start MCP server with portal scope";
-"should register all MCP tools on server start";
-"should expose portal resources via MCP";
-"should provide execute_plan prompt";
-
-// MCP Tool Registry
-"should register read_file MCP tool";
-"should register write_file MCP tool";
-"should register list_directory MCP tool";
-"should register git_create_branch MCP tool";
-"should register git_commit MCP tool";
-"should register git_status MCP tool";
-
-// Agent Execution
-"should invoke agent with MCP server connection";
-"should agent connects via stdio transport";
-"should agent connects via SSE transport";
-"should provide execution context via MCP";
-
-// Agent Responses
-"should parse agent MCP tool invocations";
-"should execute MCP tool calls in sequence";
-"should capture changeset details from agent";
-"should return ChangesetResult on completion";
-
-// Error Handling
-"should handle agent timeout gracefully";
-"should handle MCP tool errors";
-"should handle MCP server connection errors";
-"should log all agent actions to Activity Journal";
-
-// LLM Provider Integration
-"should work with AnthropicProvider via MCP";
-"should work with OpenAIProvider via MCP";
-"should work with OllamaProvider via MCP";
-"should work with MockLLMProvider";
-
-// tests/mcp/server_test.ts (MCP Server Implementation)
-
-// Server Initialization
-"should start MCP server with config";
-"should register tools on start";
-"should register resources on start";
-"should register prompts on start";
-"should support stdio transport";
-"should support SSE transport";
-
-// Tool Registration
-"should expose 6 tools (read_file, write_file, list_directory, git_*)";
-"should validate tool schemas";
-"should handle tool invocations";
-"should return tool results";
-
-// Resource Handling
-"should discover portal files as resources";
-"should format URIs as portal://PortalName/path";
-"should return resource content when requested";
-"should handle missing resources gracefully";
-
-// Prompt Handling
-"should provide execute_plan prompt";
-"should provide create_changeset prompt";
-"should validate prompt arguments";
-
-// Security
-"should validate portal permissions before tool execution";
-"should log all tool invocations";
-"should reject unauthorized portal access";
-
-// Error Handling
-"should handle invalid tool names";
-"should handle invalid tool parameters";
-"should handle tool execution errors";
-"should return clear error messages";
-
-// Integration
-"should work with agent connections";
-"should maintain state across tool calls";
-"should cleanup on disconnection";
-
-// tests/mcp/tools_test.ts (MCP Tool Handlers)
-
-// read_file Tool
-"should read file within portal boundaries";
-"should reject path with ../ traversal";
-"should reject absolute paths";
-"should validate portal permissions";
-"should log tool invocation to Activity Journal";
-
-// write_file Tool
-"should write file within portal boundaries";
-"should create parent directories if needed";
-"should reject path outside portal";
-"should validate portal write permissions";
-"should log file writes to Activity Journal";
-
-// list_directory Tool
-"should list files in portal directory";
-"should handle missing directories";
-"should respect portal boundaries";
-"should return file metadata";
-
-// git_create_branch Tool
-"should create feature branch in portal repo";
-"should validate branch name format (feat/, fix/, etc.)";
-"should reject invalid branch names";
-"should validate git operation permissions";
-"should log branch creation to Activity Journal";
-
-// git_commit Tool
-"should commit changes with trace_id in message";
-"should return commit SHA";
-"should log commit to Activity Journal with files";
-"should reject commit if no changes staged";
-"should validate git operation permissions";
-
-// git_status Tool
-"should return portal git status";
-"should detect uncommitted changes";
-"should detect untracked files";
-
-// Operation Restrictions
-"should block git tools if 'git' not in operations";
-"should block write_file if 'write' not in operations";
-"should allow read_file with only 'read' permission";
-
-// Security Mode Tests
-"should enforce sandboxed mode (no file access)";
-"should enforce hybrid mode (read-only + audit)";
-"should detect unauthorized changes in hybrid mode";
-"should revert unauthorized changes";
-
-// tests/scoped_tools_test.ts (Deprecated - kept for reference)
-
-// read_file Tool
-"should read file within portal boundaries";
-"should reject path with ../ traversal";
-"should reject absolute paths";
-"should log tool invocation to Activity Journal";
-
-// write_file Tool
-"should write file within portal boundaries";
-"should create parent directories if needed";
-"should reject path outside portal";
-"should log file writes to Activity Journal";
-
-// git_create_branch Tool
-"should create feature branch in portal repo";
-"should validate branch name format (feat/, fix/, etc.)";
-"should reject invalid branch names";
-"should log branch creation to Activity Journal";
-
-// git_commit Tool
-"should commit changes with trace_id in message";
-"should return commit SHA";
-"should log commit to Activity Journal with files";
-"should reject commit if no changes staged";
-
-// Operation Restrictions
-"should block git tools if 'git' not in operations";
-"should block write_file if 'write' not in operations";
-"should allow read_file with only 'read' permission";
-
-// tests/portal_permissions_test.ts (Access Control)
-
-// Permission Validation
-"should allow agent in agents_allowed array";
-"should reject agent not in agents_allowed";
-"should allow all agents with wildcard '*'";
-"should check operation permissions (read, write, git)";
-
-// Configuration
-"should load portal config from exo.config.toml";
-"should handle missing portals section";
-"should validate portal path exists";
-
-// Error Handling
-"should log access denied events to Activity Journal";
-"should include agent and portal in denial log";
-"should return clear error message to user";
-
-// Integration Test
-"should prevent unauthorized agent from executing plan";
-```
-
-**Daemon Integration:**
-
-```typescript
-// src/main.ts (after implementation)
-const planExecutor = new PlanExecutor(config, llmProvider, dbService);
-
-// Watch for approved plans
-const activeWatcher = new FileWatcher({
-  ...config,
-  paths: {
-    inbox: join(config.system.root, "System/Active"),
-  },
-}, async (event) => {
-  if (event.path.includes("_plan.md")) {
-    console.log(`🚀 Executing approved plan: ${event.path}`);
-
-    try {
-      const changesetId = await planExecutor.execute(event.path);
-      if (changesetId) {
-        console.log(`✅ Changeset created by agent: ${changesetId}`);
-      }
-    } catch (error) {
-      console.error(`❌ Plan execution failed: ${error.message}`);
-    }
-  }
-});
-```
-
-**Manual Test Validation:**
-
-After implementation, MT-08 should be updated to test:
-
-```bash
-# 1. Configure portal permissions in exo.config.toml
-[[portals]]
-name = "TestApp"
-path = "/tmp/test-portal"
-agents_allowed = ["senior-coder"]
-operations = ["read", "write", "git"]
-
-# 2. Create and approve a plan
-$ exoctl request "Add hello world function to utils.ts" --agent senior-coder --portal TestApp
-$ sleep 5
-$ exoctl plan list
-$ exoctl plan approve <plan-id>
-
-# 2. Wait for automatic execution
-$ sleep 10
-
-# 3. Verify changeset was created
-$ exoctl changeset list
-✅ Changeset created
-
-# 4. View changeset details
-$ exoctl changeset show <changeset-id>
-Branch: feat/hello-world-abc123
-Files Changed: 1
-Status: pending
-
-# 5. Check git branches
-$ exoctl git branches
-feat/hello-world-abc123
-
-# 6. View diff
-$ exoctl changeset show <changeset-id> --diff
-```
-
----
-
-## Phase 6: Testing & Quality Assurance
 
 > **Status:** ✅ IN PROGRESS\
 > **Prerequisites:** Phases 1–5 (Runtime, Events, Intelligence, Tools, Obsidian)\

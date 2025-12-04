@@ -52,6 +52,60 @@ export function initActivityTableSchema(db: DatabaseService): void {
 }
 
 /**
+ * SQL for changesets table (from migration 002)
+ */
+export const CHANGESETS_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS changesets (
+    id TEXT PRIMARY KEY,
+    trace_id TEXT NOT NULL,
+    portal TEXT NOT NULL,
+    branch TEXT NOT NULL,
+    status TEXT NOT NULL,
+    description TEXT NOT NULL,
+    commit_sha TEXT,
+    files_changed INTEGER DEFAULT 0,
+    created TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    approved_at TEXT,
+    approved_by TEXT,
+    rejected_at TEXT,
+    rejected_by TEXT,
+    rejection_reason TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_changesets_trace_id ON changesets(trace_id);
+  CREATE INDEX IF NOT EXISTS idx_changesets_status ON changesets(status);
+  CREATE INDEX IF NOT EXISTS idx_changesets_portal ON changesets(portal);
+  CREATE INDEX IF NOT EXISTS idx_changesets_created_by ON changesets(created_by);
+  CREATE INDEX IF NOT EXISTS idx_changesets_branch ON changesets(branch);
+`;
+
+/**
+ * SQL for activity_journal table (from migration 001)
+ */
+export const ACTIVITY_JOURNAL_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS activity_journal (
+    id TEXT PRIMARY KEY,
+    trace_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    target TEXT,
+    metadata TEXT,
+    timestamp TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_activity_journal_trace_id ON activity_journal(trace_id);
+  CREATE INDEX IF NOT EXISTS idx_activity_journal_event_type ON activity_journal(event_type);
+`;
+
+/**
+ * Initialize full database schema for integration tests
+ */
+export function initFullSchema(db: DatabaseService): void {
+  db.instance.exec(ACTIVITY_TABLE_SQL);
+  db.instance.exec(ACTIVITY_JOURNAL_TABLE_SQL);
+  db.instance.exec(CHANGESETS_TABLE_SQL);
+}
+
+/**
  * Initialize a DatabaseService with an in-memory database for testing.
  * Uses a temporary directory for the config root.
  */
@@ -66,8 +120,8 @@ export async function initTestDbService(): Promise<
   const config = createMockConfig(tempDir);
   const db = new DatabaseService(config);
 
-  // Initialize activity table
-  initActivityTableSchema(db);
+  // Initialize all tables (activity, activity_journal, changesets)
+  initFullSchema(db);
 
   return {
     db,
