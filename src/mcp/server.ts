@@ -15,6 +15,7 @@ import {
   parsePortalURI, 
   type MCPResource 
 } from "./resources.ts";
+import { getPrompts, generatePrompt, type MCPPrompt } from "./prompts.ts";
 
 /**
  * MCP Server Implementation (Step 6.2)
@@ -210,6 +211,10 @@ export class MCPServer {
         return await this.handleResourcesList(request);
       case "resources/read":
         return await this.handleResourcesRead(request);
+      case "prompts/list":
+        return this.handlePromptsList(request);
+      case "prompts/get":
+        return this.handlePromptsGet(request);
       default:
         return {
           jsonrpc: "2.0",
@@ -447,6 +452,72 @@ export class MCPServer {
         result: {
           contents: result.content,
         },
+      };
+    } catch (error) {
+      return {
+        jsonrpc: "2.0",
+        id: request.id,
+        error: {
+          code: -32603,
+          message: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
+  }
+
+  /**
+   * Handles prompts/list request
+   * Returns all available prompt templates
+   */
+  private handlePromptsList(
+    request: JSONRPCRequest,
+  ): JSONRPCResponse {
+    const prompts = getPrompts();
+
+    return {
+      jsonrpc: "2.0",
+      id: request.id,
+      result: {
+        prompts,
+      },
+    };
+  }
+
+  /**
+   * Handles prompts/get request
+   * Generates a specific prompt with provided arguments
+   */
+  private handlePromptsGet(
+    request: JSONRPCRequest,
+  ): JSONRPCResponse {
+    const params = request.params as {
+      name: string;
+      arguments: Record<string, unknown>;
+    };
+
+    try {
+      const result = generatePrompt(
+        params.name,
+        params.arguments,
+        this.config,
+        this.db,
+      );
+
+      if (!result) {
+        return {
+          jsonrpc: "2.0",
+          id: request.id,
+          error: {
+            code: -32602,
+            message: `Prompt '${params.name}' not found`,
+          },
+        };
+      }
+
+      return {
+        jsonrpc: "2.0",
+        id: request.id,
+        result,
       };
     } catch (error) {
       return {
