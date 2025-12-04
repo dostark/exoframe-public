@@ -15,7 +15,7 @@ import { assertEquals, assertExists, assertRejects } from "jsr:@std/assert@^1.0.
 import { join } from "@std/path";
 import { PortalCommands } from "../../src/cli/portal_commands.ts";
 import { initTestDbService } from "../helpers/db.ts";
-import { createMockConfig, createTestConfigService } from "../helpers/config.ts";
+import { createTestConfigService } from "../helpers/config.ts";
 import {
   createTestPortal,
   getPortalCardPath,
@@ -24,6 +24,7 @@ import {
   verifyContextCard,
   verifySymlink,
 } from "./helpers/test_setup.ts";
+import { createPortalConfigTestContext } from "../helpers/portal_test_helper.ts";
 
 Deno.test("PortalCommands: adds portal successfully", async () => {
   const { tempRoot, targetDir, commands, cleanup } = await initPortalTest({
@@ -461,82 +462,46 @@ Deno.test("PortalCommands: rollback on symlink creation failure", async () => {
 });
 
 Deno.test("PortalCommands: adds portal to config file", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-config-add-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { helper, cleanup } = await createPortalConfigTestContext("config-add");
   try {
-    const configService = await createTestConfigService(tempRoot);
-    const config = configService.get();
-
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
-
-    const commands = new PortalCommands({ config, db, configService });
-    await commands.add(targetDir, "ConfigTest");
+    await helper.addPortal("ConfigTest");
 
     // Verify portal was added to config
-    const portals = configService.getPortals();
+    const portals = helper.configService.getPortals();
     assertEquals(portals.length, 1);
     assertEquals(portals[0].alias, "ConfigTest");
-    assertEquals(portals[0].target_path, targetDir);
+    assertEquals(portals[0].target_path, helper.targetDir);
     assertExists(portals[0].created);
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: removes portal from config file", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-config-remove-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { helper, cleanup } = await createPortalConfigTestContext("config-remove");
   try {
-    const configService = await createTestConfigService(tempRoot);
-    const config = configService.get();
-
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
-
-    const commands = new PortalCommands({ config, db, configService });
-
     // Add portal
-    await commands.add(targetDir, "RemoveTest");
-    assertEquals(configService.getPortals().length, 1);
+    await helper.addPortal("RemoveTest");
+    assertEquals(helper.configService.getPortals().length, 1);
 
     // Remove portal
-    await commands.remove("RemoveTest");
+    await helper.removePortal("RemoveTest");
 
     // Verify portal was removed from config
-    const portals = configService.getPortals();
+    const portals = helper.configService.getPortals();
     assertEquals(portals.length, 0);
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: list includes created timestamp from config", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-timestamp-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { helper, cleanup } = await createPortalConfigTestContext("timestamp");
   try {
-    const configService = await createTestConfigService(tempRoot);
-    const config = configService.get();
+    await helper.addPortal("TimestampTest");
 
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
-
-    const commands = new PortalCommands({ config, db, configService });
-    await commands.add(targetDir, "TimestampTest");
-
-    // Get fresh config to see updated portals
-    const updatedConfig = configService.get();
-    const commandsRefreshed = new PortalCommands({ config: updatedConfig, db, configService });
+    // Get fresh commands with updated config
+    const commandsRefreshed = helper.getRefreshedCommands();
 
     // List portals and verify timestamp
     const portals = await commandsRefreshed.list();
@@ -548,31 +513,18 @@ Deno.test("PortalCommands: list includes created timestamp from config", async (
     assertEquals(isNaN(date.getTime()), false);
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });
 
 Deno.test("PortalCommands: verify detects config mismatch", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-verify-config-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const wrongDir = await Deno.makeTempDir({ prefix: "portal-wrong-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { helper, cleanup } = await createPortalConfigTestContext("verify-config");
+  const wrongDir = await helper.createAdditionalTarget();
   try {
-    const configService = await createTestConfigService(tempRoot);
-    const config = configService.get();
-
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
-
-    const commands = new PortalCommands({ config, db, configService });
-
     // Add portal normally
-    await commands.add(targetDir, "MismatchTest");
+    await helper.addPortal("MismatchTest");
 
     // Manually change symlink to point elsewhere
-    const symlinkPath = join(tempRoot, "Portals", "MismatchTest");
+    const symlinkPath = helper.getSymlinkPath("MismatchTest");
 
     // Check if symlink exists first
     try {
@@ -585,7 +537,7 @@ Deno.test("PortalCommands: verify detects config mismatch", async () => {
     }
 
     // Verify should detect mismatch
-    const results = await commands.verify("MismatchTest");
+    const results = await helper.verifyPortal("MismatchTest");
     assertEquals(results.length, 1);
     assertEquals(results[0].status, "failed");
     assertExists(results[0].issues);
@@ -594,37 +546,23 @@ Deno.test("PortalCommands: verify detects config mismatch", async () => {
       true,
     );
   } finally {
-    await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
-    await Deno.remove(wrongDir, { recursive: true });
+    await cleanup([wrongDir]);
   }
 });
 
 Deno.test("PortalCommands: verify detects missing config entry", async () => {
-  const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-verify-missing-" });
-  const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
-  const { db, cleanup } = await initTestDbService();
-
+  const { helper, cleanup } = await createPortalConfigTestContext("verify-missing");
   try {
-    const configService = await createTestConfigService(tempRoot);
-    const config = configService.get();
-
-    await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
-
     // Create symlink manually without adding to config
-    const symlinkPath = join(tempRoot, "Portals", "Orphaned");
-    await Deno.symlink(targetDir, symlinkPath);
+    const symlinkPath = helper.getSymlinkPath("Orphaned");
+    await Deno.symlink(helper.targetDir, symlinkPath);
 
     // Create context card
-    const cardPath = join(tempRoot, "Knowledge", "Portals", "Orphaned.md");
+    const cardPath = helper.getCardPath("Orphaned");
     await Deno.writeTextFile(cardPath, "# Orphaned Portal");
 
-    const commands = new PortalCommands({ config, db, configService });
-
     // Verify should detect missing config
-    const results = await commands.verify("Orphaned");
+    const results = await helper.verifyPortal("Orphaned");
     assertEquals(results.length, 1);
     assertEquals(results[0].status, "failed");
     assertExists(results[0].issues);
@@ -634,7 +572,5 @@ Deno.test("PortalCommands: verify detects missing config entry", async () => {
     );
   } finally {
     await cleanup();
-    await Deno.remove(tempRoot, { recursive: true });
-    await Deno.remove(targetDir, { recursive: true });
   }
 });

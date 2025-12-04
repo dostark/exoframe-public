@@ -1,17 +1,17 @@
 # Remaining Code Duplication Analysis
 
 **Date:** December 4, 2025\
-**Status:** Phase 1 Complete ✅ | Phase 2 Complete ✅ | Phase 3 Complete ✅\
-**Overall Duplication:** 2.53% (1,004 lines) - DOWN from 3.25%\
-**Total Clones:** 105 - DOWN from 128
+**Status:** Phase 1 Complete ✅ | Phase 2 Complete ✅ | Phase 3 Complete ✅ | Phase 4 Complete ✅\
+**Overall Duplication:** 2.35% (937 lines) - DOWN from 6.13%\
+**Total Clones:** 99 - DOWN from 206
 
-**Progress:** -287 duplicated lines, -23 clones (14.5% total reduction)
+**Progress:** -1,507 duplicated lines, -107 clones (61.6% total reduction from initial 6.13%)
 
 ---
 
 ## Executive Summary
 
-After comprehensive refactoring efforts that reduced duplication from 6.13% to 2.53% (58.7% reduction), the remaining duplication is **well within acceptable limits for production**. The codebase now has 105 clones across files.
+After comprehensive refactoring efforts, we've reduced duplication from **6.13% to 2.35%** (61.6% reduction). The remaining duplication is **well within acceptable limits for production**. The codebase now has 99 clones across files.
 
 **Completed Phases:**
 
@@ -30,7 +30,82 @@ After comprehensive refactoring efforts that reduced duplication from 6.13% to 2
 - Created comprehensive test helper infrastructure
 - **Total Phase 3 Impact:** -55 lines, -6 clones
 
+**Phase 4 Complete ✅:**
+- portal_commands_test.ts: Refactored 5 config-based tests with PortalConfigTestHelper
+- Created PortalConfigTestHelper with comprehensive utilities
+- **Total Phase 4 Impact:** -67 lines, -4 clones
+
 **All 767 tests passing**
+
+---
+
+## Phase 4 Details: Portal Commands Test Refactoring
+
+**Target:** tests/cli/portal_commands_test.ts (8 clones identified)\
+**Approach:** Create PortalConfigTestHelper for config-based portal tests
+
+**Created Infrastructure:**
+```typescript
+// tests/helpers/portal_test_helper.ts (132 lines)
+export class PortalConfigTestHelper {
+  static async create(prefix: string): Promise<PortalConfigTestHelper>
+  async createAdditionalTarget(): Promise<string>
+  async addPortal(alias: string, targetPath?: string): Promise<void>
+  async removePortal(alias: string): Promise<void>
+  async listPortals()
+  async verifyPortal(alias?: string)
+  getSymlinkPath(alias: string): string
+  getCardPath(alias: string): string
+  getRefreshedCommands(): PortalCommands
+  async cleanup(additionalDirs: string[]): Promise<void>
+}
+
+export async function createPortalConfigTestContext(prefix)
+```
+
+**Tests Refactored:**
+1. ✅ "adds portal to config file" (14 lines → 7 lines)
+2. ✅ "removes portal from config file" (17 lines → 8 lines)
+3. ✅ "list includes created timestamp from config" (19 lines → 10 lines)
+4. ✅ "verify detects config mismatch" (31 lines → 15 lines)
+5. ✅ "verify detects missing config entry" (21 lines → 11 lines)
+
+**Impact:**
+- Eliminated repeated setup: tempRoot, targetDir, db, configService initialization
+- Eliminated repeated cleanup: 3-5 Deno.remove() calls per test
+- Simplified test logic with helper methods: addPortal(), removePortal(), verifyPortal()
+- All 31/31 portal tests passing
+
+**Before Pattern (repeated 5 times):**
+```typescript
+const tempRoot = await Deno.makeTempDir({ prefix: "portal-test-..." });
+const targetDir = await Deno.makeTempDir({ prefix: "portal-target-" });
+const { db, cleanup } = await initTestDbService();
+const configService = await createTestConfigService(tempRoot);
+const config = configService.get();
+await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
+await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+const commands = new PortalCommands({ config, db, configService });
+// ... test logic ...
+await cleanup();
+await Deno.remove(tempRoot, { recursive: true });
+await Deno.remove(targetDir, { recursive: true });
+```
+
+**After Pattern:**
+```typescript
+const { helper, cleanup } = await createPortalConfigTestContext("config-add");
+try {
+  await helper.addPortal("ConfigTest");
+  const portals = helper.configService.getPortals();
+  assertEquals(portals.length, 1);
+} finally {
+  await cleanup();
+}
+```
+
+**Effort:** 2 hours\
+**Result:** 2.53% → 2.35% (-67 lines, -4 clones)
 
 ---
 
