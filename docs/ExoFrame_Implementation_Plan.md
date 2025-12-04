@@ -2999,7 +2999,7 @@ exoctl blueprint rm security-auditor --force
 
 #### **Blueprint File Structure:**
 
-````markdown
+```toml
 +++
 agent_id = "senior-coder"
 name = "Senior Coder"
@@ -3031,7 +3031,6 @@ You are a senior software engineer with expertise in multiple programming langua
 
 ## Output Format
 
-```xml
 <thought>
 Your reasoning about the problem and approach
 </thought>
@@ -3040,9 +3039,7 @@ Your reasoning about the problem and approach
 The code, documentation, or solution
 </content>
 ```
-````
 
-````
 #### **Templates:**
 
 | Template     | Description                     | Model Default             | Capabilities                        |
