@@ -106,6 +106,43 @@ export class DatabaseService {
   }
 
   /**
+   * Execute batch insert with transaction handling
+   * @private
+   */
+  private executeBatchInsert(batch: LogEntry[], context: string): void {
+    try {
+      this.db.exec("BEGIN TRANSACTION");
+
+      for (const entry of batch) {
+        this.db.exec(
+          `INSERT INTO activity (id, trace_id, actor, agent_id, action_type, target, payload, timestamp)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            entry.activityId,
+            entry.traceId,
+            entry.actor,
+            entry.agentId,
+            entry.actionType,
+            entry.target,
+            entry.payload,
+            entry.timestamp,
+          ],
+        );
+      }
+
+      this.db.exec("COMMIT");
+    } catch (error) {
+      console.error(`Failed to flush ${batch.length} activity logs (${context}):`, error);
+      // Attempt rollback on error
+      try {
+        this.db.exec("ROLLBACK");
+      } catch (rollbackError) {
+        console.error("Failed to rollback transaction:", rollbackError);
+      }
+    }
+  }
+
+  /**
    * Flush pending log entries to database
    */
   private flush() {
@@ -120,36 +157,7 @@ export class DatabaseService {
 
     // Write asynchronously without blocking
     queueMicrotask(() => {
-      try {
-        this.db.exec("BEGIN TRANSACTION");
-
-        for (const entry of batch) {
-          this.db.exec(
-            `INSERT INTO activity (id, trace_id, actor, agent_id, action_type, target, payload, timestamp)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              entry.activityId,
-              entry.traceId,
-              entry.actor,
-              entry.agentId,
-              entry.actionType,
-              entry.target,
-              entry.payload,
-              entry.timestamp,
-            ],
-          );
-        }
-
-        this.db.exec("COMMIT");
-      } catch (error) {
-        console.error(`Failed to flush ${batch.length} activity logs:`, error);
-        // Attempt rollback on error
-        try {
-          this.db.exec("ROLLBACK");
-        } catch (rollbackError) {
-          console.error("Failed to rollback transaction:", rollbackError);
-        }
-      }
+      this.executeBatchInsert(batch, "flush");
     });
   }
 
@@ -167,36 +175,7 @@ export class DatabaseService {
 
     if (this.logQueue.length > 0) {
       const batch = this.logQueue.splice(0);
-
-      try {
-        this.db.exec("BEGIN TRANSACTION");
-
-        for (const entry of batch) {
-          this.db.exec(
-            `INSERT INTO activity (id, trace_id, actor, agent_id, action_type, target, payload, timestamp)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              entry.activityId,
-              entry.traceId,
-              entry.actor,
-              entry.agentId,
-              entry.actionType,
-              entry.target,
-              entry.payload,
-              entry.timestamp,
-            ],
-          );
-        }
-
-        this.db.exec("COMMIT");
-      } catch (error) {
-        console.error(`Failed to flush final ${batch.length} activity logs:`, error);
-        try {
-          this.db.exec("ROLLBACK");
-        } catch (rollbackError) {
-          console.error("Failed to rollback final transaction:", rollbackError);
-        }
-      }
+      this.executeBatchInsert(batch, "close");
     }
 
     this.db.close();
@@ -287,36 +266,7 @@ export class DatabaseService {
 
     if (this.logQueue.length > 0) {
       const batch = this.logQueue.splice(0);
-
-      try {
-        this.db.exec("BEGIN TRANSACTION");
-
-        for (const entry of batch) {
-          this.db.exec(
-            `INSERT INTO activity (id, trace_id, actor, agent_id, action_type, target, payload, timestamp)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              entry.activityId,
-              entry.traceId,
-              entry.actor,
-              entry.agentId,
-              entry.actionType,
-              entry.target,
-              entry.payload,
-              entry.timestamp,
-            ],
-          );
-        }
-
-        this.db.exec("COMMIT");
-      } catch (error) {
-        console.error(`Failed to flush logs for getRecentActivity:`, error);
-        try {
-          this.db.exec("ROLLBACK");
-        } catch (rollbackError) {
-          console.error("Rollback failed:", rollbackError);
-        }
-      }
+      this.executeBatchInsert(batch, "getRecentActivity");
     }
 
     const stmt = this.db.prepare(

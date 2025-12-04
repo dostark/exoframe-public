@@ -107,6 +107,38 @@ export abstract class ToolHandler {
   }
 
   /**
+   * Formats a successful tool response with logging
+   */
+  protected formatSuccess(
+    toolName: string,
+    portal: string,
+    message: string,
+    metadata: Record<string, unknown>,
+  ): MCPToolResponse {
+    this.logToolExecution(toolName, portal, { ...metadata, success: true });
+    return {
+      content: [{ type: "text", text: message }],
+    };
+  }
+
+  /**
+   * Formats an error response with logging and re-throws
+   */
+  protected formatError(
+    toolName: string,
+    portal: string,
+    error: unknown,
+    metadata: Record<string, unknown>,
+  ): never {
+    this.logToolExecution(toolName, portal, {
+      ...metadata,
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+
+  /**
    * Execute the tool with validated arguments
    * Implemented by subclasses
    */
@@ -464,31 +496,14 @@ export class GitCreateBranchTool extends ToolHandler {
         throw new Error(`Failed to create branch: ${error}`);
       }
 
-      // Log successful execution
-      this.logToolExecution("git_create_branch", portal, {
-        branch,
-        agent_id,
-        success: true,
-      });
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Branch '${branch}' created and checked out successfully in portal '${portal}'`,
-          },
-        ],
-      };
+      return this.formatSuccess(
+        "git_create_branch",
+        portal,
+        `Branch '${branch}' created and checked out successfully in portal '${portal}'`,
+        { branch, agent_id },
+      );
     } catch (error) {
-      // Log failed execution
-      this.logToolExecution("git_create_branch", portal, {
-        branch,
-        agent_id,
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
-
-      throw error;
+      this.formatError("git_create_branch", portal, error, { branch, agent_id });
     }
   }
 
@@ -585,32 +600,18 @@ export class GitCommitTool extends ToolHandler {
         throw new Error(`Failed to commit: ${error}`);
       }
 
-      // Log successful execution
-      this.logToolExecution("git_commit", portal, {
+      return this.formatSuccess(
+        "git_commit",
+        portal,
+        `Changes committed successfully in portal '${portal}': ${message}`,
+        { message, files: files?.length || "all", agent_id },
+      );
+    } catch (error) {
+      this.formatError("git_commit", portal, error, {
         message,
         files: files?.length || "all",
         agent_id,
-        success: true,
       });
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Changes committed successfully in portal '${portal}': ${message}`,
-          },
-        ],
-      };
-    } catch (error) {
-      // Log failed execution
-      this.logToolExecution("git_commit", portal, {
-        message,
-        agent_id,
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
-
-      throw error;
     }
   }
 
@@ -695,30 +696,14 @@ export class GitStatusTool extends ToolHandler {
       const output = new TextDecoder().decode(stdout);
       const statusText = output.trim() ? output : "Working tree clean - no changes detected";
 
-      // Log successful execution
-      this.logToolExecution("git_status", portal, {
-        agent_id,
-        success: true,
-        has_changes: output.trim().length > 0,
-      });
-
-      return {
-        content: [
-          {
-            type: "text",
-            text: statusText,
-          },
-        ],
-      };
+      return this.formatSuccess(
+        "git_status",
+        portal,
+        statusText,
+        { agent_id, has_changes: output.trim().length > 0 },
+      );
     } catch (error) {
-      // Log failed execution
-      this.logToolExecution("git_status", portal, {
-        agent_id,
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
-
-      throw error;
+      this.formatError("git_status", portal, error, { agent_id });
     }
   }
 

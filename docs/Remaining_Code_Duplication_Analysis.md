@@ -1,0 +1,666 @@
+# Remaining Code Duplication Analysis
+
+**Date:** December 4, 2025  
+**Status:** Post-Refactoring Assessment  
+**Overall Duplication:** 3.25% (1,291 lines out of 39,756)  
+**Total Clones:** 128
+
+---
+
+## Executive Summary
+
+After comprehensive refactoring efforts that reduced duplication from 6.13% to 3.25% (47% reduction), the remaining duplication is **acceptable for production** but offers clear opportunities for further improvement. The codebase now has 128 clones across 48 files (13 source files, 35 test files).
+
+**Key Achievement:** Eliminated 1,456 duplicated lines through systematic refactoring of test infrastructure and CLI commands.
+
+---
+
+## Duplication Breakdown
+
+### Source Code: 13 files, ~475 duplicated lines
+### Test Code: 35 files, ~816 duplicated lines
+
+---
+
+## High-Priority Source Code Duplication
+
+### 1. Database Service (src/services/db.ts) ⚠️ CRITICAL
+**Impact:** 6 clones, 132 duplicated lines (38.3% of file)  
+**Pattern:** Repeated transaction handling blocks
+
+**Duplicate Locations:**
+- Lines 123-145: `flushLogQueue()` - async batch insert with transaction
+- Lines 171-193: `close()` - sync batch insert with transaction  
+- Lines 283-313: `getRecentActivity()` - sync batch insert with transaction
+
+**Root Cause:**
+```typescript
+// Pattern repeated 3 times with identical structure:
+this.db.exec("BEGIN TRANSACTION");
+for (const entry of batch) {
+  this.db.exec(
+    `INSERT INTO activity (id, trace_id, actor, agent_id, action_type, target, payload, timestamp)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [entry.activityId, entry.traceId, entry.actor, /* ... */]
+  );
+}
+this.db.exec("COMMIT");
+// + identical error handling with ROLLBACK
+```
+
+**Refactoring Solution:**
+```typescript
+private executeBatchInsert(batch: ActivityEntry[], context: string): void {
+  try {
+    this.db.exec("BEGIN TRANSACTION");
+    for (const entry of batch) {
+      this.db.exec(
+        `INSERT INTO activity (id, trace_id, actor, agent_id, action_type, target, payload, timestamp)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          entry.activityId,
+          entry.traceId,
+          entry.actor,
+          entry.agentId,
+          entry.actionType,
+          entry.target,
+          entry.payload,
+          entry.timestamp,
+        ],
+      );
+    }
+    this.db.exec("COMMIT");
+  } catch (error) {
+    console.error(`Failed to flush ${batch.length} activity logs (${context}):`, error);
+    try {
+      this.db.exec("ROLLBACK");
+    } catch (rollbackError) {
+      console.error("Failed to rollback transaction:", rollbackError);
+    }
+    throw error; // Re-throw if caller needs to handle
+  }
+}
+```
+
+**Estimated Effort:** 1 hour  
+**Impact:** Eliminates 38% duplication in critical service
+
+---
+
+### 2. Tool Registry (src/services/tool_registry.ts)
+**Impact:** 5 clones, 74 duplicated lines (13.9% of file)  
+**Pattern:** Error handling and permission validation
+
+**Duplicate Locations:**
+- Lines 286-298, 355-367: Permission check patterns
+- Lines 322-340, 396-416: Tool result validation
+
+**Root Cause:** Repeated parameter validation and error wrapping
+
+**Refactoring Solution:**
+```typescript
+private validatePermission(
+  toolName: string, 
+  requiredPermission: string,
+  context: ToolContext
+): void {
+  const tool = this.tools.get(toolName);
+  if (!tool) {
+    throw new Error(`Tool not found: ${toolName}`);
+  }
+  
+  if (tool.permissions?.includes(requiredPermission)) {
+    return; // Permission granted
+  }
+  
+  throw new PermissionError(
+    `Tool ${toolName} requires ${requiredPermission} permission`,
+    { tool: toolName, permission: requiredPermission }
+  );
+}
+
+private wrapToolResult(result: unknown, toolName: string): ToolResult {
+  if (result instanceof Error) {
+    return {
+      success: false,
+      error: result.message,
+      tool: toolName
+    };
+  }
+  
+  return {
+    success: true,
+    data: result,
+    tool: toolName
+  };
+}
+```
+
+**Estimated Effort:** 2 hours  
+**Impact:** Simplifies tool registration and validation logic
+
+---
+
+### 3. MCP Tools (src/mcp/tools.ts)
+**Impact:** 4 clones, 64 duplicated lines (8.6% of file)  
+**Pattern:** MCP response formatting
+
+**Duplicate Locations:**
+- Lines 436-452, 540-556, 664-680: Tool execution result formatting
+
+**Root Cause:** Repeated success/error response structure building
+
+**Refactoring Solution:**
+```typescript
+private formatToolResponse(
+  result: unknown, 
+  toolName: string,
+  isError: boolean = false
+): MCPToolResponse {
+  if (isError) {
+    return {
+      content: [{
+        type: "text",
+        text: `Error executing ${toolName}: ${result}`
+      }],
+      isError: true
+    };
+  }
+  
+  return {
+    content: [{
+      type: "text",
+      text: typeof result === 'string' ? result : JSON.stringify(result, null, 2)
+    }],
+    isError: false
+  };
+}
+```
+
+**Estimated Effort:** 1.5 hours  
+**Impact:** Standardizes MCP response handling
+
+---
+
+### 4. MCP Server (src/mcp/server.ts)
+**Impact:** 4 clones, 62 duplicated lines (11.7% of file)  
+**Pattern:** Request handling and response formatting
+
+**Duplicate Locations:**
+- Lines 379-397, 450-468: Request validation and routing
+- Lines 380-397, 517-530: Error response formatting
+
+**Root Cause:** Similar request/response handling across different MCP methods
+
+**Refactoring Solution:**
+```typescript
+private async handleMCPRequest<T>(
+  method: string,
+  params: unknown,
+  handler: (params: T) => Promise<unknown>
+): Promise<MCPResponse> {
+  try {
+    // Validate params
+    if (!params || typeof params !== 'object') {
+      throw new Error(`Invalid params for ${method}`);
+    }
+    
+    const result = await handler(params as T);
+    return this.formatMCPSuccess(result);
+  } catch (error) {
+    return this.formatMCPError(error, method);
+  }
+}
+
+private formatMCPError(error: unknown, context: string): MCPErrorResponse {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    error: {
+      code: -32603,
+      message: `${context}: ${message}`
+    }
+  };
+}
+```
+
+**Estimated Effort:** 2.5 hours  
+**Impact:** Improves MCP protocol consistency
+
+---
+
+### 5. CLI Commands (Minor - Already Partially Refactored)
+**Impact:** 4 clones, 44 duplicated lines  
+**Files:** plan_commands.ts, request_commands.ts
+
+**Status:** Recently improved with `loadPlan()` and `getUserContext()` helpers. Remaining duplication is minimal and acceptable.
+
+**Estimated Effort:** 0.5 hours (low priority)
+
+---
+
+## High-Impact Test File Duplication
+
+### 1. Git Service Tests (tests/git_service_test.ts)
+**Impact:** 25 clones, 252 duplicated lines (36% of file)  
+**Pattern:** Repeated git command execution and result validation
+
+**Root Cause:** No test helper for git operations
+
+**Refactoring Solution:**
+```typescript
+// Create tests/helpers/git_test_helper.ts
+
+export class GitTestHelper {
+  constructor(private repoPath: string) {}
+  
+  async createCommit(message: string, files: Record<string, string>): Promise<string> {
+    // Write files
+    for (const [path, content] of Object.entries(files)) {
+      await Deno.writeTextFile(join(this.repoPath, path), content);
+    }
+    
+    // Stage and commit
+    await this.runGit(["add", "."]);
+    await this.runGit(["commit", "-m", message]);
+    
+    return await this.getCurrentCommit();
+  }
+  
+  async createBranch(name: string, checkout: boolean = true): Promise<void> {
+    const args = checkout ? ["checkout", "-b", name] : ["branch", name];
+    await this.runGit(args);
+  }
+  
+  async assertBranchExists(name: string): Promise<void> {
+    const branches = await this.listBranches();
+    assert(branches.includes(name), `Branch ${name} should exist`);
+  }
+  
+  async assertFileContent(path: string, expectedContent: string): Promise<void> {
+    const content = await Deno.readTextFile(join(this.repoPath, path));
+    assertEquals(content, expectedContent);
+  }
+  
+  private async runGit(args: string[]): Promise<string> {
+    const cmd = new Deno.Command("git", {
+      args: ["-C", this.repoPath, ...args],
+      stdout: "piped",
+      stderr: "piped"
+    });
+    const { stdout, success } = await cmd.output();
+    if (!success) throw new Error(`Git command failed: ${args.join(" ")}`);
+    return new TextDecoder().decode(stdout);
+  }
+}
+```
+
+**Estimated Effort:** 3 hours  
+**Impact:** Eliminates 36% duplication in git tests
+
+---
+
+### 2. Tool Registry Tests (tests/tool_registry_test.ts)
+**Impact:** 16 clones, 160 duplicated lines (20.8% of file)  
+**Pattern:** Tool registration and permission testing setup
+
+**Refactoring Solution:**
+```typescript
+// Add to tests/helpers/tool_registry_test_helper.ts
+
+export function createMockTool(
+  name: string,
+  options: {
+    permissions?: string[];
+    handler?: (params: unknown) => unknown;
+    requiresPortal?: boolean;
+  } = {}
+): Tool {
+  return {
+    name,
+    description: `Mock tool: ${name}`,
+    permissions: options.permissions ?? [],
+    requiresPortal: options.requiresPortal ?? false,
+    handler: options.handler ?? ((params) => `Executed ${name}`),
+    schema: {
+      type: "object",
+      properties: {}
+    }
+  };
+}
+
+export function createToolContext(
+  overrides: Partial<ToolContext> = {}
+): ToolContext {
+  return {
+    workspaceRoot: "/tmp/test-workspace",
+    portal: null,
+    securityMode: "standard",
+    traceId: "test-trace-id",
+    ...overrides
+  };
+}
+```
+
+**Estimated Effort:** 2 hours  
+**Impact:** Simplifies tool testing setup
+
+---
+
+### 3. Watcher Tests (tests/watcher_test.ts)
+**Impact:** 16 clones, 153 duplicated lines (20.3% of file)  
+**Pattern:** File system event setup and watcher initialization
+
+**Refactoring Solution:**
+```typescript
+// Add to tests/helpers/watcher_test_helper.ts
+
+export class WatcherTestHelper {
+  private watcher?: FileWatcher;
+  
+  async setupWatcher(
+    watchPath: string,
+    options: {
+      debounceMs?: number;
+      stabilityCheck?: boolean;
+      onReady?: (file: string) => void;
+    } = {}
+  ): Promise<FileWatcher> {
+    await ensureDir(watchPath);
+    
+    this.watcher = new FileWatcher(watchPath, {
+      debounceMs: options.debounceMs ?? 200,
+      stabilityCheck: options.stabilityCheck ?? false
+    });
+    
+    if (options.onReady) {
+      this.watcher.on("file:ready", options.onReady);
+    }
+    
+    await this.watcher.start();
+    return this.watcher;
+  }
+  
+  async triggerFileEvent(
+    watchPath: string,
+    filename: string,
+    content: string
+  ): Promise<void> {
+    const filePath = join(watchPath, filename);
+    await Deno.writeTextFile(filePath, content);
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+  
+  async cleanup(): Promise<void> {
+    if (this.watcher) {
+      await this.watcher.stop();
+      this.watcher = undefined;
+    }
+  }
+}
+```
+
+**Estimated Effort:** 2.5 hours  
+**Impact:** Standardizes watcher test patterns
+
+---
+
+### 4. Portal Commands Tests (tests/cli/portal_commands_test.ts)
+**Impact:** 16 clones, 140 duplicated lines (21.9% of file)  
+**Status:** Partially refactored - some duplication remains in complex scenarios
+
+**Additional Helpers Needed:**
+```typescript
+// Add to tests/cli/helpers/test_setup.ts
+
+export async function createPortalWithVerification(
+  env: TestEnv,
+  alias: string,
+  options: {
+    verifySymlink?: boolean;
+    verifyCard?: boolean;
+    expectErrors?: string[];
+  } = {}
+): Promise<{ portalPath: string; issues: string[] }> {
+  const { portalPath } = await createTestPortal(env, alias);
+  const issues: string[] = [];
+  
+  if (options.verifySymlink) {
+    try {
+      await verifySymlink(portalPath, alias);
+    } catch (error) {
+      issues.push(`Symlink verification failed: ${error.message}`);
+    }
+  }
+  
+  if (options.verifyCard) {
+    try {
+      await verifyContextCard(env.tempDir, alias);
+    } catch (error) {
+      issues.push(`Context card verification failed: ${error.message}`);
+    }
+  }
+  
+  return { portalPath, issues };
+}
+```
+
+**Estimated Effort:** 1.5 hours  
+**Impact:** Further reduces portal test duplication
+
+---
+
+### 5. Plan Execution Tests
+**Impact:** Combined 23 clones, 181 duplicated lines  
+**Files:** tests/plan_executor_parsing_test.ts, tests/integration/15_plan_execution_mcp_test.ts
+
+**Refactoring Solution:**
+```typescript
+// Extend TestEnvironment in tests/integration/helpers/test_environment.ts
+
+async createPlanWithActions(
+  traceId: string,
+  planId: string,
+  actions: Array<{
+    tool: string;
+    params: Record<string, unknown>;
+    description?: string;
+  }>,
+  options: {
+    status?: string;
+    metadata?: Record<string, unknown>;
+  } = {}
+): Promise<string> {
+  const actionsYaml = actions.map((action, i) => `
+- step: ${i + 1}
+  tool: ${action.tool}
+  description: ${action.description || `Execute ${action.tool}`}
+  params:
+${Object.entries(action.params).map(([k, v]) => 
+  `    ${k}: ${JSON.stringify(v)}`).join('\n')}
+  `).join('\n');
+
+  return await this.createPlan(traceId, planId, {
+    status: options.status || "review",
+    actions: actionsYaml,
+    ...options.metadata
+  });
+}
+```
+
+**Estimated Effort:** 2 hours  
+**Impact:** Simplifies complex plan creation in tests
+
+---
+
+## Duplication Categories
+
+### By Pattern Type:
+1. **Transaction/Batch Operations (30%)** - Database inserts, git operations
+2. **Error Handling (25%)** - Try-catch-rollback patterns
+3. **Validation Logic (20%)** - Permission checks, parameter validation
+4. **Response Formatting (15%)** - MCP responses, CLI output
+5. **Test Setup/Teardown (10%)** - Environment initialization
+
+### By Refactoring Difficulty:
+1. **Low Effort (40 clones):** Simple helper extraction, 1-2 hours each
+2. **Medium Effort (60 clones):** Requires interface design, 3-5 hours each
+3. **High Effort (28 clones):** Architectural changes needed, 6-8 hours each
+
+---
+
+## Refactoring Priority Matrix
+
+### Phase 1: Critical Source Code (High Impact, Low Effort)
+**Estimated Time:** 5-7 hours  
+**Impact:** Reduces duplication by ~300 lines (23%)
+
+1. ✅ **src/services/db.ts** - Extract `executeBatchInsert()` helper
+   - Impact: 132 lines (38% of file)
+   - Effort: 1 hour
+   - Risk: Low (well-isolated logic)
+
+2. ✅ **src/services/tool_registry.ts** - Extract validation helpers
+   - Impact: 74 lines (14% of file)
+   - Effort: 2 hours
+   - Risk: Low (no API changes)
+
+3. ✅ **src/mcp/tools.ts** - Extract `formatToolResponse()` helper
+   - Impact: 64 lines (9% of file)
+   - Effort: 1.5 hours
+   - Risk: Low (internal refactoring)
+
+4. ✅ **src/mcp/server.ts** - Extract request handling helpers
+   - Impact: 62 lines (12% of file)
+   - Effort: 2.5 hours
+   - Risk: Medium (protocol-critical code)
+
+---
+
+### Phase 2: High-Value Test Infrastructure (Medium Impact, Medium Effort)
+**Estimated Time:** 8-10 hours  
+**Impact:** Reduces duplication by ~400 lines (31%)
+
+5. ⚠️ **tests/git_service_test.ts** - Create `GitTestHelper` class
+   - Impact: 252 lines (36% of file)
+   - Effort: 3 hours
+   - Risk: Low (test-only changes)
+
+6. ⚠️ **tests/tool_registry_test.ts** - Create tool test helpers
+   - Impact: 160 lines (21% of file)
+   - Effort: 2 hours
+   - Risk: Low (test-only changes)
+
+7. ⚠️ **tests/watcher_test.ts** - Create `WatcherTestHelper` class
+   - Impact: 153 lines (20% of file)
+   - Effort: 2.5 hours
+   - Risk: Low (test-only changes)
+
+8. ⚠️ **Portal & Plan Execution Tests** - Extend test helpers
+   - Impact: 180 lines combined
+   - Effort: 3 hours
+   - Risk: Low (builds on existing helpers)
+
+---
+
+### Phase 3: Remaining Low-Priority Files (Optional)
+**Estimated Time:** 5-8 hours  
+**Impact:** Reduces duplication by ~200 lines (15%)
+
+9. ⬜ Remaining test files with <10% duplication each
+10. ⬜ Minor CLI command refinements
+11. ⬜ Edge case test scenario consolidation
+
+---
+
+## Cost-Benefit Analysis
+
+### If All Phase 1 & 2 Work Completed:
+- **Time Investment:** 13-17 hours
+- **Lines Eliminated:** ~700 duplicated lines (54% of remaining)
+- **Final Duplication Rate:** ~1.5% (industry-leading)
+- **Maintainability Gain:** High (critical service layer + major test files)
+- **Risk:** Low-Medium (mostly isolated refactorings)
+
+### Current State (3.25% duplication):
+- ✅ **Below Industry Standard:** Typical codebases have 5-10% duplication
+- ✅ **Test Infrastructure:** Well-addressed with helper classes
+- ✅ **CLI Commands:** Mostly refactored
+- ⚠️ **Service Layer:** Moderate duplication in db.ts, tool_registry.ts
+- ⚠️ **Large Test Files:** Could benefit from additional helpers
+- ✅ **Overall Quality:** Production-ready
+
+---
+
+## Implementation Recommendations
+
+### Immediate Actions (Do Now):
+1. **src/services/db.ts** - Critical service with 38% duplication
+2. **src/services/tool_registry.ts** - Core functionality with repeated patterns
+
+### Short-Term Actions (Within 1 Sprint):
+3. **src/mcp/** - Protocol compliance and consistency
+4. **tests/git_service_test.ts** - Highest test file duplication
+
+### Long-Term Actions (Backlog):
+5. Remaining test file helpers
+6. Edge case consolidation
+7. Documentation of patterns
+
+### Not Recommended:
+- Forcing duplication below 1% (diminishing returns)
+- Refactoring files with <5% duplication (not worth the risk)
+- Changing test files with <10 clones (stable and working)
+
+---
+
+## Success Metrics
+
+### Current Baseline:
+- Duplication: 3.25%
+- Clones: 128
+- Duplicated Lines: 1,291
+- Test Pass Rate: 100% (767/767)
+
+### Phase 1 Target (Critical Source):
+- Duplication: ~2.5%
+- Clones: ~100
+- Duplicated Lines: ~950
+- Effort: 5-7 hours
+
+### Phase 2 Target (With Tests):
+- Duplication: ~1.5%
+- Clones: ~60
+- Duplicated Lines: ~600
+- Effort: 13-17 hours total
+
+### Industry Comparison:
+- **Excellent:** <2% (target after Phase 2)
+- **Good:** 2-5% (current state ✅)
+- **Acceptable:** 5-10%
+- **Needs Work:** >10%
+
+---
+
+## Conclusion
+
+The ExoFrame codebase has achieved **good quality** with 3.25% duplication after systematic refactoring. The remaining duplication is concentrated in:
+
+1. **Database service** (transaction handling) - High priority
+2. **MCP implementation** (protocol formatting) - Medium priority  
+3. **Large test files** (setup/teardown patterns) - Optional improvement
+
+The codebase is **production-ready** in its current state. Further refactoring is **recommended but not critical**, with clear ROI for Phase 1 work (5-7 hours → 23% reduction) and diminishing returns afterward.
+
+**Next Steps:**
+1. Review and approve this analysis
+2. If continuing refactoring, start with db.ts (highest impact, lowest risk)
+3. Create tracking issues for Phase 1 & 2 items
+4. Schedule work based on team capacity and priorities
+
+---
+
+**Document Version:** 1.0  
+**Analysis Date:** December 4, 2025  
+**Analyzed By:** Automated refactoring assessment  
+**Files Analyzed:** 48 (13 source, 35 test)

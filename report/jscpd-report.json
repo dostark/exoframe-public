@@ -1,6 +1,6 @@
 {
   "statistics": {
-    "detectionDate": "2025-12-04T16:15:00.882Z",
+    "detectionDate": "2025-12-04T16:35:55.556Z",
     "formats": {
       "typescript": {
         "sources": {
@@ -857,14 +857,14 @@
             "newClones": 0
           },
           "src/services/tool_registry.ts": {
-            "lines": 531,
-            "tokens": 3844,
+            "lines": 511,
+            "tokens": 3621,
             "sources": 1,
-            "clones": 5,
-            "duplicatedLines": 74,
-            "duplicatedTokens": 556,
-            "percentage": 13.94,
-            "percentageTokens": 14.46,
+            "clones": 1,
+            "duplicatedLines": 10,
+            "duplicatedTokens": 98,
+            "percentage": 1.96,
+            "percentageTokens": 2.71,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -965,14 +965,14 @@
             "newClones": 0
           },
           "src/services/db.ts": {
-            "lines": 345,
-            "tokens": 2373,
+            "lines": 295,
+            "tokens": 2064,
             "sources": 1,
-            "clones": 6,
-            "duplicatedLines": 132,
-            "duplicatedTokens": 868,
-            "percentage": 38.26,
-            "percentageTokens": 36.58,
+            "clones": 4,
+            "duplicatedLines": 42,
+            "duplicatedTokens": 348,
+            "percentage": 14.24,
+            "percentageTokens": 16.86,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -1133,14 +1133,14 @@
             "newClones": 0
           },
           "src/mcp/tools.ts": {
-            "lines": 744,
-            "tokens": 4883,
+            "lines": 729,
+            "tokens": 4876,
             "sources": 1,
             "clones": 4,
             "duplicatedLines": 64,
             "duplicatedTokens": 428,
-            "percentage": 8.6,
-            "percentageTokens": 8.77,
+            "percentage": 8.78,
+            "percentageTokens": 8.78,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -1362,14 +1362,14 @@
           }
         },
         "total": {
-          "lines": 38654,
-          "tokens": 293351,
+          "lines": 38569,
+          "tokens": 292812,
           "sources": 113,
-          "clones": 128,
-          "duplicatedLines": 1291,
-          "duplicatedTokens": 13160,
-          "percentage": 3.34,
-          "percentageTokens": 4.49,
+          "clones": 125,
+          "duplicatedLines": 1214,
+          "duplicatedTokens": 12671,
+          "percentage": 3.15,
+          "percentageTokens": 4.33,
           "newDuplicatedLines": 0,
           "newClones": 0
         }
@@ -1456,14 +1456,14 @@
       }
     },
     "total": {
-      "lines": 39756,
-      "tokens": 299382,
+      "lines": 39671,
+      "tokens": 298843,
       "sources": 117,
-      "clones": 128,
-      "duplicatedLines": 1291,
-      "duplicatedTokens": 13160,
-      "percentage": 3.25,
-      "percentageTokens": 4.4,
+      "clones": 125,
+      "duplicatedLines": 1214,
+      "duplicatedTokens": 12671,
+      "percentage": 3.06,
+      "percentageTokens": 4.24,
       "newDuplicatedLines": 0,
       "newClones": 0
     }
@@ -5467,78 +5467,6 @@
     },
     {
       "format": "typescript",
-      "lines": 13,
-      "fragment": "},\n      };\n    } catch (error) {\n      if (error instanceof Error && error.message.includes(\"outside allowed roots\")) {\n        return {\n          success: false,\n          error: `Access denied: ${error.message}`,\n        };\n      }\n      if (error instanceof Deno.errors.NotFound) {\n        return {\n          success: false,\n          error: `Directory not found: ",
-      "tokens": 0,
-      "firstFile": {
-        "name": "src/services/tool_registry.ts",
-        "start": 355,
-        "end": 367,
-        "startLoc": {
-          "line": 355,
-          "column": 2,
-          "position": 2465
-        },
-        "endLoc": {
-          "line": 367,
-          "column": 23,
-          "position": 2572
-        }
-      },
-      "secondFile": {
-        "name": "src/services/tool_registry.ts",
-        "start": 286,
-        "end": 298,
-        "startLoc": {
-          "line": 286,
-          "column": 2,
-          "position": 1892
-        },
-        "endLoc": {
-          "line": 298,
-          "column": 18,
-          "position": 1999
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 21,
-      "fragment": "},\n      };\n    } catch (error) {\n      if (error instanceof Error && error.message.includes(\"outside allowed roots\")) {\n        return {\n          success: false,\n          error: `Access denied: ${error.message}`,\n        };\n      }\n      return {\n        success: false,\n        error: error instanceof Error ? error.message : String(error),\n      };\n    }\n  }\n\n  /**\n   * Resolve and validate a path\n   * - If path starts with @, use PathResolver (for alias resolution)\n   * - Otherwise, validate it's within allowed roots\n   */",
-      "tokens": 0,
-      "firstFile": {
-        "name": "src/services/tool_registry.ts",
-        "start": 396,
-        "end": 416,
-        "startLoc": {
-          "line": 396,
-          "column": 2,
-          "position": 2791
-        },
-        "endLoc": {
-          "line": 416,
-          "column": 6,
-          "position": 2913
-        }
-      },
-      "secondFile": {
-        "name": "src/services/tool_registry.ts",
-        "start": 322,
-        "end": 340,
-        "startLoc": {
-          "line": 322,
-          "column": 2,
-          "position": 2191
-        },
-        "endLoc": {
-          "line": 340,
-          "column": 6,
-          "position": 2313
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 11,
       "fragment": ",\n      stdout: \"piped\",\n      stderr: \"piped\",\n    });\n\n    const { code, stdout, stderr } = await cmd.output();\n\n    const output = new TextDecoder().decode(stdout);\n    const errorOutput = new TextDecoder().decode(stderr);\n\n    if (code !== 0 &&",
       "tokens": 0,
@@ -5559,17 +5487,17 @@
       },
       "secondFile": {
         "name": "src/services/tool_registry.ts",
-        "start": 481,
-        "end": 491,
+        "start": 421,
+        "end": 431,
         "startLoc": {
-          "line": 481,
+          "line": 421,
           "column": 5,
-          "position": 3479
+          "position": 3011
         },
         "endLoc": {
-          "line": 491,
+          "line": 431,
           "column": 2,
-          "position": 3576
+          "position": 3108
         }
       }
     },
@@ -5611,109 +5539,73 @@
     },
     {
       "format": "typescript",
-      "lines": 23,
-      "fragment": "try {\n        this.db.exec(\"BEGIN TRANSACTION\");\n\n        for (const entry of batch) {\n          this.db.exec(\n            `INSERT INTO activity (id, trace_id, actor, agent_id, action_type, target, payload, timestamp)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,\n            [\n              entry.activityId,\n              entry.traceId,\n              entry.actor,\n              entry.agentId,\n              entry.actionType,\n              entry.target,\n              entry.payload,\n              entry.timestamp,\n            ],\n          );\n        }\n\n        this.db.exec(\"COMMIT\");\n      } catch (error) {\n        console.error(`Failed to flush final ",
-      "tokens": 0,
-      "firstFile": {
-        "name": "src/services/db.ts",
-        "start": 171,
-        "end": 193,
-        "startLoc": {
-          "line": 171,
-          "column": 7,
-          "position": 1243
-        },
-        "endLoc": {
-          "line": 193,
-          "column": 24,
-          "position": 1376
-        }
-      },
-      "secondFile": {
-        "name": "src/services/db.ts",
-        "start": 123,
-        "end": 145,
-        "startLoc": {
-          "line": 123,
-          "column": 7,
-          "position": 942
-        },
-        "endLoc": {
-          "line": 145,
-          "column": 18,
-          "position": 1075
-        }
-      }
-    },
-    {
-      "format": "typescript",
       "lines": 15,
       "fragment": ": string): Array<{\n    id: string;\n    trace_id: string;\n    actor: string;\n    agent_id: string | null;\n    action_type: string;\n    target: string | null;\n    payload: string;\n    timestamp: string;\n  }> {\n    const stmt = this.db.prepare(\n      `SELECT id, trace_id, actor, agent_id, action_type, target, payload, timestamp\n       FROM activity\n       WHERE action_type = ?\n       ORDER BY timestamp`",
       "tokens": 0,
       "firstFile": {
         "name": "src/services/db.ts",
-        "start": 240,
-        "end": 254,
+        "start": 219,
+        "end": 233,
         "startLoc": {
-          "line": 240,
+          "line": 219,
           "column": 11,
-          "position": 1658
+          "position": 1524
         },
         "endLoc": {
-          "line": 254,
+          "line": 233,
           "column": 27,
-          "position": 1753
+          "position": 1619
         }
       },
       "secondFile": {
         "name": "src/services/db.ts",
-        "start": 208,
-        "end": 222,
+        "start": 187,
+        "end": 201,
         "startLoc": {
-          "line": 208,
+          "line": 187,
           "column": 8,
-          "position": 1459
+          "position": 1325
         },
         "endLoc": {
-          "line": 222,
+          "line": 201,
           "column": 27,
-          "position": 1554
+          "position": 1420
         }
       }
     },
     {
       "format": "typescript",
-      "lines": 31,
-      "fragment": "if (this.flushTimer !== null) {\n      clearTimeout(this.flushTimer);\n      this.flushTimer = null;\n    }\n\n    if (this.logQueue.length > 0) {\n      const batch = this.logQueue.splice(0);\n\n      try {\n        this.db.exec(\"BEGIN TRANSACTION\");\n\n        for (const entry of batch) {\n          this.db.exec(\n            `INSERT INTO activity (id, trace_id, actor, agent_id, action_type, target, payload, timestamp)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,\n            [\n              entry.activityId,\n              entry.traceId,\n              entry.actor,\n              entry.agentId,\n              entry.actionType,\n              entry.target,\n              entry.payload,\n              entry.timestamp,\n            ],\n          );\n        }\n\n        this.db.exec(\"COMMIT\");\n      } catch (error) {\n        console.error(`Failed to flush logs for getRecentActivity:`",
+      "lines": 8,
+      "fragment": "if (this.flushTimer !== null) {\n      clearTimeout(this.flushTimer);\n      this.flushTimer = null;\n    }\n\n    if (this.logQueue.length > 0) {\n      const batch = this.logQueue.splice(0);\n      this.executeBatchInsert(batch, \"getRecentActivity\"",
       "tokens": 0,
       "firstFile": {
         "name": "src/services/db.ts",
-        "start": 283,
-        "end": 313,
+        "start": 262,
+        "end": 269,
         "startLoc": {
-          "line": 283,
+          "line": 262,
           "column": 5,
-          "position": 1951
+          "position": 1817
         },
         "endLoc": {
-          "line": 313,
-          "column": 46,
-          "position": 2157
+          "line": 269,
+          "column": 20,
+          "position": 1896
         }
       },
       "secondFile": {
         "name": "src/services/db.ts",
-        "start": 163,
-        "end": 145,
+        "start": 171,
+        "end": 178,
         "startLoc": {
-          "line": 163,
+          "line": 171,
           "column": 5,
-          "position": 1170
+          "position": 1217
         },
         "endLoc": {
-          "line": 145,
-          "column": 18,
-          "position": 1075
+          "line": 178,
+          "column": 8,
+          "position": 1296
         }
       }
     },
@@ -5760,32 +5652,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "src/mcp/tools.ts",
-        "start": 540,
-        "end": 556,
+        "start": 555,
+        "end": 571,
         "startLoc": {
-          "line": 540,
+          "line": 555,
           "column": 6,
-          "position": 3462
+          "position": 3605
         },
         "endLoc": {
-          "line": 556,
+          "line": 571,
           "column": 15,
-          "position": 3569
+          "position": 3712
         }
       },
       "secondFile": {
         "name": "src/mcp/tools.ts",
-        "start": 436,
-        "end": 452,
+        "start": 468,
+        "end": 484,
         "startLoc": {
-          "line": 436,
+          "line": 468,
           "column": 7,
-          "position": 2781
+          "position": 3008
         },
         "endLoc": {
-          "line": 452,
+          "line": 484,
           "column": 35,
-          "position": 2888
+          "position": 3115
         }
       }
     },
@@ -5796,32 +5688,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "src/mcp/tools.ts",
-        "start": 664,
-        "end": 680,
+        "start": 665,
+        "end": 681,
         "startLoc": {
-          "line": 664,
+          "line": 665,
           "column": 7,
-          "position": 4306
+          "position": 4382
         },
         "endLoc": {
-          "line": 680,
+          "line": 681,
           "column": 18,
-          "position": 4413
+          "position": 4489
         }
       },
       "secondFile": {
         "name": "src/mcp/tools.ts",
-        "start": 436,
-        "end": 452,
+        "start": 468,
+        "end": 484,
         "startLoc": {
-          "line": 436,
+          "line": 468,
           "column": 7,
-          "position": 2781
+          "position": 3008
         },
         "endLoc": {
-          "line": 452,
+          "line": 484,
           "column": 35,
-          "position": 2888
+          "position": 3115
         }
       }
     },

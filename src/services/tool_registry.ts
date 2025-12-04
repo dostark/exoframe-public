@@ -281,27 +281,9 @@ export class ToolRegistry {
     try {
       const resolvedPath = await this.resolvePath(path);
       const content = await Deno.readTextFile(resolvedPath);
-      return {
-        success: true,
-        data: { content },
-      };
+      return this.formatSuccess({ content });
     } catch (error) {
-      if (error instanceof Error && error.message.includes("outside allowed roots")) {
-        return {
-          success: false,
-          error: `Access denied: ${error.message}`,
-        };
-      }
-      if (error instanceof Deno.errors.NotFound) {
-        return {
-          success: false,
-          error: `File not found: ${path}`,
-        };
-      }
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
+      return this.formatError(error, `File: ${path}`);
     }
   }
 
@@ -317,21 +299,9 @@ export class ToolRegistry {
       await Deno.mkdir(parentDir, { recursive: true });
 
       await Deno.writeTextFile(resolvedPath, content);
-      return {
-        success: true,
-        data: { path: resolvedPath },
-      };
+      return this.formatSuccess({ path: resolvedPath });
     } catch (error) {
-      if (error instanceof Error && error.message.includes("outside allowed roots")) {
-        return {
-          success: false,
-          error: `Access denied: ${error.message}`,
-        };
-      }
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
+      return this.formatError(error);
     }
   }
 
@@ -350,27 +320,9 @@ export class ToolRegistry {
         });
       }
 
-      return {
-        success: true,
-        data: { entries },
-      };
+      return this.formatSuccess({ entries });
     } catch (error) {
-      if (error instanceof Error && error.message.includes("outside allowed roots")) {
-        return {
-          success: false,
-          error: `Access denied: ${error.message}`,
-        };
-      }
-      if (error instanceof Deno.errors.NotFound) {
-        return {
-          success: false,
-          error: `Directory not found: ${path}`,
-        };
-      }
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
+      return this.formatError(error, `Directory: ${path}`);
     }
   }
 
@@ -391,21 +343,9 @@ export class ToolRegistry {
         }
       }
 
-      return {
-        success: true,
-        data: { files },
-      };
+      return this.formatSuccess({ files });
     } catch (error) {
-      if (error instanceof Error && error.message.includes("outside allowed roots")) {
-        return {
-          success: false,
-          error: `Access denied: ${error.message}`,
-        };
-      }
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      };
+      return this.formatError(error);
     }
   }
 
@@ -528,5 +468,45 @@ export class ToolRegistry {
     } catch (error) {
       console.error("Failed to log tool activity:", error);
     }
+  }
+
+  /**
+   * Format tool result for success
+   * @private
+   */
+  private formatSuccess(data: any): ToolResult {
+    return {
+      success: true,
+      data,
+    };
+  }
+
+  /**
+   * Format tool result for error
+   * @private
+   */
+  private formatError(error: unknown, context?: string): ToolResult {
+    // Handle path security errors
+    if (error instanceof Error && error.message.includes("outside allowed roots")) {
+      return {
+        success: false,
+        error: `Access denied: ${error.message}`,
+      };
+    }
+
+    // Handle not found errors
+    if (error instanceof Deno.errors.NotFound) {
+      const message = context ? `${context} not found` : "Not found";
+      return {
+        success: false,
+        error: message,
+      };
+    }
+
+    // Generic error handling
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
