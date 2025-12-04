@@ -256,14 +256,14 @@ Deno.test("read_file: read_file appears in tools/list", async () => {
     assertExists(response.result);
     const result = response.result as { tools: Array<{ name: string; description: string }> };
     assertEquals(result.tools.length, 6);
-    const toolNames = result.tools.map(t => t.name);
+    const toolNames = result.tools.map((t) => t.name);
     assert(toolNames.includes("read_file"));
     assert(toolNames.includes("write_file"));
     assert(toolNames.includes("list_directory"));
     assert(toolNames.includes("git_create_branch"));
     assert(toolNames.includes("git_commit"));
     assert(toolNames.includes("git_status"));
-    const readTool = result.tools.find(t => t.name === "read_file")!;
+    const readTool = result.tools.find((t) => t.name === "read_file")!;
     assertStringIncludes(readTool.description, "Read");
 
     await server.stop();
@@ -612,7 +612,7 @@ Deno.test("list_directory: lists files in portal root", async () => {
     assertExists(response.result);
     const result = response.result as { content: Array<{ type: string; text: string }> };
     assertEquals(result.content[0].type, "text");
-    
+
     const listing = result.content[0].text;
     assertStringIncludes(listing, "file1.txt");
     assertStringIncludes(listing, "file2.txt");
@@ -782,4 +782,3 @@ Deno.test("list_directory: prevents path traversal", async () => {
     await Deno.remove(tempDir, { recursive: true });
   }
 });
-

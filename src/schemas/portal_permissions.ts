@@ -1,6 +1,6 @@
 /**
  * Portal Permissions Schema
- * 
+ *
  * Defines security modes and permission controls for portal access.
  */
 
@@ -46,11 +46,11 @@ export const PortalPermissionsSchema = z.object({
   alias: z.string(),
   target_path: z.string(),
   created: z.string().optional(),
-  
+
   // Permission controls
   agents_allowed: z.array(z.string()).default(["*"]), // "*" = all agents
   operations: z.array(PortalOperationSchema).default(["read", "write", "git"]),
-  
+
   // Security settings
   security: PortalSecurityConfigSchema.optional(),
 });

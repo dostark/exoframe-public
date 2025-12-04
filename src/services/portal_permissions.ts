@@ -1,6 +1,6 @@
 /**
  * Portal Permissions Service
- * 
+ *
  * Validates agent access to portals based on whitelist, operations,
  * and security modes.
  */

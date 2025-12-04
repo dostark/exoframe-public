@@ -29,12 +29,12 @@ Deno.test("MCP Server: handles prompts/list request", async () => {
 
     assertExists(response.result);
     const result = response.result as { prompts: Array<{ name: string; description: string }> };
-    
+
     // Should have 2 prompts
     assertEquals(result.prompts.length, 2);
-    
+
     // Check prompt names
-    const promptNames = result.prompts.map(p => p.name);
+    const promptNames = result.prompts.map((p) => p.name);
     assertEquals(promptNames.includes("execute_plan"), true);
     assertEquals(promptNames.includes("create_changeset"), true);
 
@@ -62,15 +62,15 @@ Deno.test("MCP Server: prompts/list includes descriptions and arguments", async 
     });
 
     assertExists(response.result);
-    const result = response.result as { 
-      prompts: Array<{ 
-        name: string; 
-        description: string; 
-        arguments?: Array<{ name: string; description: string; required: boolean }> 
-      }> 
+    const result = response.result as {
+      prompts: Array<{
+        name: string;
+        description: string;
+        arguments?: Array<{ name: string; description: string; required: boolean }>;
+      }>;
     };
-    
-    const executePlan = result.prompts.find(p => p.name === "execute_plan");
+
+    const executePlan = result.prompts.find((p) => p.name === "execute_plan");
     assertExists(executePlan);
     assertExists(executePlan.description);
     assertExists(executePlan.arguments);
@@ -110,15 +110,15 @@ Deno.test("MCP Server: handles prompts/get for execute_plan", async () => {
     });
 
     assertExists(response.result);
-    const result = response.result as { 
-      description: string; 
-      messages: Array<{ role: string; content: { type: string; text: string } }> 
+    const result = response.result as {
+      description: string;
+      messages: Array<{ role: string; content: { type: string; text: string } }>;
     };
-    
+
     assertExists(result.description);
     assertStringIncludes(result.description, "test-plan-123");
     assertStringIncludes(result.description, "MyApp");
-    
+
     assertEquals(result.messages.length, 1);
     assertEquals(result.messages[0].role, "user");
     assertStringIncludes(result.messages[0].content.text, "test-plan-123");
@@ -155,11 +155,11 @@ Deno.test("MCP Server: handles prompts/get for create_changeset", async () => {
     });
 
     assertExists(response.result);
-    const result = response.result as { 
-      description: string; 
-      messages: Array<{ role: string; content: { type: string; text: string } }> 
+    const result = response.result as {
+      description: string;
+      messages: Array<{ role: string; content: { type: string; text: string } }>;
     };
-    
+
     assertStringIncludes(result.description, "Add authentication");
     assertStringIncludes(result.messages[0].content.text, "MyApp");
     assertStringIncludes(result.messages[0].content.text, "Add authentication");

@@ -1,6 +1,6 @@
 /**
  * MCP Resources
- * 
+ *
  * Exposes portal files as MCP resources with portal:// URI scheme.
  * Resources are dynamically discovered from configured portals.
  */
@@ -34,9 +34,9 @@ export interface MCPResourceTemplate {
 
 /**
  * Parse portal:// URI into portal name and path
- * 
+ *
  * @example
- * parsePortalURI("portal://MyApp/src/auth.ts") 
+ * parsePortalURI("portal://MyApp/src/auth.ts")
  * // => { portal: "MyApp", path: "src/auth.ts" }
  */
 export function parsePortalURI(uri: string): { portal: string; path: string } | null {
@@ -62,39 +62,39 @@ export function buildPortalURI(portal: string, path: string): string {
  * Get MIME type from file extension
  */
 function getMimeType(filePath: string): string {
-  const ext = filePath.split('.').pop()?.toLowerCase();
-  
+  const ext = filePath.split(".").pop()?.toLowerCase();
+
   const mimeTypes: Record<string, string> = {
     // Code
-    'ts': 'text/x-typescript',
-    'tsx': 'text/x-typescript',
-    'js': 'text/javascript',
-    'jsx': 'text/javascript',
-    'py': 'text/x-python',
-    'rs': 'text/x-rust',
-    'go': 'text/x-go',
-    'java': 'text/x-java',
-    'c': 'text/x-c',
-    'cpp': 'text/x-c++',
-    'h': 'text/x-c',
-    'hpp': 'text/x-c++',
-    
+    "ts": "text/x-typescript",
+    "tsx": "text/x-typescript",
+    "js": "text/javascript",
+    "jsx": "text/javascript",
+    "py": "text/x-python",
+    "rs": "text/x-rust",
+    "go": "text/x-go",
+    "java": "text/x-java",
+    "c": "text/x-c",
+    "cpp": "text/x-c++",
+    "h": "text/x-c",
+    "hpp": "text/x-c++",
+
     // Markup
-    'html': 'text/html',
-    'css': 'text/css',
-    'md': 'text/markdown',
-    'xml': 'text/xml',
-    'json': 'application/json',
-    'toml': 'application/toml',
-    'yaml': 'text/yaml',
-    'yml': 'text/yaml',
-    
+    "html": "text/html",
+    "css": "text/css",
+    "md": "text/markdown",
+    "xml": "text/xml",
+    "json": "application/json",
+    "toml": "application/toml",
+    "yaml": "text/yaml",
+    "yml": "text/yaml",
+
     // Text
-    'txt': 'text/plain',
-    'log': 'text/plain',
+    "txt": "text/plain",
+    "log": "text/plain",
   };
 
-  return mimeTypes[ext || ''] || 'application/octet-stream';
+  return mimeTypes[ext || ""] || "application/octet-stream";
 }
 
 /**
@@ -124,13 +124,13 @@ export async function discoverPortalResources(
       })
     ) {
       // Skip hidden files unless explicitly included
-      if (!includeHidden && entry.name.startsWith('.')) {
+      if (!includeHidden && entry.name.startsWith(".")) {
         continue;
       }
 
       // Filter by extensions if specified
       if (options.extensions && options.extensions.length > 0) {
-        const ext = entry.name.split('.').pop()?.toLowerCase();
+        const ext = entry.name.split(".").pop()?.toLowerCase();
         if (!ext || !options.extensions.includes(ext)) {
           continue;
         }
@@ -197,7 +197,7 @@ export async function discoverAllResources(
 
 /**
  * Get resource templates for portal patterns
- * 
+ *
  * Resource templates describe URI patterns that can be read dynamically.
  */
 export function getResourceTemplates(config: Config): MCPResourceTemplate[] {

@@ -1,6 +1,6 @@
 /**
  * MCP Prompts
- * 
+ *
  * Provides prompt templates for common ExoFrame operations.
  * Prompts guide LLM agents through structured workflows.
  */

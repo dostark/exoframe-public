@@ -21,7 +21,7 @@ import {
 
 Deno.test("parsePortalURI: parses valid portal URI", () => {
   const result = parsePortalURI("portal://MyApp/src/auth.ts");
-  
+
   assertExists(result);
   assertEquals(result.portal, "MyApp");
   assertEquals(result.path, "src/auth.ts");
@@ -29,7 +29,7 @@ Deno.test("parsePortalURI: parses valid portal URI", () => {
 
 Deno.test("parsePortalURI: parses URI with nested path", () => {
   const result = parsePortalURI("portal://MyApp/src/components/Button.tsx");
-  
+
   assertExists(result);
   assertEquals(result.portal, "MyApp");
   assertEquals(result.path, "src/components/Button.tsx");
@@ -37,19 +37,19 @@ Deno.test("parsePortalURI: parses URI with nested path", () => {
 
 Deno.test("parsePortalURI: returns null for invalid URI", () => {
   const result = parsePortalURI("http://example.com/file.ts");
-  
+
   assertEquals(result, null);
 });
 
 Deno.test("parsePortalURI: returns null for missing path", () => {
   const result = parsePortalURI("portal://MyApp");
-  
+
   assertEquals(result, null);
 });
 
 Deno.test("buildPortalURI: builds valid URI", () => {
   const uri = buildPortalURI("MyApp", "src/auth.ts");
-  
+
   assertEquals(uri, "portal://MyApp/src/auth.ts");
 });
 
@@ -72,17 +72,17 @@ Deno.test("discoverPortalResources: discovers files in portal", async () => {
 
     // Should find all 3 files
     assertEquals(resources.length >= 2, true);
-    
+
     // Check URIs are correct format
-    const uris = resources.map(r => r.uri);
-    const hasReadme = uris.some(uri => uri.includes("README.md"));
-    const hasMainTs = uris.some(uri => uri.includes("main.ts"));
-    
+    const uris = resources.map((r) => r.uri);
+    const hasReadme = uris.some((uri) => uri.includes("README.md"));
+    const hasMainTs = uris.some((uri) => uri.includes("main.ts"));
+
     assertEquals(hasReadme, true);
     assertEquals(hasMainTs, true);
 
     // Check MIME types
-    const tsResource = resources.find(r => r.uri.includes("main.ts"));
+    const tsResource = resources.find((r) => r.uri.includes("main.ts"));
     assertExists(tsResource);
     assertEquals(tsResource.mimeType, "text/x-typescript");
   } finally {
@@ -106,7 +106,7 @@ Deno.test("discoverPortalResources: respects maxDepth option", async () => {
     });
 
     // Should find root.txt and file1.txt, but not file2.txt or file3.txt (depth > 2)
-    const paths = resources.map(r => {
+    const paths = resources.map((r) => {
       const parsed = parsePortalURI(r.uri);
       return parsed?.path;
     });
@@ -134,7 +134,7 @@ Deno.test("discoverPortalResources: filters by extensions", async () => {
       extensions: ["ts", "js"],
     });
 
-    const paths = resources.map(r => {
+    const paths = resources.map((r) => {
       const parsed = parsePortalURI(r.uri);
       return parsed?.path;
     });
@@ -159,7 +159,7 @@ Deno.test("discoverPortalResources: skips hidden files by default", async () => 
 
     const resources = await discoverPortalResources("TestPortal", portalPath);
 
-    const paths = resources.map(r => {
+    const paths = resources.map((r) => {
       const parsed = parsePortalURI(r.uri);
       return parsed?.path;
     });
@@ -179,10 +179,10 @@ Deno.test("discoverAllResources: discovers from multiple portals", async () => {
     // Create two test portals
     const portal1Path = join(tempDir, "Portal1");
     const portal2Path = join(tempDir, "Portal2");
-    
+
     await ensureDir(portal1Path);
     await ensureDir(portal2Path);
-    
+
     await Deno.writeTextFile(join(portal1Path, "file1.ts"), "portal1");
     await Deno.writeTextFile(join(portal2Path, "file2.ts"), "portal2");
 
@@ -197,10 +197,10 @@ Deno.test("discoverAllResources: discovers from multiple portals", async () => {
 
     // Should find files from both portals
     assertEquals(resources.length >= 2, true);
-    
-    const portal1Resources = resources.filter(r => r.uri.startsWith("portal://Portal1/"));
-    const portal2Resources = resources.filter(r => r.uri.startsWith("portal://Portal2/"));
-    
+
+    const portal1Resources = resources.filter((r) => r.uri.startsWith("portal://Portal1/"));
+    const portal2Resources = resources.filter((r) => r.uri.startsWith("portal://Portal2/"));
+
     assertEquals(portal1Resources.length >= 1, true);
     assertEquals(portal2Resources.length >= 1, true);
   } finally {

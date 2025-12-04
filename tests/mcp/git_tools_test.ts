@@ -26,7 +26,7 @@ Deno.test("git_create_branch: successfully creates feature branch", async () => 
   try {
     const portalPath = join(tempDir, "TestPortal");
     await Deno.mkdir(portalPath, { recursive: true });
-    
+
     // Initialize git repo
     await new Deno.Command("git", {
       args: ["init"],
@@ -34,12 +34,12 @@ Deno.test("git_create_branch: successfully creates feature branch", async () => 
       stdout: "piped",
       stderr: "piped",
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.name", "Test User"],
       cwd: portalPath,
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.email", "test@example.com"],
       cwd: portalPath,
@@ -87,7 +87,7 @@ Deno.test("git_create_branch: validates branch name format", async () => {
   try {
     const portalPath = join(tempDir, "TestPortal");
     await Deno.mkdir(portalPath, { recursive: true });
-    
+
     await new Deno.Command("git", {
       args: ["init"],
       cwd: portalPath,
@@ -213,23 +213,23 @@ Deno.test("git_commit: successfully commits changes", async () => {
   try {
     const portalPath = join(tempDir, "TestPortal");
     await Deno.mkdir(portalPath, { recursive: true });
-    
+
     await new Deno.Command("git", {
       args: ["init"],
       cwd: portalPath,
       stdout: "piped",
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.name", "Test User"],
       cwd: portalPath,
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.email", "test@example.com"],
       cwd: portalPath,
     }).output();
-    
+
     // Create a file to commit
     await Deno.writeTextFile(join(portalPath, "test.txt"), "content");
 
@@ -274,23 +274,23 @@ Deno.test("git_commit: commits specific files when provided", async () => {
   try {
     const portalPath = join(tempDir, "TestPortal");
     await Deno.mkdir(portalPath, { recursive: true });
-    
+
     await new Deno.Command("git", {
       args: ["init"],
       cwd: portalPath,
       stdout: "piped",
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.name", "Test User"],
       cwd: portalPath,
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.email", "test@example.com"],
       cwd: portalPath,
     }).output();
-    
+
     await Deno.writeTextFile(join(portalPath, "file1.txt"), "content1");
     await Deno.writeTextFile(join(portalPath, "file2.txt"), "content2");
 
@@ -334,7 +334,7 @@ Deno.test("git_commit: rejects empty commit message", async () => {
   try {
     const portalPath = join(tempDir, "TestPortal");
     await Deno.mkdir(portalPath, { recursive: true });
-    
+
     await new Deno.Command("git", {
       args: ["init"],
       cwd: portalPath,
@@ -381,18 +381,18 @@ Deno.test("git_commit: rejects when nothing to commit", async () => {
   try {
     const portalPath = join(tempDir, "TestPortal");
     await Deno.mkdir(portalPath, { recursive: true });
-    
+
     await new Deno.Command("git", {
       args: ["init"],
       cwd: portalPath,
       stdout: "piped",
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.name", "Test User"],
       cwd: portalPath,
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.email", "test@example.com"],
       cwd: portalPath,
@@ -442,18 +442,18 @@ Deno.test("git_status: shows clean repository status", async () => {
   try {
     const portalPath = join(tempDir, "TestPortal");
     await Deno.mkdir(portalPath, { recursive: true });
-    
+
     await new Deno.Command("git", {
       args: ["init"],
       cwd: portalPath,
       stdout: "piped",
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.name", "Test User"],
       cwd: portalPath,
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.email", "test@example.com"],
       cwd: portalPath,
@@ -499,23 +499,23 @@ Deno.test("git_status: shows uncommitted changes", async () => {
   try {
     const portalPath = join(tempDir, "TestPortal");
     await Deno.mkdir(portalPath, { recursive: true });
-    
+
     await new Deno.Command("git", {
       args: ["init"],
       cwd: portalPath,
       stdout: "piped",
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.name", "Test User"],
       cwd: portalPath,
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.email", "test@example.com"],
       cwd: portalPath,
     }).output();
-    
+
     // Create uncommitted file
     await Deno.writeTextFile(join(portalPath, "new-file.txt"), "content");
 

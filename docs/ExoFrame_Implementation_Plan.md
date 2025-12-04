@@ -3042,15 +3042,15 @@ The code, documentation, or solution
 
 #### **Templates:**
 
-| Template     | Description                     | Model Default             | Capabilities                        |
-| ------------ | ------------------------------- | ------------------------- | ----------------------------------- |
-| `default`    | General-purpose agent           | `ollama:codellama:13b`    | general                             |
-| `coder`      | Software development            | `anthropic:claude-sonnet` | code_generation, debugging, testing |
-| `reviewer`   | Code review specialist          | `openai:gpt-4`            | code_review, security_analysis      |
-| `architect`  | System design and architecture  | `anthropic:claude-opus`   | system_design, documentation        |
-| `researcher` | Research and analysis           | `openai:gpt-4-turbo`      | research, analysis, summarization   |
-| `gemini`     | Google's multimodal AI          | `google:gemini-2.0-flash` | general, multimodal, reasoning      |
-| `mock`       | Testing and development agent   | `mock:test-model`         | testing, development                |
+| Template     | Description                    | Model Default             | Capabilities                        |
+| ------------ | ------------------------------ | ------------------------- | ----------------------------------- |
+| `default`    | General-purpose agent          | `ollama:codellama:13b`    | general                             |
+| `coder`      | Software development           | `anthropic:claude-sonnet` | code_generation, debugging, testing |
+| `reviewer`   | Code review specialist         | `openai:gpt-4`            | code_review, security_analysis      |
+| `architect`  | System design and architecture | `anthropic:claude-opus`   | system_design, documentation        |
+| `researcher` | Research and analysis          | `openai:gpt-4-turbo`      | research, analysis, summarization   |
+| `gemini`     | Google's multimodal AI         | `google:gemini-2.0-flash` | general, multimodal, reasoning      |
+| `mock`       | Testing and development agent  | `mock:test-model`         | testing, development                |
 
 #### **Activity Logging:**
 
@@ -3085,6 +3085,7 @@ The code, documentation, or solution
 #### **Success Criteria:**
 
 **Core Implementation:**
+
 1. [x] Create `src/cli/blueprint_commands.ts` extending `BaseCommand`
 2. [x] Define `BlueprintSchema` in `src/schemas/blueprint.ts`
 3. [x] Implement `create()` method with validation
@@ -3330,6 +3331,7 @@ private async loadBlueprint(agentId: string): Promise<Blueprint | null> {
 Phase 6 implements the **plan execution engine** where approved plans in `System/Active/` are executed by LLM agents through ExoFrame's **Model Context Protocol (MCP) server**. This phase eliminates fragile response parsing by providing agents with standardized tools, resources, and prompts while enforcing strong security boundaries.
 
 **Architecture Shift:** Instead of parsing LLM markdown responses, agents connect to ExoFrame's MCP server and use validated tools to create branches, modify files, and commit changes. This provides:
+
 - Standard protocol for agent-tool communication
 - Configurable security modes (sandboxed or hybrid)
 - Complete audit trail of all agent actions
@@ -3338,7 +3340,7 @@ Phase 6 implements the **plan execution engine** where approved plans in `System
 ### Phase Structure
 
 | Step | Name                                | Status         |
-|------|-------------------------------------|----------------|
+| ---- | ----------------------------------- | -------------- |
 | 6.1  | Plan Execution Detection & Parsing  | ✅ Implemented |
 | 6.2  | MCP Server Implementation           | 📋 Planned     |
 | 6.3  | Portal Permissions & Security Modes | 📋 Planned     |
@@ -3359,6 +3361,7 @@ Phase 6 implements the **plan execution engine** where approved plans in `System
 **Problem Statement:**
 
 ExoFrame can create requests and generate plans automatically, but needs a mechanism to:
+
 - Detect when plans are approved and moved to `System/Active/`
 - Parse plan structure (steps, context, trace_id)
 - Prepare plans for execution by extracting metadata and validating structure
@@ -3375,26 +3378,26 @@ Implement the first phase of plan execution focusing on detection and parsing:
 
 **Implementation Status:**
 
-| Component            | Status         | Description                              |
-|----------------------|----------------|------------------------------------------|
-| Detection            | ✅ Implemented | FileWatcher monitors System/Active/      |
-| YAML Parsing         | ✅ Implemented | Extract frontmatter metadata             |
-| Step Extraction      | ✅ Implemented | Regex-based step parsing                 |
-| Validation           | ✅ Implemented | Validate step numbering and structure    |
-| Activity Logging     | ✅ Implemented | Log detection and parsing events         |
+| Component        | Status         | Description                           |
+| ---------------- | -------------- | ------------------------------------- |
+| Detection        | ✅ Implemented | FileWatcher monitors System/Active/   |
+| YAML Parsing     | ✅ Implemented | Extract frontmatter metadata          |
+| Step Extraction  | ✅ Implemented | Regex-based step parsing              |
+| Validation       | ✅ Implemented | Validate step numbering and structure |
+| Activity Logging | ✅ Implemented | Log detection and parsing events      |
 
 **Implementation Files:**
 
-| File                                          | Purpose                                  | Status         |
-|-----------------------------------------------|------------------------------------------|----------------|
-| `src/main.ts`                                 | FileWatcher for System/Active/           | ✅ Implemented |
-| `tests/plan_executor_parsing_test.ts`         | Unit tests (19 tests)                    | ✅ Implemented |
-| `tests/integration/14_plan_execution_*.ts`    | Integration tests (5 scenarios)          | ✅ Implemented |
+| File                                       | Purpose                         | Status         |
+| ------------------------------------------ | ------------------------------- | -------------- |
+| `src/main.ts`                              | FileWatcher for System/Active/  | ✅ Implemented |
+| `tests/plan_executor_parsing_test.ts`      | Unit tests (19 tests)           | ✅ Implemented |
+| `tests/integration/14_plan_execution_*.ts` | Integration tests (5 scenarios) | ✅ Implemented |
 
 **Activity Logging Events:**
 
 | Event                      | Condition         | Payload                  |
-|----------------------------|-------------------|--------------------------|
+| -------------------------- | ----------------- | ------------------------ |
 | `plan.detected`            | Plan file found   | `{trace_id, request_id}` |
 | `plan.ready_for_execution` | Valid plan parsed | `{trace_id, request_id}` |
 | `plan.invalid_frontmatter` | YAML parse error  | `{error}`                |
@@ -3423,7 +3426,7 @@ Implement the first phase of plan execution focusing on detection and parsing:
 - **Action:** Implement Model Context Protocol (MCP) server for agent-tool communication
 - **Location:** `src/mcp/server.ts`, `src/mcp/tools.ts`, `src/mcp/resources.ts`, `src/mcp/prompts.ts`
 - **Status:** ✅ COMPLETE (All 5 Phases complete - 71 tests passing)
-- **Commits:** 
+- **Commits:**
   - 140d307 - Phase 1 Walking Skeleton (8 tests)
   - 55a52f9 - Phase 2 read_file tool (15 tests)
   - 21e5818 - Phase 3 write_file & list_directory tools (26 tests)
@@ -3434,6 +3437,7 @@ Implement the first phase of plan execution focusing on detection and parsing:
 **Problem Statement:**
 
 LLM agents need a standardized, secure interface to interact with ExoFrame and portal repositories. Direct file system access or response parsing approaches are:
+
 - Fragile (parsing markdown responses is unreliable)
 - Insecure (agents could bypass ExoFrame controls)
 - Non-standard (proprietary interfaces)
@@ -3606,14 +3610,14 @@ version = "1.0.0"
 
 **Implementation Files:**
 
-| File                          | Purpose                                  |
-|-------------------------------|------------------------------------------|
-| `src/mcp/server.ts`           | MCP server implementation                |
-| `src/mcp/tools.ts`            | Tool handlers with validation            |
-| `src/mcp/resources.ts`        | Resource discovery and serving           |
-| `src/mcp/prompts.ts`          | Prompt templates                         |
-| `tests/mcp/server_test.ts`    | Server tests (25+ tests)                 |
-| `tests/mcp/tools_test.ts`     | Tool handler tests (30+ tests)           |
+| File                       | Purpose                        |
+| -------------------------- | ------------------------------ |
+| `src/mcp/server.ts`        | MCP server implementation      |
+| `src/mcp/tools.ts`         | Tool handlers with validation  |
+| `src/mcp/resources.ts`     | Resource discovery and serving |
+| `src/mcp/prompts.ts`       | Prompt templates               |
+| `tests/mcp/server_test.ts` | Server tests (25+ tests)       |
+| `tests/mcp/tools_test.ts`  | Tool handler tests (30+ tests) |
 
 **Success Criteria:**
 
@@ -3630,6 +3634,7 @@ version = "1.0.0"
 11. [x] 30+ tool tests passing (18 tools + 11 git_tools = 29 tool tests)
 
 **Summary: 10/11 criteria met (91%)**
+
 - ✅ 71 total tests passing
 - ✅ 6 tools fully implemented with security
 - ✅ Resources with portal:// URI discovery
@@ -3651,6 +3656,7 @@ version = "1.0.0"
 **Problem Statement:**
 
 Agents need controlled access to portals with:
+
 - Whitelist of allowed agents per portal
 - Operation restrictions (read, write, git)
 - Security modes to prevent unauthorized file access or changes
@@ -3661,6 +3667,7 @@ Agents need controlled access to portals with:
 Implement two security modes for agent execution:
 
 **1. Sandboxed Mode (Recommended):**
+
 - Agent has **NO direct file system access**
 - Runs in Deno subprocess: `--allow-read=NONE --allow-write=NONE`
 - All operations go through MCP tools
@@ -3668,6 +3675,7 @@ Implement two security modes for agent execution:
 - Strongest security guarantees
 
 **2. Hybrid Mode (Performance Optimized):**
+
 - Agent has **read-only access** to portal path
 - Can read files directly (faster context loading)
 - **MUST use MCP tools** for writes
@@ -3710,12 +3718,12 @@ audit_enabled = true
 
 **Implementation Files:**
 
-| File                                  | Purpose                              |
-|---------------------------------------|--------------------------------------|
-| `src/services/portal_permissions.ts`  | Permission validation logic          |
-| `src/services/agent_executor.ts`      | Agent subprocess management          |
-| `tests/portal_permissions_test.ts`    | Permission tests (12+ tests)         |
-| `tests/security/mcp_security_test.ts` | Security mode tests                  |
+| File                                  | Purpose                      |
+| ------------------------------------- | ---------------------------- |
+| `src/services/portal_permissions.ts`  | Permission validation logic  |
+| `src/services/agent_executor.ts`      | Agent subprocess management  |
+| `tests/portal_permissions_test.ts`    | Permission tests (12+ tests) |
+| `tests/security/mcp_security_test.ts` | Security mode tests          |
 
 **Success Criteria:**
 
@@ -3738,7 +3746,7 @@ audit_enabled = true
 
 ### Step 6.4: Agent Orchestration & Execution 📋 PLANNED
 
-- **Dependencies:** Step 5.13 (MCP Server), Step 5.14 (Portal Permissions), Step 5.11 (Blueprint Management)
+- **Dependencies:** Step 6.2 (MCP Server), Step 6.3 (Portal Permissions), Step 5.11 (Blueprint Management)
 - **Rollback:** Disable agent execution, plans remain in System/Active/ without execution
 - **Action:** Implement agent invocation via MCP with execution context
 - **Location:** `src/services/agent_executor.ts`, `src/services/plan_executor.ts`
@@ -3747,6 +3755,7 @@ audit_enabled = true
 **Problem Statement:**
 
 With MCP server and permissions in place, we need to:
+
 - Invoke LLM agents with plan execution context
 - Connect agents to MCP server (stdio or SSE)
 - Pass execution context (request, plan, trace_id, portal)
@@ -3781,7 +3790,7 @@ interface AgentExecutor {
     agent: string,
     portal: string,
     step: PlanStep,
-    context: ExecutionContext
+    context: ExecutionContext,
   ): Promise<ChangesetResult>;
 }
 
@@ -3839,11 +3848,11 @@ interface ChangesetResult {
 
 **Implementation Files:**
 
-| File                               | Purpose                                  |
-|------------------------------------|------------------------------------------|
-| `src/services/agent_executor.ts`   | AgentExecutor class                      |
-| `src/services/plan_executor.ts`    | Integration with AgentExecutor           |
-| `tests/agent_executor_test.ts`     | Agent execution tests (20+ tests)        |
+| File                             | Purpose                           |
+| -------------------------------- | --------------------------------- |
+| `src/services/agent_executor.ts` | AgentExecutor class               |
+| `src/services/plan_executor.ts`  | Integration with AgentExecutor    |
+| `tests/agent_executor_test.ts`   | Agent execution tests (20+ tests) |
 
 **Success Criteria:**
 
@@ -3878,6 +3887,7 @@ interface ChangesetResult {
 **Problem Statement:**
 
 After agent execution, we need to:
+
 - Register changesets created by agents in database
 - Link changesets to trace_id for traceability
 - Track changeset status (pending, approved, rejected)
@@ -3987,7 +3997,7 @@ interface ChangesetRegistry {
     id: string,
     status: ChangesetStatus,
     user?: string,
-    reason?: string
+    reason?: string,
   ): Promise<void>;
 }
 ```
@@ -4018,22 +4028,22 @@ interface ChangesetRegistry {
 
 **Activity Logging Events:**
 
-| Event                     | Payload                                                |
-|---------------------------|--------------------------------------------------------|
-| `changeset.created`       | `{ changeset_id, trace_id, portal, branch, created_by }`|
-| `changeset.approved`      | `{ changeset_id, approved_by, merge_commit }`          |
-| `changeset.rejected`      | `{ changeset_id, rejected_by, reason }`                |
-| `plan.executed`           | `{ trace_id, plan_id, changeset_id, duration_ms }`     |
-| `plan.execution.failed`   | `{ trace_id, plan_id, error, step_index, agent }`      |
+| Event                   | Payload                                                  |
+| ----------------------- | -------------------------------------------------------- |
+| `changeset.created`     | `{ changeset_id, trace_id, portal, branch, created_by }` |
+| `changeset.approved`    | `{ changeset_id, approved_by, merge_commit }`            |
+| `changeset.rejected`    | `{ changeset_id, rejected_by, reason }`                  |
+| `plan.executed`         | `{ trace_id, plan_id, changeset_id, duration_ms }`       |
+| `plan.execution.failed` | `{ trace_id, plan_id, error, step_index, agent }`        |
 
 **Implementation Files:**
 
-| File                                  | Purpose                              |
-|---------------------------------------|--------------------------------------|
-| `src/services/changeset_registry.ts`  | ChangesetRegistry class              |
-| `src/schemas/changeset.ts`            | Changeset schema and types           |
-| `migrations/002_changesets.sql`       | Database schema                      |
-| `tests/changeset_registry_test.ts`    | Registry tests (15+ tests)           |
+| File                                 | Purpose                    |
+| ------------------------------------ | -------------------------- |
+| `src/services/changeset_registry.ts` | ChangesetRegistry class    |
+| `src/schemas/changeset.ts`           | Changeset schema and types |
+| `migrations/002_changesets.sql`      | Database schema            |
+| `tests/changeset_registry_test.ts`   | Registry tests (15+ tests) |
 
 **Success Criteria:**
 
@@ -4065,6 +4075,7 @@ interface ChangesetRegistry {
 **Problem Statement:**
 
 Individual components are tested in isolation, but we need to validate:
+
 - Complete flow: approved plan → MCP execution → changeset
 - Both security modes (sandboxed and hybrid)
 - Error scenarios and recovery
@@ -4174,10 +4185,10 @@ plan.executed
 
 **Implementation Files:**
 
-| File                                          | Purpose                              |
-|-----------------------------------------------|--------------------------------------|
-| `tests/integration/15_plan_execution_mcp.ts`  | MCP execution tests (8+ scenarios)   |
-| `tests/integration/16_security_modes_test.ts` | Security mode enforcement tests      |
+| File                                          | Purpose                            |
+| --------------------------------------------- | ---------------------------------- |
+| `tests/integration/15_plan_execution_mcp.ts`  | MCP execution tests (8+ scenarios) |
+| `tests/integration/16_security_modes_test.ts` | Security mode enforcement tests    |
 
 **Success Criteria:**
 
@@ -4197,6 +4208,7 @@ plan.executed
 **Future Enhancements:**
 
 **Phase 6 Extensions (Post-v1.0):**
+
 - Multi-step plan execution with dependencies
 - Parallel execution of independent steps
 - Human-in-the-loop approval between steps
@@ -4205,6 +4217,7 @@ plan.executed
 - CI/CD integration (run tests before creating changeset)
 
 **MCP API for External Tools (Future):**
+
 - Expose ExoFrame operations (create request, approve plan, query journal) as MCP tools
 - Enable external AI assistants (Claude Desktop, Cline, IDE agents) to interact with ExoFrame
 - Implement `exoframe_create_request`, `exoframe_list_plans`, `exoframe_approve_plan` tools
@@ -4222,34 +4235,37 @@ plan.executed
 > **Goal:** Validate single-agent workflows end-to-end before adding multi-agent complexity.
 
 📄 **Full Documentation:** [`ExoFrame_Testing_Strategy.md`](./ExoFrame_Testing_Strategy.md)
-  /**
-   * Start MCP server on stdio or SSE transport
-   * @param transport - Transport type (stdio, sse)
-   * @returns Server instance
-   */
-  start(transport: 'stdio' | 'sse'): Promise<void>;
-  
-  /**
-   * Register portal-scoped tools
-   * @param portal - Portal configuration
-   */
-  registerPortalTools(portal: PortalConfig): void;
-  
-  /**
-   * Handle tool invocation from agent
-   * @param toolName - Tool to invoke
-   * @param args - Tool arguments
-   * @param agent - Agent making the request
-   * @returns Tool execution result
-   */
-  handleToolCall(
-    toolName: string,
-    args: Record<string, unknown>,
-    agent: string
-  ): Promise<unknown>;
-}
-```
+/**
 
+- Start MCP server on stdio or SSE transport
+- @param transport - Transport type (stdio, sse)
+- @returns Server instance
+  */
+  start(transport: 'stdio' | 'sse'): Promise<void>;
+
+/**
+
+- Register portal-scoped tools
+- @param portal - Portal configuration
+  */
+  registerPortalTools(portal: PortalConfig): void;
+
+/**
+
+- Handle tool invocation from agent
+- @param toolName - Tool to invoke
+- @param args - Tool arguments
+- @param agent - Agent making the request
+- @returns Tool execution result
+  */
+  handleToolCall(
+  toolName: string,
+  args: Record<string, unknown>,
+  agent: string
+  ): Promise<unknown>;
+  }
+
+````
 **ChangesetRegistry Interface:**
 
 ```typescript
@@ -4329,7 +4345,7 @@ interface PortalPermissions {
    */
   validateGitOperation(portal: string, branch: string): boolean;
 }
-```
+````
 
 **Changeset Schema:**
 
@@ -4338,22 +4354,22 @@ interface PortalPermissions {
 import { z } from "zod";
 
 export const ChangesetStatusSchema = z.enum([
-  "pending",    // Created by agent, awaiting review
-  "approved",   // Approved, merged to main
-  "rejected",   // Rejected, branch deleted
+  "pending", // Created by agent, awaiting review
+  "approved", // Approved, merged to main
+  "rejected", // Rejected, branch deleted
 ]);
 
 export const ChangesetSchema = z.object({
-  id: z.string().uuid(),               // Changeset UUID
-  trace_id: z.string().uuid(),         // Link to request
-  portal: z.string(),                  // Portal name
-  branch: z.string(),                  // Feature branch name
+  id: z.string().uuid(), // Changeset UUID
+  trace_id: z.string().uuid(), // Link to request
+  portal: z.string(), // Portal name
+  branch: z.string(), // Feature branch name
   status: ChangesetStatusSchema,
   description: z.string(),
-  commit_sha: z.string().optional(),   // Latest commit by agent
-  files_changed: z.number(),           // Number of files modified
+  commit_sha: z.string().optional(), // Latest commit by agent
+  files_changed: z.number(), // Number of files modified
   created: z.string().datetime(),
-  created_by: z.string(),              // Agent that created changeset
+  created_by: z.string(), // Agent that created changeset
   approved_at: z.string().datetime().optional(),
   approved_by: z.string().optional(),
   rejected_at: z.string().datetime().optional(),
@@ -4409,10 +4425,10 @@ CREATE INDEX IF NOT EXISTS idx_changesets_created_by ON changesets(created_by);
 
 3. **Agent Invocation:**
    - For each plan step:
-     * Load agent blueprint (model, capabilities, prompt)
-     * Create scoped tool registry for portal
-     * Construct execution prompt with request + plan + step
-     * Invoke agent with portal-scoped tools:
+     - Load agent blueprint (model, capabilities, prompt)
+     - Create scoped tool registry for portal
+     - Construct execution prompt with request + plan + step
+     - Invoke agent with portal-scoped tools:
        - `read_file(path)` - Read files in portal
        - `write_file(path, content)` - Write files in portal
        - `list_directory(path)` - List portal directories
@@ -4431,9 +4447,9 @@ CREATE INDEX IF NOT EXISTS idx_changesets_created_by ON changesets(created_by);
 5. **Changeset Registration:**
    - PlanExecutor receives changeset details from agent
    - Register changeset in database with:
-     * trace_id, portal, branch, commit_sha
-     * created_by = agent blueprint name
-     * status = "pending"
+     - trace_id, portal, branch, commit_sha
+     - created_by = agent blueprint name
+     - status = "pending"
    - Log `changeset.created` to Activity Journal
 
 6. **Status Update:**
@@ -4487,6 +4503,7 @@ audit_enabled = true
 **Security Modes:**
 
 **1. Sandboxed Mode (Recommended for Production):**
+
 - Agent has **NO direct file system access**
 - Agent connects to ExoFrame MCP server
 - All file operations go through MCP tools
@@ -4495,6 +4512,7 @@ audit_enabled = true
 - Implementation: Agent runs in Deno subprocess with `--allow-read=NONE --allow-write=NONE`
 
 **2. Hybrid Mode (Performance Optimized):**
+
 - Agent has **read-only access** to portal path
 - Agent can examine files directly (fast)
 - Agent **MUST use MCP tools** for modifications
@@ -4503,6 +4521,7 @@ audit_enabled = true
 - Implementation: Agent gets portal path + MCP tools, with post-execution audit
 
 **Security Enforcement:**
+
 - Agents can only access portals listed in their `agents_allowed` array
 - Operations restricted to specified capabilities (read, write, git)
 - All agent actions logged to Activity Journal with agent name
@@ -4579,10 +4598,10 @@ const GIT_COMMIT_TOOL = {
     properties: {
       portal: { type: "string", description: "Portal name" },
       message: { type: "string", description: "Commit message (should include trace_id)" },
-      files: { 
-        type: "array", 
+      files: {
+        type: "array",
         items: { type: "string" },
-        description: "Files to commit (optional, commits all staged if omitted)"
+        description: "Files to commit (optional, commits all staged if omitted)",
       },
     },
     required: ["portal", "message"],
@@ -4653,20 +4672,21 @@ const CREATE_CHANGESET_PROMPT = {
 
 **Activity Logging Events:**
 
-| Event                     | Payload                                                |
-|---------------------------|--------------------------------------------------------|
-| `plan.executing`          | `{ trace_id, plan_id, portal, agent }`                 |
-| `plan.executed`           | `{ trace_id, plan_id, changeset_id, duration_ms }`     |
-| `plan.execution.failed`   | `{ trace_id, plan_id, error, step_index, agent }`      |
-| `agent.tool.invoked`      | `{ agent, tool_name, portal, trace_id }`               |
-| `agent.git.branch_created`| `{ agent, portal, branch, trace_id }`                  |
-| `agent.git.commit`        | `{ agent, portal, branch, commit_sha, files, trace_id }`|
-| `changeset.created`       | `{ changeset_id, trace_id, portal, branch, created_by }`|
-| `portal.access_denied`    | `{ agent, portal, reason }`                            |
+| Event                      | Payload                                                  |
+| -------------------------- | -------------------------------------------------------- |
+| `plan.executing`           | `{ trace_id, plan_id, portal, agent }`                   |
+| `plan.executed`            | `{ trace_id, plan_id, changeset_id, duration_ms }`       |
+| `plan.execution.failed`    | `{ trace_id, plan_id, error, step_index, agent }`        |
+| `agent.tool.invoked`       | `{ agent, tool_name, portal, trace_id }`                 |
+| `agent.git.branch_created` | `{ agent, portal, branch, trace_id }`                    |
+| `agent.git.commit`         | `{ agent, portal, branch, commit_sha, files, trace_id }` |
+| `changeset.created`        | `{ changeset_id, trace_id, portal, branch, created_by }` |
+| `portal.access_denied`     | `{ agent, portal, reason }`                              |
 
 **Success Criteria:**
 
 **MCP Server:**
+
 1. [ ] ExoFrame MCP server starts with `mcp.enabled = true`
 2. [ ] MCP server registers 6 tools (read_file, write_file, list_directory, git_*)
 3. [ ] MCP server exposes portal files as Resources (portal:// URIs)
@@ -4986,7 +5006,7 @@ const activeWatcher = new FileWatcher({
 }, async (event) => {
   if (event.path.includes("_plan.md")) {
     console.log(`🚀 Executing approved plan: ${event.path}`);
-    
+
     try {
       const changesetId = await planExecutor.execute(event.path);
       if (changesetId) {
@@ -6047,8 +6067,8 @@ export class ModelFactory {
 
 _End of Implementation Plan_
 
-**Duration:** 1-2 weeks  
-**Prerequisites:** Phases 1–10 (All core features complete)  
+**Duration:** 1-2 weeks\
+**Prerequisites:** Phases 1–10 (All core features complete)\
 **Goal:** Add Model Context Protocol (MCP) server interface for programmatic ExoFrame interaction
 
 ### Overview
@@ -6063,10 +6083,7 @@ Implement an MCP server that exposes ExoFrame operations as standardized tools, 
 // src/mcp/server.ts
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
 export class ExoFrameMCPServer {
   private server: Server;
@@ -6306,14 +6323,14 @@ Deno.test("MCP Server - create request tool", async () => {
     description: "Test request",
     agent: "default",
   });
-  
+
   assert(result.content[0].text.includes("Request created"));
 });
 
 Deno.test("MCP Server - list plans tool", async () => {
   const server = new ExoFrameMCPServer(config, db);
   const result = await server.listPlans({ status: "pending" });
-  
+
   const plans = JSON.parse(result.content[0].text);
   assert(Array.isArray(plans));
 });
@@ -6368,4 +6385,6 @@ Deno.test("MCP Server - list plans tool", async () => {
 ---
 
 _End of Implementation Plan_
-````
+
+```
+```

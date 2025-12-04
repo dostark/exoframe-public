@@ -1,20 +1,17 @@
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "../services/db.ts";
 import { MCPConfigSchema, type MCPTool } from "../schemas/mcp.ts";
-import { 
-  ToolHandler, 
-  ReadFileTool, 
-  WriteFileTool, 
-  ListDirectoryTool,
-  GitCreateBranchTool,
+import {
   GitCommitTool,
+  GitCreateBranchTool,
   GitStatusTool,
+  ListDirectoryTool,
+  ReadFileTool,
+  ToolHandler,
+  WriteFileTool,
 } from "./tools.ts";
-import { 
-  discoverAllResources, 
-  parsePortalURI, 
-} from "./resources.ts";
-import { getPrompts, generatePrompt } from "./prompts.ts";
+import { discoverAllResources, parsePortalURI } from "./resources.ts";
+import { generatePrompt, getPrompts } from "./prompts.ts";
 
 /**
  * MCP Server Implementation
@@ -270,9 +267,7 @@ export class MCPServer {
   private handleToolsList(
     request: JSONRPCRequest,
   ): JSONRPCResponse {
-    const toolDefinitions = Array.from(this.tools.values()).map((tool) =>
-      tool.getToolDefinition()
-    );
+    const toolDefinitions = Array.from(this.tools.values()).map((tool) => tool.getToolDefinition());
 
     // Log tools list request
     this.db.logActivity(
@@ -333,10 +328,13 @@ export class MCPServer {
 
       // Determine error code based on error type
       let errorCode = -32603; // Internal error (default)
-      
+
       // Validation errors (Zod or parameter validation)
-      if (errorMessage.includes("validation") || errorMessage.includes("Required") || 
-          errorMessage.includes("expected") || (error && typeof error === "object" && "constructor" in error && error.constructor?.name === "ZodError")) {
+      if (
+        errorMessage.includes("validation") || errorMessage.includes("Required") ||
+        errorMessage.includes("expected") ||
+        (error && typeof error === "object" && "constructor" in error && error.constructor?.name === "ZodError")
+      ) {
         errorCode = -32602; // Invalid params
       }
       // Portal/file not found errors

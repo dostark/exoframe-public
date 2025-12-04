@@ -1,10 +1,7 @@
 import { join, normalize, relative } from "@std/path";
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "../services/db.ts";
-import {
-  ReadFileToolArgsSchema,
-  type MCPToolResponse,
-} from "../schemas/mcp.ts";
+import { type MCPToolResponse, ReadFileToolArgsSchema } from "../schemas/mcp.ts";
 import { PortalPermissionsService } from "../services/portal_permissions.ts";
 import type { PortalOperation } from "../schemas/portal_permissions.ts";
 
@@ -143,7 +140,7 @@ export class ReadFileTool extends ToolHandler {
     try {
       // All tools make permission checking for portal operations
       this.validatePermission(portal, agent_id, "read");
-      
+
       // Validate portal exists
       const portalPath = this.validatePortalExists(portal);
 
@@ -240,7 +237,7 @@ export class WriteFileTool extends ToolHandler {
     try {
       // All tools make permission checking for portal operations
       this.validatePermission(portal, agent_id, "write");
-      
+
       // Validate portal exists
       const portalPath = this.validatePortalExists(portal);
 
@@ -337,7 +334,7 @@ export class ListDirectoryTool extends ToolHandler {
     try {
       // All tools make permission checking for portal operations
       this.validatePermission(portal, agent_id, "read");
-      
+
       // Validate portal exists
       const portalPath = this.validatePortalExists(portal);
 
@@ -362,9 +359,7 @@ export class ListDirectoryTool extends ToolHandler {
       });
 
       // Format listing
-      const listing = entries.length > 0
-        ? entries.join("\n")
-        : "(Directory is empty)";
+      const listing = entries.length > 0 ? entries.join("\n") : "(Directory is empty)";
 
       // Log successful execution
       this.logToolExecution("list_directory", portal, {
@@ -443,7 +438,7 @@ export class GitCreateBranchTool extends ToolHandler {
     try {
       // All tools make permission checking for portal operations
       this.validatePermission(portal, agent_id, "git");
-      
+
       // Validate portal exists
       const portalPath = this.validatePortalExists(portal);
 
@@ -547,7 +542,7 @@ export class GitCommitTool extends ToolHandler {
     try {
       // All tools make permission checking for portal operations
       this.validatePermission(portal, agent_id, "git");
-      
+
       // Validate portal exists
       const portalPath = this.validatePortalExists(portal);
 
@@ -671,7 +666,7 @@ export class GitStatusTool extends ToolHandler {
     try {
       // All tools make permission checking for portal operations
       this.validatePermission(portal, agent_id, "git");
-      
+
       // Validate portal exists
       const portalPath = this.validatePortalExists(portal);
 
@@ -698,9 +693,7 @@ export class GitStatusTool extends ToolHandler {
       }
 
       const output = new TextDecoder().decode(stdout);
-      const statusText = output.trim()
-        ? output
-        : "Working tree clean - no changes detected";
+      const statusText = output.trim() ? output : "Working tree clean - no changes detected";
 
       // Log successful execution
       this.logToolExecution("git_status", portal, {
@@ -750,4 +743,3 @@ export class GitStatusTool extends ToolHandler {
     };
   }
 }
-

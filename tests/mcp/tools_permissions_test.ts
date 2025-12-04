@@ -1,6 +1,6 @@
 /**
  * MCP Tools Permission Tests
- * 
+ *
  * Tests that MCP tools respect portal permissions and operation restrictions.
  */
 
@@ -9,7 +9,7 @@ import { join } from "@std/path";
 import { ensureDir } from "@std/fs";
 import { createMockConfig } from "../helpers/config.ts";
 import { initTestDbService } from "../helpers/db.ts";
-import { ReadFileTool, WriteFileTool, GitStatusTool } from "../../src/mcp/tools.ts";
+import { GitStatusTool, ReadFileTool, WriteFileTool } from "../../src/mcp/tools.ts";
 import { PortalPermissionsService } from "../../src/services/portal_permissions.ts";
 import type { PortalPermissions } from "../../src/schemas/portal_permissions.ts";
 
@@ -200,18 +200,18 @@ Deno.test("MCP Tools: git_status requires git permission", async () => {
   try {
     const portalPath = join(tempDir, "TestPortal");
     await ensureDir(portalPath);
-    
+
     // Initialize git repository
     await new Deno.Command("git", {
       args: ["init"],
       cwd: portalPath,
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.email", "test@example.com"],
       cwd: portalPath,
     }).output();
-    
+
     await new Deno.Command("git", {
       args: ["config", "user.name", "Test User"],
       cwd: portalPath,
