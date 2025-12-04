@@ -2328,6 +2328,391 @@ await env.cleanup();
 
 ---
 
+---
+
+## Part XII: The MCP Architecture Revolution (December 2025)
+
+### The Paradigm Shift Nobody Saw Coming
+
+**The Context**: ExoFrame was designed around agents parsing LLM responses for structured data. We'd write complex regex patterns, handle edge cases, pray the LLM formatted code blocks correctly. Then reality arrived.
+
+### Pattern 24: Agent-Driven Architecture via MCP
+
+**The Old Way (Response Parsing)**:
+
+````typescript
+// Agent generates markdown response
+const llmResponse = `
+Here's the plan:
+\`\`\`typescript
+// Step 1: Create auth.ts
+export function login() { ... }
+\`\`\`
+Done!
+`;
+
+// We parse this with regex (fragile!)
+const codeBlocks = llmResponse.match(/```typescript\n([\s\S]*?)\n```/g);
+const files = extractFilePaths(codeBlocks); // Hope LLM followed format!
+````
+
+**The Problems**:
+
+- LLMs don't always format consistently
+- Regex parsing is brittle (one missing backtick = crash)
+- No validation at call-time (failures happen after execution)
+- Security boundaries enforced in parsing logic (scattered)
+
+**The New Way (MCP Server)**:
+
+```typescript
+// ExoFrame runs MCP server exposing tools
+const mcpServer = new MCPServer({
+  tools: [
+    new ReadFileTool(config, db, permissions),
+    new WriteFileTool(config, db, permissions),
+    new GitCreateBranchTool(config, db, permissions),
+    new GitCommitTool(config, db, permissions),
+  ],
+  transport: "stdio", // or "sse" for HTTP
+});
+
+// Agent connects to MCP server and uses tools
+// No markdown parsing - just standardized JSON-RPC calls
+```
+
+**What This Unlocks**:
+
+- **Validation at invocation**: Tools validate parameters before execution
+- **Security at tool level**: Each tool enforces portal permissions
+- **Complete audit trail**: Every tool call logged with trace_id
+- **Standard protocol**: Works with any MCP-compatible LLM client
+
+**The Five-Phase Implementation**:
+
+| Phase | Feature                    | Tests | Commits |
+| ----- | -------------------------- | ----- | ------- |
+| 1     | Walking Skeleton (stdio)   | 8     | 140d307 |
+| 2     | read_file tool             | 15    | 55a52f9 |
+| 3     | write_file, list_directory | 26    | 21e5818 |
+| 4     | git tools (3 tools)        | 37    | b6694ab |
+| 5     | Resources (portal:// URIs) | 53    | 82759ab |
+| 6     | Prompts (templates)        | 71    | 461ca83 |
+
+**Total**: 71 tests, 6 commits, ~2 weeks of TDD implementation.
+
+### Pattern 25: Portal Permissions & Security Modes
+
+**The Security Requirement**: Agents can't have unrestricted file system access.
+
+**The Two-Mode Solution**:
+
+**1. Sandboxed Mode (Maximum Security)**:
+
+```toml
+[[portals]]
+name = "MyApp"
+agents_allowed = ["senior-coder"]
+operations = ["read", "write", "git"]
+
+[portals.MyApp.security]
+mode = "sandboxed"  # Agent subprocess has NO file access
+```
+
+- Agent runs: `deno run --allow-read=NONE --allow-write=NONE`
+- All operations MUST go through MCP tools
+- Impossible to bypass ExoFrame security
+- Default mode (safest)
+
+**2. Hybrid Mode (Performance Optimized)**:
+
+```toml
+[portals.MyApp.security]
+mode = "hybrid"  # Agent can read portal, writes audited
+```
+
+- Agent runs: `deno run --allow-read=/path/to/MyApp`
+- Can read files directly (faster context loading)
+- Writes MUST use MCP tools (enforced + logged)
+- Post-execution git diff audit catches unauthorized changes
+
+**The Permission Validation**:
+
+```typescript
+// All 6 MCP tools validate permissions before execution
+class ReadFileTool extends ToolHandler {
+  async execute(args: { portal: string; path: string; agent_id: string }) {
+    // Validate agent is whitelisted for this portal
+    this.validatePermission(args.portal, args.agent_id, "read");
+
+    // Validate path is within portal boundaries
+    const resolvedPath = this.pathResolver.resolve(
+      `@${args.portal}/${args.path}`,
+    );
+
+    // Read and return
+    const content = await Deno.readTextFile(resolvedPath);
+    return { content };
+  }
+}
+```
+
+**The Integration Tests** (24 tests passing):
+
+- Agent whitelist enforcement (explicit list + wildcard "*")
+- Operation restrictions (read, write, git)
+- Security mode queries (sandboxed vs hybrid)
+- Multiple portal independence
+- Default security config (sandboxed if not specified)
+
+**Success Criteria Met**:
+
+- ✅ Portal permissions service implemented
+- ✅ Agent whitelist enforced (explicit + wildcard)
+- ✅ Operation-level restrictions (read/write/git)
+- ✅ Security modes defined and queryable
+- ✅ All 6 MCP tools validate permissions
+- ✅ 24 tests passing (16 service + 8 integration)
+
+**Remaining Work** (for Step 6.4):
+
+- Subprocess spawning with security mode permissions
+- Git audit for hybrid mode unauthorized changes
+- Config schema update to include portal permission fields
+
+### Pattern 26: TypeScript Compilation as Test Gate
+
+**The Discovery**: VS Code showed no errors, but coverage script failed.
+
+```bash
+$ ./scripts/coverage.sh summary
+Error: TS2554: Expected 2 arguments, but got 3.
+Error: TS2552: Cannot find name 'config'. Did you mean 'Config'?
+```
+
+**The Root Cause**:
+
+- Regular tests run with `--no-check` flag (skip type checking)
+- Coverage script runs with type checking enabled
+- TypeScript errors were hidden until coverage generation
+
+**The Fix Strategy**:
+
+```
+1. Run `deno check src/**/*.ts tests/**/*.ts`
+2. Fix compilation errors:
+   - Remove unused parameters
+   - Fix function signatures
+   - Add missing config fields
+3. Run coverage script to verify
+4. Update tests to match new signatures
+5. Commit with detailed message
+```
+
+**The Errors Fixed**:
+
+| Error Type        | Count | Location             | Fix                          |
+| ----------------- | ----- | -------------------- | ---------------------------- |
+| Unused parameter  | 3     | src/mcp/prompts.ts   | Removed `_config` parameter  |
+| Unnecessary async | 2     | src/mcp/server.ts    | Removed `async` keyword      |
+| Missing property  | 2     | test helpers, config | Added `mcp` field            |
+| Unused variable   | 6     | prompts_test.ts      | Removed unused `config` vars |
+
+**The Result**:
+
+- All 721 tests still passing
+- Coverage script now runs successfully
+- 81.1% line coverage, 89.3% branch coverage
+- Zero TypeScript compilation errors
+
+**The Lesson**: Run type checking in CI, not just in IDE. Your editor can lie (stale cache), but `deno check` never does.
+
+### Pattern 27: Documentation Cleanup Without Breaking History
+
+**The Situation**: Code comments had phase markers from early planning:
+
+```typescript
+// ============================================================================
+// Step 6.3: Portal Permissions & Security Modes
+// ============================================================================
+```
+
+**The Problem**:
+
+- Phase markers useful during planning
+- Clutter once features are implemented
+- Need to track what's done without leaving markers in code
+
+**The Solution**:
+
+```bash
+# Remove phase markers from code
+grep -r "Step 6\.[23]" src/ tests/ | # Find all occurrences
+  # Remove "Step X.Y:" markers but keep section headers
+  sed -i 's/Step 6\.[0-9]: //' files
+
+# Keep phase tracking in Implementation Plan only
+docs/ExoFrame_Implementation_Plan.md # Single source of truth
+```
+
+**Commit Message Pattern**:
+
+```
+docs: Remove implementation phase markers from code comments
+
+- Removed "Step 6.2" and "Step 6.3" markers from src/mcp/*.ts
+- Removed phase markers from tests/mcp/*_test.ts
+- Preserved section structure and descriptive headers
+- Phase tracking remains in docs/ExoFrame_Implementation_Plan.md
+
+All 721 tests passing. No functional changes.
+```
+
+**The Rule**: Once features are implemented, remove planning artifacts from code. Keep history in git log and planning documents, not in source files.
+
+### The MCP Success Metrics
+
+**Implementation Complete** (Step 6.2 ✅):
+
+- 71 tests passing (8 → 15 → 26 → 37 → 53 → 71)
+- 6 MCP tools fully functional with security validation
+- Resources exposed via `portal://` URI scheme
+- Prompts registered (`execute_plan`, `create_changeset`)
+- Activity logging for all tool invocations
+- Zero TypeScript compilation errors
+- 81.1% line coverage, 89.3% branch coverage
+
+**Permission System Complete** (Step 6.3 ✅):
+
+- 24 permission tests passing
+- Agent whitelist enforcement
+- Operation restrictions (read, write, git)
+- Security modes defined (sandboxed, hybrid)
+- All tools validate permissions
+- Default-secure (sandboxed mode if not specified)
+
+**Remaining Work** (Step 6.4):
+
+- Agent orchestration (spawn subprocess with MCP connection)
+- Execute plans through MCP tools
+- Changeset creation and tracking
+- End-to-end integration tests
+
+### The Meta-Lesson on Architecture Evolution
+
+**Where We Started**:
+
+```
+Agent → Markdown Response → Regex Parsing → Git Operations
+```
+
+**Where We Are**:
+
+```
+Agent → MCP Tools → Validated Operations → Audit Trail
+```
+
+**Why This Matters**:
+
+- **Fragility → Reliability**: Tool validation catches errors at call-time
+- **Parsing → Protocol**: JSON-RPC is standard, not our regex
+- **Scattered security → Centralized**: Each tool enforces permissions
+- **Silent operations → Full audit**: Every action logged with trace_id
+
+**The Pattern**: When you find yourself writing complex parsers for structured data, consider if there's a protocol you should be using instead.
+
+**The Rule**: Protocol design is infrastructure work. It feels slow initially, but pays dividends when you have 6 tools, 24 security tests, and 71 integration scenarios all working together.
+
+---
+
+## Part XIII: The Verification Loop Pattern
+
+### Pattern 28: Success Criteria as Implementation Checkpoint
+
+**The New Practice**: Before marking any step complete, explicitly verify against documented success criteria.
+
+**The Request Pattern**:
+
+```
+Me: "Verify completeness of step 6.3 against its success criteria"
+Agent: [reads Implementation Plan]
+Agent: [reads source code]
+Agent: [runs tests]
+Agent: [generates comprehensive verification report]
+```
+
+**The Verification Report Structure**:
+
+```markdown
+## Step X.Y Verification Summary
+
+**Status:** ✅ COMPLETE | ⚠️ PARTIAL | ❌ INCOMPLETE
+
+### ✅ Implementation Completed
+
+1. Service implementation (file paths, key features)
+2. Schema definitions (types, validation)
+3. Tool integration (all tools updated)
+4. Test coverage (unit + integration counts)
+
+### Success Criteria Review
+
+| # | Criterion | Status | Evidence                                     |
+| - | --------- | ------ | -------------------------------------------- |
+| 1 | Feature A | ✅     | Method X, 4 tests                            |
+| 2 | Feature B | ⚠️     | Defined but not enforced (blocked by Step Y) |
+
+### ⚠️ Gaps Identified
+
+1. **Gap Name**: Description of missing piece
+   - Impact: What breaks without this
+   - Resolution: What step will complete this
+
+### ✅ What Works Right Now
+
+Code examples demonstrating working features
+
+### 📋 Remaining Work
+
+List of items that belong to future steps
+
+### Recommendation
+
+Mark as COMPLETE/PARTIAL with rationale
+```
+
+**Why This Works**:
+
+- Forces honest assessment of "done"
+- Distinguishes "implemented" from "fully functional"
+- Documents what's intentionally deferred vs forgotten
+- Provides clear status for stakeholders
+
+**The Two Outcomes**:
+
+**✅ Complete**: All criteria met, mark step done
+
+```
+Recommendation: Mark Step 6.3 as ✅ COMPLETE
+
+Core functionality works, comprehensive tests pass, remaining
+work is explicitly scoped to Step 6.4.
+```
+
+**⚠️ Partial**: Some criteria met, some blocked by dependencies
+
+```
+Recommendation: Mark Step 6.3 as ⚠️ PARTIAL - BLOCKED
+
+Permission validation works (10/14 criteria met), but
+subprocess security enforcement requires Step 6.4
+(Agent Orchestration) to complete.
+```
+
+**The Rule**: Never mark a step complete without running the verification loop. "It works on my machine" isn't good enough when you have documented success criteria.
+
+---
+
 _Written from the trenches of the ExoFrame project, where the builders were also the users, and the documentation wrote itself (with a little help from the AI we were building the framework for)._
 
-_The recursion continues._
+_The recursion continues. The patterns emerge. The meta-framework takes shape._
