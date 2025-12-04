@@ -3419,18 +3419,20 @@ Implement the first phase of plan execution focusing on detection and parsing:
 
 ---
 
-### Step 6.2: MCP Server Implementation 🔄 IN PROGRESS
+### Step 6.2: MCP Server Implementation ✅ COMPLETE
 
 - **Dependencies:** Step 5.12 (Plan Detection & Parsing)
 - **Rollback:** Set `mcp.enabled = false` in exo.config.toml
 - **Action:** Implement Model Context Protocol (MCP) server for agent-tool communication
 - **Location:** `src/mcp/server.ts`, `src/mcp/tools.ts`, `src/mcp/resources.ts`, `src/mcp/prompts.ts`
-- **Status:** 🔄 IN PROGRESS (Phase 4 of 5 complete - 37 tests passing)
+- **Status:** ✅ COMPLETE (All 5 Phases complete - 71 tests passing)
 - **Commits:** 
   - 140d307 - Phase 1 Walking Skeleton (8 tests)
   - 55a52f9 - Phase 2 read_file tool (15 tests)
   - 21e5818 - Phase 3 write_file & list_directory tools (26 tests)
   - b6694ab - Phase 4 git tools (git_create_branch, git_commit, git_status) (37 tests)
+  - 82759ab - Phase 5 Resources (portal:// URIs, resource discovery) (53 tests)
+  - 461ca83 - Phase 5 Prompts (execute_plan, create_changeset templates) (71 tests)
 
 **Problem Statement:**
 
