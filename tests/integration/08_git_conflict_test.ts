@@ -15,7 +15,6 @@
 import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { TestEnvironment } from "./helpers/test_environment.ts";
-import { ExecutionLoop } from "../../src/services/execution_loop.ts";
 import { GitService as _GitService } from "../../src/services/git_service.ts";
 
 Deno.test("Integration: Git Conflict - Agent and human edit same file", async (t) => {
@@ -74,11 +73,7 @@ export function greet(name: string): string {
       const activePath = await env.approvePlan(planPath);
 
       // Start execution (creates feature branch)
-      const loop = new ExecutionLoop({
-        config: env.config,
-        db: env.db,
-        agentId: "test-agent",
-      });
+      const loop = env.createExecutionLoop("test-agent");
 
       await loop.processTask(activePath);
 
@@ -251,11 +246,7 @@ Deno.test("Integration: Git Conflict - Multiple files in conflict", async () => 
 
     const activePath = await env.approvePlan(planPath);
 
-    const loop = new ExecutionLoop({
-      config: env.config,
-      db: env.db,
-      agentId: "test-agent",
-    });
+    const loop = env.createExecutionLoop("test-agent");
 
     const result = await loop.processTask(activePath);
     assertExists(result, "Execution should complete");
@@ -293,11 +284,7 @@ Deno.test("Integration: Git Conflict - Deleted file conflict", async () => {
 
     const activePath = await env.approvePlan(planPath);
 
-    const loop = new ExecutionLoop({
-      config: env.config,
-      db: env.db,
-      agentId: "test-agent",
-    });
+    const loop = env.createExecutionLoop("test-agent");
 
     // Should handle gracefully (recreate file or note conflict)
     const result = await loop.processTask(activePath);

@@ -14,10 +14,7 @@
  */
 
 import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
-import { join } from "@std/path";
 import { TestEnvironment } from "./helpers/test_environment.ts";
-import { RequestProcessor } from "../../src/services/request_processor.ts";
-import { MockLLMProvider } from "../../src/ai/providers/mock_llm_provider.ts";
 
 Deno.test("Integration: RequestProcessor with MockLLMProvider", async (t) => {
   const env = await TestEnvironment.create();
@@ -26,11 +23,9 @@ Deno.test("Integration: RequestProcessor with MockLLMProvider", async (t) => {
     let requestPath: string;
     let planPath: string;
 
-    // Setup: Create blueprint
-    await Deno.mkdir(join(env.tempDir, "Blueprints", "Agents"), { recursive: true });
-    const blueprintPath = join(env.tempDir, "Blueprints", "Agents", "senior-coder.md");
-    await Deno.writeTextFile(
-      blueprintPath,
+    // Setup: Create blueprint and processor
+    await env.createBlueprint(
+      "senior-coder",
       `# Senior Coder Blueprint
 
 You are an expert software developer. Analyze requests and create detailed implementation plans.
@@ -43,19 +38,7 @@ Always respond with:
 `,
     );
 
-    // Create MockLLMProvider (default patterns tested in mock_llm_provider_test.ts)
-    const provider = new MockLLMProvider("recorded", { recordings: [] });
-
-    const processor = new RequestProcessor(
-      env.config,
-      provider,
-      env.db,
-      {
-        inboxPath: join(env.tempDir, "Inbox"),
-        blueprintsPath: join(env.tempDir, "Blueprints", "Agents"),
-        includeReasoning: true,
-      },
-    );
+    const { provider, processor } = env.createRequestProcessor();
 
     // ========================================================================
     // Test: Full integration - Request → Blueprint → MockProvider → Plan
@@ -108,25 +91,13 @@ Deno.test("Integration: Concurrent Requests with Shared MockLLMProvider", async 
   const env = await TestEnvironment.create();
 
   try {
-    // Setup blueprint and processor
-    await Deno.mkdir(join(env.tempDir, "Blueprints", "Agents"), { recursive: true });
-    await Deno.writeTextFile(
-      join(env.tempDir, "Blueprints", "Agents", "senior-coder.md"),
+    // Setup blueprint and processor (shared provider instance)
+    await env.createBlueprint(
+      "senior-coder",
       `# Senior Coder Blueprint\n\nYou are an expert software developer.\n\n## Response Format\n\nAlways respond with:\n- <thought> tags containing your analysis\n- <content> tags containing the implementation plan\n`,
     );
 
-    // Single shared provider instance
-    const provider = new MockLLMProvider("recorded", { recordings: [] });
-    const processor = new RequestProcessor(
-      env.config,
-      provider,
-      env.db,
-      {
-        inboxPath: join(env.tempDir, "Inbox"),
-        blueprintsPath: join(env.tempDir, "Blueprints", "Agents"),
-        includeReasoning: true,
-      },
-    );
+    const { provider, processor } = env.createRequestProcessor();
 
     // Create and process multiple requests concurrently
     const requests = await Promise.all([
@@ -172,23 +143,12 @@ Deno.test("Integration: Mock Plan Generation - Activity Logging", async () => {
 
   try {
     // Setup blueprint and processor
-    await Deno.mkdir(join(env.tempDir, "Blueprints", "Agents"), { recursive: true });
-    await Deno.writeTextFile(
-      join(env.tempDir, "Blueprints", "Agents", "senior-coder.md"),
+    await env.createBlueprint(
+      "senior-coder",
       `# Senior Coder Blueprint\n\nYou are an expert software developer.\n\n## Response Format\n\nAlways respond with:\n- <thought> tags containing your analysis\n- <content> tags containing the implementation plan\n`,
     );
 
-    const provider = new MockLLMProvider("recorded", { recordings: [] });
-    const processor = new RequestProcessor(
-      env.config,
-      provider,
-      env.db,
-      {
-        inboxPath: join(env.tempDir, "Inbox"),
-        blueprintsPath: join(env.tempDir, "Blueprints", "Agents"),
-        includeReasoning: true,
-      },
-    );
+    const { provider, processor } = env.createRequestProcessor();
 
     const result = await env.createRequest("Implement feature X");
     await processor.process(result.filePath);

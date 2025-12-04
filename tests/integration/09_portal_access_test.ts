@@ -15,7 +15,6 @@
 import { assert, assertEquals, assertExists, assertRejects as _assertRejects } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { TestEnvironment } from "./helpers/test_environment.ts";
-import { ExecutionLoop } from "../../src/services/execution_loop.ts";
 import { ContextLoader } from "../../src/services/context_loader.ts";
 
 Deno.test("[security] Integration: Portal Access - Security enforcement", async (t) => {
@@ -206,11 +205,7 @@ export function main() {
 
       const activePath = await env.approvePlan(planPath);
 
-      const loop = new ExecutionLoop({
-        config: env.config,
-        db: env.db,
-        agentId: "test-agent",
-      });
+      const loop = env.createExecutionLoop("test-agent");
 
       const result = await loop.processTask(activePath);
       assertExists(result);

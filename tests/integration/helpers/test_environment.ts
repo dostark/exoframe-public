@@ -11,6 +11,9 @@ import { DatabaseService } from "../../../src/services/db.ts";
 import { createMockConfig } from "../../helpers/config.ts";
 import { initActivityTableSchema } from "../../helpers/db.ts";
 import type { Config } from "../../../src/config/schema.ts";
+import { MockLLMProvider } from "../../../src/ai/providers/mock_llm_provider.ts";
+import { RequestProcessor } from "../../../src/services/request_processor.ts";
+import { ExecutionLoop } from "../../../src/services/execution_loop.ts";
 
 export interface TestEnvironmentOptions {
   /** Custom config overrides */
@@ -305,6 +308,29 @@ This plan will accomplish the requested task.
   }
 
   /**
+   * Create an ExecutionLoop instance for testing
+   */
+  createExecutionLoop(agentId: string = "test-agent"): ExecutionLoop {
+    return new ExecutionLoop({
+      config: this.config,
+      db: this.db,
+      agentId,
+    });
+  }
+
+  /**
+   * Inject failure marker into plan to trigger intentional failure
+   */
+  async injectFailureMarker(planPath: string): Promise<void> {
+    let content = await Deno.readTextFile(planPath);
+    content = content.replace(
+      "# Proposed Plan",
+      "# Proposed Plan\n\nIntentionally fail",
+    );
+    await Deno.writeTextFile(planPath, content);
+  }
+
+  /**
    * Wait for a condition with timeout
    */
   async waitFor(
@@ -323,6 +349,79 @@ This plan will accomplish the requested task.
     }
 
     return false;
+  }
+
+  /**
+   * Create a blueprint agent file
+   */
+  async createBlueprint(
+    agentId: string,
+    content?: string,
+  ): Promise<string> {
+    const blueprintsPath = join(this.tempDir, "Blueprints", "Agents");
+    await ensureDir(blueprintsPath);
+
+    const defaultContent = `# ${agentId} Blueprint
+
+You are an expert software developer with deep knowledge of multiple programming languages and frameworks.
+
+## Response Format
+
+Always respond with valid JSON containing a plan with actionable steps.`;
+
+    const blueprintPath = join(blueprintsPath, `${agentId}.md`);
+    await Deno.writeTextFile(blueprintPath, content ?? defaultContent);
+
+    return blueprintPath;
+  }
+
+  /**
+   * Create a RequestProcessor with MockLLMProvider
+   */
+  createRequestProcessor(options?: {
+    providerMode?: "recorded" | "mock";
+    recordings?: Array<{
+      request: { model: string; messages: Array<{ role: string; content: string }> };
+      response: { choices: Array<{ message: { content: string } }> };
+    }>;
+    includeReasoning?: boolean;
+    inboxPath?: string;
+    blueprintsPath?: string;
+  }): {
+    provider: MockLLMProvider;
+    processor: RequestProcessor;
+  } {
+    const provider = new MockLLMProvider(
+      options?.providerMode ?? "recorded",
+      { recordings: options?.recordings ?? [] },
+    );
+
+    const processor = new RequestProcessor(
+      this.config,
+      provider,
+      this.db,
+      {
+        inboxPath: options?.inboxPath ?? join(this.tempDir, "Inbox"),
+        blueprintsPath: options?.blueprintsPath ??
+          join(this.tempDir, "Blueprints", "Agents"),
+        includeReasoning: options?.includeReasoning ?? true,
+      },
+    );
+
+    return { provider, processor };
+  }
+
+  /**
+   * Create a mock LLM provider with optional recordings
+   */
+  createMockProvider(
+    mode: "recorded" | "mock" = "recorded",
+    recordings: Array<{
+      request: { model: string; messages: Array<{ role: string; content: string }> };
+      response: { choices: Array<{ message: { content: string } }> };
+    }> = [],
+  ): MockLLMProvider {
+    return new MockLLMProvider(mode, { recordings });
   }
 
   /**

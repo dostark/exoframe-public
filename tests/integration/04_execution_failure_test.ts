@@ -15,7 +15,6 @@
 import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { join as _join } from "@std/path";
 import { TestEnvironment } from "./helpers/test_environment.ts";
-import { ExecutionLoop } from "../../src/services/execution_loop.ts";
 
 Deno.test("Integration: Execution Failure - Plan fails during execution", async (t) => {
   const env = await TestEnvironment.create();
@@ -60,15 +59,9 @@ Deno.test("Integration: Execution Failure - Plan fails during execution", async 
     // ========================================================================
     await t.step("Test 1: Execution failure is detected and captured", async () => {
       // Modify the plan to include the special failure marker
-      let content = await Deno.readTextFile(activePlanPath);
-      content = content.replace("# Proposed Plan", "# Proposed Plan\n\nIntentionally fail");
-      await Deno.writeTextFile(activePlanPath, content);
+      await env.injectFailureMarker(activePlanPath);
 
-      const loop = new ExecutionLoop({
-        config: env.config,
-        db: env.db,
-        agentId: "test-agent",
-      });
+      const loop = env.createExecutionLoop("test-agent");
 
       // Execute the failing plan
       const result = await loop.processTask(activePlanPath);
@@ -158,11 +151,7 @@ Deno.test("Integration: Execution Failure - Plan fails during execution", async 
     // ========================================================================
     await t.step("Test 5: Lease is released even on failure", async () => {
       // Create a new execution loop
-      const newLoop = new ExecutionLoop({
-        config: env.config,
-        db: env.db,
-        agentId: "new-agent",
-      });
+      const newLoop = env.createExecutionLoop("new-agent");
 
       // If we had a lease file system, we'd check it's released
       // For now, verify we can process another task (no deadlock)
@@ -251,15 +240,9 @@ Deno.test("Integration: Execution Failure - Tool throws exception", async () => 
     const activePath = await env.approvePlan(planPath);
 
     // Add failure marker to trigger simulated failure
-    let content = await Deno.readTextFile(activePath);
-    content = content.replace("# Proposed Plan", "# Proposed Plan\n\nIntentionally fail");
-    await Deno.writeTextFile(activePath, content);
+    await env.injectFailureMarker(activePath);
 
-    const loop = new ExecutionLoop({
-      config: env.config,
-      db: env.db,
-      agentId: "test-agent",
-    });
+    const loop = env.createExecutionLoop("test-agent");
 
     const result = await loop.processTask(activePath);
 
@@ -290,15 +273,9 @@ Deno.test("Integration: Execution Failure - Partial execution rollback", async (
     const activePath = await env.approvePlan(planPath);
 
     // Add failure marker
-    let content = await Deno.readTextFile(activePath);
-    content = content.replace("# Proposed Plan", "# Proposed Plan\n\nIntentionally fail");
-    await Deno.writeTextFile(activePath, content);
+    await env.injectFailureMarker(activePath);
 
-    const loop = new ExecutionLoop({
-      config: env.config,
-      db: env.db,
-      agentId: "test-agent",
-    });
+    const loop = env.createExecutionLoop("test-agent");
 
     const result = await loop.processTask(activePath);
 
@@ -342,15 +319,9 @@ Deno.test("Integration: Execution Failure - Recovery allows retry", async () => 
     let activePath = await env.approvePlan(planPath);
 
     // Add failure marker
-    let content = await Deno.readTextFile(activePath);
-    content = content.replace("# Proposed Plan", "# Proposed Plan\n\nIntentionally fail");
-    await Deno.writeTextFile(activePath, content);
+    await env.injectFailureMarker(activePath);
 
-    const loop = new ExecutionLoop({
-      config: env.config,
-      db: env.db,
-      agentId: "test-agent",
-    });
+    const loop = env.createExecutionLoop("test-agent");
 
     // First attempt fails
     const result1 = await loop.processTask(activePath);
