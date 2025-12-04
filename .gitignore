@@ -1,6 +1,8 @@
 /.cache
 node_modules/
 dist/
+coverage/
+report/
 .vscode/
 
 # Obsidian vault config (user-specific)
