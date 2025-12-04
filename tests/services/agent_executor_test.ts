@@ -1108,3 +1108,195 @@ You are a test agent.`;
   sanitizeResources: false,
   sanitizeOps: false,
 });
+
+Deno.test({
+  name: "AgentExecutor: passes execution context via prompt (criterion 6)",
+  fn: async () => {
+    await setup();
+    try {
+      const { db, logger, pathResolver, permissions } = getServices();
+
+      // Import MockProvider
+      const { MockProvider } = await import("../../src/ai/providers.ts");
+
+      // Create test blueprint
+      const blueprintContent = `---
+model: mock-model
+provider: mock
+capabilities:
+  - code_generation
+---
+
+# Test Agent
+
+You are a test agent for ExoFrame testing.`;
+
+      await Deno.writeTextFile(
+        join(blueprintsDir, "test-agent.md"),
+        blueprintContent,
+      );
+
+      // Capture the prompt passed to the provider
+      let capturedPrompt = "";
+      const mockResponse = `\`\`\`json
+{
+  "branch": "feat/context-test",
+  "commit_sha": "1234567890abcdef1234567890abcdef12345678",
+  "files_changed": ["test.ts"],
+  "description": "Test with context",
+  "tool_calls": 1,
+  "execution_time_ms": 100
+}
+\`\`\``;
+
+      const mockProvider = new MockProvider(mockResponse);
+      
+      // Wrap generate to capture the prompt
+      const originalGenerate = mockProvider.generate.bind(mockProvider);
+      mockProvider.generate = async (prompt: string, options?: any) => {
+        capturedPrompt = prompt;
+        return await originalGenerate(prompt, options);
+      };
+
+      const executor = new AgentExecutor(
+        testConfig,
+        db,
+        logger,
+        pathResolver,
+        permissions,
+        mockProvider,
+      );
+
+      const context: ExecutionContext = {
+        trace_id: "test-trace-12345",
+        request_id: "test-request-789",
+        request: "Implement feature X",
+        plan: "Step 1: Create file\nStep 2: Write code",
+        portal: "TestPortal",
+      };
+
+      const options: AgentExecutionOptions = {
+        agent_id: "test-agent",
+        portal: "TestPortal",
+        security_mode: "sandboxed",
+        timeout_ms: 5000,
+        max_tool_calls: 50,
+        audit_enabled: true,
+      };
+
+      await executor.executeStep(context, options);
+
+      // Verify execution context was passed in the prompt
+      assertStringIncludes(capturedPrompt, "test-trace-12345"); // trace_id
+      assertStringIncludes(capturedPrompt, "test-request-789"); // request_id
+      assertStringIncludes(capturedPrompt, "TestPortal"); // portal
+      assertStringIncludes(capturedPrompt, "sandboxed"); // security_mode
+      assertStringIncludes(capturedPrompt, "Implement feature X"); // request
+      assertStringIncludes(capturedPrompt, "Step 1: Create file"); // plan
+      assertStringIncludes(capturedPrompt, "You are a test agent for ExoFrame testing"); // system prompt
+    } finally {
+      await cleanup();
+    }
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
+
+Deno.test({
+  name: "AgentExecutor: handles agent completion signal (criterion 8)",
+  fn: async () => {
+    await setup();
+    try {
+      const { db, logger, pathResolver, permissions } = getServices();
+
+      // Import MockProvider
+      const { MockProvider } = await import("../../src/ai/providers.ts");
+
+      // Create test blueprint
+      const blueprintContent = `---
+model: mock-model
+provider: mock
+---
+
+# Completion Test Agent
+
+Test agent for completion handling.`;
+
+      await Deno.writeTextFile(
+        join(blueprintsDir, "test-agent.md"),
+        blueprintContent,
+      );
+
+      const mockResponse = `\`\`\`json
+{
+  "branch": "feat/completion-test",
+  "commit_sha": "abcdef1234567890abcdef1234567890abcdef12",
+  "files_changed": ["completion.ts"],
+  "description": "Completed successfully",
+  "tool_calls": 2,
+  "execution_time_ms": 150
+}
+\`\`\``;
+
+      const mockProvider = new MockProvider(mockResponse);
+
+      const executor = new AgentExecutor(
+        testConfig,
+        db,
+        logger,
+        pathResolver,
+        permissions,
+        mockProvider,
+      );
+
+      const context: ExecutionContext = {
+        trace_id: crypto.randomUUID(),
+        request_id: "completion-test",
+        request: "Test completion handling",
+        plan: "Execute and complete",
+        portal: "TestPortal",
+      };
+
+      const options: AgentExecutionOptions = {
+        agent_id: "test-agent",
+        portal: "TestPortal",
+        security_mode: "sandboxed",
+        timeout_ms: 5000,
+        max_tool_calls: 50,
+        audit_enabled: true,
+      };
+
+      // Execute and verify completion
+      const result = await executor.executeStep(context, options);
+
+      // Verify completion was handled correctly
+      assertExists(result);
+      assertEquals(result.branch, "feat/completion-test");
+      assertEquals(result.commit_sha, "abcdef1234567890abcdef1234567890abcdef12");
+      assertEquals(result.description, "Completed successfully");
+      assertEquals(result.tool_calls, 2);
+
+      // Verify completion was logged
+      await db.waitForFlush();
+      const activities = db.getActivitiesByTrace(context.trace_id);
+      
+      const completionLog = activities.find((a) => 
+        a.action_type === "agent.execution_completed"
+      );
+      
+      assertExists(completionLog, "Completion should be logged");
+      
+      // Verify payload contains completion details (payload is stored as JSON string)
+      const payload = JSON.parse(completionLog.payload);
+      assertEquals(payload.branch, "feat/completion-test");
+      assertEquals(payload.commit_sha, "abcdef1234567890abcdef1234567890abcdef12");
+      assertEquals(payload.files_changed, 1); // Note: logged as count, not array
+      assertEquals(payload.tool_calls, 2);
+      assertExists(payload.completed_at);
+    } finally {
+      await cleanup();
+    }
+  },
+  sanitizeResources: false,
+  sanitizeOps: false,
+});
