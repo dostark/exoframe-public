@@ -1,5 +1,5 @@
 /**
- * MCP (Model Context Protocol) Schema - Step 6.2
+ * MCP (Model Context Protocol) Schema
  * Zod schemas for MCP server types and validation
  */
 
@@ -25,33 +25,39 @@ export type MCPConfig = z.infer<typeof MCPConfigSchema>;
 export const ReadFileToolArgsSchema = z.object({
   portal: z.string().min(1, "Portal name required"),
   path: z.string().min(1, "File path required"),
+  agent_id: z.string().min(1, "Agent ID required").default("system"), // Step 6.3: Default to "system" for backwards compat
 });
 
 export const WriteFileToolArgsSchema = z.object({
   portal: z.string().min(1, "Portal name required"),
   path: z.string().min(1, "File path required"),
   content: z.string(),
+  agent_id: z.string().min(1, "Agent ID required").default("system"), // Step 6.3: Default to "system" for backwards compat
 });
 
 export const ListDirectoryToolArgsSchema = z.object({
   portal: z.string().min(1, "Portal name required"),
   path: z.string().optional().default(""),
+  agent_id: z.string().min(1, "Agent ID required").default("system"), // Step 6.3: Default to "system" for backwards compat
 });
 
 export const GitCreateBranchToolArgsSchema = z.object({
   portal: z.string().min(1, "Portal name required"),
   branch: z.string().min(1, "Branch name required")
     .regex(/^(feat|fix|docs|chore|refactor|test)\//, "Branch must start with feat/, fix/, docs/, etc."),
+  agent_id: z.string().min(1, "Agent ID required").default("system"), // Step 6.3: Default to "system" for backwards compat
 });
 
 export const GitCommitToolArgsSchema = z.object({
   portal: z.string().min(1, "Portal name required"),
   message: z.string().min(1, "Commit message required"),
   files: z.array(z.string()).optional(),
+  agent_id: z.string().min(1, "Agent ID required").default("system"), // Step 6.3: Default to "system" for backwards compat
 });
 
 export const GitStatusToolArgsSchema = z.object({
   portal: z.string().min(1, "Portal name required"),
+  agent_id: z.string().min(1, "Agent ID required").default("system"), // Step 6.3: Default to "system" for backwards compat
 });
 
 // Union type for all tool arguments

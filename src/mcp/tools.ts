@@ -5,12 +5,15 @@ import {
   ReadFileToolArgsSchema,
   type MCPToolResponse,
 } from "../schemas/mcp.ts";
+import { PortalPermissionsService } from "../services/portal_permissions.ts";
+import type { PortalOperation } from "../schemas/portal_permissions.ts";
 
 /**
- * MCP Tool Handlers (Step 6.2 Phase 2)
+ * MCP Tool Handlers
  *
  * Provides secure, validated tool execution for MCP server.
  * All tools log to Activity Journal and validate inputs.
+ * All tools make permission checking for portal operations.
  */
 
 /**
@@ -20,10 +23,12 @@ import {
 export abstract class ToolHandler {
   protected config: Config;
   protected db: DatabaseService;
+  protected permissions: PortalPermissionsService | null;
 
-  constructor(config: Config, db: DatabaseService) {
+  constructor(config: Config, db: DatabaseService, permissions?: PortalPermissionsService) {
     this.config = config;
     this.db = db;
+    this.permissions = permissions || null;
   }
 
   /**
@@ -36,6 +41,28 @@ export abstract class ToolHandler {
       throw new Error(`Portal '${portalName}' not found in configuration`);
     }
     return portal.target_path;
+  }
+
+  /**
+   * Validates that an agent has permission for an operation on a portal
+   * @throws Error if permission denied
+   */
+  protected validatePermission(
+    portalName: string,
+    agentId: string,
+    operation: PortalOperation,
+  ): void {
+    if (!this.permissions) {
+      // No permissions service configured, allow all operations
+      return;
+    }
+
+    const result = this.permissions.checkOperationAllowed(portalName, agentId, operation);
+    if (!result.allowed) {
+      throw new Error(
+        result.reason || `Permission denied for ${operation} on portal ${portalName}`,
+      );
+    }
   }
 
   /**
@@ -111,9 +138,12 @@ export class ReadFileTool extends ToolHandler {
   async execute(args: unknown): Promise<MCPToolResponse> {
     // Validate arguments with Zod schema
     const validatedArgs = ReadFileToolArgsSchema.parse(args);
-    const { portal, path } = validatedArgs;
+    const { portal, path, agent_id } = validatedArgs;
 
     try {
+      // All tools make permission checking for portal operations
+      this.validatePermission(portal, agent_id, "read");
+      
       // Validate portal exists
       const portalPath = this.validatePortalExists(portal);
 
@@ -134,6 +164,7 @@ export class ReadFileTool extends ToolHandler {
       // Log successful execution
       this.logToolExecution("read_file", portal, {
         path,
+        agent_id,
         success: true,
         bytes: content.length,
       });
@@ -150,6 +181,7 @@ export class ReadFileTool extends ToolHandler {
       // Log failed execution
       this.logToolExecution("read_file", portal, {
         path,
+        agent_id,
         success: false,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -173,8 +205,12 @@ export class ReadFileTool extends ToolHandler {
             type: "string",
             description: "Relative path within portal",
           },
+          agent_id: {
+            type: "string",
+            description: "Agent identifier for permission checks",
+          },
         },
-        required: ["portal", "path"],
+        required: ["portal", "path", "agent_id"],
       },
     };
   }
@@ -197,10 +233,14 @@ export class WriteFileTool extends ToolHandler {
       portal: string;
       path: string;
       content: string;
+      agent_id: string;
     };
-    const { portal, path, content } = validatedArgs;
+    const { portal, path, content, agent_id } = validatedArgs;
 
     try {
+      // All tools make permission checking for portal operations
+      this.validatePermission(portal, agent_id, "write");
+      
       // Validate portal exists
       const portalPath = this.validatePortalExists(portal);
 
@@ -218,6 +258,7 @@ export class WriteFileTool extends ToolHandler {
       // Log successful execution
       this.logToolExecution("write_file", portal, {
         path,
+        agent_id,
         success: true,
         bytes: content.length,
       });
@@ -234,6 +275,7 @@ export class WriteFileTool extends ToolHandler {
       // Log failed execution
       this.logToolExecution("write_file", portal, {
         path,
+        agent_id,
         success: false,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -261,8 +303,12 @@ export class WriteFileTool extends ToolHandler {
             type: "string",
             description: "File content to write",
           },
+          agent_id: {
+            type: "string",
+            description: "Agent identifier for permission checks",
+          },
         },
-        required: ["portal", "path", "content"],
+        required: ["portal", "path", "content", "agent_id"],
       },
     };
   }
@@ -284,10 +330,14 @@ export class ListDirectoryTool extends ToolHandler {
     const validatedArgs = ListDirectoryToolArgsSchema.parse(args) as {
       portal: string;
       path?: string;
+      agent_id: string;
     };
-    const { portal, path } = validatedArgs;
+    const { portal, path, agent_id } = validatedArgs;
 
     try {
+      // All tools make permission checking for portal operations
+      this.validatePermission(portal, agent_id, "read");
+      
       // Validate portal exists
       const portalPath = this.validatePortalExists(portal);
 
@@ -319,6 +369,7 @@ export class ListDirectoryTool extends ToolHandler {
       // Log successful execution
       this.logToolExecution("list_directory", portal, {
         path: listPath || "/",
+        agent_id,
         success: true,
         entry_count: entries.length,
       });
@@ -335,6 +386,7 @@ export class ListDirectoryTool extends ToolHandler {
       // Log failed execution
       this.logToolExecution("list_directory", portal, {
         path: path || "/",
+        agent_id,
         success: false,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -358,8 +410,12 @@ export class ListDirectoryTool extends ToolHandler {
             type: "string",
             description: "Relative path within portal (optional, defaults to root)",
           },
+          agent_id: {
+            type: "string",
+            description: "Agent identifier for permission checks",
+          },
         },
-        required: ["portal"],
+        required: ["portal", "agent_id"],
       },
     };
   }
@@ -380,10 +436,14 @@ export class GitCreateBranchTool extends ToolHandler {
     const validatedArgs = GitCreateBranchToolArgsSchema.parse(args) as {
       portal: string;
       branch: string;
+      agent_id: string;
     };
-    const { portal, branch } = validatedArgs;
+    const { portal, branch, agent_id } = validatedArgs;
 
     try {
+      // All tools make permission checking for portal operations
+      this.validatePermission(portal, agent_id, "git");
+      
       // Validate portal exists
       const portalPath = this.validatePortalExists(portal);
 
@@ -412,6 +472,7 @@ export class GitCreateBranchTool extends ToolHandler {
       // Log successful execution
       this.logToolExecution("git_create_branch", portal, {
         branch,
+        agent_id,
         success: true,
       });
 
@@ -427,6 +488,7 @@ export class GitCreateBranchTool extends ToolHandler {
       // Log failed execution
       this.logToolExecution("git_create_branch", portal, {
         branch,
+        agent_id,
         success: false,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -450,8 +512,12 @@ export class GitCreateBranchTool extends ToolHandler {
             type: "string",
             description: "Branch name (must start with feat/, fix/, docs/, chore/, refactor/, or test/)",
           },
+          agent_id: {
+            type: "string",
+            description: "Agent identifier for permission checks",
+          },
         },
-        required: ["portal", "branch"],
+        required: ["portal", "branch", "agent_id"],
       },
     };
   }
@@ -474,10 +540,14 @@ export class GitCommitTool extends ToolHandler {
       portal: string;
       message: string;
       files?: string[];
+      agent_id: string;
     };
-    const { portal, message, files } = validatedArgs;
+    const { portal, message, files, agent_id } = validatedArgs;
 
     try {
+      // All tools make permission checking for portal operations
+      this.validatePermission(portal, agent_id, "git");
+      
       // Validate portal exists
       const portalPath = this.validatePortalExists(portal);
 
@@ -524,6 +594,7 @@ export class GitCommitTool extends ToolHandler {
       this.logToolExecution("git_commit", portal, {
         message,
         files: files?.length || "all",
+        agent_id,
         success: true,
       });
 
@@ -539,6 +610,7 @@ export class GitCommitTool extends ToolHandler {
       // Log failed execution
       this.logToolExecution("git_commit", portal, {
         message,
+        agent_id,
         success: false,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -567,8 +639,12 @@ export class GitCommitTool extends ToolHandler {
             items: { type: "string" },
             description: "Optional: specific files to commit (defaults to all changes)",
           },
+          agent_id: {
+            type: "string",
+            description: "Agent identifier for permission checks",
+          },
         },
-        required: ["portal", "message"],
+        required: ["portal", "message", "agent_id"],
       },
     };
   }
@@ -588,10 +664,14 @@ export class GitStatusTool extends ToolHandler {
     const { GitStatusToolArgsSchema } = await import("../schemas/mcp.ts");
     const validatedArgs = GitStatusToolArgsSchema.parse(args) as {
       portal: string;
+      agent_id: string;
     };
-    const { portal } = validatedArgs;
+    const { portal, agent_id } = validatedArgs;
 
     try {
+      // All tools make permission checking for portal operations
+      this.validatePermission(portal, agent_id, "git");
+      
       // Validate portal exists
       const portalPath = this.validatePortalExists(portal);
 
@@ -624,6 +704,7 @@ export class GitStatusTool extends ToolHandler {
 
       // Log successful execution
       this.logToolExecution("git_status", portal, {
+        agent_id,
         success: true,
         has_changes: output.trim().length > 0,
       });
@@ -639,6 +720,7 @@ export class GitStatusTool extends ToolHandler {
     } catch (error) {
       // Log failed execution
       this.logToolExecution("git_status", portal, {
+        agent_id,
         success: false,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -658,8 +740,12 @@ export class GitStatusTool extends ToolHandler {
             type: "string",
             description: "Portal name",
           },
+          agent_id: {
+            type: "string",
+            description: "Agent identifier for permission checks",
+          },
         },
-        required: ["portal"],
+        required: ["portal", "agent_id"],
       },
     };
   }

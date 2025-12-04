@@ -13,9 +13,8 @@ import {
 import { 
   discoverAllResources, 
   parsePortalURI, 
-  type MCPResource 
 } from "./resources.ts";
-import { getPrompts, generatePrompt, type MCPPrompt } from "./prompts.ts";
+import { getPrompts, generatePrompt } from "./prompts.ts";
 
 /**
  * MCP Server Implementation (Step 6.2)
