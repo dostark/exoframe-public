@@ -3,6 +3,7 @@ import { join } from "@std/path";
 import { FileWatcher } from "../src/services/watcher.ts";
 import { createMockConfig } from "./helpers/config.ts";
 import { initTestDbService } from "./helpers/db.ts";
+import { createWatcherTestContext } from "./helpers/watcher_test_helper.ts";
 
 /**
  * Tests for Step 2.1: The File Watcher (Stable Read)
@@ -405,43 +406,32 @@ Deno.test("File stability - eventual consistency with delayed write", async () =
 // ============================================================================
 
 Deno.test("FileWatcher: processes .md files and ignores dotfiles", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "watcher-class-filter-" });
+  const { helper, cleanup } = await createWatcherTestContext("watcher-class-filter-");
   try {
-    const inboxPath = join(tempDir, "Inbox", "Requests");
-    await Deno.mkdir(inboxPath, { recursive: true });
-
-    const config = createMockConfig(tempDir, {
-      watcher: { debounce_ms: 50, stability_check: false },
-    });
+    await helper.createInboxStructure();
 
     const eventsReceived: string[] = [];
-    const watcher = new FileWatcher(config, (event) => {
+    const watcher = helper.createWatcher((event) => {
       eventsReceived.push(event.path);
     });
 
-    // Start watcher in background
-    const watcherPromise = watcher.start();
-
-    // Wait for watcher to initialize
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await helper.startWatcher(watcher);
 
     // Create test files
-    await Deno.writeTextFile(join(inboxPath, "valid.md"), "Valid file");
-    await Deno.writeTextFile(join(inboxPath, ".hidden.md"), "Hidden file");
-    await Deno.writeTextFile(join(inboxPath, "readme.txt"), "Text file");
+    await Deno.writeTextFile(join(helper.inboxPath, "valid.md"), "Valid file");
+    await Deno.writeTextFile(join(helper.inboxPath, ".hidden.md"), "Hidden file");
+    await Deno.writeTextFile(join(helper.inboxPath, "readme.txt"), "Text file");
 
     // Wait for processing
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    // Stop watcher
-    watcher.stop();
-    await watcherPromise.catch(() => {}); // Ignore abort error
+    await helper.stopWatcher(watcher);
 
     // Should only process valid.md
     assertEquals(eventsReceived.length, 1);
     assertEquals(eventsReceived[0].endsWith("valid.md"), true);
   } finally {
-    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+    await cleanup();
   }
 });
 
@@ -467,93 +457,59 @@ Deno.test("FileWatcher: throws error when watch directory not found", async () =
 });
 
 Deno.test("FileWatcher: processes file without stability check", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "watcher-no-stability-" });
+  const { helper, cleanup } = await createWatcherTestContext("watcher-no-stability-");
   try {
-    const inboxPath = join(tempDir, "Inbox", "Requests");
-    await Deno.mkdir(inboxPath, { recursive: true });
-
-    const config = createMockConfig(tempDir, {
-      watcher: { debounce_ms: 50, stability_check: false }, // Disabled
-    });
+    await helper.createInboxStructure();
 
     let receivedContent = "";
-    const watcher = new FileWatcher(config, (event) => {
+    const watcher = helper.createWatcher((event) => {
       receivedContent = event.content;
     });
 
-    const watcherPromise = watcher.start();
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Write file
-    const testFile = join(inboxPath, "immediate.md");
-    await Deno.writeTextFile(testFile, "Immediate read");
-
-    // Wait for processing
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    watcher.stop();
-    await watcherPromise.catch(() => {});
+    await helper.startWatcher(watcher);
+    await helper.writeFile("immediate.md", "Immediate read");
+    await helper.stopWatcher(watcher);
 
     // Should have received content immediately without stability check
     assertEquals(receivedContent, "Immediate read");
   } finally {
-    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+    await cleanup();
   }
 });
 
 Deno.test("FileWatcher: handles onFileReady callback errors gracefully", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "watcher-callback-error-" });
+  const { helper, cleanup } = await createWatcherTestContext("watcher-callback-error-");
   try {
-    const inboxPath = join(tempDir, "Inbox", "Requests");
-    await Deno.mkdir(inboxPath, { recursive: true });
-
-    const config = createMockConfig(tempDir, {
-      watcher: { debounce_ms: 50, stability_check: false },
-    });
+    await helper.createInboxStructure();
 
     let callbackInvoked = false;
-    const watcher = new FileWatcher(config, () => {
+    const watcher = helper.createWatcher(() => {
       callbackInvoked = true;
       throw new Error("Callback error");
     });
 
-    const watcherPromise = watcher.start();
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    await Deno.writeTextFile(join(inboxPath, "test.md"), "content");
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    watcher.stop();
-    await watcherPromise.catch(() => {});
+    await helper.startWatcher(watcher);
+    await helper.writeFile("test.md", "content");
+    await helper.stopWatcher(watcher);
 
     // Callback should have been invoked despite error
     assertEquals(callbackInvoked, true);
   } finally {
-    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+    await cleanup();
   }
 });
 
 Deno.test("FileWatcher: logs activity with database", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "watcher-db-logging-" });
+  const { helper, cleanup } = await createWatcherTestContext("watcher-db-logging-");
   try {
-    const inboxPath = join(tempDir, "Inbox", "Requests");
-    await Deno.mkdir(inboxPath, { recursive: true });
+    await helper.createInboxStructure();
 
     const { db } = await initTestDbService();
-    const config = createMockConfig(tempDir, {
-      watcher: { debounce_ms: 50, stability_check: false },
-    });
+    const watcher = helper.createWatcher(() => {}, { db });
 
-    const watcher = new FileWatcher(config, () => {}, db);
-
-    const watcherPromise = watcher.start();
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    await Deno.writeTextFile(join(inboxPath, "logged.md"), "content");
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    watcher.stop();
-    await watcherPromise.catch(() => {});
+    await helper.startWatcher(watcher);
+    await helper.writeFile("logged.md", "content");
+    await helper.stopWatcher(watcher);
     await db.waitForFlush();
 
     // Check if activities were logged
@@ -568,104 +524,77 @@ Deno.test("FileWatcher: logs activity with database", async () => {
 
     db.close();
   } finally {
-    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+    await cleanup();
   }
 });
 
 Deno.test("FileWatcher: handles file read errors during processing", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "watcher-read-error-" });
+  const { helper, cleanup } = await createWatcherTestContext("watcher-read-error-");
   try {
-    const inboxPath = join(tempDir, "Inbox", "Requests");
-    await Deno.mkdir(inboxPath, { recursive: true });
+    await helper.createInboxStructure();
 
-    const config = createMockConfig(tempDir, {
-      watcher: { debounce_ms: 50, stability_check: false },
-    });
-
-    const watcher = new FileWatcher(config, () => {
+    const watcher = helper.createWatcher(() => {
       // This shouldn't be called if file read fails
     });
 
-    const watcherPromise = watcher.start();
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await helper.startWatcher(watcher);
 
     // Create file then remove it quickly (race condition)
-    const testFile = join(inboxPath, "disappear.md");
+    const testFile = join(helper.inboxPath, "disappear.md");
     await Deno.writeTextFile(testFile, "content");
     await Deno.remove(testFile);
 
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    watcher.stop();
-    await watcherPromise.catch(() => {});
+    await helper.stopWatcher(watcher);
 
     // Watcher should handle the error gracefully
     assertEquals(true, true); // Test passes if no unhandled error
   } finally {
-    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+    await cleanup();
   }
 });
 
 Deno.test("FileWatcher: handles non-Error exceptions", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "watcher-non-error-" });
+  const { helper, cleanup } = await createWatcherTestContext("watcher-non-error-");
   try {
-    const inboxPath = join(tempDir, "Inbox", "Requests");
-    await Deno.mkdir(inboxPath, { recursive: true });
-
-    const config = createMockConfig(tempDir, {
-      watcher: { debounce_ms: 50, stability_check: false },
-    });
+    await helper.createInboxStructure();
 
     // Create a callback that throws a non-Error object
-    const watcher = new FileWatcher(config, () => {
+    const watcher = helper.createWatcher(() => {
       // eslint-disable-next-line no-throw-literal
       throw "String error"; // Non-Error exception
     });
 
-    const watcherPromise = watcher.start();
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    await Deno.writeTextFile(join(inboxPath, "test.md"), "content");
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    watcher.stop();
-    await watcherPromise.catch(() => {});
+    await helper.startWatcher(watcher);
+    await helper.writeFile("test.md", "content");
+    await helper.stopWatcher(watcher);
 
     // Should handle non-Error exceptions gracefully
     assertEquals(true, true);
   } finally {
-    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+    await cleanup();
   }
 });
 
 Deno.test("FileWatcher: clears pending timers on stop", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "watcher-clear-timers-" });
+  const { helper, cleanup } = await createWatcherTestContext("watcher-clear-timers-");
   try {
-    const inboxPath = join(tempDir, "Inbox", "Requests");
-    await Deno.mkdir(inboxPath, { recursive: true });
-
-    const config = createMockConfig(tempDir, {
-      watcher: {
-        debounce_ms: 1000, // Long debounce
-        stability_check: false,
-      },
-    });
+    await helper.createInboxStructure();
 
     let eventsProcessed = 0;
-    const watcher = new FileWatcher(config, () => {
+    const watcher = helper.createWatcher(() => {
       eventsProcessed++;
-    });
+    }, { debounceMs: 1000 }); // Long debounce
 
-    const watcherPromise = watcher.start();
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await helper.startWatcher(watcher);
 
     // Create file but stop before debounce completes
-    await Deno.writeTextFile(join(inboxPath, "pending.md"), "content");
+    await Deno.writeTextFile(join(helper.inboxPath, "pending.md"), "content");
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Stop immediately (before debounce timer fires)
-    watcher.stop();
-    await watcherPromise.catch(() => {});
+    await helper.stopWatcher(watcher);
 
     // Wait to ensure timer was cleared
     await new Promise((resolve) => setTimeout(resolve, 1100));
@@ -673,29 +602,23 @@ Deno.test("FileWatcher: clears pending timers on stop", async () => {
     // Event should not have been processed (timer was cleared)
     assertEquals(eventsProcessed, 0);
   } finally {
-    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+    await cleanup();
   }
 });
 
 Deno.test("FileWatcher: handles modify events", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "watcher-modify-" });
+  const { helper, cleanup } = await createWatcherTestContext("watcher-modify-");
   try {
-    const inboxPath = join(tempDir, "Inbox", "Requests");
-    await Deno.mkdir(inboxPath, { recursive: true });
-
-    const config = createMockConfig(tempDir, {
-      watcher: { debounce_ms: 50, stability_check: false },
-    });
+    await helper.createInboxStructure();
 
     const eventsReceived: string[] = [];
-    const watcher = new FileWatcher(config, (event) => {
+    const watcher = helper.createWatcher((event) => {
       eventsReceived.push(event.content);
     });
 
-    const watcherPromise = watcher.start();
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await helper.startWatcher(watcher);
 
-    const testFile = join(inboxPath, "modify.md");
+    const testFile = join(helper.inboxPath, "modify.md");
     await Deno.writeTextFile(testFile, "Version 1");
     await new Promise((resolve) => setTimeout(resolve, 150));
 
@@ -703,38 +626,28 @@ Deno.test("FileWatcher: handles modify events", async () => {
     await Deno.writeTextFile(testFile, "Version 2");
     await new Promise((resolve) => setTimeout(resolve, 150));
 
-    watcher.stop();
-    await watcherPromise.catch(() => {});
+    await helper.stopWatcher(watcher);
 
     // Should have received both versions
     assertEquals(eventsReceived.length >= 2, true);
   } finally {
-    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+    await cleanup();
   }
 });
 
 Deno.test("FileWatcher: debounces rapid file modifications", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "watcher-rapid-debounce-" });
+  const { helper, cleanup } = await createWatcherTestContext("watcher-rapid-debounce-");
   try {
-    const inboxPath = join(tempDir, "Inbox", "Requests");
-    await Deno.mkdir(inboxPath, { recursive: true });
-
-    const config = createMockConfig(tempDir, {
-      watcher: {
-        debounce_ms: 200, // Long enough to test debouncing
-        stability_check: false,
-      },
-    });
+    await helper.createInboxStructure();
 
     let processCount = 0;
-    const watcher = new FileWatcher(config, () => {
+    const watcher = helper.createWatcher(() => {
       processCount++;
-    });
+    }, { debounceMs: 200 }); // Long enough to test debouncing
 
-    const watcherPromise = watcher.start();
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await helper.startWatcher(watcher);
 
-    const testFile = join(inboxPath, "rapid.md");
+    const testFile = join(helper.inboxPath, "rapid.md");
 
     // Rapidly modify file multiple times
     for (let i = 0; i < 5; i++) {
@@ -745,12 +658,11 @@ Deno.test("FileWatcher: debounces rapid file modifications", async () => {
     // Wait for debounce to complete
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    watcher.stop();
-    await watcherPromise.catch(() => {});
+    await helper.stopWatcher(watcher);
 
     // Should have processed only once or twice due to debouncing
     assertEquals(processCount <= 2, true);
   } finally {
-    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+    await cleanup();
   }
 });

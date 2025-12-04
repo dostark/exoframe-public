@@ -1,0 +1,128 @@
+import { join } from "@std/path";
+import { FileWatcher } from "../../src/services/watcher.ts";
+import type { Config } from "../../src/config/schema.ts";
+import type { DatabaseService } from "../../src/services/db.ts";
+import { createMockConfig } from "./config.ts";
+
+/**
+ * Test helper for FileWatcher tests
+ * Provides utilities for setting up temp directories, watchers, and common test patterns
+ */
+export class WatcherTestHelper {
+  public tempDir: string;
+  public inboxPath: string;
+  private watcher?: FileWatcher;
+  private watcherPromise?: Promise<void>;
+
+  constructor(tempDir: string) {
+    this.tempDir = tempDir;
+    this.inboxPath = join(tempDir, "Inbox", "Requests");
+  }
+
+  /**
+   * Creates inbox directory structure
+   */
+  async createInboxStructure(): Promise<void> {
+    await Deno.mkdir(this.inboxPath, { recursive: true });
+  }
+
+  /**
+   * Creates a FileWatcher instance with custom callback
+   */
+  createWatcher(
+    callback: (event: { path: string; content: string }) => void,
+    options: {
+      debounceMs?: number;
+      stabilityCheck?: boolean;
+      db?: DatabaseService;
+    } = {},
+  ): FileWatcher {
+    const config = createMockConfig(this.tempDir, {
+      watcher: {
+        debounce_ms: options.debounceMs ?? 50,
+        stability_check: options.stabilityCheck ?? false,
+      },
+    });
+
+    this.watcher = new FileWatcher(config, callback, options.db);
+    return this.watcher;
+  }
+
+  /**
+   * Starts watcher and waits for initialization
+   */
+  async startWatcher(watcher: FileWatcher = this.watcher!): Promise<void> {
+    if (!watcher) {
+      throw new Error("No watcher to start. Call createWatcher() first.");
+    }
+    this.watcherPromise = watcher.start();
+    // Wait for watcher to initialize
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  /**
+   * Stops watcher and awaits completion
+   */
+  async stopWatcher(watcher: FileWatcher = this.watcher!): Promise<void> {
+    if (!watcher) return;
+    watcher.stop();
+    await this.watcherPromise?.catch(() => {}); // Ignore abort error
+  }
+
+  /**
+   * Writes a file to the inbox and waits for processing
+   */
+  async writeFile(
+    filename: string,
+    content: string,
+    waitMs: number = 200,
+  ): Promise<string> {
+    const filePath = join(this.inboxPath, filename);
+    await Deno.writeTextFile(filePath, content);
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+    return filePath;
+  }
+
+  /**
+   * Writes multiple files to inbox
+   */
+  async writeFiles(
+    files: Array<{ name: string; content: string }>,
+    waitMs: number = 200,
+  ): Promise<string[]> {
+    const paths = await Promise.all(
+      files.map((f) =>
+        Deno.writeTextFile(join(this.inboxPath, f.name), f.content)
+      ),
+    );
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+    return files.map((f) => join(this.inboxPath, f.name));
+  }
+
+  /**
+   * Cleanup temp directory
+   */
+  async cleanup(): Promise<void> {
+    await Deno.remove(this.tempDir, { recursive: true }).catch(() => {});
+  }
+}
+
+/**
+ * Creates a complete test context for watcher tests
+ */
+export async function createWatcherTestContext(
+  prefix: string,
+): Promise<{
+  tempDir: string;
+  helper: WatcherTestHelper;
+  cleanup: () => Promise<void>;
+}> {
+  const tempDir = await Deno.makeTempDir({ prefix });
+  const helper = new WatcherTestHelper(tempDir);
+
+  return {
+    tempDir,
+    helper,
+    cleanup: () => helper.cleanup(),
+  };
+}
