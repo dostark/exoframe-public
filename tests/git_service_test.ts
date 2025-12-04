@@ -1,5 +1,7 @@
 import { assert, assertEquals, assertExists, assertRejects } from "jsr:@std/assert@^1.0.0";
+import { join } from "@std/path";
 import { GitService } from "../src/services/git_service.ts";
+import { createMockConfig } from "./helpers/config.ts";
 import { createGitTestContext, GitTestHelper } from "./helpers/git_test_helper.ts";
 
 /**
@@ -147,8 +149,7 @@ Deno.test("GitService: rejects commit with no changes", async () => {
 });
 
 Deno.test("GitService: logs all git operations", async () => {
-  const { tempDir, cleanup, git, db } = await createGitTestContext("git-test-log-");
-  const helper = new GitTestHelper(tempDir);
+  const { tempDir, cleanup, db } = await createGitTestContext("git-test-log-");
 
   try {
     const config = createMockConfig(tempDir);
@@ -172,18 +173,13 @@ Deno.test("GitService: logs all git operations", async () => {
     assertEquals(agentLogs.length >= 1, true);
   } finally {
     await cleanup();
-    // cleanup handles directory removal
   }
 });
 
 Deno.test("GitService: handles git command failures", async () => {
-  const { tempDir, cleanup, git, db } = await createGitTestContext("git-test-fail-");
-  const helper = new GitTestHelper(tempDir);
+  const { cleanup, git } = await createGitTestContext("git-test-fail-");
 
   try {
-    const config = createMockConfig(tempDir);
-    const git = new GitService({ config, db });
-
     await git.ensureRepository();
 
     // Try to checkout non-existent branch
@@ -250,26 +246,13 @@ Deno.test("GitService: works in already initialized repository", async () => {
 });
 
 Deno.test("GitService: createBranch - generates unique branch names on conflict", async () => {
-  const { tempDir, cleanup, git, db } = await createGitTestContext("git-test-unique-");
+  const { tempDir, cleanup, git } = await createGitTestContext("git-test-unique-");
   const helper = new GitTestHelper(tempDir);
 
   try {
-    const config = createMockConfig(tempDir);
-    const git = new GitService({ config, db, traceId: "test-unique" });
-
     await git.ensureRepository();
     await git.ensureIdentity();
-
-    // Create initial commit
-    await Deno.writeTextFile(join(tempDir, "file.txt"), "content");
-    await new Deno.Command("git", {
-      args: ["add", "."],
-      cwd: tempDir,
-    }).output();
-    await new Deno.Command("git", {
-      args: ["commit", "-m", "Initial"],
-      cwd: tempDir,
-    }).output();
+    await helper.createFileAndCommit("file.txt", "content", "Initial");
 
     // Create first branch
     const branch1 = await git.createBranch({
@@ -289,18 +272,13 @@ Deno.test("GitService: createBranch - generates unique branch names on conflict"
     assertEquals(branch2.startsWith("feat/request-999-"), true);
   } finally {
     await cleanup();
-    // cleanup handles directory removal
   }
 });
 
 Deno.test("GitService: commit - validates files exist before committing", async () => {
-  const { tempDir, cleanup, git, db } = await createGitTestContext("git-test-valid-");
-  const helper = new GitTestHelper(tempDir);
+  const { cleanup, git } = await createGitTestContext("git-test-valid-");
 
   try {
-    const config = createMockConfig(tempDir);
-    const git = new GitService({ config, db });
-
     await git.ensureRepository();
     await git.ensureIdentity();
 
@@ -314,65 +292,40 @@ Deno.test("GitService: commit - validates files exist before committing", async 
     );
   } finally {
     await cleanup();
-    // cleanup handles directory removal
   }
 });
 
 Deno.test("GitService: ensureIdentity - uses git config if available", async () => {
-  const { tempDir, cleanup, git, db } = await createGitTestContext("git-test-identity-");
+  const { tempDir, cleanup, git } = await createGitTestContext("git-test-identity-");
   const helper = new GitTestHelper(tempDir);
 
   try {
     // Initialize with existing identity
-    await new Deno.Command("git", {
-      args: ["init"],
-      cwd: tempDir,
-    }).output();
-
-    await new Deno.Command("git", {
-      args: ["config", "user.name", "Existing User"],
-      cwd: tempDir,
-    }).output();
-
-    await new Deno.Command("git", {
-      args: ["config", "user.email", "existing@test.com"],
-      cwd: tempDir,
-    }).output();
-
-    const config = createMockConfig(tempDir);
-    const git = new GitService({ config, db });
+    await helper.runGit(["init"]);
+    await helper.runGit(["config", "user.name", "Existing User"]);
+    await helper.runGit(["config", "user.email", "existing@test.com"]);
 
     // Should not override existing identity
     await git.ensureIdentity();
 
     // Verify identity wasn't changed
-    const nameResult = await new Deno.Command("git", {
-      args: ["config", "user.name"],
-      cwd: tempDir,
-      stdout: "piped",
-    }).output();
-    const name = new TextDecoder().decode(nameResult.stdout).trim();
-
+    const name = await helper.getUserName();
     assertEquals(name, "Existing User");
   } finally {
     await cleanup();
-    // cleanup handles directory removal
   }
 });
 
 Deno.test("GitService: commit - handles git add failures", async () => {
-  const { tempDir, cleanup, git, db } = await createGitTestContext("git-test-add-fail-");
+  const { tempDir, cleanup, git } = await createGitTestContext("git-test-add-fail-");
   const helper = new GitTestHelper(tempDir);
 
   try {
-    const config = createMockConfig(tempDir);
-    const git = new GitService({ config, db });
-
     await git.ensureRepository();
     await git.ensureIdentity();
 
     // Create a file
-    await Deno.writeTextFile(join(tempDir, "test.txt"), "content");
+    await helper.createFile("test.txt", "content");
 
     // Remove git directory to cause add to fail
     await Deno.remove(join(tempDir, ".git"), { recursive: true });
@@ -387,24 +340,19 @@ Deno.test("GitService: commit - handles git add failures", async () => {
     );
   } finally {
     await cleanup();
-    // cleanup handles directory removal
   }
 });
 
 Deno.test("GitService: commit - includes description in commit message", async () => {
-  const { tempDir, cleanup, git, db } = await createGitTestContext("git-test-desc-");
+  const { tempDir, cleanup, git } = await createGitTestContext("git-test-desc-");
   const helper = new GitTestHelper(tempDir);
 
   try {
-    const config = createMockConfig(tempDir);
-    const git = new GitService({ config, db, traceId: "test-desc" });
-
     await git.ensureRepository();
     await git.ensureIdentity();
 
     // Create and commit file with description
-    const testFile = join(tempDir, "described.txt");
-    await Deno.writeTextFile(testFile, "content");
+    await helper.createFile("described.txt", "content");
 
     await git.commit(
       {
@@ -415,19 +363,13 @@ Deno.test("GitService: commit - includes description in commit message", async (
     );
 
     // Verify commit message includes description
-    const logResult = await new Deno.Command("git", {
-      args: ["log", "-1", "--pretty=%B"],
-      cwd: tempDir,
-      stdout: "piped",
-    }).output();
-    const commitMsg = new TextDecoder().decode(logResult.stdout);
+    const commitMsg = await helper.getLastCommitMessage();
 
     assertEquals(commitMsg.includes("Add file"), true);
     assertEquals(commitMsg.includes("This is a longer description"), true);
     assertEquals(commitMsg.includes("ExoTrace: trace-789"), true);
   } finally {
     await cleanup();
-    // cleanup handles directory removal
   }
 });
 
@@ -436,7 +378,7 @@ Deno.test("GitService: commit - includes description in commit message", async (
 // ============================================================================
 
 Deno.test("GitService: checkoutBranch - logs successful checkout", async () => {
-  const { tempDir, cleanup, git, db } = await createGitTestContext("git-test-checkout-");
+  const { tempDir, cleanup, db } = await createGitTestContext("git-test-checkout-");
   const helper = new GitTestHelper(tempDir);
 
   try {
@@ -445,17 +387,7 @@ Deno.test("GitService: checkoutBranch - logs successful checkout", async () => {
 
     await git.ensureRepository();
     await git.ensureIdentity();
-
-    // Create initial commit so we can create branches
-    await Deno.writeTextFile(join(tempDir, "init.txt"), "initial");
-    await new Deno.Command("git", {
-      args: ["add", "."],
-      cwd: tempDir,
-    }).output();
-    await new Deno.Command("git", {
-      args: ["commit", "-m", "Initial commit"],
-      cwd: tempDir,
-    }).output();
+    await helper.createFileAndCommit("init.txt", "initial", "Initial commit");
 
     // Create a branch first
     const branchName = await git.createBranch({
@@ -464,10 +396,7 @@ Deno.test("GitService: checkoutBranch - logs successful checkout", async () => {
     });
 
     // Switch back to main/master
-    await new Deno.Command("git", {
-      args: ["checkout", "-"],
-      cwd: tempDir,
-    }).output();
+    await helper.runGit(["checkout", "-"]);
 
     // Now checkout the created branch
     await git.checkoutBranch(branchName);
@@ -486,13 +415,11 @@ Deno.test("GitService: checkoutBranch - logs successful checkout", async () => {
     assertEquals(payload.success, true);
   } finally {
     await cleanup();
-    // cleanup handles directory removal
   }
 });
 
 Deno.test("GitService: checkoutBranch - logs checkout failure", async () => {
-  const { tempDir, cleanup, git, db } = await createGitTestContext("git-test-checkout-fail-");
-  const helper = new GitTestHelper(tempDir);
+  const { tempDir, cleanup, db } = await createGitTestContext("git-test-checkout-fail-");
 
   try {
     const config = createMockConfig(tempDir);
@@ -516,29 +443,24 @@ Deno.test("GitService: checkoutBranch - logs checkout failure", async () => {
 
     // Verify failure was logged
     const logs = db.getActivitiesByTrace("checkout-fail-trace");
-    const failLogs = logs.filter((log) => log.action_type === "git.checkout.failed" || log.action_type === "error");
 
     // At minimum, the operation should be tracked even if it failed
     assertEquals(logs.length >= 1, true);
   } finally {
     await cleanup();
-    // cleanup handles directory removal
   }
 });
 
 Deno.test("GitService: runGitCommand via commit - handles various message formats", async () => {
-  const { tempDir, cleanup, git, db } = await createGitTestContext("git-test-msg-");
+  const { tempDir, cleanup, git } = await createGitTestContext("git-test-msg-");
   const helper = new GitTestHelper(tempDir);
 
   try {
-    const config = createMockConfig(tempDir);
-    const git = new GitService({ config, db });
-
     await git.ensureRepository();
     await git.ensureIdentity();
 
     // Create initial file with multiline content
-    await Deno.writeTextFile(join(tempDir, "multiline.txt"), "line1\nline2\nline3");
+    await helper.createFile("multiline.txt", "line1\nline2\nline3");
 
     // Commit with a message containing special characters
     await git.commit({
@@ -547,23 +469,17 @@ Deno.test("GitService: runGitCommand via commit - handles various message format
     });
 
     // Verify commit message
-    const logResult = await new Deno.Command("git", {
-      args: ["log", "-1", "--pretty=%B"],
-      cwd: tempDir,
-      stdout: "piped",
-    }).output();
-    const commitMsg = new TextDecoder().decode(logResult.stdout);
+    const commitMsg = await helper.getLastCommitMessage();
 
     assertEquals(commitMsg.includes("feat: add file"), true);
     assertEquals(commitMsg.includes("special-chars-trace"), true);
   } finally {
     await cleanup();
-    // cleanup handles directory removal
   }
 });
 
 Deno.test("GitService: branch operations preserve traceId context", async () => {
-  const { tempDir, cleanup, git, db } = await createGitTestContext("git-test-trace-");
+  const { tempDir, cleanup, db } = await createGitTestContext("git-test-trace-");
   const helper = new GitTestHelper(tempDir);
 
   try {
@@ -574,17 +490,7 @@ Deno.test("GitService: branch operations preserve traceId context", async () => 
 
     await git.ensureRepository();
     await git.ensureIdentity();
-
-    // Create initial commit
-    await Deno.writeTextFile(join(tempDir, "init.txt"), "initial");
-    await new Deno.Command("git", {
-      args: ["add", "."],
-      cwd: tempDir,
-    }).output();
-    await new Deno.Command("git", {
-      args: ["commit", "-m", "Initial commit"],
-      cwd: tempDir,
-    }).output();
+    await helper.createFileAndCommit("init.txt", "initial", "Initial commit");
 
     // Create branch with trace context
     await git.createBranch({
@@ -605,6 +511,5 @@ Deno.test("GitService: branch operations preserve traceId context", async () => 
     assertEquals(agentLogs.length >= 1, true);
   } finally {
     await cleanup();
-    // cleanup handles directory removal
   }
 });
