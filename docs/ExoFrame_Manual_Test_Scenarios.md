@@ -835,9 +835,9 @@ cat ~/ExoFrame/Inbox/Plans/*_rejected.md 2>/dev/null
 
 ## Scenario MT-08: Plan Execution & Changeset Management
 
-**Purpose:** Verify complete plan execution flow via MCP server, changeset creation, and approval/rejection workflow.
+**Purpose:** Verify complete plan execution flow via Plan Executor service, changeset creation, and approval/rejection workflow.
 
-**Status:** ✅ **IMPLEMENTED** - Full plan execution via MCP server with security modes, changeset registration, and git management commands.
+**Status:** ✅ **IMPLEMENTED** - Full plan execution via PlanExecutor with ReAct-style loop, ToolRegistry security, and git management.
 
 ### Preconditions
 
@@ -868,18 +868,12 @@ exoctl blueprint show senior-coder
 ### Part B: Portal Security Configuration
 
 ```bash
-# Step 1: Configure portal with security mode
+# Step 1: Configure portal (security is enforced by ToolRegistry path validation)
 cat >> ~/ExoFrame/exo.config.toml << EOF
 [[portals]]
 alias = "TestApp"
 target_path = "/tmp/test-portal"
-agents_allowed = ["senior-coder", "mock"]
-operations = ["read", "write", "git"]
-
-[portals.TestApp.security]
-mode = "sandboxed"
-audit_enabled = true
-log_all_actions = true
+# Note: Current ToolRegistry allows access to all portals if mounted
 EOF
 
 # Step 2: Create test portal directory with git repo
@@ -918,7 +912,7 @@ exoctl plan show <plan-id>
 # Step 4: Approve the plan (triggers execution)
 exoctl plan approve <plan-id>
 
-# Step 5: Wait for MCP execution
+# Step 5: Wait for execution
 sleep 10
 
 # Step 6: Verify changeset created
@@ -960,15 +954,12 @@ git branch -a
 exoctl journal --filter trace_id=<trace-id>
 
 # Expected events:
-# plan.detected
-# plan.parsed
-# plan.executing
-# agent.tool.invoked (read_file)
-# agent.git.branch_created
-# agent.tool.invoked (write_file)
-# agent.git.commit
-# changeset.created
-# plan.executed
+# plan.execution_started
+# step.started
+# action.executing (tool: write_file)
+# action.completed
+# step.completed
+# plan.execution_completed
 ```
 
 ### Part E: Changeset Approval
@@ -1014,31 +1005,34 @@ git branch -a
 # Feature branch should be removed or marked
 ```
 
-### Part G: Security Mode Verification
+### Part G: Security Verification
 
 ```bash
-# Step 1: Test sandboxed mode enforcement
-# In sandboxed mode, agent has NO direct file access
-# All operations go through MCP tools
+# Step 1: Test Path Restriction
+# ToolRegistry prevents access outside allowed roots (Inbox, Knowledge, Blueprints, Portals)
 
-# Verify Activity Journal shows only MCP tool invocations
-exoctl journal --filter action_type=agent.tool.invoked
+# Create a request that tries to read /etc/passwd
+exoctl request "Read /etc/passwd" --agent senior-coder
 
-# Step 2: Test hybrid mode (if configured)
-# Update config to hybrid mode
-# Re-run execution and verify:
-# - Agent can read files directly
-# - Writes still go through MCP tools
-# - No unauthorized changes detected
+# Wait for execution and check logs
+sleep 10
+exoctl journal --filter action_type=action.failed
 
-# Step 3: Test permission validation
-# Try execution with agent not in agents_allowed
-exoctl request "Test unauthorized" --agent unknown-agent --portal TestApp
-# Should fail with permission denied error
+# Expected:
+# Error: Access denied: Path /etc/passwd resolves to /etc/passwd, outside allowed roots
 
-# Step 4: Verify path traversal blocked
-# Activity Journal should show any blocked attempts
-exoctl journal --filter action_type=security.violation
+# Step 2: Test Command Whitelist
+# ToolRegistry only allows whitelisted commands (echo, cat, ls, git, etc.)
+
+# Create a request that tries to run 'rm -rf /' (dangerous command)
+exoctl request "Run rm -rf /" --agent senior-coder
+
+# Wait for execution and check logs
+sleep 10
+exoctl journal --filter action_type=action.failed
+
+# Expected:
+# Error: Command 'rm' is not allowed.
 ```
 
 ### Part H: Git Commands Verification
@@ -1067,21 +1061,21 @@ exoctl git log <trace-id>
 
 **Part B (Portal Configuration):**
 
-- Portal configured with security mode
+- Portal configured
 - Git repo initialized in portal directory
 - Portal mounted and visible in ExoFrame
 
 **Part C (Execution):**
 
 - Request created and plan generated
-- Plan approval triggers MCP execution
+- Plan approval triggers PlanExecutor
 - Changeset created with status=pending
 
 **Part D (Verification):**
 
 - Changeset details show correct portal, branch, commit
 - Diff shows expected code changes
-- Activity Journal logs complete execution trail
+- Activity Journal logs execution steps (`step.started`, `action.executing`)
 
 **Part E (Approval):**
 
@@ -1095,9 +1089,8 @@ exoctl git log <trace-id>
 
 **Part G (Security):**
 
-- Sandboxed mode: all operations via MCP tools
-- Permission violations logged and blocked
-- Path traversal attempts blocked
+- Path traversal attempts blocked and logged
+- Unauthorized commands blocked and logged
 
 **Part H (Git):**
 
@@ -1110,21 +1103,18 @@ exoctl git log <trace-id>
 
 - [ ] Agent blueprint (`senior-coder` or `mock`) created or exists
 - [ ] Blueprint visible in `exoctl blueprint list`
-- [ ] Blueprint validated with `exoctl blueprint show <agent-id>`
 
 **Configuration & Setup:**
 
-- [ ] Portal configured with `agents_allowed` and `operations`
-- [ ] Security mode (`sandboxed` or `hybrid`) set correctly
 - [ ] Portal mounted and accessible via ExoFrame
 
 **Plan Execution:**
 
 - [ ] Approved plan triggers automatic execution
-- [ ] MCP server starts with correct portal scope
-- [ ] Agent executes via MCP tools only (sandboxed mode)
-- [ ] Feature branch created with correct naming: `feat/<desc>-<trace-id>`
-- [ ] Commit includes `[ExoTrace: <trace-id>]` footer
+- [ ] PlanExecutor runs steps sequentially
+- [ ] Agent executes via ToolRegistry tools
+- [ ] Feature branch created with correct naming: `feat/<request-id>`
+- [ ] Commit includes trace_id metadata
 
 **Changeset Lifecycle:**
 
@@ -1136,18 +1126,15 @@ exoctl git log <trace-id>
 
 **Activity Journal:**
 
-- [ ] `plan.detected` logged when plan found in System/Active/
-- [ ] `plan.parsed` logged with step count
-- [ ] `agent.tool.invoked` logged for each MCP tool call
-- [ ] `changeset.created` logged with changeset details
-- [ ] `plan.executed` logged on completion
+- [ ] `plan.execution_started` logged
+- [ ] `step.started` and `step.completed` logged
+- [ ] `action.executing` and `action.completed` logged for tools
+- [ ] `plan.execution_completed` logged
 
 **Security:**
 
-- [ ] Agent without permission blocked (agents_allowed enforcement)
-- [ ] Operations not in list blocked (operations enforcement)
-- [ ] Path traversal attempts blocked and logged
-- [ ] Security violations logged to Activity Journal
+- [ ] Access to files outside allowed roots blocked
+- [ ] Execution of non-whitelisted commands blocked
 
 **Git Commands:**
 
