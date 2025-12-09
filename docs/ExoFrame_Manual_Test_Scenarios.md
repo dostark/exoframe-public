@@ -1649,7 +1649,7 @@ rm ~/ExoFrame/Inbox/Requests/rapid-*.md
 
 - ExoFrame installed (MT-01 complete)
 - No daemon currently running
-- Ollama installed (optional, for Ollama tests)
+- Ollama installed and running (see [Developer Setup - Ollama Installation](./ExoFrame_Developer_Setup.md#3-install-ollama-for-local-llm-inference) for installation instructions and model selection guide based on hardware)
 
 ### Steps
 

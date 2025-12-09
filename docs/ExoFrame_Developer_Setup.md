@@ -35,7 +35,48 @@ export PATH="$DENO_INSTALL/bin:$PATH"
 deno --version
 ```
 
-3. Install Obsidian (optional GUI)
+3. Install Ollama (for local LLM inference)
+
+Ollama enables 100% local AI inference without cloud API dependencies. Install using the official installer:
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Verify installation
+ollama --version
+
+# Start the Ollama service (if not auto-started)
+ollama serve &
+```
+
+**Choosing the Right Model (Hardware Guidelines):**
+
+| System Resources | Recommended Model | Command | Notes |
+| --- | --- | --- | --- |
+| **16GB+ RAM, GPU (8GB+ VRAM)** | `codellama:13b` | `ollama pull codellama:13b` | Best code quality, requires good GPU |
+| **16GB RAM, CPU-only** | `llama3.2:3b` or `codellama:7b-instruct` | `ollama pull llama3.2:3b` | Good balance of speed and quality |
+| **8GB RAM, CPU-only** | `llama3.2:1b` or `tinyllama` | `ollama pull llama3.2:1b` | Fast but limited reasoning |
+| **32GB+ RAM, GPU (16GB+ VRAM)** | `codellama:34b` | `ollama pull codellama:34b` | Premium quality, slow without high-end GPU |
+
+**Quick Start (recommended for most developers):**
+
+```bash
+# Pull the default model (llama3.2 - good for most systems)
+ollama pull llama3.2
+
+# For code-focused tasks, also pull codellama
+ollama pull codellama:7b-instruct
+
+# Test the model works
+ollama run llama3.2 "Hello, world!"
+```
+
+**WSL2-Specific Notes:**
+- GPU passthrough requires WSL2 with CUDA support (NVIDIA drivers on Windows host)
+- Without GPU, stick to smaller models (3b or 7b parameter variants)
+- Ollama uses ~2-4GB base memory plus model size
+
+4. Install Obsidian (optional GUI)
 
 Download from Obsidian site or install via Snap:
 

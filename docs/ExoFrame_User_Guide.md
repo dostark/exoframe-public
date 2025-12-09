@@ -85,7 +85,70 @@ deno task start
 deno task start
 
 ````
-### 2.3 Advanced Deployment Options
+### 2.3 Ollama Setup (Local LLM)
+
+For fully local, air-gapped operation without cloud API dependencies, install Ollama:
+
+```bash
+# Install Ollama (Linux/macOS/WSL)
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Verify installation
+ollama --version
+
+# Start the Ollama service
+ollama serve &
+```
+
+#### Choosing the Right Model
+
+Select a model based on your hardware capabilities:
+
+| Hardware Profile | Recommended Model | Install Command | Performance |
+| --- | --- | --- | --- |
+| **Minimal** (8GB RAM, CPU) | `llama3.2:1b` | `ollama pull llama3.2:1b` | ⚡ Fast, basic reasoning |
+| **Standard** (16GB RAM, CPU) | `llama3.2:3b` | `ollama pull llama3.2:3b` | ⚖️ Balanced speed/quality |
+| **Developer** (16GB RAM, GPU) | `codellama:7b-instruct` | `ollama pull codellama:7b-instruct` | 💻 Optimized for code |
+| **Power User** (32GB+ RAM, GPU 8GB+) | `codellama:13b` | `ollama pull codellama:13b` | 🚀 Best code quality |
+| **Workstation** (64GB+ RAM, GPU 16GB+) | `codellama:34b` | `ollama pull codellama:34b` | 🏆 Premium quality |
+
+**Quick Start:**
+
+```bash
+# Pull the default model (recommended for most users)
+ollama pull llama3.2
+
+# For code-focused work, add codellama
+ollama pull codellama:7b-instruct
+
+# Test the model
+ollama run llama3.2 "Explain what ExoFrame does in one sentence."
+```
+
+**Configure ExoFrame to use Ollama:**
+
+```bash
+# Option 1: Environment variable (temporary)
+EXO_LLM_PROVIDER=ollama EXO_LLM_MODEL=llama3.2 exoctl daemon start
+
+# Option 2: Config file (permanent)
+cat >> ~/ExoFrame/exo.config.toml << 'EOF'
+[ai]
+provider = "ollama"
+model = "llama3.2"
+EOF
+```
+
+**Troubleshooting:**
+
+| Issue | Solution |
+| --- | --- |
+| "connection refused" | Run `ollama serve` to start the service |
+| Slow inference | Use smaller model or enable GPU support |
+| Out of memory | Switch to smaller model (3b or 1b variant) |
+| GPU not detected (WSL) | Install NVIDIA drivers on Windows host |
+
+### 2.4 Advanced Deployment Options
 
 ```bash
 # fast deploy (runs deno tasks automatically)
