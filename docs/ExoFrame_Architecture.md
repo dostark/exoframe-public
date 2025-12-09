@@ -215,103 +215,48 @@ sequenceDiagram
 
 ## Plan Execution Flow
 
-**Architecture Change:** LLM agents connect to ExoFrame's **MCP (Model Context Protocol) server** and use standardized tools for portal operations. This eliminates response parsing, provides strong security boundaries, and supports configurable security modes (sandboxed or hybrid).
+The **Plan Executor** service orchestrates the step-by-step execution of approved plans. It uses a ReAct-style loop to prompt the LLM for actions, executes them via the **Tool Registry**, and commits changes to Git after each step.
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant CLI as exoctl CLI
-    participant Plans as Inbox/Plans
-    participant Active as System/Active
     participant W as Plan Watcher
-    participant Detect as Detection
-    participant Parse as Parsing
-    participant Exec as Agent Executor
-    participant MCP as ExoFrame MCP Server
-    participant Agent as LLM Agent<br/>(Sandboxed/Hybrid Mode)
-    participant Portal as Portal Repository
-    participant CS as Changeset Registry
+    participant Main as Daemon
+    participant PE as Plan Executor
+    participant LLM as AI Provider
+    participant TR as Tool Registry
+    participant Git as Git Service
     participant DB as Activity Journal
 
-    U->>CLI: exoctl plan approve {uuid}
-    CLI->>Plans: Read plan-{uuid}.md
-    CLI->>Active: Move to System/Active/
-    CLI->>DB: Log plan.approved
-    CLI-->>U: Plan approved ✓
+    Note over W: Monitors System/Active/
 
-    Note over W: File Watcher monitors<br/>System/Active/
-    W->>Active: Detect _plan.md file
-    W->>Detect: Trigger detection
+    W->>Main: Detects plan.md
+    Main->>PE: execute(planPath)
 
-    Detect->>Active: Read plan file
-    Detect->>Detect: Parse YAML frontmatter
-    Detect->>Detect: Validate trace_id
-    Detect->>DB: Log plan.detected
-    Detect->>DB: Log plan.ready_for_execution
+    PE->>PE: Parse Plan & Context
 
-    Detect->>Parse: Pass plan content
-    Parse->>Parse: Extract body after frontmatter
-    Parse->>Parse: Extract steps (regex)
-    Parse->>Parse: Validate step numbering
-    Parse->>Parse: Validate step titles
+    loop For Each Step
+        PE->>PE: Construct Prompt (Context + Step)
+        PE->>LLM: generate(prompt)
+        LLM-->>PE: Response (TOML Actions)
 
-    alt Parsing Success
-        Parse->>DB: Log plan.parsed
-        Parse->>Exec: Pass parsed plan + portal
-        Exec->>Exec: Validate portal permissions
-        Exec->>MCP: Start MCP server with portal scope
-        MCP->>MCP: Register tools (read_file,<br/>write_file, git_*, list_directory)
-        MCP->>MCP: Register resources (portal:// URIs)
-        Exec->>DB: Log plan.executing
-        Exec->>Agent: Connect via MCP (stdio/SSE)
-        Agent->>MCP: List available tools
-        MCP-->>Agent: Tools specification
+        PE->>PE: Parse Actions
 
-        Agent->>MCP: read_file(portal, path)
-        MCP->>MCP: Validate permissions
-        MCP->>Portal: Read file
-        Portal-->>MCP: File contents
-        MCP-->>Agent: File contents
-        MCP->>DB: Log agent.tool.invoked
+        loop For Each Action
+            PE->>TR: execute(tool, params)
+            TR->>TR: Validate & Run
+            TR-->>PE: Result
+            PE->>DB: Log action result
+        end
 
-        Agent->>MCP: git_create_branch(portal, feat/xyz)
-        MCP->>MCP: Validate branch name
-        MCP->>Portal: Create branch
-        Portal-->>MCP: Branch created
-        MCP-->>Agent: Success
-        MCP->>DB: Log agent.git.branch_created
-
-        Agent->>MCP: write_file(portal, path, content)
-        MCP->>MCP: Validate write permissions
-        MCP->>Portal: Write file
-        Portal-->>MCP: File written
-        MCP-->>Agent: Success
-        MCP->>DB: Log agent.tool.invoked
-
-        Agent->>MCP: git_commit(portal, message, files)
-        MCP->>MCP: Validate commit message
-        MCP->>Portal: Commit changes
-        Portal-->>MCP: Commit SHA
-        MCP-->>Agent: Commit SHA
-        MCP->>DB: Log agent.git.commit
-
-        Agent->>Exec: Report completion via MCP
-
-        Exec->>CS: Register changeset
-        CS->>DB: Record changeset
-        CS->>DB: Log changeset.created
-        Exec->>DB: Log plan.executed
-        Exec-->>U: Changeset created ✓
-
-    else Parsing Failed
-        Parse->>DB: Log plan.parsing_failed
-        Parse-->>U: Parsing error logged
+        PE->>Git: commit(step_message)
+        Git-->>PE: Commit SHA
+        PE->>DB: Log step completion
     end
 
-    alt Portal Access Denied
-        Exec->>DB: Log portal.access_denied
-        Exec-->>U: Permission error
-    end
+    PE->>Git: commit(final_message)
+    Git-->>PE: Final SHA
+    PE->>DB: Log plan completion
+    PE-->>Main: Execution Result
 ```
 
 ### Plan Execution Components
