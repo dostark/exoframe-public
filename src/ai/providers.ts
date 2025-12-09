@@ -116,7 +116,7 @@ export class OllamaProvider implements IModelProvider {
     } = {},
   ) {
     this.baseUrl = options.baseUrl ?? "http://localhost:11434";
-    this.defaultModel = options.model ?? "llama2";
+    this.defaultModel = options.model ?? "llama3.2";
     this.timeoutMs = options.timeoutMs ?? 30000; // 30 second default timeout
     this.id = options.id ?? `ollama-${this.defaultModel}`;
   }

@@ -268,7 +268,7 @@ exoctl blueprint validate custom-test
 cat > ~/ExoFrame/Blueprints/Agents/invalid-test.md << 'EOF'
 +++
 name = "Missing agent_id"
-model = "ollama:llama2"
+model = "ollama:llama3.2"
 +++
 
 Invalid blueprint without agent_id
@@ -282,13 +282,13 @@ exoctl blueprint validate invalid-test
 
 exoctl blueprint create system\
 --name "System Agent"\
---model "ollama:llama2" 2>&1 || echo "Expected: Reserved name rejected"
+--model "ollama:llama3.2" 2>&1 || echo "Expected: Reserved name rejected"
 
 # Step 12: Test duplicate rejection
 
 exoctl blueprint create test-agent\
 --name "Duplicate Test"\
---model "ollama:llama2" 2>&1 || echo "Expected: Duplicate rejected"
+--model "ollama:llama3.2" 2>&1 || echo "Expected: Duplicate rejected"
 
 # Step 13: Test edit command (requires EDITOR)
 
@@ -826,119 +826,311 @@ cat ~/ExoFrame/Inbox/Plans/*_rejected.md 2>/dev/null
 
 ---
 
-## Scenario MT-08: Changeset Management
+## Scenario MT-08: Plan Execution & Changeset Management
 
-**Purpose:** Verify changeset and git management commands work correctly.
+**Purpose:** Verify complete plan execution flow via MCP server, changeset creation, and approval/rejection workflow.
 
-**Status:** ✅ **IMPLEMENTED** - The `exoctl changeset` and `exoctl git` commands are fully functional. Automatic plan execution (which would create changesets from approved plans) is planned for a future release. This scenario tests the available changeset workflow commands.
+**Status:** ✅ **IMPLEMENTED** - Full plan execution via MCP server with security modes, changeset registration, and git management commands.
 
 ### Preconditions
 
 - Daemon running (MT-02 complete)
-- At least one plan created (MT-05 complete, optional)
-- Git repository initialized in a Portal (optional, for git command testing)
+- Agent blueprint exists (MT-03 complete - create `senior-coder` or use `mock` blueprint)
+- At least one plan approved (MT-05, MT-06, MT-07 complete)
 
-### Steps
+### Part A: Agent Blueprint Setup
 
 ```bash
-# Step 1: Verify changeset commands are available
-exoctl changeset --help
+# Step 1: Create senior-coder blueprint (if not exists)
+exoctl blueprint create senior-coder \
+    --name "Senior Coder" \
+    --model ollama:codellama:13b \
+    --template coder
 
-# Step 2: List existing changesets
+# OR use mock blueprint for testing
+exoctl blueprint create mock \
+    --name "Mock Agent" \
+    --model mock:test-model \
+    --template mock
+
+# Step 2: Verify blueprint exists
+exoctl blueprint list
+exoctl blueprint show senior-coder
+```
+
+### Part B: Portal Security Configuration
+
+```bash
+# Step 1: Configure portal with security mode
+cat >> ~/ExoFrame/exo.config.toml << EOF
+[[portals]]
+name = "TestApp"
+path = "/tmp/test-portal"
+agents_allowed = ["senior-coder", "mock"]
+operations = ["read", "write", "git"]
+
+[portals.TestApp.security]
+mode = "sandboxed"
+audit_enabled = true
+log_all_actions = true
+EOF
+
+# Step 2: Create test portal directory with git repo
+mkdir -p /tmp/test-portal/src
+cd /tmp/test-portal
+git init
+echo "# Test App" > README.md
+echo "export const version = '1.0';" > src/index.ts
+git add .
+git commit -m "Initial commit"
+
+# Step 3: Mount portal in ExoFrame
+exoctl portal add /tmp/test-portal TestApp
+
+# Step 4: Verify portal configuration
+exoctl portal list
+exoctl portal show TestApp
+```
+
+### Part C: Plan Execution (Happy Path)
+
+```bash
+# Step 1: Create request targeting the portal
+exoctl request "Add hello world function to src/utils.ts" \
+    --agent senior-coder \
+    --portal TestApp
+
+# Step 2: Wait for plan generation (daemon processes request)
+sleep 5
+
+# Step 3: List and show generated plan
+exoctl plan list
+exoctl plan show <plan-id>
+
+# Step 4: Approve the plan (triggers execution)
+exoctl plan approve <plan-id>
+
+# Step 5: Wait for MCP execution
+sleep 10
+
+# Step 6: Verify changeset created
 exoctl changeset list
 
-# Step 3: Verify git commands are available
+# Expected output:
+# ✅ changeset-uuid  TestApp  feat/hello-world-abc  pending
+```
+
+### Part D: Changeset Verification
+
+```bash
+# Step 1: View changeset details
+exoctl changeset show <changeset-id>
+
+# Expected output:
+# Portal: TestApp
+# Branch: feat/hello-world-<trace-id-prefix>
+# Commit: a1b2c3d
+# Files Changed: 1
+# Status: pending
+# Created By: senior-coder
+
+# Step 2: View diff
+exoctl changeset show <changeset-id> --diff
+
+# Expected output:
+# +++ src/utils.ts
+# +export function helloWorld() {
+# +  return "Hello, World!";
+# +}
+
+# Step 3: Verify git branch created in portal
+cd /tmp/test-portal
+git branch -a
+# Should show: feat/hello-world-<trace-id-prefix>
+
+# Step 4: Check Activity Journal for execution events
+exoctl journal --filter trace_id=<trace-id>
+
+# Expected events:
+# plan.detected
+# plan.parsed
+# plan.executing
+# agent.tool.invoked (read_file)
+# agent.git.branch_created
+# agent.tool.invoked (write_file)
+# agent.git.commit
+# changeset.created
+# plan.executed
+```
+
+### Part E: Changeset Approval
+
+```bash
+# Step 1: Approve the changeset (merges to main)
+exoctl changeset approve <changeset-id>
+
+# Step 2: Verify merge completed
+cd /tmp/test-portal
+git log --oneline -5
+# Should show merge commit
+
+# Step 3: Verify file exists on main branch
+cat /tmp/test-portal/src/utils.ts
+# Should contain hello world function
+
+# Step 4: Check changeset status updated
+exoctl changeset show <changeset-id>
+# Status should be: approved
+# approved_by and approved_at should be set
+```
+
+### Part F: Changeset Rejection (Alternative Flow)
+
+```bash
+# Step 1: Create another request and wait for changeset
+exoctl request "Add goodbye function" --agent senior-coder --portal TestApp
+sleep 15
+
+# Step 2: Reject the changeset with reason
+exoctl changeset reject <changeset-id> --reason "Needs different approach"
+
+# Step 3: Verify rejection recorded
+exoctl changeset show <changeset-id>
+# Status: rejected
+# rejected_by and rejected_at should be set
+# rejection_reason: "Needs different approach"
+
+# Step 4: Verify branch deleted (optional based on implementation)
+cd /tmp/test-portal
+git branch -a
+# Feature branch should be removed or marked
+```
+
+### Part G: Security Mode Verification
+
+```bash
+# Step 1: Test sandboxed mode enforcement
+# In sandboxed mode, agent has NO direct file access
+# All operations go through MCP tools
+
+# Verify Activity Journal shows only MCP tool invocations
+exoctl journal --filter action_type=agent.tool.invoked
+
+# Step 2: Test hybrid mode (if configured)
+# Update config to hybrid mode
+# Re-run execution and verify:
+# - Agent can read files directly
+# - Writes still go through MCP tools
+# - No unauthorized changes detected
+
+# Step 3: Test permission validation
+# Try execution with agent not in agents_allowed
+exoctl request "Test unauthorized" --agent unknown-agent --portal TestApp
+# Should fail with permission denied error
+
+# Step 4: Verify path traversal blocked
+# Activity Journal should show any blocked attempts
+exoctl journal --filter action_type=security.violation
+```
+
+### Part H: Git Commands Verification
+
+```bash
+# Step 1: Verify git commands available
 exoctl git --help
 
-# Step 4: Check git branches (if Portal with git repo exists)
+# Step 2: List branches across portals
 exoctl git branches
 
-# Step 5: Check git status (if Portal with git repo exists)
+# Step 3: Check git status
 exoctl git status
 
-# Step 6: Test git log search (use any trace_id from your requests)
+# Step 4: Search git log for trace_id
 exoctl git log <trace-id>
-
-# Note: To test the full changeset workflow (show, approve, reject),
-# you would need to manually create a feature branch with changes in a Portal,
-# or wait for future implementation of automatic plan execution.
+# Should find commits with [ExoTrace: <trace-id>] footer
 ```
 
 ### Expected Results
 
-**Step 1:**
+**Part A (Blueprint Setup):**
+- Agent blueprint created or verified
+- Blueprint visible in `exoctl blueprint list`
 
-- Shows help with subcommands: `list`, `show`, `approve`, `reject`
-- No errors
+**Part B (Portal Configuration):**
+- Portal configured with security mode
+- Git repo initialized in portal directory
+- Portal mounted and visible in ExoFrame
 
-**Step 2:**
+**Part C (Execution):**
+- Request created and plan generated
+- Plan approval triggers MCP execution
+- Changeset created with status=pending
 
-- Shows message: "No changesets found" with `count: 0`
-- OR lists existing changesets if any manual branches were created
+**Part D (Verification):**
+- Changeset details show correct portal, branch, commit
+- Diff shows expected code changes
+- Activity Journal logs complete execution trail
 
-**Step 3:**
+**Part E (Approval):**
+- Changeset merged to main branch
+- Status updated to approved with timestamps
 
-- Shows help with subcommands: `branches`, `status`, `log`
-- No errors
+**Part F (Rejection):**
+- Changeset status updated to rejected
+- Reason recorded correctly
 
-**Step 4:**
+**Part G (Security):**
+- Sandboxed mode: all operations via MCP tools
+- Permission violations logged and blocked
+- Path traversal attempts blocked
 
-- Lists all branches in Portal git repositories
-- Shows "No portals with git repositories found" if no Portals configured
-- May show feature branches if created manually
-
-**Step 5:**
-
-- Shows git repository status for each Portal
-- Displays clean working tree or any pending changes
-
-**Step 6:**
-
-- Searches for commits containing the specified trace_id
-- Shows matching commits or empty result if none found
-
-### Verification
-
-```bash
-# Verify all changeset subcommands exist
-exoctl changeset --help | grep -E "list|show|approve|reject"
-# Should show all 4 subcommands
-
-# Verify all git subcommands exist
-exoctl git --help | grep -E "branches|status|log"
-# Should show all 3 subcommands
-
-# Test changeset list returns valid JSON-like output
-exoctl changeset list
-# Expected: Clean message with count field
-
-# Test git commands don't error (even without Portals)
-exoctl git branches 2>&1
-exoctl git status 2>&1
-# Should return gracefully with appropriate message
-```
-
-### Future Functionality
-
-When automatic plan execution is implemented, this scenario will also verify:
-
-- Approved plans automatically trigger code generation
-- Changesets are created with agent's code changes in a feature branch
-- `exoctl changeset show <id>` displays diff preview
-- `exoctl changeset approve <id>` merges changes to main branch
-- `exoctl changeset reject <id>` deletes the feature branch
-- Git branch naming follows format: `feat/<description>-<trace-id>`
+**Part H (Git):**
+- All git subcommands functional
+- Branch and commit tracking works
 
 ### Pass Criteria
 
-- [ ] `exoctl changeset --help` shows all 4 subcommands (list, show, approve, reject)
-- [ ] `exoctl changeset list` executes without errors
-- [ ] `exoctl git --help` shows all 3 subcommands (branches, status, log)
-- [ ] `exoctl git branches` executes without errors
-- [ ] `exoctl git status` executes without errors
-- [ ] `exoctl git log <trace-id>` executes without errors
-- [ ] All commands return appropriate messages (even when no data available)
-- [ ] No command crashes or returns unexpected errors
+**Blueprint Setup:**
+- [ ] Agent blueprint (`senior-coder` or `mock`) created or exists
+- [ ] Blueprint visible in `exoctl blueprint list`
+- [ ] Blueprint validated with `exoctl blueprint show <agent-id>`
+
+**Configuration & Setup:**
+- [ ] Portal configured with `agents_allowed` and `operations`
+- [ ] Security mode (`sandboxed` or `hybrid`) set correctly
+- [ ] Portal mounted and accessible via ExoFrame
+
+**Plan Execution:**
+- [ ] Approved plan triggers automatic execution
+- [ ] MCP server starts with correct portal scope
+- [ ] Agent executes via MCP tools only (sandboxed mode)
+- [ ] Feature branch created with correct naming: `feat/<desc>-<trace-id>`
+- [ ] Commit includes `[ExoTrace: <trace-id>]` footer
+
+**Changeset Lifecycle:**
+- [ ] Changeset registered in database with status=pending
+- [ ] `exoctl changeset list` shows pending changesets
+- [ ] `exoctl changeset show <id>` displays details and diff
+- [ ] `exoctl changeset approve <id>` merges to main
+- [ ] `exoctl changeset reject <id>` records reason and updates status
+
+**Activity Journal:**
+- [ ] `plan.detected` logged when plan found in System/Active/
+- [ ] `plan.parsed` logged with step count
+- [ ] `agent.tool.invoked` logged for each MCP tool call
+- [ ] `changeset.created` logged with changeset details
+- [ ] `plan.executed` logged on completion
+
+**Security:**
+- [ ] Agent without permission blocked (agents_allowed enforcement)
+- [ ] Operations not in list blocked (operations enforcement)
+- [ ] Path traversal attempts blocked and logged
+- [ ] Security violations logged to Activity Journal
+
+**Git Commands:**
+- [ ] `exoctl git branches` lists all portal branches
+- [ ] `exoctl git status` shows repository status
+- [ ] `exoctl git log <trace-id>` finds commits by trace_id
 
 ---
 
@@ -1524,7 +1716,7 @@ exoctl daemon stop
 
 **Step 4:**
 
-- Shows: `✅ LLM Provider: ollama-llama2`
+- Shows: `✅ LLM Provider: ollama-llama3.2`
 - Ollama provider selected via env var
 
 **Step 5:**
@@ -1598,24 +1790,24 @@ unset EXO_LLM_PROVIDER EXO_LLM_MODEL EXO_LLM_BASE_URL
 
 ### Test Results
 
-| ID    | Scenario                 | Pass | Fail | Skip | Notes |
-| ----- | ------------------------ | ---- | ---- | ---- | ----- |
-| MT-01 | Fresh Installation       |      |      |      |       |
-| MT-02 | Daemon Startup           |      |      |      |       |
-| MT-03 | Blueprint Management     |      |      |      |       |
-| MT-04 | Create Request           |      |      |      |       |
-| MT-05 | Plan Generation (Mock)   |      |      |      |       |
-| MT-06 | Plan Approval            |      |      |      |       |
-| MT-07 | Plan Rejection           |      |      |      |       |
-| MT-08 | Plan Execution (Mock)    |      |      |      |       |
-| MT-09 | Portal Management        |      |      |      |       |
-| MT-10 | Daemon Crash Recovery    |      |      |      |       |
-| MT-11 | Real LLM Integration     |      |      |      |       |
-| MT-12 | Invalid Request Handling |      |      |      |       |
-| MT-13 | Database Corruption      |      |      |      |       |
-| MT-14 | Concurrent Requests      |      |      |      |       |
-| MT-15 | File Watcher Reliability |      |      |      |       |
-| MT-16 | LLM Provider Selection   |      |      |      |       |
+| ID    | Scenario                       | Pass | Fail | Skip | Notes |
+| ----- | ------------------------------ | ---- | ---- | ---- | ----- |
+| MT-01 | Fresh Installation             |      |      |      |       |
+| MT-02 | Daemon Startup                 |      |      |      |       |
+| MT-03 | Blueprint Management           |      |      |      |       |
+| MT-04 | Create Request                 |      |      |      |       |
+| MT-05 | Plan Generation (Mock)         |      |      |      |       |
+| MT-06 | Plan Approval                  |      |      |      |       |
+| MT-07 | Plan Rejection                 |      |      |      |       |
+| MT-08 | Plan Execution & Changesets    |      |      |      |       |
+| MT-09 | Portal Management              |      |      |      |       |
+| MT-10 | Daemon Crash Recovery          |      |      |      |       |
+| MT-11 | Real LLM Integration           |      |      |      |       |
+| MT-12 | Invalid Request Handling       |      |      |      |       |
+| MT-13 | Database Corruption            |      |      |      |       |
+| MT-14 | Concurrent Requests            |      |      |      |       |
+| MT-15 | File Watcher Reliability       |      |      |      |       |
+| MT-16 | LLM Provider Selection         |      |      |      |       |
 
 ### Summary
 

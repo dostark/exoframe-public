@@ -3231,17 +3231,17 @@ Error: --name is required
 Usage: exoctl blueprint create <agent-id> --name "<name>" --model "<model>"
 
 # Invalid agent_id format
-$ exoctl blueprint create Test_Agent --name "Test" --model ollama:llama2
+$ exoctl blueprint create Test_Agent --name "Test" --model ollama:llama3.2
 Error: agent_id must be lowercase alphanumeric with hyphens only
 Example: test-agent
 
 # Reserved name
-$ exoctl blueprint create system --name "System" --model ollama:llama2
+$ exoctl blueprint create system --name "System" --model ollama:llama3.2
 Error: 'system' is a reserved agent_id
 Reserved names: system, default, test
 
 # Duplicate agent_id
-$ exoctl blueprint create default --name "Default" --model ollama:llama2
+$ exoctl blueprint create default --name "Default" --model ollama:llama3.2
 Error: Blueprint 'default' already exists
 Use 'exoctl blueprint edit default' to modify
 
@@ -3251,7 +3251,7 @@ Error: Provider 'unknown' not configured in exo.config.toml
 Available providers: ollama, anthropic, openai, google
 
 # Missing system prompt output format
-$ exoctl blueprint create test --name "Test" --model ollama:llama2 \
+$ exoctl blueprint create test --name "Test" --model ollama:llama3.2 \
     --system-prompt "You are a helpful assistant"
 Error: System prompt must include output format instructions
 Required: <thought> and <content> tags

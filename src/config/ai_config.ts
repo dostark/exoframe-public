@@ -90,7 +90,7 @@ export const DEFAULT_AI_CONFIG: AiConfig = {
  */
 export const DEFAULT_MODELS: Record<ProviderType, string> = {
   mock: "mock-model",
-  ollama: "llama2",
+  ollama: "llama3.2",
   anthropic: "claude-3-5-sonnet-20241022",
   openai: "gpt-4o",
 };

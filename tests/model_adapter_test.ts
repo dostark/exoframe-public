@@ -85,7 +85,7 @@ Deno.test("OllamaProvider sends correct JSON payload to /api/generate", async ()
   }) as typeof fetch;
 
   try {
-    const provider = new OllamaProvider({ model: "llama2" });
+    const provider = new OllamaProvider({ model: "llama3.2" });
     const result = await provider.generate("Test prompt", {
       temperature: 0.7,
       max_tokens: 100,
@@ -99,7 +99,7 @@ Deno.test("OllamaProvider sends correct JSON payload to /api/generate", async ()
     // Verify request body structure
     assertExists(capturedBody);
     const body = capturedBody as Record<string, unknown>;
-    assertEquals(body.model, "llama2");
+    assertEquals(body.model, "llama3.2");
     assertEquals(body.prompt, "Test prompt");
     assertEquals(body.stream, false);
 
@@ -169,7 +169,7 @@ Deno.test("ModelFactory creates MockProvider for 'mock' type", () => {
 });
 
 Deno.test("ModelFactory creates OllamaProvider for 'ollama' type", () => {
-  const provider = ModelFactory.create("ollama", { model: "llama2" });
+  const provider = ModelFactory.create("ollama", { model: "llama3.2" });
 
   assertExists(provider);
   assertStringIncludes(provider.id, "ollama");
@@ -415,11 +415,11 @@ Deno.test("IModelProvider interface is correctly implemented by all providers", 
 Deno.test("Provider IDs are unique per instance", () => {
   const mock1 = new MockProvider("test", "id1");
   const mock2 = new MockProvider("test", "id2");
-  const ollama1 = new OllamaProvider({ model: "llama2" });
+  const ollama1 = new OllamaProvider({ model: "llama3.2" });
   const ollama2 = new OllamaProvider({ model: "mistral" });
 
   assertEquals(mock1.id, "id1");
   assertEquals(mock2.id, "id2");
-  assertStringIncludes(ollama1.id, "llama2");
+  assertStringIncludes(ollama1.id, "llama3.2");
   assertStringIncludes(ollama2.id, "mistral");
 });

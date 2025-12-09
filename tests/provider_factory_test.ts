@@ -197,7 +197,7 @@ Deno.test(
 Deno.test(
   "ProviderFactory: EXO_LLM_MODEL overrides config model",
   withEnvVars({ EXO_LLM_PROVIDER: "ollama", EXO_LLM_MODEL: "codellama" }, () => {
-    const config = createTestConfig({ provider: "ollama", model: "llama2" });
+    const config = createTestConfig({ provider: "ollama", model: "llama3.2" });
     const provider = ProviderFactory.create(config);
 
     assertExists(provider);
@@ -208,7 +208,7 @@ Deno.test(
 Deno.test(
   "ProviderFactory: env var overrides config",
   withEnvVars({ EXO_LLM_PROVIDER: "mock" }, () => {
-    const config = createTestConfig({ provider: "ollama", model: "llama2" });
+    const config = createTestConfig({ provider: "ollama", model: "llama3.2" });
     const provider = ProviderFactory.create(config);
 
     assertExists(provider);

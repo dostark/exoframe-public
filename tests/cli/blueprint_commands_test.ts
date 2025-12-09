@@ -115,7 +115,7 @@ Deno.test("[blueprint] create - loads system prompt from file", async () => {
 
     const _result = await commands.create("custom-agent", {
       name: "Custom Agent",
-      model: "ollama:llama2",
+      model: "ollama:llama3.2",
       systemPromptFile: promptFile,
     });
 
@@ -140,7 +140,7 @@ Deno.test("[blueprint] create - rejects reserved agent_id names", async () => {
       async () => {
         await commands.create("system", {
           name: "System Agent",
-          model: "ollama:llama2",
+          model: "ollama:llama3.2",
         });
       },
       Error,
@@ -157,7 +157,7 @@ Deno.test("[blueprint] create - rejects duplicate agent_id", async () => {
     // Create first blueprint
     await commands.create("duplicate-test", {
       name: "First Agent",
-      model: "ollama:llama2",
+      model: "ollama:llama3.2",
     });
 
     // Attempt to create duplicate
@@ -165,7 +165,7 @@ Deno.test("[blueprint] create - rejects duplicate agent_id", async () => {
       async () => {
         await commands.create("duplicate-test", {
           name: "Second Agent",
-          model: "ollama:llama2",
+          model: "ollama:llama3.2",
         });
       },
       Error,
@@ -183,7 +183,7 @@ Deno.test("[blueprint] create - rejects invalid agent_id format", async () => {
       async () => {
         await commands.create("Invalid_Agent", {
           name: "Invalid Agent",
-          model: "ollama:llama2",
+          model: "ollama:llama3.2",
         });
       },
       Error,
@@ -199,7 +199,7 @@ Deno.test("[blueprint] create - logs to Activity Journal", async () => {
   try {
     await commands.create("journal-test", {
       name: "Journal Test Agent",
-      model: "ollama:llama2",
+      model: "ollama:llama3.2",
     });
 
     // Flush pending database writes
@@ -225,9 +225,9 @@ Deno.test("[blueprint] list - shows all blueprints", async () => {
   await setupTest();
   try {
     // Create test blueprints
-    await commands.create("agent-1", { name: "Agent 1", model: "ollama:llama2" });
-    await commands.create("agent-2", { name: "Agent 2", model: "ollama:llama2" });
-    await commands.create("agent-3", { name: "Agent 3", model: "ollama:llama2" });
+    await commands.create("agent-1", { name: "Agent 1", model: "ollama:llama3.2" });
+    await commands.create("agent-2", { name: "Agent 2", model: "ollama:llama3.2" });
+    await commands.create("agent-3", { name: "Agent 3", model: "ollama:llama3.2" });
 
     const blueprints = await commands.list();
 
@@ -272,7 +272,7 @@ Deno.test("[blueprint] show - displays full blueprint", async () => {
   try {
     await commands.create("show-test", {
       name: "Show Test Agent",
-      model: "ollama:llama2",
+      model: "ollama:llama3.2",
     });
 
     const details = await commands.show("show-test");
@@ -311,7 +311,7 @@ Deno.test("[blueprint] validate - accepts valid blueprint", async () => {
   try {
     await commands.create("valid-blueprint", {
       name: "Valid Blueprint",
-      model: "ollama:llama2",
+      model: "ollama:llama3.2",
     });
 
     const result = await commands.validate("valid-blueprint");
@@ -358,7 +358,7 @@ Deno.test("[blueprint] validate - checks system prompt format", async () => {
       `+++
 agent_id = "no-tags"
 name = "No Tags"
-model = "ollama:llama2"
+model = "ollama:llama3.2"
 created = "2025-12-02T10:00:00Z"
 created_by = "test"
 version = "1.0.0"
@@ -389,7 +389,7 @@ Deno.test("[blueprint] remove - deletes blueprint file", async () => {
   try {
     await commands.create("remove-test", {
       name: "Remove Test",
-      model: "ollama:llama2",
+      model: "ollama:llama3.2",
     });
 
     const blueprintPath = join(testEnv.config.system.root, testEnv.config.paths.blueprints, "Agents", "remove-test.md");
@@ -408,7 +408,7 @@ Deno.test("[blueprint] remove - logs to Activity Journal", async () => {
   try {
     await commands.create("remove-journal", {
       name: "Remove Journal Test",
-      model: "ollama:llama2",
+      model: "ollama:llama3.2",
     });
 
     await commands.remove("remove-journal", { force: true });
@@ -530,7 +530,7 @@ Deno.test("[blueprint] edit - validates after editing", async () => {
     // Create a blueprint first
     await commands.create("edit-test", {
       name: "Edit Test",
-      model: "ollama:llama2",
+      model: "ollama:llama3.2",
     });
 
     // Mock EDITOR environment variable to use 'true' command (exits successfully)
@@ -583,7 +583,7 @@ Deno.test("[blueprint] create - rejects when system prompt file not found", asyn
       async () => {
         await commands.create("test-agent", {
           name: "Test Agent",
-          model: "ollama:llama2",
+          model: "ollama:llama3.2",
           systemPromptFile: "/nonexistent/file.txt",
         });
       },
@@ -605,7 +605,7 @@ Deno.test("[blueprint] create - rejects system prompt without required tags", as
       async () => {
         await commands.create("test-agent", {
           name: "Test Agent",
-          model: "ollama:llama2",
+          model: "ollama:llama3.2",
           systemPromptFile: promptFile,
         });
       },
@@ -640,7 +640,7 @@ Deno.test("[blueprint] create - handles empty description gracefully", async () 
   try {
     const result = await commands.create("no-desc", {
       name: "No Description",
-      model: "ollama:llama2",
+      model: "ollama:llama3.2",
       description: "",
     });
 

@@ -134,7 +134,7 @@ Test execution results
       const invalidPath = join(env.tempDir, "Blueprints", "Agents", "invalid-test.md");
       const invalidContent = `+++
 name = "Missing agent_id"
-model = "ollama:llama2"
+model = "ollama:llama3.2"
 +++
 
 Invalid blueprint without agent_id field
@@ -159,7 +159,7 @@ Invalid blueprint without agent_id field
         async () =>
           await blueprintCommands.create("system", {
             name: "System Agent",
-            model: "ollama:llama2",
+            model: "ollama:llama3.2",
           }),
         Error,
         "reserved",
@@ -169,7 +169,7 @@ Invalid blueprint without agent_id field
         async () =>
           await blueprintCommands.create("test", {
             name: "Test Agent",
-            model: "ollama:llama2",
+            model: "ollama:llama3.2",
           }),
         Error,
         "reserved",
@@ -184,7 +184,7 @@ Invalid blueprint without agent_id field
         async () =>
           await blueprintCommands.create(testAgentId, {
             name: "Duplicate Agent",
-            model: "ollama:llama2",
+            model: "ollama:llama3.2",
           }),
         Error,
         "already exists",
@@ -201,7 +201,7 @@ Invalid blueprint without agent_id field
       // Modify blueprint directly (simulating manual edit)
       const modifiedContent = originalContent.replace(
         `model = "ollama:codellama:13b"`,
-        `model = "ollama:llama2:latest"`,
+        `model = "ollama:llama3.2:latest"`,
       );
       await Deno.writeTextFile(blueprintPath, modifiedContent);
 
@@ -211,7 +211,7 @@ Invalid blueprint without agent_id field
 
       // Verify change persisted
       const updatedContent = await Deno.readTextFile(blueprintPath);
-      assertStringIncludes(updatedContent, `model = "ollama:llama2:latest"`);
+      assertStringIncludes(updatedContent, `model = "ollama:llama3.2:latest"`);
     });
 
     // ========================================================================

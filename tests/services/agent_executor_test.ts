@@ -1317,7 +1317,7 @@ Deno.test({
 
       // Create test blueprint
       const blueprintContent = `---
-model: llama2
+model: llama3.2
 provider: ollama
 capabilities:
   - code_generation
@@ -1366,7 +1366,7 @@ You are a test agent using Ollama provider.`;
       try {
         const ollamaProvider = new OllamaProvider({
           baseUrl: "http://localhost:11434",
-          model: "llama2",
+          model: "llama3.2",
           timeoutMs: 5000,
         });
 
@@ -1439,7 +1439,7 @@ Deno.test({
 
       // Create test blueprint
       const blueprintContent = `---
-model: llama2
+model: llama3.2
 provider: ollama
 ---
 
@@ -1461,7 +1461,7 @@ Test agent for error handling.`;
       try {
         const ollamaProvider = new OllamaProvider({
           baseUrl: "http://localhost:11434",
-          model: "llama2",
+          model: "llama3.2",
           timeoutMs: 5000,
         });
 
