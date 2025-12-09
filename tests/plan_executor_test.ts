@@ -192,3 +192,142 @@ foo = "bar"
     await cleanup();
   }
 });
+
+Deno.test("PlanExecutor: handles no actions generated", async () => {
+  const { tempDir: _tempDir, db, cleanup, config, git } = await createGitTestContext("plan-exec-no-act-");
+
+  try {
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Mock response with no actions
+    const mockProvider = new MockProvider("I cannot do that.");
+    const executor = new PlanExecutor(config, mockProvider, db);
+
+    const context: PlanContext = {
+      trace_id: "trace-no-act",
+      request_id: "req-no-act",
+      agent: "test-agent",
+      frontmatter: {},
+      steps: [{ number: 1, title: "No Action", content: "Do nothing" }],
+    };
+
+    // Should return null (no commit)
+    const sha = await executor.execute("plan.md", context);
+    assertEquals(sha, null);
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("PlanExecutor: handles malformed TOML", async () => {
+  const { tempDir: _tempDir, db, cleanup, config, git } = await createGitTestContext("plan-exec-bad-toml-");
+
+  try {
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Mock response with malformed TOML
+    const mockResponse = `
+\`\`\`toml
+[[actions]]
+tool = "write_file"
+[actions.params
+path = "bad.txt"
+\`\`\`
+`;
+    const mockProvider = new MockProvider(mockResponse);
+    const executor = new PlanExecutor(config, mockProvider, db);
+
+    const context: PlanContext = {
+      trace_id: "trace-bad",
+      request_id: "req-bad",
+      agent: "test-agent",
+      frontmatter: {},
+      steps: [{ number: 1, title: "Bad TOML", content: "Bad" }],
+    };
+
+    // Should return null because parsing fails -> no actions -> warning -> return null
+    const sha = await executor.execute("plan.md", context);
+    assertEquals(sha, null);
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("PlanExecutor: handles tool failure (result.success=false)", async () => {
+  const { tempDir: _tempDir, db, cleanup, config, git } = await createGitTestContext("plan-exec-fail-res-");
+
+  try {
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Mock response with read_file on non-existent file
+    const mockResponse = `
+\`\`\`toml
+[[actions]]
+tool = "read_file"
+[actions.params]
+path = "non_existent.txt"
+\`\`\`
+`;
+    const mockProvider = new MockProvider(mockResponse);
+    const executor = new PlanExecutor(config, mockProvider, db);
+
+    const context: PlanContext = {
+      trace_id: "trace-fail-res",
+      request_id: "req-fail-res",
+      agent: "test-agent",
+      frontmatter: {},
+      steps: [{ number: 1, title: "Fail Result", content: "Fail" }],
+    };
+
+    // Should throw because tool returns success: false
+    await assertRejects(
+      async () => await executor.execute("plan.md", context),
+      Error,
+      "File: non_existent.txt not found",
+    );
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("PlanExecutor: handles step with no changes", async () => {
+  const { tempDir, db, cleanup, config, git } = await createGitTestContext("plan-exec-no-change-");
+  const _helper = new GitTestHelper(tempDir); // Fixed lint: prefixed with underscore
+
+  try {
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Create a file to read and commit it so repo is clean
+    await Deno.writeTextFile(join(tempDir, "read.txt"), "content");
+    await _helper.runGit(["add", "."]);
+    await _helper.runGit(["commit", "-m", "Initial commit"]);
+    const mockResponse = `
+\`\`\`toml
+[[actions]]
+tool = "read_file"
+[actions.params]
+path = "read.txt"
+\`\`\`
+`;
+    const mockProvider = new MockProvider(mockResponse);
+    const executor = new PlanExecutor(config, mockProvider, db);
+
+    const context: PlanContext = {
+      trace_id: "trace-no-change",
+      request_id: "req-no-change",
+      agent: "test-agent",
+      frontmatter: {},
+      steps: [{ number: 1, title: "Read Only", content: "Read" }],
+    };
+
+    // Should return null (no commit created for step)
+    const sha = await executor.execute("plan.md", context);
+    assertEquals(sha, null);
+  } finally {
+    await cleanup();
+  }
+});
