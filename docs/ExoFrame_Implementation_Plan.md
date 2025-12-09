@@ -4693,6 +4693,62 @@ User wants to implement authentication. I'll create a multi-step plan covering:
 14. [x] Test case: step dependencies reference non-existent steps
 15. [x] Real LLM (Ollama) generates valid JSON plans
 
+16. [x] Real LLM (Ollama) generates valid JSON plans
+
+---
+
+### Step 6.8: Plan Executor Service ✅ COMPLETE
+
+- **Dependencies:** Step 6.7 (Plan Format Adaptation), Step 6.4 (Agent Orchestration)
+- **Rollback:** Revert PlanExecutor integration in main.ts
+- **Action:** Implement the core execution engine that turns plans into code changes
+- **Location:** `src/services/plan_executor.ts`, `src/services/git_service.ts`, `tests/plan_executor_test.ts`
+- **Status:** ✅ COMPLETE
+
+**Problem Statement:**
+
+We have validated plans (Step 6.7) and a tool registry (Step 6.2), but no engine to drive the execution. We need a service that:
+
+1. Takes a parsed plan and context.
+2. Iterates through steps sequentially.
+3. Prompts the LLM for specific actions for each step.
+4. Executes those actions via the ToolRegistry.
+5. Commits changes to git after each step to ensure safety and checkpointing.
+6. Handles errors and stops execution if a step fails.
+
+**The Solution: ReAct-Style Plan Executor**
+
+Implement `PlanExecutor` class that orchestrates the execution loop:
+
+**Execution Loop:**
+
+1. **Context Loading:** Load plan, context, and history.
+2. **Step Iteration:** For each step in the plan:
+   - **Prompting:** Construct a prompt including the current step, context, and available tools.
+   - **Action Generation:** Ask LLM to generate TOML actions (using `codellama` or similar).
+   - **Action Execution:** Parse TOML and execute tools via `ToolRegistry`.
+   - **Commit:** Commit changes with a message like "Step N: [Title]".
+3. **Completion:** Create a final commit linking to the plan trace ID.
+
+**Key Components:**
+
+- **`PlanExecutor`**: The main orchestrator.
+- **`GitService` Enhancements**: Update `commit()` to return the SHA for tracking.
+- **`ToolRegistry` Integration**: Use existing registry for safe tool execution.
+
+**Success Criteria:**
+
+1. [x] `PlanExecutor` implemented with `execute(plan, context)` method.
+2. [x] `GitService.commit` returns the commit SHA.
+3. [x] Execution loop correctly prompts LLM for each step.
+4. [x] TOML actions parsed and executed via `ToolRegistry`.
+5. [x] Git commit created after each successful step.
+6. [x] Final commit created upon plan completion.
+7. [x] Changeset ID (final commit SHA) returned.
+8. [x] Tool execution failures throw errors and stop execution.
+9. [x] Comprehensive tests (`tests/plan_executor_test.ts`) covering success, multi-step, and failure scenarios.
+10. [x] Integration with `main.ts` to enable execution logic.
+
 ---
 
 ## Plan Format Reference
