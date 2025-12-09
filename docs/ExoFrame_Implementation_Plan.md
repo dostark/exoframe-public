@@ -4791,6 +4791,50 @@ When creating an execution plan, you MUST output valid JSON matching this schema
 
 ---
 
+## Blueprint Templates - JSON Plan Format
+
+**Updated:** 2025-12-09 (Step 6.7 Implementation Complete)
+
+### Summary
+
+Created production-ready blueprint templates that instruct LLMs to output JSON-formatted execution plans matching the PlanSchema.
+
+### Files Created
+
+#### 1. `/Blueprints/Agents/default.md`
+
+- **Purpose:** General-purpose coding assistant
+- **Model:** `ollama:codellama:13b`
+- **Key Features:** Comprehensive JSON schema documentation, authentication example.
+
+#### 2. `/Blueprints/Agents/senior-coder.md`
+
+- **Purpose:** Expert-level software engineer
+- **Model:** `anthropic:claude-3-5-sonnet`
+- **Key Features:** Advanced architectural guidance, real-time notification example.
+
+#### 3. `/Blueprints/Agents/mock-agent.md`
+
+- **Purpose:** Testing blueprint
+- **Model:** `mock:test-model`
+- **Key Features:** Simple JSON example for validation.
+
+### JSON Plan Schema Instructions
+
+All blueprints now include:
+
+1. **Clear Format Requirements:** `<thought>` + `<content>{ JSON }`
+2. **Complete Schema Definition:** Required/optional fields, step structure.
+3. **Valid Tool Names:** `read_file`, `write_file`, `run_command`, etc.
+4. **Comprehensive Examples:** 5-7 step plans.
+
+### Testing
+
+- **Real LLM:** `exoctl request "Implement feature" --agent default`
+- **Mock LLM:** Automated tests verify JSON output (770/770 passing).
+
+---
+
 ## Phase 7: Testing & Quality Assurance
 
 > **Status:** ✅ IN PROGRESS\

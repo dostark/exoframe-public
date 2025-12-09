@@ -15,7 +15,7 @@ graph TB
         User[👤 User/Developer]
         Agent[🤖 AI Agent]
     end
-    
+
     subgraph CLI["🖥️ CLI Layer"]
         Exoctl[exoctl CLI Entry]
         ReqCmd[Request Commands]
@@ -26,7 +26,7 @@ graph TB
         PortalCmd[Portal Commands]
         BlueprintCmd[Blueprint Commands]
     end
-    
+
     subgraph Core["⚙️ Core System"]
         Main[main.ts - Daemon]
         ReqWatch[Request Watcher<br/>Inbox/Requests]
@@ -37,7 +37,7 @@ graph TB
         FlowEng[Flow Engine]
         ExecLoop[Execution Loop]
     end
-    
+
     subgraph Services["🔧 Services"]
         ConfigSvc[Config Service]
         DBSvc[Database Service]
@@ -45,12 +45,13 @@ graph TB
         EventLog[Event Logger]
         ContextLoad[Context Loader]
         PlanWriter[Plan Writer]
+        PlanAdapter[Plan Adapter]
         MissionRpt[Mission Reporter]
         PathRes[Path Resolver]
         ToolReg[Tool Registry]
         CtxCard[Context Card Generator]
     end
-    
+
     subgraph Storage["💾 Storage"]
         DB[(SQLite DB<br/>journal.db)]
         FS[/File System<br/>~/ExoFrame/]
@@ -60,7 +61,7 @@ graph TB
         Portals[/Portals/<br/>External Projects/]
         System[/System/<br/>Active & Archive/]
     end
-    
+
     subgraph AI["🤖 AI Providers"]
         Factory[Provider Factory]
         Ollama[Ollama<br/>Local]
@@ -69,12 +70,12 @@ graph TB
         Gemini[Google Gemini<br/>Remote]
         Mock[Mock Provider<br/>Testing]
     end
-    
+
     %% User interactions
     User -->|CLI Commands| Exoctl
     User -->|Drop .md files| Inbox
     Agent -->|Read/Write| Portals
-    
+
     %% CLI routing
     Exoctl --> ReqCmd
     Exoctl --> PlanCmd
@@ -83,7 +84,7 @@ graph TB
     Exoctl --> DaemonCmd
     Exoctl --> PortalCmd
     Exoctl --> BlueprintCmd
-    
+
     %% CLI to Services
     ReqCmd --> Inbox
     PlanCmd --> Inbox
@@ -93,7 +94,7 @@ graph TB
     PortalCmd --> ConfigSvc
     PortalCmd --> CtxCard
     BlueprintCmd --> Blueprint
-    
+
     %% Core daemon flow
     Main --> ConfigSvc
     Main --> DBSvc
@@ -108,7 +109,7 @@ graph TB
     PlanExec --> AgentRun
     AgentRun --> ExecLoop
     ExecLoop --> FlowEng
-    
+
     %% Services integration
     AgentRun --> ContextLoad
     AgentRun --> PlanWriter
@@ -119,10 +120,11 @@ graph TB
     ContextLoad --> Knowledge
     ContextLoad --> Portals
     PlanWriter --> Inbox
+    PlanWriter --> PlanAdapter
     EventLog --> DB
     GitSvc --> FS
     PathRes --> FS
-    
+
     %% AI Provider routing
     Factory --> Ollama
     Factory --> Claude
@@ -130,13 +132,13 @@ graph TB
     Factory --> Gemini
     Factory --> Mock
     AgentRun --> Factory
-    
+
     %% Storage access
     ConfigSvc --> FS
     DBSvc --> DB
     ReqProc --> Blueprint
     Watcher --> System
-    
+
     %% Styling
     classDef actor fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef cli fill:#fff3e0,stroke:#e65100,stroke-width:2px
@@ -144,7 +146,7 @@ graph TB
     classDef service fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
     classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
     classDef ai fill:#fce4ec,stroke:#880e4f,stroke-width:2px
-    
+
     class User,Agent actor
     class Exoctl,ReqCmd,PlanCmd,ChangeCmd,GitCmd,DaemonCmd,PortalCmd,BlueprintCmd cli
     class Main,ReqWatch,PlanWatch,ReqProc,PlanExec,AgentRun,FlowEng,ExecLoop core
@@ -166,28 +168,43 @@ sequenceDiagram
     participant RP as Request Processor
     participant AR as Agent Runner
     participant AI as AI Provider
+    participant PA as Plan Adapter
+    participant PS as Plan Schema
     participant P as Inbox/Plans
     participant DB as Activity Journal
-    
+
     U->>CLI: exoctl request "Fix bug"
     CLI->>I: Create request-{uuid}.md
     CLI->>DB: Log request.created
     CLI-->>U: Request created ✓
-    
+
     W->>I: Detect new file
     W->>RP: Trigger processing
     RP->>I: Read request.md
     RP->>AR: Load blueprint
     AR->>AI: Generate plan
-    AI-->>AR: Plan response
-    AR->>P: Write plan-{uuid}.md
-    AR->>DB: Log plan.generated
-    P-->>U: Ready for review
-    
+    AI-->>AR: Plan response (JSON)
+
+    AR->>PA: Parse & Validate
+    PA->>PS: Validate against Zod Schema
+
+    alt Validation Success
+        PS-->>PA: Valid Plan Object
+        PA->>PA: Convert to Markdown
+        PA-->>AR: Markdown Content
+        AR->>P: Write plan-{uuid}.md
+        AR->>DB: Log plan.generated
+        P-->>U: Ready for review
+    else Validation Failed
+        PS-->>PA: Zod Validation Error
+        PA-->>AR: PlanValidationError
+        AR->>DB: Log plan.validation_failed
+    end
+
     U->>CLI: exoctl plan list
     CLI->>P: Read plans
     CLI-->>U: Show pending plans
-    
+
     U->>CLI: exoctl plan approve {uuid}
     CLI->>P: Update plan status
     CLI->>DB: Log plan.approved
@@ -215,29 +232,29 @@ sequenceDiagram
     participant Portal as Portal Repository
     participant CS as Changeset Registry
     participant DB as Activity Journal
-    
+
     U->>CLI: exoctl plan approve {uuid}
     CLI->>Plans: Read plan-{uuid}.md
     CLI->>Active: Move to System/Active/
     CLI->>DB: Log plan.approved
     CLI-->>U: Plan approved ✓
-    
+
     Note over W: File Watcher monitors<br/>System/Active/
     W->>Active: Detect _plan.md file
     W->>Detect: Trigger detection
-    
+
     Detect->>Active: Read plan file
     Detect->>Detect: Parse YAML frontmatter
     Detect->>Detect: Validate trace_id
     Detect->>DB: Log plan.detected
     Detect->>DB: Log plan.ready_for_execution
-    
+
     Detect->>Parse: Pass plan content
     Parse->>Parse: Extract body after frontmatter
     Parse->>Parse: Extract steps (regex)
     Parse->>Parse: Validate step numbering
     Parse->>Parse: Validate step titles
-    
+
     alt Parsing Success
         Parse->>DB: Log plan.parsed
         Parse->>Exec: Pass parsed plan + portal
@@ -249,48 +266,48 @@ sequenceDiagram
         Exec->>Agent: Connect via MCP (stdio/SSE)
         Agent->>MCP: List available tools
         MCP-->>Agent: Tools specification
-        
+
         Agent->>MCP: read_file(portal, path)
         MCP->>MCP: Validate permissions
         MCP->>Portal: Read file
         Portal-->>MCP: File contents
         MCP-->>Agent: File contents
         MCP->>DB: Log agent.tool.invoked
-        
+
         Agent->>MCP: git_create_branch(portal, feat/xyz)
         MCP->>MCP: Validate branch name
         MCP->>Portal: Create branch
         Portal-->>MCP: Branch created
         MCP-->>Agent: Success
         MCP->>DB: Log agent.git.branch_created
-        
+
         Agent->>MCP: write_file(portal, path, content)
         MCP->>MCP: Validate write permissions
         MCP->>Portal: Write file
         Portal-->>MCP: File written
         MCP-->>Agent: Success
         MCP->>DB: Log agent.tool.invoked
-        
+
         Agent->>MCP: git_commit(portal, message, files)
         MCP->>MCP: Validate commit message
         MCP->>Portal: Commit changes
         Portal-->>MCP: Commit SHA
         MCP-->>Agent: Commit SHA
         MCP->>DB: Log agent.git.commit
-        
+
         Agent->>Exec: Report completion via MCP
-        
+
         Exec->>CS: Register changeset
         CS->>DB: Record changeset
         CS->>DB: Log changeset.created
         Exec->>DB: Log plan.executed
         Exec-->>U: Changeset created ✓
-        
+
     else Parsing Failed
         Parse->>DB: Log plan.parsing_failed
         Parse-->>U: Parsing error logged
     end
-    
+
     alt Portal Access Denied
         Exec->>DB: Log portal.access_denied
         Exec-->>U: Permission error
@@ -308,7 +325,7 @@ graph TB
         D4[Validate trace_id]
         D5[Log plan.detected]
     end
-    
+
     subgraph Parsing[Parsing]
         P1[Extract body section]
         P2[Regex: ## Step N: Title]
@@ -317,7 +334,7 @@ graph TB
         P5[Build step objects]
         P6[Log plan.parsed]
     end
-    
+
     subgraph Orchestration[Agent Orchestration via MCP]
         O1[Validate portal permissions]
         O2[Start ExoFrame MCP Server]
@@ -326,7 +343,7 @@ graph TB
         O5[Monitor agent MCP tool calls]
         O6[Receive changeset details]
     end
-    
+
     subgraph MCPServer["ExoFrame MCP Server"]
         M1[MCP Protocol Handler]
         M2[Tool Registry]
@@ -335,7 +352,7 @@ graph TB
         M5[Permission Validator]
         M6[Action Logger]
     end
-    
+
     subgraph MCPTools["MCP Tools (Portal-Scoped)"]
         T1[read_file - Read portal files]
         T2[write_file - Write portal files]
@@ -344,32 +361,32 @@ graph TB
         T5[git_commit - Commit changes]
         T6[git_status - Check git status]
     end
-    
+
     subgraph Security["Security Modes"]
         SM1[Sandboxed: No file access]
         SM2[Hybrid: Read-only + audit]
     end
-    
+
     subgraph Registry[Changeset Registry]
         R1[Register changeset record]
         R2[Store commit SHA]
         R3[Link to trace_id]
         R4[Set status = pending]
     end
-    
+
     subgraph Status[Status Update]
         S1[Mark plan executed]
         S2[Move to Archive]
         S3[Log completion]
     end
-    
+
     subgraph Error[Error Handling]
         E1[Catch agent errors]
         E2[Catch Git errors]
         E3[Log failures]
         E4[Preserve plan state]
     end
-    
+
     D1 --> D2 --> D3 --> D4 --> D5
     D5 --> P1
     P1 --> P2 --> P3 --> P4 --> P5 --> P6
@@ -379,16 +396,16 @@ graph TB
     C1 --> C2 --> C3 --> C4
     C4 --> S1
     S1 --> S2 --> S3
-    
+
     G2 -.error.-> E1
     C2 -.error.-> E2
     E1 --> E3 --> E4
     E2 --> E3
-    
+
     classDef implemented fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
     classDef planned fill:#fff9c4,stroke:#f57f17,stroke-width:2px
     classDef error fill:#ffcdd2,stroke:#c62828,stroke-width:2px
-    
+
     class D1,D2,D3,D4,D5,P1,P2,P3,P4,P5,P6 implemented
     class G1,G2,G3,G4,C1,C2,C3,C4,S1,S2,S3 planned
     class E1,E2,E3,E4 error
@@ -405,25 +422,25 @@ graph TB
         Step2[## Step 2: Title<br/>Content and tasks]
         StepN[## Step N: Title<br/>Content and tasks]
     end
-    
+
     subgraph Parsed["Parsed Structure"]
         Context[Context Object<br/>{trace_id, request_id,<br/>agent, status}]
         Steps[Steps Array<br/>[{number, title, content}]]
     end
-    
+
     FM --> Context
     Body --> Context
     Step1 --> Steps
     Step2 --> Steps
     StepN --> Steps
-    
+
     Context --> Execution[Plan Executor]
     Steps --> Execution
-    
+
     classDef file fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef parsed fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
     classDef exec fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    
+
     class FM,Body,Step1,Step2,StepN file
     class Context,Steps parsed
     class Execution exec
@@ -454,7 +471,7 @@ graph LR
     subgraph Entry["Entry Point"]
         Exoctl[exoctl.ts<br/>Main CLI]
     end
-    
+
     subgraph Commands["Command Groups"]
         Base[BaseCommand<br/>Shared logic]
         Req[RequestCommands<br/>Create requests]
@@ -465,11 +482,11 @@ graph LR
         Portal[PortalCommands<br/>External projects]
         Blueprint[BlueprintCommands<br/>Agent templates]
     end
-    
+
     subgraph Context["Shared Context"]
         Ctx[CommandContext<br/>config + db]
     end
-    
+
     Exoctl --> Req
     Exoctl --> Plan
     Exoctl --> Change
@@ -477,7 +494,7 @@ graph LR
     Exoctl --> Daemon
     Exoctl --> Portal
     Exoctl --> Blueprint
-    
+
     Req -.extends.-> Base
     Plan -.extends.-> Base
     Change -.extends.-> Base
@@ -485,13 +502,13 @@ graph LR
     Daemon -.extends.-> Base
     Portal -.extends.-> Base
     Blueprint -.extends.-> Base
-    
+
     Base --> Ctx
-    
+
     classDef entry fill:#bbdefb,stroke:#1976d2,stroke-width:2px
     classDef cmd fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
     classDef ctx fill:#fff9c4,stroke:#f57f17,stroke-width:2px
-    
+
     class Exoctl entry
     class Base,Req,Plan,Change,Git,Daemon,Portal,Blueprint cmd
     class Ctx ctx
@@ -507,11 +524,11 @@ graph TB
         PF[ProviderFactory.create]
         Info[getProviderInfo]
     end
-    
+
     subgraph Config["Configuration"]
         Cfg[exo.config.toml<br/>ai.provider<br/>ai.model]
     end
-    
+
     subgraph Providers["LLM Providers"]
         Ollama[OllamaProvider<br/>localhost:11434]
         Claude[ClaudeProvider<br/>api.anthropic.com]
@@ -519,11 +536,11 @@ graph TB
         Gemini[GeminiProvider<br/>generativelanguage.googleapis.com]
         Mock[MockLLMProvider<br/>Testing]
     end
-    
+
     subgraph Interface["Provider Interface"]
         Gen[generateText<br/>generateStream]
     end
-    
+
     Cfg --> PF
     PF --> Info
     PF -->|provider=ollama| Ollama
@@ -531,18 +548,18 @@ graph TB
     PF -->|provider=openai| GPT
     PF -->|provider=google| Gemini
     PF -->|provider=mock| Mock
-    
+
     Ollama -.implements.-> Gen
     Claude -.implements.-> Gen
     GPT -.implements.-> Gen
     Gemini -.implements.-> Gen
     Mock -.implements.-> Gen
-    
+
     classDef factory fill:#e1bee7,stroke:#6a1b9a,stroke-width:2px
     classDef config fill:#fff9c4,stroke:#f57f17,stroke-width:2px
     classDef provider fill:#fce4ec,stroke:#880e4f,stroke-width:2px
     classDef interface fill:#b2dfdb,stroke:#00695c,stroke-width:2px
-    
+
     class PF,Info factory
     class Cfg config
     class Ollama,Claude,GPT,Gemini,Mock provider
@@ -562,38 +579,38 @@ graph TB
         Portals["Portals<br/>Symlinks"]
         System["System<br/>Active & Archive"]
     end
-    
+
     subgraph Database["SQLite Database"]
         Journal[("journal.db<br/>Activity Journal")]
         Activities["activities table"]
         Schema["Schema migrations"]
     end
-    
+
     subgraph Services["Services"]
         DB["DatabaseService"]
         Event["EventLogger"]
         Config["ConfigService"]
         Git["GitService"]
     end
-    
+
     Inbox -->|Watch| Watcher["File Watcher"]
     Blueprint -->|Read| ReqProc["Request Processor"]
     Knowledge -->|Generate| CtxCard["Context Card Gen"]
     Portals -->|Access| AgentRun["Agent Runner"]
     System -->|Store| Archive["Archive Service"]
-    
+
     Journal --> DB
     Activities --> Event
     Schema --> DB
-    
+
     DB --> Event
     Config --> FileSystem
     Git --> FileSystem
-    
+
     classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
     classDef db fill:#b2dfdb,stroke:#00695c,stroke-width:2px
     classDef service fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
-    
+
     class Inbox,Blueprint,Knowledge,Portals,System storage
     class Journal,Activities,Schema db
     class DB,Event,Config,Git service
@@ -610,24 +627,24 @@ graph TB
         Proj2[~/Dev/MyAPI]
         Proj3[~/Work/Backend]
     end
-    
+
     subgraph Portals["Portals Directory"]
         Link1[MyWebsite →]
         Link2[MyAPI →]
         Link3[Backend →]
     end
-    
+
     subgraph Knowledge["Knowledge/Portals"]
         Card1[MyWebsite.md<br/>Context Card]
         Card2[MyAPI.md<br/>Context Card]
         Card3[Backend.md<br/>Context Card]
     end
-    
+
     subgraph Config["Configuration"]
         TOML[exo.config.toml<br/>portals array]
         Deno[deno.json<br/>permissions]
     end
-    
+
     subgraph CLI["Portal Management"]
         Add[exoctl portal add]
         List[exoctl portal list]
@@ -636,20 +653,20 @@ graph TB
         Verify[exoctl portal verify]
         Refresh[exoctl portal refresh]
     end
-    
+
     Proj1 -.symlink.-> Link1
     Proj2 -.symlink.-> Link2
     Proj3 -.symlink.-> Link3
-    
+
     Link1 --> Card1
     Link2 --> Card2
     Link3 --> Card3
-    
+
     Card1 --> TOML
     Card2 --> TOML
     Card3 --> TOML
     TOML --> Deno
-    
+
     Add -->|Creates| Link1
     Add -->|Generates| Card1
     Add -->|Updates| TOML
@@ -658,13 +675,13 @@ graph TB
     Remove -->|Deletes| Link1
     Verify -->|Checks| Link1
     Refresh -->|Regenerates| Card1
-    
+
     classDef external fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef portal fill:#fff3e0,stroke:#e65100,stroke-width:2px
     classDef knowledge fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
     classDef config fill:#fff9c4,stroke:#f57f17,stroke-width:2px
     classDef cli fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
-    
+
     class Proj1,Proj2,Proj3 external
     class Link1,Link2,Link3 portal
     class Card1,Card2,Card3 knowledge
@@ -687,12 +704,12 @@ graph TB
         Mock[mock<br/>MockLLMProvider]
         Gemini[gemini<br/>Gemini 2.0 Flash]
     end
-    
+
     subgraph Storage["Blueprints/Agents"]
         Files[/agent_id.md<br/>TOML frontmatter/]
         Validation[Zod Schema<br/>Validation]
     end
-    
+
     subgraph CLI["Blueprint Commands"]
         Create[exoctl blueprint create]
         List[exoctl blueprint list]
@@ -701,13 +718,13 @@ graph TB
         Edit[exoctl blueprint edit]
         Remove[exoctl blueprint remove]
     end
-    
+
     subgraph Usage["Runtime Usage"]
         Request[exoctl request --agent]
         Processor[Request Processor]
         Runner[Agent Runner]
     end
-    
+
     Def --> Create
     Coder --> Create
     Reviewer --> Create
@@ -715,7 +732,7 @@ graph TB
     Researcher --> Create
     Mock --> Create
     Gemini --> Create
-    
+
     Create -->|Validates| Validation
     Create -->|Writes| Files
     List -->|Reads| Files
@@ -723,17 +740,17 @@ graph TB
     Validate -->|Checks| Validation
     Edit -->|$EDITOR| Files
     Remove -->|Deletes| Files
-    
+
     Request --> Processor
     Processor -->|Loads| Files
     Processor --> Runner
     Runner -->|Executes| AI[AI Provider]
-    
+
     classDef template fill:#fce4ec,stroke:#880e4f,stroke-width:2px
     classDef storage fill:#fff9c4,stroke:#f57f17,stroke-width:2px
     classDef cli fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
     classDef usage fill:#e1bee7,stroke:#6a1b9a,stroke-width:2px
-    
+
     class Def,Coder,Reviewer,Architect,Researcher,Mock,Gemini template
     class Files,Validation storage
     class Create,List,Show,Validate,Edit,Remove cli
@@ -747,34 +764,34 @@ graph TB
 ```mermaid
 stateDiagram-v2
     [*] --> Stopped: Initial state
-    
+
     Stopped --> Starting: exoctl daemon start
     Starting --> Running: PID written, watcher active
     Starting --> Failed: Startup error
-    
+
     Running --> Stopping: exoctl daemon stop
     Running --> Restarting: exoctl daemon restart
     Running --> Crashed: Process died
-    
+
     Stopping --> Stopped: SIGTERM successful
     Stopping --> ForceKill: Timeout (10s)
     ForceKill --> Stopped: SIGKILL sent
-    
+
     Restarting --> Stopping: Stop phase
     Stopping --> Starting: Start phase
-    
+
     Crashed --> Stopped: Cleanup PID file
     Failed --> Stopped: Cleanup resources
-    
+
     Running --> Running: Process requests
-    
+
     note right of Running
         File Watcher active
         Request Processor running
         Activity Journal logging
         AI Provider connected
     end note
-    
+
     note right of Stopped
         PID file removed
         No watchers active
@@ -794,7 +811,7 @@ graph LR
         Agent[Agent Actions<br/>Processing]
         Git[Git Operations<br/>Commits]
     end
-    
+
     subgraph Logger["Event Logger"]
         Log[log method]
         Info[info helper]
@@ -802,40 +819,40 @@ graph LR
         Error[error helper]
         Child[child logger]
     end
-    
+
     subgraph Database["SQLite Journal"]
         Table[(activities table)]
         Cols[id, timestamp,<br/>trace_id, actor,<br/>action, target,<br/>payload, icon]
     end
-    
+
     subgraph Query["Retrieval"]
         CLI[exoctl log tail]
         Trace[Filter by trace_id]
         Audit[Compliance audit]
     end
-    
+
     User --> Log
     Daemon --> Info
     Agent --> Warn
     Git --> Error
-    
+
     Log --> Table
     Info --> Table
     Warn --> Table
     Error --> Table
     Child --> Table
-    
+
     Table --> CLI
     Table --> Trace
     Table --> Audit
-    
+
     Cols -.schema.-> Table
-    
+
     classDef source fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef logger fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
     classDef db fill:#b2dfdb,stroke:#00695c,stroke-width:2px
     classDef query fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    
+
     class User,Daemon,Agent,Git source
     class Log,Info,Warn,Error,Child logger
     class Table,Cols db

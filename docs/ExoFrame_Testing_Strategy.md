@@ -1055,4 +1055,114 @@ git commit -m "chore: update benchmark baselines"
 
 ---
 
+---
+
+## 9. Code Coverage Strategy
+
+ExoFrame uses Deno's built-in coverage tool to track test coverage, ensuring reliability and maintainability.
+
+### 9.1 Coverage Goals
+
+We aim for high confidence in our codebase through meaningful tests.
+
+| Metric              | Target (Production) | Stretch Goal |
+| :------------------ | :------------------ | :----------- |
+| **Line Coverage**   | ≥ 80%               | ≥ 90%        |
+| **Branch Coverage** | ≥ 70%               | ≥ 85%        |
+
+**Why Branch Coverage?**
+Branch coverage is more critical than line coverage as it ensures all decision paths (if/else, switch, loops) are exercised, catching edge cases that line coverage might miss.
+
+### 9.2 Improvement Plan
+
+To reach our coverage targets, we follow a phased approach focusing on critical modules first.
+
+#### Priority Areas
+
+1. **Critical Infrastructure** (High Priority)
+   - **Modules:** `config/service.ts`, `services/path_resolver.ts`, `services/db.ts`
+   - **Focus:** Security validation, error handling, and data integrity.
+   - **Actions:** Add comprehensive tests for invalid inputs, file system errors, and transaction rollbacks.
+
+2. **Core Services** (Medium Priority)
+   - **Modules:** `services/watcher.ts`, `services/context_loader.ts`, `services/agent_runner.ts`
+   - **Focus:** Stability, resource management, and error recovery.
+   - **Actions:** Test edge cases like disk full, network timeouts, and concurrent modifications.
+
+3. **CLI & Tools** (Lower Priority)
+   - **Modules:** `cli/*`, `services/git_service.ts`
+   - **Focus:** User interaction and external tool integration.
+   - **Actions:** Verify signal handling and git operation failures.
+
+### 9.3 Implementation Strategy
+
+When adding new features or refactoring:
+
+1. **TDD Approach:** Write tests before implementation.
+2. **Gap Analysis:** Run coverage to identify uncovered branches.
+3. **Edge Cases:** Explicitly test error paths (network fail, permission denied).
+4. **Verification:** Ensure new code meets the 80% line coverage target.
+
+### 9.4 Testing Best Practices
+
+1. **Test One Behavior Per Test:** Keep tests focused and atomic.
+2. **Descriptive Names:** Use names like `should reject path traversal with ../` instead of `should work`.
+3. **Mock External Dependencies:** Isolate unit tests from file system and network using mocks.
+4. **Test Error Paths:** Most bugs hide in error handling logic. Verify that exceptions are caught and handled gracefully.
+
+### 9.5 Tools & Reports
+
+The `scripts/coverage.sh` script provides an all-in-one solution:
+
+```bash
+# Summary report (default)
+./scripts/coverage.sh
+
+# HTML report (interactive, great for finding gaps)
+./scripts/coverage.sh html
+
+# LCOV report (standard format)
+./scripts/coverage.sh lcov
+
+# Detailed line-by-line report
+./scripts/coverage.sh detailed
+```
+
+#### Report Types
+
+- **Summary:** Quick overview of percentages per file.
+- **HTML:** Interactive visualization. Highlights uncovered lines in red. Located at `coverage/html/index.html`.
+- **LCOV:** Standard format for CI/CD tools (Codecov, Coveralls). Located at `coverage/lcov.info`.
+
+### 9.6 CI/CD Integration
+
+Example GitHub Actions workflow:
+
+```yaml
+- name: Run tests with coverage
+  run: deno task test:coverage
+
+- name: Generate LCOV report
+  run: deno task coverage:lcov
+
+- name: Upload to Codecov
+  uses: codecov/codecov-action@v3
+  with:
+    files: ./coverage/lcov.info
+```
+
+### 9.7 Configuration
+
+Coverage settings are defined in `deno.json`.
+
+**Exclusions:**
+
+- Test files (`*.test.ts`)
+- Files outside `src/`
+- Third-party dependencies
+
+To adjust exclusions, edit the `--exclude` pattern in the `test:coverage` task.
+
+---
+
 _End of Testing Strategy_
