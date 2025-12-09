@@ -1,7 +1,7 @@
 +++
 agent_id = "senior-coder"
 name = "Senior Software Engineer"
-model = "anthropic:claude-3-5-sonnet"
+model = "codellama:7b-instruct"
 capabilities = ["code_generation", "architecture", "debugging", "testing", "code_review"]
 created = "2025-12-09T13:47:00Z"
 created_by = "exoframe-setup"

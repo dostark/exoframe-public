@@ -202,7 +202,7 @@ export class GitService {
   /**
    * Commit changes with trace_id in message footer
    */
-  async commit(options: CommitOptions): Promise<void> {
+  async commit(options: CommitOptions): Promise<string> {
     const startTime = Date.now();
 
     try {
@@ -228,12 +228,19 @@ export class GitService {
       // Commit
       await this.runGitCommand(["commit", "-m", message]);
 
+      // Get commit SHA
+      const shaResult = await this.runGitCommand(["rev-parse", "HEAD"]);
+      const sha = shaResult.output.trim();
+
       this.logActivity("git.committed", {
         success: true,
         message: options.message,
         trace_id: options.traceId,
+        commit_sha: sha,
         duration_ms: Date.now() - startTime,
       });
+
+      return sha;
     } catch (error) {
       this.logActivity("git.committed", {
         success: false,

@@ -210,13 +210,30 @@ if (import.meta.main) {
             steps: parsedSteps.map((s) => `${s.number}. ${s.title}`),
           });
 
-          // TODO: Execute plan (Step 5.12.3 - Code Generation)
-          // const changesetId = await planExecutor.execute(event.path, {
-          //   frontmatter,
-          //   steps: parsedSteps,
-          // });
+          // Step 5.12.3: Execute plan
+          const { PlanExecutor } = await import("./services/plan_executor.ts");
+          const planExecutor = new PlanExecutor(config, llmProvider, dbService);
+
+          const changesetId = await planExecutor.execute(event.path, {
+            trace_id: frontmatter.trace_id as string,
+            request_id: frontmatter.request_id as string,
+            agent: (frontmatter.agent as string) || "default",
+            frontmatter: frontmatter,
+            steps: parsedSteps,
+          });
+
+          if (changesetId) {
+            watcherLogger.info("plan.executed", event.path, {
+              trace_id: frontmatter.trace_id,
+              changeset_sha: changesetId,
+            });
+          } else {
+            watcherLogger.warn("plan.executed_no_changes", event.path, {
+              trace_id: frontmatter.trace_id,
+            });
+          }
         } catch (error) {
-          watcherLogger.error("plan.detection_failed", event.path, {
+          watcherLogger.error("plan.execution_failed", event.path, {
             error: error instanceof Error ? error.message : String(error),
           });
         }
