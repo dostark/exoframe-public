@@ -68,7 +68,11 @@ Always respond with:
 
       // PlanWriter should process <thought>/<content> tags into sections
       assertStringIncludes(planContent, "## Reasoning", "PlanWriter should create Reasoning section");
-      assertStringIncludes(planContent, "## Proposed Plan", "PlanWriter should create Proposed Plan section");
+      assertStringIncludes(
+        planContent,
+        "## Execution Steps",
+        "PlanWriter should create Execution Steps section (JSON format)",
+      );
     });
 
     // ========================================================================

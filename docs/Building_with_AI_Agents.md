@@ -1586,7 +1586,7 @@ Agent: [runs tests]
 Agent: "Found 305 tests"
 You: "Check if there is some tests duplications"
 Agent: [searches test files]
-Agent: "Found duplicate tests in tests/daemon_commands_test.ts and 
+Agent: "Found duplicate tests in tests/daemon_commands_test.ts and
         tests/cli/daemon_commands_test.ts"
 ```
 
@@ -1599,7 +1599,7 @@ Agent: "Found duplicate tests in tests/daemon_commands_test.ts and
 **The Solution**:
 
 ```
-You: "Move unique tests from tests/foo_test.ts to tests/cli/foo_test.ts 
+You: "Move unique tests from tests/foo_test.ts to tests/cli/foo_test.ts
      and delete the duplicate file"
 Agent: [identifies unique tests]
 Agent: [merges into canonical location]
@@ -1724,7 +1724,7 @@ ExoFrame originally used mixed formats—YAML frontmatter in requests/plans (`--
 ```
 You: "I think we should standardize on TOML format across the codebase"
 Agent: [analyzes current format usage]
-Agent: "Found YAML frontmatter in requests, plans. TOML in config. 
+Agent: "Found YAML frontmatter in requests, plans. TOML in config.
         Inconsistent."
 ```
 
@@ -2100,7 +2100,7 @@ This isn't inconsistency—it's documentation of real engineering decisions:
 
 ```
 src/AGENT_INSTRUCTIONS.md     # Source development guidelines
-tests/AGENT_INSTRUCTIONS.md   # Test development guidelines  
+tests/AGENT_INSTRUCTIONS.md   # Test development guidelines
 docs/AGENT_INSTRUCTIONS.md    # Documentation development guidelines
 ```
 
@@ -2386,7 +2386,7 @@ Tests labeled with `[security]` can be run in isolation before releases.
 
 **The TestEnvironment Helper**:
 
-```typescript
+````typescript
 const env = await TestEnvironment.create();
 // Creates isolated workspace with:
 // - Temp directory structure
@@ -2397,8 +2397,91 @@ const env = await TestEnvironment.create();
 
 // After test
 await env.cleanup();
+
+### Pattern 24: The Structured Communication Breakthrough (JSON Plans)
+
+**The Discovery**:
+Markdown-based plans were readable for humans but fragile for machines.
+
+```markdown
+Me: "Why did the plan parsing fail?"
+Agent: "The LLM put a space after '## Step 1:' which broke the regex."
+````
+
+**The Problem**:
+
+- Regex parsing of Markdown is brittle
+- LLMs are inconsistent with whitespace and formatting
+- Validation is hard (is this text a step description or a comment?)
+- Structure is implicit, not explicit
+
+**The Solution**: JSON for machines, Markdown for humans.
+
+**The New Workflow**:
+
+1. **Blueprint**: Instructs LLM to output JSON (schema-enforced)
+2. **AgentRunner**: Captures raw JSON response
+3. **PlanAdapter**: Validates JSON against Zod schema
+4. **PlanWriter**: Converts valid JSON to readable Markdown for storage
+
+**The Schema (PlanSchema)**:
+
+```typescript
+const PlanSchema = z.object({
+  title: z.string().min(1).max(300),
+  description: z.string(),
+  steps: z.array(z.object({
+    step: z.number(),
+    title: z.string(),
+    description: z.string(),
+    tools: z.array(z.string()).optional(),
+  })),
+});
 ```
 
+**The Model-Specific Prompting Strategy**:
+
+We discovered that different models need different instructions to output valid JSON.
+
+**1. Advanced Models (Claude 3.5, GPT-4)**:
+Prefer explicit XML tags and detailed schema definitions.
+
+```markdown
+## CRITICAL: Response Format
+
+You MUST respond with these exact tags:
+<thought>Your reasoning...</thought>
+<content>
+{
+"title": "...",
+"steps": [...]
+}
+</content>
+```
+
+**2. Local/Smaller Models (Llama 3.2, CodeLlama)**:
+Get confused by XML tags. Prefer simple, direct instructions.
+
+```markdown
+You are a coding assistant. Respond ONLY with valid JSON:
+{
+"title": "...",
+"steps": [...]
+}
+IMPORTANT: No other text.
+```
+
+**The Result**:
+
+- **Reliability**: 100% parsing success rate with valid JSON
+- **Validation**: Schema catches missing fields before they hit the disk
+- **Readability**: Humans still see clean Markdown files (converted by PlanWriter)
+- **Flexibility**: Different blueprints for different models (adaptive prompting)
+
+**The Lesson**:
+Don't make the LLM format for humans _and_ machines simultaneously. Ask for machine-readable output (JSON), then render it for humans (Markdown).
+
+`````
 ### The Week in Numbers
 
 | Metric                      | Value                  |
@@ -2406,11 +2489,12 @@ await env.cleanup();
 | Commits                     | 16                     |
 | Files changed               | 80+                    |
 | New tests added             | 150+                   |
-| Total tests                 | 515 → passing          |
+| Total tests                 | 770 → passing          |
 | Branch coverage             | 78% → 80%              |
-| Integration scenarios       | 0 → 10                 |
+| Integration scenarios       | 0 → 11                 |
 | Security tests              | 0 → 29                 |
 | Documentation files created | 3 (AGENT_INSTRUCTIONS) |
+| JSON Plan Format            | 100% Adoption          |
 
 ### The Key Insight
 
@@ -2453,7 +2537,7 @@ Done!
 // We parse this with regex (fragile!)
 const codeBlocks = llmResponse.match(/```typescript\n([\s\S]*?)\n```/g);
 const files = extractFilePaths(codeBlocks); // Hope LLM followed format!
-````
+`````
 
 **The Problems**:
 

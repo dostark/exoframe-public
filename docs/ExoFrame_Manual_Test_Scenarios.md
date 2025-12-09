@@ -630,15 +630,22 @@ cat ~/ExoFrame/Inbox/Plans/*_plan.md
 #
 # ## Proposed Plan
 #
-# ### Overview
 # Based on the request, I will implement the required functionality.
 #
-# ### Steps
-# 1. **Analyze Requirements** - Review the request and identify key requirements
-# 2. **Design Solution** - Create a technical design for the implementation
-# 3. **Implement Code** - Write the necessary code changes
-# 4. **Write Tests** - Add unit tests to verify the implementation
-# 5. **Review** - Self-review the changes for quality
+# ## Step 1: Analyze Requirements
+# Review the request and identify key requirements for the implementation.
+#
+# ## Step 2: Design Solution
+# Create a technical design for the implementation, considering architecture and patterns.
+#
+# ## Step 3: Implement Code
+# Write the necessary code changes to implement the feature.
+#
+# ## Step 4: Write Tests
+# Add unit tests to verify the implementation works correctly.
+#
+# ## Step 5: Review
+# Self-review the changes for quality and ensure all requirements are met.
 #
 # ### Files to Modify
 # - src/feature.ts (new file)
@@ -694,7 +701,7 @@ exoctl plan list
 
 - [ ] Plan generated within 30 seconds
 - [ ] Plan linked to original request (matching trace_id)
-- [ ] Plan contains actionable steps with standard structure
+- [ ] Plan contains steps in `## Step N: Title` format (required for execution)
 - [ ] Plan includes Reasoning and Proposed Plan sections
 - [ ] Plan file uses YAML frontmatter format
 - [ ] MockLLMProvider logs show "falling back to pattern matching" (expected)
@@ -864,8 +871,8 @@ exoctl blueprint show senior-coder
 # Step 1: Configure portal with security mode
 cat >> ~/ExoFrame/exo.config.toml << EOF
 [[portals]]
-name = "TestApp"
-path = "/tmp/test-portal"
+alias = "TestApp"
+target_path = "/tmp/test-portal"
 agents_allowed = ["senior-coder", "mock"]
 operations = ["read", "write", "git"]
 
@@ -885,6 +892,7 @@ git add .
 git commit -m "Initial commit"
 
 # Step 3: Mount portal in ExoFrame
+cd ~/ExoFrame
 exoctl portal add /tmp/test-portal TestApp
 
 # Step 4: Verify portal configuration
@@ -1053,54 +1061,65 @@ exoctl git log <trace-id>
 ### Expected Results
 
 **Part A (Blueprint Setup):**
+
 - Agent blueprint created or verified
 - Blueprint visible in `exoctl blueprint list`
 
 **Part B (Portal Configuration):**
+
 - Portal configured with security mode
 - Git repo initialized in portal directory
 - Portal mounted and visible in ExoFrame
 
 **Part C (Execution):**
+
 - Request created and plan generated
 - Plan approval triggers MCP execution
 - Changeset created with status=pending
 
 **Part D (Verification):**
+
 - Changeset details show correct portal, branch, commit
 - Diff shows expected code changes
 - Activity Journal logs complete execution trail
 
 **Part E (Approval):**
+
 - Changeset merged to main branch
 - Status updated to approved with timestamps
 
 **Part F (Rejection):**
+
 - Changeset status updated to rejected
 - Reason recorded correctly
 
 **Part G (Security):**
+
 - Sandboxed mode: all operations via MCP tools
 - Permission violations logged and blocked
 - Path traversal attempts blocked
 
 **Part H (Git):**
+
 - All git subcommands functional
 - Branch and commit tracking works
 
 ### Pass Criteria
 
 **Blueprint Setup:**
+
 - [ ] Agent blueprint (`senior-coder` or `mock`) created or exists
 - [ ] Blueprint visible in `exoctl blueprint list`
 - [ ] Blueprint validated with `exoctl blueprint show <agent-id>`
 
 **Configuration & Setup:**
+
 - [ ] Portal configured with `agents_allowed` and `operations`
 - [ ] Security mode (`sandboxed` or `hybrid`) set correctly
 - [ ] Portal mounted and accessible via ExoFrame
 
 **Plan Execution:**
+
 - [ ] Approved plan triggers automatic execution
 - [ ] MCP server starts with correct portal scope
 - [ ] Agent executes via MCP tools only (sandboxed mode)
@@ -1108,6 +1127,7 @@ exoctl git log <trace-id>
 - [ ] Commit includes `[ExoTrace: <trace-id>]` footer
 
 **Changeset Lifecycle:**
+
 - [ ] Changeset registered in database with status=pending
 - [ ] `exoctl changeset list` shows pending changesets
 - [ ] `exoctl changeset show <id>` displays details and diff
@@ -1115,6 +1135,7 @@ exoctl git log <trace-id>
 - [ ] `exoctl changeset reject <id>` records reason and updates status
 
 **Activity Journal:**
+
 - [ ] `plan.detected` logged when plan found in System/Active/
 - [ ] `plan.parsed` logged with step count
 - [ ] `agent.tool.invoked` logged for each MCP tool call
@@ -1122,12 +1143,14 @@ exoctl git log <trace-id>
 - [ ] `plan.executed` logged on completion
 
 **Security:**
+
 - [ ] Agent without permission blocked (agents_allowed enforcement)
 - [ ] Operations not in list blocked (operations enforcement)
 - [ ] Path traversal attempts blocked and logged
 - [ ] Security violations logged to Activity Journal
 
 **Git Commands:**
+
 - [ ] `exoctl git branches` lists all portal branches
 - [ ] `exoctl git status` shows repository status
 - [ ] `exoctl git log <trace-id>` finds commits by trace_id
@@ -1790,24 +1813,24 @@ unset EXO_LLM_PROVIDER EXO_LLM_MODEL EXO_LLM_BASE_URL
 
 ### Test Results
 
-| ID    | Scenario                       | Pass | Fail | Skip | Notes |
-| ----- | ------------------------------ | ---- | ---- | ---- | ----- |
-| MT-01 | Fresh Installation             |      |      |      |       |
-| MT-02 | Daemon Startup                 |      |      |      |       |
-| MT-03 | Blueprint Management           |      |      |      |       |
-| MT-04 | Create Request                 |      |      |      |       |
-| MT-05 | Plan Generation (Mock)         |      |      |      |       |
-| MT-06 | Plan Approval                  |      |      |      |       |
-| MT-07 | Plan Rejection                 |      |      |      |       |
-| MT-08 | Plan Execution & Changesets    |      |      |      |       |
-| MT-09 | Portal Management              |      |      |      |       |
-| MT-10 | Daemon Crash Recovery          |      |      |      |       |
-| MT-11 | Real LLM Integration           |      |      |      |       |
-| MT-12 | Invalid Request Handling       |      |      |      |       |
-| MT-13 | Database Corruption            |      |      |      |       |
-| MT-14 | Concurrent Requests            |      |      |      |       |
-| MT-15 | File Watcher Reliability       |      |      |      |       |
-| MT-16 | LLM Provider Selection         |      |      |      |       |
+| ID    | Scenario                    | Pass | Fail | Skip | Notes |
+| ----- | --------------------------- | ---- | ---- | ---- | ----- |
+| MT-01 | Fresh Installation          |      |      |      |       |
+| MT-02 | Daemon Startup              |      |      |      |       |
+| MT-03 | Blueprint Management        |      |      |      |       |
+| MT-04 | Create Request              |      |      |      |       |
+| MT-05 | Plan Generation (Mock)      |      |      |      |       |
+| MT-06 | Plan Approval               |      |      |      |       |
+| MT-07 | Plan Rejection              |      |      |      |       |
+| MT-08 | Plan Execution & Changesets |      |      |      |       |
+| MT-09 | Portal Management           |      |      |      |       |
+| MT-10 | Daemon Crash Recovery       |      |      |      |       |
+| MT-11 | Real LLM Integration        |      |      |      |       |
+| MT-12 | Invalid Request Handling    |      |      |      |       |
+| MT-13 | Database Corruption         |      |      |      |       |
+| MT-14 | Concurrent Requests         |      |      |      |       |
+| MT-15 | File Watcher Reliability    |      |      |      |       |
+| MT-16 | LLM Provider Selection      |      |      |      |       |
 
 ### Summary
 

@@ -1,9 +1,15 @@
 /**
  * Plan Writer - Formats agent execution results into structured plans
- * Implements Step 3.4 of the ExoFrame Implementation Plan
+ * Implements Step 3.4 and Step 6.7 of the ExoFrame Implementation Plan
+ *
+ * Step 6.7 Update:
+ * - LLMs now output JSON plans within <content> tags
+ * - PlanAdapter validates JSON against schema
+ * - Converts validated plan to markdown for storage
  */
 
 import type { DatabaseService } from "./db.ts";
+import { PlanAdapter, PlanValidationError } from "./plan_adapter.ts";
 
 // ============================================================================
 // Types and Interfaces
@@ -89,7 +95,11 @@ export interface AgentExecutionResult {
  * and writes them to /Inbox/Plans for user review
  */
 export class PlanWriter {
-  constructor(private config: PlanWriterConfig) {}
+  private adapter: PlanAdapter;
+
+  constructor(private config: PlanWriterConfig) {
+    this.adapter = new PlanAdapter();
+  }
 
   /**
    * Write a plan document based on agent execution result
@@ -98,8 +108,8 @@ export class PlanWriter {
     result: AgentExecutionResult,
     metadata: RequestMetadata,
   ): Promise<PlanWriteResult> {
-    // Generate plan content
-    const content = this.formatPlan(result, metadata);
+    // Generate plan content (with JSON validation)
+    const content = await this.formatPlan(result, metadata);
 
     // Generate filename: request-id_plan.md
     const filename = this.generateFilename(metadata.requestId);
@@ -122,36 +132,69 @@ export class PlanWriter {
 
   /**
    * Format the complete plan document
+   * Step 6.7: Validates JSON plan and converts to markdown
    */
-  private formatPlan(
+  private async formatPlan(
     result: AgentExecutionResult,
     metadata: RequestMetadata,
-  ): string {
+  ): Promise<string> {
     const sections: string[] = [];
 
     // 1. Frontmatter
     sections.push(this.generateFrontmatter(metadata));
 
-    // 2. Title (extract from content or use request ID)
-    const title = this.extractTitle(result.content) ||
-      `Plan: ${metadata.requestId}`;
-    sections.push(`# ${title}\n`);
+    // 2. Validate and convert JSON plan to markdown
+    let planMarkdown: string;
+    try {
+      const plan = this.adapter.parse(result.content);
+      planMarkdown = this.adapter.toMarkdown(plan);
 
-    // 3. Summary (first paragraph of content or generate)
-    sections.push(`## Summary\n`);
-    sections.push(this.extractSummary(result.content));
-    sections.push("");
+      // Log validation success
+      await this.logPlanValidation(
+        "plan.validation.success",
+        metadata.requestId,
+        metadata.traceId,
+        {
+          step_count: plan.steps.length,
+          has_risks: plan.risks !== undefined && plan.risks.length > 0,
+          has_dependencies: plan.steps.some((s) => s.dependencies && s.dependencies.length > 0),
+        },
+      );
+    } catch (error) {
+      if (error instanceof PlanValidationError) {
+        // Log validation failure
+        await this.logPlanValidation(
+          "plan.validation.failed",
+          metadata.requestId,
+          metadata.traceId,
+          {
+            error_type: "PlanValidationError",
+            error_message: error.message,
+            raw_preview: result.content.substring(0, 200),
+          },
+        );
+        throw error;
+      }
+      throw error;
+    }
 
-    // 4. Reasoning (from thought tags)
+    // Log successful parsing
+    await this.logPlanValidation(
+      "plan.parsed",
+      metadata.requestId,
+      metadata.traceId,
+      { file_path: `${this.config.plansDirectory}/${this.generateFilename(metadata.requestId)}` },
+    );
+
+    // 3. Reasoning (from thought tags)
     if (this.config.includeReasoning && result.thought) {
       sections.push(`## Reasoning\n`);
       sections.push(result.thought);
       sections.push("");
     }
 
-    // 5. Proposed Changes (main content)
-    sections.push(`## Proposed Changes\n`);
-    sections.push(result.content);
+    // 4. Plan content (converted from JSON)
+    sections.push(planMarkdown);
     sections.push("");
 
     // 6. Context References
@@ -282,6 +325,34 @@ export class PlanWriter {
       "3. Agent will execute changes on a separate git branch",
       "4. Review the pull request before merging to main\n",
     ].join("\n");
+  }
+
+  /**
+   * Log plan validation events to Activity Journal
+   */
+  private async logPlanValidation(
+    actionType: string,
+    requestId: string,
+    traceId: string,
+    metadata: Record<string, unknown>,
+  ): Promise<void> {
+    if (!this.config.db) {
+      // If no database provided, skip logging (testing mode)
+      return;
+    }
+
+    try {
+      await this.config.db.logActivity(
+        "agent",
+        actionType,
+        requestId,
+        metadata,
+        traceId,
+      );
+    } catch (error) {
+      // Log to stderr but don't fail validation
+      console.error(`[Activity] Failed to log ${actionType}:`, error);
+    }
   }
 
   /**

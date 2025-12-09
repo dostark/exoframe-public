@@ -140,7 +140,14 @@ describe("RequestProcessor", () => {
       await Deno.writeTextFile(requestPath, requestContent);
 
       const provider = new MockLLMProvider("scripted", {
-        responses: [createMockResponse("Analyzing request", "# Plan\n\nImplementation plan here")],
+        responses: [createMockResponse(
+          "Analyzing request",
+          JSON.stringify({
+            title: "Implementation Plan",
+            description: "Plan for adding hello world function",
+            steps: [{ step: 1, title: "Implement function", description: "Add hello world to utils.ts" }],
+          }),
+        )],
       });
       const processor = new RequestProcessor(config, provider, db, processorConfig);
 
@@ -210,7 +217,14 @@ Do something
       await Deno.writeTextFile(requestPath, requestContent);
 
       const provider = new MockLLMProvider("scripted", {
-        responses: [createMockResponse("Analyzing auth requirements", "# Auth Implementation Plan")],
+        responses: [createMockResponse(
+          "Analyzing auth requirements",
+          JSON.stringify({
+            title: "Auth Implementation Plan",
+            description: "User authentication system implementation",
+            steps: [{ step: 1, title: "Implement auth", description: "Create authentication system" }],
+          }),
+        )],
       });
       const processor = new RequestProcessor(config, provider, db, processorConfig);
 
@@ -234,7 +248,14 @@ Do something
       await Deno.writeTextFile(requestPath, requestContent);
 
       const provider = new MockLLMProvider("scripted", {
-        responses: [createMockResponse("Logging analysis", "# Logging Plan")],
+        responses: [createMockResponse(
+          "Logging analysis",
+          JSON.stringify({
+            title: "Logging Plan",
+            description: "Add logging to service layer",
+            steps: [{ step: 1, title: "Add logging", description: "Add logging to the service layer" }],
+          }),
+        )],
       });
       const processor = new RequestProcessor(config, provider, db, processorConfig);
 
@@ -256,7 +277,14 @@ Do something
       await Deno.writeTextFile(requestPath, requestContent);
 
       const provider = new MockLLMProvider("scripted", {
-        responses: [createMockResponse("Error handling analysis", "# Error Handling Plan")],
+        responses: [createMockResponse(
+          "Error handling analysis",
+          JSON.stringify({
+            title: "Error Handling Plan",
+            description: "Implement error handling",
+            steps: [{ step: 1, title: "Error handling", description: "Implement proper error handling" }],
+          }),
+        )],
       });
       const processor = new RequestProcessor(config, provider, db, processorConfig);
 
@@ -285,7 +313,14 @@ Do something
       await Deno.writeTextFile(requestPath, requestContent);
 
       const provider = new MockLLMProvider("scripted", {
-        responses: [createMockResponse("Test analysis", "# Test Plan")],
+        responses: [createMockResponse(
+          "Test analysis",
+          JSON.stringify({
+            title: "Test Plan",
+            description: "Add unit tests",
+            steps: [{ step: 1, title: "Add tests", description: "Add comprehensive unit tests" }],
+          }),
+        )],
       });
       const processor = new RequestProcessor(config, provider, db, processorConfig);
 
@@ -309,7 +344,14 @@ Do something
       await Deno.writeTextFile(requestPath, requestContent);
 
       const provider = new MockLLMProvider("scripted", {
-        responses: [createMockResponse("Refactoring analysis", "# Refactor Plan")],
+        responses: [createMockResponse(
+          "Refactoring analysis",
+          JSON.stringify({
+            title: "Refactor Plan",
+            description: "Refactor the database layer",
+            steps: [{ step: 1, title: "Refactor DB", description: "Refactor database layer" }],
+          }),
+        )],
       });
       const processor = new RequestProcessor(config, provider, db, processorConfig);
 
@@ -416,7 +458,14 @@ You are an expert code reviewer. Analyze code changes and provide feedback.
       await Deno.writeTextFile(requestPath, requestContent);
 
       const provider = new MockLLMProvider("scripted", {
-        responses: [createMockResponse("Code review analysis", "# Code Review Feedback")],
+        responses: [createMockResponse(
+          "Code review analysis",
+          JSON.stringify({
+            title: "Code Review Feedback",
+            description: "Review pull request feedback",
+            steps: [{ step: 1, title: "Review code", description: "Analyze code changes" }],
+          }),
+        )],
       });
       const processor = new RequestProcessor(config, provider, db, processorConfig);
 
@@ -437,7 +486,14 @@ You are an expert code reviewer. Analyze code changes and provide feedback.
       await Deno.writeTextFile(requestPath, requestContent);
 
       const provider = new MockLLMProvider("scripted", {
-        responses: [createMockResponse("Default analysis", "# Default Plan")],
+        responses: [createMockResponse(
+          "Default analysis",
+          JSON.stringify({
+            title: "Default Plan",
+            description: "Use the default blueprint",
+            steps: [{ step: 1, title: "Execute", description: "Execute using default blueprint" }],
+          }),
+        )],
       });
       const processor = new RequestProcessor(config, provider, db, processorConfig);
 

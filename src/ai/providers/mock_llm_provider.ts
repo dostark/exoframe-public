@@ -511,6 +511,9 @@ export class MockLLMProvider implements IModelProvider {
 
   /**
    * Get default patterns for fallback when no recordings available
+   *
+   * Updated for Step 6.7: Plans now use JSON format validated by PlanSchema.
+   * JSON is output within <content> tags and gets validated/converted to markdown by PlanAdapter.
    */
   private getDefaultPatterns(): PatternMatcher[] {
     return [
@@ -521,24 +524,41 @@ I need to analyze the request and create a plan for implementation.
 </thought>
 
 <content>
-## Proposed Plan
-
-### Overview
-Based on the request, I will implement the required functionality.
-
-### Steps
-1. **Analyze Requirements** - Review the request and identify key requirements
-2. **Design Solution** - Create a technical design for the implementation
-3. **Implement Code** - Write the necessary code changes
-4. **Write Tests** - Add unit tests to verify the implementation
-5. **Review** - Self-review the changes for quality
-
-### Files to Modify
-- src/feature.ts (new file)
-- tests/feature_test.ts (new file)
-
-### Expected Outcome
-The feature will be implemented and tested according to requirements.
+{
+  "title": "Implementation Plan",
+  "description": "Based on the request, I will implement the required functionality with a structured approach.",
+  "steps": [
+    {
+      "step": 1,
+      "title": "Analyze Requirements",
+      "description": "Review the request and identify key requirements for the implementation."
+    },
+    {
+      "step": 2,
+      "title": "Design Solution",
+      "description": "Create a technical design for the implementation, considering architecture and patterns."
+    },
+    {
+      "step": 3,
+      "title": "Implement Code",
+      "description": "Write the necessary code changes to implement the feature.",
+      "tools": ["write_file"]
+    },
+    {
+      "step": 4,
+      "title": "Write Tests",
+      "description": "Add unit tests to verify the implementation works correctly.",
+      "tools": ["write_file"],
+      "dependencies": [3]
+    },
+    {
+      "step": 5,
+      "title": "Review",
+      "description": "Self-review the changes for quality and ensure all requirements are met."
+    }
+  ],
+  "estimatedDuration": "2-4 hours"
+}
 </content>`,
       },
       {
@@ -548,24 +568,45 @@ I need to investigate and fix the reported issue.
 </thought>
 
 <content>
-## Proposed Plan
-
-### Overview
-I will investigate and fix the reported issue.
-
-### Steps
-1. **Reproduce Issue** - Verify the bug exists
-2. **Root Cause Analysis** - Identify why the bug occurs
-3. **Implement Fix** - Apply the necessary correction
-4. **Test Fix** - Verify the bug is resolved
-5. **Regression Test** - Ensure no new issues introduced
-
-### Files to Modify
-- src/affected_module.ts (to fix the bug)
-- tests/affected_module_test.ts (add regression test)
-
-### Expected Outcome
-The bug will be fixed without introducing regressions.
+{
+  "title": "Bug Fix Plan",
+  "description": "I will investigate and fix the reported issue systematically.",
+  "steps": [
+    {
+      "step": 1,
+      "title": "Reproduce Issue",
+      "description": "Verify the bug exists and understand the exact conditions that trigger it."
+    },
+    {
+      "step": 2,
+      "title": "Root Cause Analysis",
+      "description": "Identify why the bug occurs by analyzing the relevant code paths.",
+      "tools": ["read_file"]
+    },
+    {
+      "step": 3,
+      "title": "Implement Fix",
+      "description": "Apply the necessary correction to resolve the issue.",
+      "tools": ["write_file"],
+      "dependencies": [2]
+    },
+    {
+      "step": 4,
+      "title": "Test Fix",
+      "description": "Verify the bug is resolved and the fix works as expected.",
+      "tools": ["write_file"],
+      "dependencies": [3]
+    },
+    {
+      "step": 5,
+      "title": "Regression Test",
+      "description": "Ensure no new issues are introduced by the fix.",
+      "dependencies": [4]
+    }
+  ],
+  "estimatedDuration": "1-2 hours",
+  "risks": ["Fix may have unintended side effects on related functionality"]
+}
 </content>`,
       },
       {
@@ -575,20 +616,34 @@ I will create a plan to address this request.
 </thought>
 
 <content>
-## Proposed Plan
-
-### Overview
-I will address the user's request.
-
-### Steps
-1. **Analyze** - Review the request details
-2. **Plan** - Design the approach
-3. **Implement** - Execute the changes
-4. **Test** - Verify the solution
-5. **Document** - Update relevant documentation
-
-### Expected Outcome
-The request will be fulfilled according to specifications.
+{
+  "title": "Execution Plan",
+  "description": "I will address the user's request with a structured approach.",
+  "steps": [
+    {
+      "step": 1,
+      "title": "Analyze",
+      "description": "Review the request details and understand what needs to be done."
+    },
+    {
+      "step": 2,
+      "title": "Plan",
+      "description": "Design the approach and identify files that need to be modified."
+    },
+    {
+      "step": 3,
+      "title": "Implement",
+      "description": "Execute the changes according to the plan.",
+      "tools": ["write_file"]
+    },
+    {
+      "step": 4,
+      "title": "Test",
+      "description": "Verify the solution works correctly.",
+      "dependencies": [3]
+    }
+  ]
+}
 </content>`,
       },
     ];
@@ -601,62 +656,126 @@ The request will be fulfilled according to specifications.
 
 /**
  * Create a MockLLMProvider with common plan generation responses
+ *
+ * Updated for Step 6.7: Plans use JSON format validated by PlanSchema
  */
 export function createPlanGeneratorMock(): MockLLMProvider {
   return new MockLLMProvider("pattern", {
     patterns: [
       {
         pattern: /implement|add|create/i,
-        response: `## Proposed Plan
-
-### Overview
-Based on the request, I will implement the required functionality.
-
-### Steps
-1. **Analyze Requirements** - Review the request and identify key requirements
-2. **Design Solution** - Create a technical design for the implementation
-3. **Implement Code** - Write the necessary code changes
-4. **Write Tests** - Add unit tests to verify the implementation
-5. **Review** - Self-review the changes for quality
-
-### Files to Modify
-- src/feature.ts (new file)
-- tests/feature_test.ts (new file)
-
-### Expected Outcome
-The feature will be implemented and tested.`,
+        response: `<content>
+${
+          JSON.stringify({
+            title: "Implementation Plan",
+            description: "Based on the request, I will implement the required functionality.",
+            steps: [
+              {
+                step: 1,
+                title: "Analyze Requirements",
+                description: "Review the request and identify key requirements for the implementation.",
+              },
+              {
+                step: 2,
+                title: "Design Solution",
+                description: "Create a technical design for the implementation, considering architecture and patterns.",
+              },
+              {
+                step: 3,
+                title: "Implement Code",
+                description: "Write the necessary code changes to implement the feature.",
+                tools: ["write_file"],
+              },
+              {
+                step: 4,
+                title: "Write Tests",
+                description: "Add unit tests to verify the implementation works correctly.",
+                tools: ["write_file"],
+                dependencies: [3],
+              },
+              {
+                step: 5,
+                title: "Review",
+                description: "Self-review the changes for quality and ensure all requirements are met.",
+              },
+            ],
+            estimatedDuration: "2-4 hours",
+          })
+        }
+</content>`,
       },
       {
         pattern: /fix|bug|error/i,
-        response: `## Proposed Plan
-
-### Overview
-I will investigate and fix the reported issue.
-
-### Steps
-1. **Reproduce Issue** - Verify the bug exists
-2. **Root Cause Analysis** - Identify why the bug occurs
-3. **Implement Fix** - Apply the necessary correction
-4. **Test Fix** - Verify the bug is resolved
-5. **Regression Test** - Ensure no new issues introduced
-
-### Expected Outcome
-The bug will be fixed without introducing regressions.`,
+        response: `<content>
+${
+          JSON.stringify({
+            title: "Bug Fix Plan",
+            description: "I will investigate and fix the reported issue.",
+            steps: [
+              {
+                step: 1,
+                title: "Reproduce Issue",
+                description: "Verify the bug exists and understand the exact conditions that trigger it.",
+              },
+              {
+                step: 2,
+                title: "Root Cause Analysis",
+                description: "Identify why the bug occurs by analyzing the relevant code paths.",
+                tools: ["read_file"],
+              },
+              {
+                step: 3,
+                title: "Implement Fix",
+                description: "Apply the necessary correction to resolve the issue.",
+                tools: ["write_file"],
+                dependencies: [2],
+              },
+              {
+                step: 4,
+                title: "Test Fix",
+                description: "Verify the bug is resolved and the fix works as expected.",
+                dependencies: [3],
+              },
+              {
+                step: 5,
+                title: "Regression Test",
+                description: "Ensure no new issues are introduced by the fix.",
+                dependencies: [4],
+              },
+            ],
+            estimatedDuration: "1-2 hours",
+          })
+        }
+</content>`,
       },
       {
         pattern: /.*/,
-        response: `## Proposed Plan
-
-### Overview
-I will address the user's request.
-
-### Steps
-1. Analyze the request
-2. Implement the solution
-3. Test the changes
-
-### Expected Outcome
-The request will be fulfilled.`,
+        response: `<content>
+${
+          JSON.stringify({
+            title: "Execution Plan",
+            description: "I will address the user's request with a structured approach.",
+            steps: [
+              {
+                step: 1,
+                title: "Analyze",
+                description: "Review the request details and understand what needs to be done.",
+              },
+              {
+                step: 2,
+                title: "Plan",
+                description: "Design the approach and identify files that need to be modified.",
+              },
+              {
+                step: 3,
+                title: "Implement",
+                description: "Execute the changes according to the plan.",
+                tools: ["write_file"],
+              },
+            ],
+          })
+        }
+</content>`,
       },
     ],
   });

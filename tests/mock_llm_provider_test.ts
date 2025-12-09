@@ -112,7 +112,7 @@ Deno.test("Recorded: returns response matching prompt hash", async () => {
     {
       promptHash: "abc123",
       promptPreview: "You are a senior...",
-      response: "## Proposed Plan\n\n1. First step",
+      response: "## Plan\n\n1. First step",
       model: "claude-3-5-sonnet",
       tokens: { input: 100, output: 50 },
       recordedAt: "2025-12-01T10:00:00Z",
@@ -123,7 +123,7 @@ Deno.test("Recorded: returns response matching prompt hash", async () => {
 
   // The provider should hash "You are a senior..." and find a match
   const result = await provider.generate("You are a senior...");
-  assertEquals(result, "## Proposed Plan\n\n1. First step");
+  assertEquals(result, "## Plan\n\n1. First step");
 });
 
 Deno.test("Recorded: throws error when no matching recording found", async () => {
@@ -410,7 +410,7 @@ Deno.test("MockLLMProvider can simulate plan generation", async () => {
     patterns: [
       {
         pattern: /.*/,
-        response: `## Proposed Plan
+        response: `"title"
 
 ### Overview
 This plan addresses the user's request.
@@ -429,7 +429,7 @@ The feature will be implemented according to specifications.`,
 
   const result = await provider.generate("Implement feature X");
 
-  assertStringIncludes(result, "## Proposed Plan");
+  assertStringIncludes(result, "title");
   assertStringIncludes(result, "### Steps");
   assertStringIncludes(result, "1. Analyze");
 });
@@ -550,9 +550,9 @@ Deno.test("Default patterns: handles 'implement' requests", async () => {
 
   assertStringIncludes(result, "<thought>");
   assertStringIncludes(result, "<content>");
-  assertStringIncludes(result, "## Proposed Plan");
-  assertStringIncludes(result, "### Overview");
-  assertStringIncludes(result, "### Steps");
+  assertStringIncludes(result, "title");
+  assertStringIncludes(result, '"step": 1');
+  assertStringIncludes(result, '"step": 2');
   assertStringIncludes(result, "implement");
 });
 
@@ -563,9 +563,9 @@ Deno.test("Default patterns: handles 'add' requests", async () => {
 
   const result = await provider.generate("Add pagination to the API");
 
-  assertStringIncludes(result, "## Proposed Plan");
-  assertStringIncludes(result, "### Steps");
-  assertStringIncludes(result, "### Expected Outcome");
+  assertStringIncludes(result, '"title"');
+  assertStringIncludes(result, '"step": 1');
+  assertStringIncludes(result, '"description"');
 });
 
 Deno.test("Default patterns: handles 'create' requests", async () => {
@@ -575,10 +575,10 @@ Deno.test("Default patterns: handles 'create' requests", async () => {
 
   const result = await provider.generate("Create a new dashboard component");
 
-  assertStringIncludes(result, "## Proposed Plan");
-  assertStringIncludes(result, "### Steps");
-  assertStringIncludes(result, "feature.ts");
-  assertStringIncludes(result, "tests");
+  assertStringIncludes(result, '"title"');
+  assertStringIncludes(result, '"step": 1');
+  assertStringIncludes(result, "write_file");
+  assertStringIncludes(result, "Test");
 });
 
 Deno.test("Default patterns: handles 'fix' requests", async () => {
@@ -590,10 +590,10 @@ Deno.test("Default patterns: handles 'fix' requests", async () => {
 
   assertStringIncludes(result, "<thought>");
   assertStringIncludes(result, "<content>");
-  assertStringIncludes(result, "## Proposed Plan");
-  assertStringIncludes(result, "fix");
-  assertStringIncludes(result, "bug");
-  assertStringIncludes(result, "Regression Test");
+  assertStringIncludes(result, '"title"');
+  assertStringIncludes(result, "Fix");
+  assertStringIncludes(result, '"step": 1');
+  assertStringIncludes(result, "Regression");
 });
 
 Deno.test("Default patterns: handles 'bug' requests", async () => {
@@ -603,7 +603,7 @@ Deno.test("Default patterns: handles 'bug' requests", async () => {
 
   const result = await provider.generate("There's a bug in the login flow");
 
-  assertStringIncludes(result, "## Proposed Plan");
+  assertStringIncludes(result, '"title"');
   assertStringIncludes(result, "Reproduce Issue");
   assertStringIncludes(result, "Root Cause Analysis");
 });
@@ -615,8 +615,8 @@ Deno.test("Default patterns: handles 'error' requests", async () => {
 
   const result = await provider.generate("Error handling is broken in API module");
 
-  assertStringIncludes(result, "## Proposed Plan");
-  assertStringIncludes(result, "fix");
+  assertStringIncludes(result, '"title"');
+  assertStringIncludes(result, "Fix");
 });
 
 Deno.test("Default patterns: handles 'issue' requests", async () => {
@@ -626,8 +626,8 @@ Deno.test("Default patterns: handles 'issue' requests", async () => {
 
   const result = await provider.generate("There's an issue with the database connection");
 
-  assertStringIncludes(result, "## Proposed Plan");
-  assertStringIncludes(result, "investigate");
+  assertStringIncludes(result, '"title"');
+  assertStringIncludes(result, '"step": 1');
 });
 
 Deno.test("Default patterns: handles generic requests with catch-all", async () => {
@@ -639,10 +639,10 @@ Deno.test("Default patterns: handles generic requests with catch-all", async () 
 
   assertStringIncludes(result, "<thought>");
   assertStringIncludes(result, "<content>");
-  assertStringIncludes(result, "## Proposed Plan");
-  assertStringIncludes(result, "### Overview");
-  assertStringIncludes(result, "### Steps");
-  assertStringIncludes(result, "### Expected Outcome");
+  assertStringIncludes(result, '"title"');
+  assertStringIncludes(result, '"step": 1');
+  assertStringIncludes(result, '"step": 2');
+  assertStringIncludes(result, '"description"');
 });
 
 // ============================================================================
@@ -728,9 +728,9 @@ Create a detailed plan with clear steps.`;
   assertExists(result);
   assertStringIncludes(result, "<thought>");
   assertStringIncludes(result, "<content>");
-  assertStringIncludes(result, "## Proposed Plan");
-  assertStringIncludes(result, "Steps");
-  assertStringIncludes(result, "Expected Outcome");
+  assertStringIncludes(result, '"title"');
+  assertStringIncludes(result, '"step": 1');
+  assertStringIncludes(result, '"description"');
 });
 
 Deno.test("Mock provider handles multiple sequential plan generations", async () => {
@@ -745,7 +745,7 @@ Deno.test("Mock provider handles multiple sequential plan generations", async ()
 
   // All should be valid plans
   for (const result of [result1, result2, result3]) {
-    assertStringIncludes(result, "## Proposed Plan");
+    assertStringIncludes(result, '"title"');
     assertStringIncludes(result, "<thought>");
     assertStringIncludes(result, "<content>");
   }
@@ -765,8 +765,9 @@ Deno.test("createPlanGeneratorMock helper creates working provider", async () =>
 
   const result = await provider.generate("Implement authentication");
 
-  assertStringIncludes(result, "## Proposed Plan");
-  assertStringIncludes(result, "### Steps");
+  assertStringIncludes(result, '"title":');
+  assertStringIncludes(result, '"step":1');
+  assertStringIncludes(result, '"step":2');
 });
 
 Deno.test("createFailingMock helper creates failing provider", async () => {
