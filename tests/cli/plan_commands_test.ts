@@ -131,23 +131,40 @@ status: needs_revision
       );
     });
 
-    it("should reject approval if target path already exists", async () => {
+    it("should archive existing plan if target path already exists", async () => {
       const planId = "test-plan-003";
       const planContent = `---
 trace_id: "trace-789"
 status: review
 ---
 
-# Test Plan
+# Test Plan (New)
 `;
       await Deno.writeTextFile(join(inboxPlansDir, `${planId}.md`), planContent);
-      await Deno.writeTextFile(join(systemActiveDir, `${planId}.md`), "existing file");
 
-      await assertRejects(
-        async () => await planCommands.approve(planId),
-        Error,
-        "Target path already exists",
-      );
+      // Create existing file in Active
+      const existingContent = "existing file content";
+      await Deno.writeTextFile(join(systemActiveDir, `${planId}.md`), existingContent);
+
+      // Approve should succeed now
+      await planCommands.approve(planId);
+
+      // Verify new content in Active
+      const activeContent = await Deno.readTextFile(join(systemActiveDir, `${planId}.md`));
+      assertEquals(activeContent.includes("# Test Plan (New)"), true, "New plan should be in Active");
+
+      // Verify old content archived
+      const archiveDir = join(tempDir, "System", "Archive");
+      const archiveEntries = [];
+      for await (const entry of Deno.readDir(archiveDir)) {
+        archiveEntries.push(entry);
+      }
+
+      const archivedFile = archiveEntries.find((e) => e.name.startsWith(`${planId}_archived_`));
+      assertExists(archivedFile, "Old plan should be archived");
+
+      const archivedContent = await Deno.readTextFile(join(archiveDir, archivedFile.name));
+      assertEquals(archivedContent, existingContent, "Archived content should match old file");
     });
   });
 

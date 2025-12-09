@@ -74,8 +74,8 @@ export class FileWatcher {
           break;
         }
 
-        // Only process create and modify events
-        if (event.kind === "create" || event.kind === "modify") {
+        // Only process create, modify, or rename events (moves)
+        if (event.kind === "create" || event.kind === "modify" || event.kind === "rename") {
           for (const path of event.paths) {
             // Ignore dotfiles and non-markdown files
             const filename = path.split("/").pop() || "";

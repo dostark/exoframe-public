@@ -30,6 +30,7 @@ export class PlanCommands extends BaseCommand {
   private inboxPlansDir: string;
   private systemActiveDir: string;
   private inboxRejectedDir: string;
+  private systemArchiveDir: string;
   private parser: FrontmatterParser;
 
   constructor(
@@ -40,6 +41,7 @@ export class PlanCommands extends BaseCommand {
     this.inboxPlansDir = join(workspaceRoot, "Inbox", "Plans");
     this.systemActiveDir = join(workspaceRoot, "System", "Active");
     this.inboxRejectedDir = join(workspaceRoot, "Inbox", "Rejected");
+    this.systemArchiveDir = join(workspaceRoot, "System", "Archive");
     this.parser = new FrontmatterParser();
   }
 

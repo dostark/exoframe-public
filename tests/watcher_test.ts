@@ -666,3 +666,36 @@ Deno.test("FileWatcher: debounces rapid file modifications", async () => {
     await cleanup();
   }
 });
+
+Deno.test("FileWatcher: handles rename events (file moves)", async () => {
+  const { helper, cleanup } = await createWatcherTestContext("watcher-rename-");
+  try {
+    await helper.createInboxStructure();
+
+    const eventsReceived: string[] = [];
+    const watcher = helper.createWatcher((event) => {
+      eventsReceived.push(event.path);
+    });
+
+    await helper.startWatcher(watcher);
+
+    // Create file outside watch dir
+    const outsideFile = join(helper.tempDir, "outside.md");
+    await Deno.writeTextFile(outsideFile, "Moved content");
+
+    // Move file into watch dir
+    const insideFile = join(helper.inboxPath, "moved.md");
+    await Deno.rename(outsideFile, insideFile);
+
+    // Wait for processing
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    await helper.stopWatcher(watcher);
+
+    // Should detect the moved file
+    assertEquals(eventsReceived.length, 1);
+    assertEquals(eventsReceived[0].endsWith("moved.md"), true);
+  } finally {
+    await cleanup();
+  }
+});

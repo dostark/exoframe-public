@@ -851,7 +851,7 @@ cat ~/ExoFrame/Inbox/Plans/*_rejected.md 2>/dev/null
 # Step 1: Create senior-coder blueprint (if not exists)
 exoctl blueprint create senior-coder \
     --name "Senior Coder" \
-    --model ollama:codellama:13b \
+    --model ollama:codellama:7b-instruct \
     --template coder
 
 # OR use mock blueprint for testing
