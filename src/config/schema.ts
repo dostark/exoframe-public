@@ -17,15 +17,24 @@ export const ConfigSchema = z.object({
   database: z.object({
     batch_flush_ms: z.number().min(10).max(10000).default(100),
     batch_max_size: z.number().min(1).max(1000).default(100),
-  }).default({}),
+  }).default({
+    batch_flush_ms: 100,
+    batch_max_size: 100,
+  }),
   watcher: z.object({
     debounce_ms: z.number().min(50).max(5000).default(200),
     stability_check: z.boolean().default(true),
-  }).default({}),
+  }).default({
+    debounce_ms: 200,
+    stability_check: true,
+  }),
   agents: z.object({
     default_model: z.string().default("gpt-4o"),
     timeout_sec: z.number().min(1).max(300).default(60),
-  }).default({}),
+  }).default({
+    default_model: "gpt-4o",
+    timeout_sec: 60,
+  }),
   portals: z.array(z.object({
     alias: z.string(),
     target_path: z.string(),

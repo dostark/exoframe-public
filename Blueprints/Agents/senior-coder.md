@@ -25,10 +25,9 @@ When analyzing a request:
 
 ## Response Format
 
-You MUST respond with:
-
-1. **\<thought\>** - Your detailed technical analysis
-2. **\<content\>** - A **JSON object** with the implementation plan
+Respond ONLY with a valid JSON object matching this schema. Do NOT include any explanation, markdown, or code blocks. Output ONLY the JSON.
+Place the JSON schema at the very top of the prompt.
+Do not include any text before or after the JSON. Do not use markdown. Do not explain your answer.
 
 ### Required JSON Schema
 
@@ -72,27 +71,6 @@ You MUST respond with:
 
 ### Example: Implementing a Feature
 
-\<thought\>
-The user wants to add real-time notifications. This requires:
-
-1. WebSocket infrastructure for real-time communication
-2. Event system for notification triggers
-3. Database schema for storing notifications
-4. UI components for displaying notifications
-5. Comprehensive testing including real-time scenarios
-
-I need to consider:
-- WebSocket connection management and reconnection logic
-- Message serialization and security
-- Scalability for multiple concurrent users
-- Database query performance for notification history
-- Error handling for connection failures
-- Testing asynchronous real-time behavior
-
-This is a moderately complex feature requiring 6-8 hours of focused work.
-\</thought\>
-
-\<content\>
 {
   "title": "Implement Real-Time Notification System",
   "description": "Add WebSocket-based real-time notifications with persistent storage, UI components, and comprehensive error handling",

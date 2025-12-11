@@ -13,6 +13,7 @@ import { IModelProvider, OllamaProvider } from "./providers.ts";
 import { MockLLMProvider, MockStrategy } from "./providers/mock_llm_provider.ts";
 import { Config } from "../config/schema.ts";
 import { AiConfig, DEFAULT_MODELS, ProviderType } from "../config/ai_config.ts";
+import { LlamaProvider } from "./providers/llama_provider.ts";
 
 // ============================================================================
 // Types and Interfaces
@@ -178,6 +179,10 @@ export class ProviderFactory {
    * Create the appropriate provider based on resolved options
    */
   private static createProvider(options: ResolvedProviderOptions): IModelProvider {
+    // Llama/Ollama model routing
+    if (/^(codellama:|llama[0-9.]*:)/.test(options.model)) {
+      return new LlamaProvider({ model: options.model, endpoint: options.baseUrl });
+    }
     switch (options.provider) {
       case "mock":
         return this.createMockProvider(options);
@@ -289,4 +294,13 @@ export class ProviderFactory {
         return `unknown-${options.provider}`;
     }
   }
+}
+
+// Helper for tests: get provider by model name
+export function getProviderForModel(model: string) {
+  // Minimal mock config for test
+  const config = {
+    ai: { provider: "ollama", model },
+  } as any;
+  return ProviderFactory.create(config);
 }

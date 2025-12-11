@@ -45,7 +45,9 @@ export const MockConfigSchema = z.object({
   error_message: z.string().optional(),
   /** Delay in ms for slow strategy */
   delay_ms: z.number().positive().optional(),
-}).default({});
+}).default({
+  strategy: "recorded",
+});
 
 export type MockConfig = z.infer<typeof MockConfigSchema>;
 
@@ -73,7 +75,10 @@ export const AiConfigSchema = z.object({
 
   /** Mock-specific configuration */
   mock: MockConfigSchema.optional(),
-}).default({});
+}).default({
+  provider: "mock",
+  timeout_ms: 30000,
+});
 
 export type AiConfig = z.infer<typeof AiConfigSchema>;
 
