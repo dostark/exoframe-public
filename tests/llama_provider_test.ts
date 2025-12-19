@@ -1,5 +1,5 @@
 Deno.test("LlamaProvider responds to trivial prompt", async () => {
-  const provider = new LlamaProvider({ model: "codellama:7b-instruct" });
+  const provider = new LlamaProvider({ model: "llama3.2:1b" });
   const prompt = "Hello";
   let response = "";
   try {
@@ -38,7 +38,7 @@ import { LlamaProvider } from "../src/ai/providers/llama_provider.ts";
 Deno.test("LlamaProvider generates valid plan for simple prompt (with senior-coder blueprint)", async () => {
   // Read the system prompt from the blueprint file
   const decoder = new TextDecoder();
-  const blueprintRaw = Deno.readFileSync("ExoFrame/Blueprints/Agents/senior-coder.md");
+  const blueprintRaw = Deno.readFileSync("Blueprints/Agents/senior-coder.md");
   const blueprint = decoder.decode(blueprintRaw);
   // Remove TOML frontmatter (between +++ ... +++)
   const promptStart = blueprint.indexOf("+++", 3);
@@ -53,7 +53,7 @@ Deno.test("LlamaProvider generates valid plan for simple prompt (with senior-cod
   Output a step-by-step implementation plan in strict JSON format only, matching the schema in the system prompt. Do not include any explanation or markdown, only the JSON object.`;
   const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
   console.log("[DEBUG] Using prompt for LlamaProvider:\n", fullPrompt);
-  const provider = new LlamaProvider({ model: "codellama:7b-instruct" });
+  const provider = new LlamaProvider({ model: "llama3.2:1b" });
   let planJson = "";
   try {
     planJson = await provider.generate(fullPrompt);
@@ -72,7 +72,7 @@ Deno.test("LlamaProvider generates valid plan for simple prompt (with senior-cod
 });
 
 Deno.test("LlamaProvider handles connection errors", async () => {
-  const provider = new LlamaProvider({ model: "codellama:7b-instruct", endpoint: "http://localhost:9999" });
+  const provider = new LlamaProvider({ model: "llama3.2:1b", endpoint: "http://localhost:9999" });
   await assertRejects(
     () => provider.generate("Test connection error"),
     Error,
@@ -115,6 +115,6 @@ Deno.test("LlamaProvider returns error for invalid JSON output", async () => {
 Deno.test("Provider selection logic routes Llama models to LlamaProvider", async () => {
   // This test assumes a provider factory exists
   const { getProviderForModel } = await import("../src/ai/provider_factory.ts");
-  const provider = getProviderForModel("codellama:7b-instruct");
+  const provider = getProviderForModel("llama3.2:1b");
   assertEquals(provider instanceof (await import("../src/ai/providers/llama_provider.ts")).LlamaProvider, true);
 });

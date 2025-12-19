@@ -2896,6 +2896,139 @@ subprocess security enforcement requires Step 6.4
 
 ---
 
+## Part III: The Implementation Evolution - JSON Plans and Executor Patterns
+
+### The Format Shift: "From Markdown to JSON - Why Structure Matters"
+
+**The Context**: After months of markdown-based plans, the system hit scaling limits. Parsing TOML blocks embedded in markdown was brittle, validation was manual, and the format couldn't express complex dependencies or metadata cleanly.
+
+**The Pattern**: When implementation reveals format limitations, evolve the data structures first, then rebuild around them.
+
+**What Happened**:
+
+```
+Me: "The current markdown plan format is causing parsing errors. Let's switch to JSON."
+Agent: [designs JSON schema with Zod validation]
+Agent: [updates PlanExecutor to parse JSON instead of TOML-in-markdown]
+Agent: [migrates all tests and fixtures]
+Result: 75% test coverage maintained, parsing errors eliminated
+```
+
+**Before JSON**:
+
+- Plans were human-readable but machine-fragile
+- Validation happened at runtime with cryptic errors
+- Schema changes required manual updates everywhere
+
+**After JSON**:
+
+- Type-safe parsing with clear error messages
+- Schema validation catches issues before execution
+- Tool parameters validated against expected types
+- Dependencies and metadata properly structured
+
+**The JSON Evolution Pattern**:
+
+1. **Identify Format Pain**: When parsing becomes a source of bugs, it's time to change formats
+2. **Design Schema First**: Use TypeScript + Zod to define the data structure
+3. **Update Core Logic**: Change the executor to use new format
+4. **Migrate Tests**: Update all test fixtures and assertions
+5. **Validate Coverage**: Ensure test coverage doesn't drop during migration
+
+**Why This Works**:
+
+- JSON is machine-friendly while remaining human-readable
+- Schema validation prevents runtime surprises
+- Type safety catches integration issues early
+- Tests serve as migration verification
+
+### The Executor Emergence: "From Plans to Action - The TDD Scaling Challenge"
+
+**The Challenge**: Plans were being generated and stored, but nothing was executing them. The system could describe work but not perform it.
+
+**The Pattern**: When features reach critical mass, implement the core execution engine with comprehensive TDD, then build supporting infrastructure around it.
+
+**What Happened**:
+
+```
+Agent: [writes 50+ tests for PlanExecutor covering success/failure/malformed cases]
+Agent: [implements PlanExecutor with step-by-step execution]
+Agent: [adds changeset creation and git integration]
+Result: Plans now execute automatically, creating traceable changesets
+```
+
+**The Execution Implementation Pattern**:
+
+1. **Test-Driven Design**: Write exhaustive tests before implementation
+2. **Core Execution Loop**: Implement the main execution flow
+3. **Error Handling**: Design failure modes and recovery
+4. **Integration Points**: Connect to git, logging, and security systems
+5. **Validation**: Run full integration tests with real repositories
+
+**Why This Scales**:
+
+- TDD ensures correctness as complexity grows
+- Comprehensive error handling prevents system failures
+- Integration testing validates end-to-end flows
+- Logging provides observability for debugging
+
+### The Documentation Debt: "Write Docs or Regret It Later"
+
+**The Reality**: Code evolves faster than documentation. Architecture diagrams become outdated, walkthroughs miss new features.
+
+**The Pattern**: After major implementation changes, immediately update documentation with the same rigor as code.
+
+**What Happened**:
+
+- Architecture diagrams updated to show PlanExecutor flow
+- Manual test scenarios rewritten for JSON plans
+- Implementation plan extended with new steps
+- Documentation consolidated and reorganized
+
+**The Documentation Maintenance Pattern**:
+
+1. **Immediate Updates**: Update docs right after code changes
+2. **Diagram First**: Visual architecture changes first
+3. **Test Scenarios**: Update manual testing procedures
+4. **Consolidation**: Merge related docs, remove outdated content
+
+**Why This Matters**:
+
+- New team members can understand the system
+- Prevents "it worked in my branch" syndrome
+- Documentation becomes a source of truth, not an afterthought
+
+### The Test Evolution: "Coverage Isn't Optional - It's Survival"
+
+**The Turning Point**: As the system grew, test failures started causing real issues. Memory constraints exposed model loading problems, integration tests revealed race conditions.
+
+**The Pattern**: When tests start failing due to environmental factors, improve test isolation and coverage systematically.
+
+**What Happened**:
+
+- LlamaProvider tests fixed for memory-constrained environments
+- PlanExecutor coverage increased to 75% branch coverage
+- Integration tests added for end-to-end flows
+- Test fixtures updated for new JSON format
+
+**The Testing Maturity Pattern**:
+
+1. **Environment Awareness**: Tests that adapt to available resources
+2. **Coverage Metrics**: Explicit coverage targets and monitoring
+3. **Integration Testing**: Full system tests, not just unit tests
+4. **Fixture Maintenance**: Keep test data current with code changes
+
+**Why Testing Evolves**:
+
+- Environmental differences (memory, network) cause test flakes
+- Higher coverage catches regressions earlier
+- Integration tests validate the whole system works together
+- Well-maintained fixtures prevent test rot
+
+**The Meta Lesson**: Building with AI agents requires the same discipline as traditional development, but with extra attention to documentation, testing, and format evolution. The patterns that emerge aren't just about code—they're about maintaining system coherence as complexity grows.
+
+---
+
 _Written from the trenches of the ExoFrame project, where the builders were also the users, and the documentation wrote itself (with a little help from the AI we were building the framework for)._
 
 _The recursion continues. The patterns emerge. The meta-framework takes shape._

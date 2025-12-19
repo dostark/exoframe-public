@@ -44,7 +44,30 @@ export class LlamaProvider implements IModelProvider {
     if (!data || typeof data.response !== "string") {
       throw new Error("Invalid Ollama response");
     }
-    // Assume the LLM returns JSON directly as required by PlanSchema
-    return data.response;
+
+    // Extract JSON from response, handling markdown formatting
+    let jsonText = data.response.trim();
+
+    // Remove markdown code blocks if present
+    const jsonMatch = jsonText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+    if (jsonMatch) {
+      jsonText = jsonMatch[1];
+    } else {
+      // Try to find JSON object directly
+      const jsonStart = jsonText.indexOf("{");
+      const jsonEnd = jsonText.lastIndexOf("}");
+      if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        jsonText = jsonText.slice(jsonStart, jsonEnd + 1);
+      }
+    }
+
+    // Try to parse as JSON
+    try {
+      JSON.parse(jsonText);
+      return jsonText;
+    } catch (_parseError) {
+      // If not valid JSON, return the raw response and let caller handle it
+      return data.response;
+    }
   }
 }

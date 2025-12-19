@@ -63,9 +63,13 @@ export class PlanCommands extends BaseCommand {
       );
     }
 
-    // Validate target path doesn't exist
+    // Validate target path doesn't exist, or archive existing plan
     if (await exists(targetPath)) {
-      throw new Error(`Target path already exists: ${targetPath}`);
+      // Archive existing plan
+      await ensureDir(this.systemArchiveDir);
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const archivePath = join(this.systemArchiveDir, `${planId}_archived_${timestamp}.md`);
+      await Deno.rename(targetPath, archivePath);
     }
 
     // Get user context
