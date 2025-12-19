@@ -4935,7 +4935,7 @@ Implement a `LlamaProvider` that:
 ---
 ## Phase 7: Flow Orchestration (Multi-Agent Coordination)
 
-> **Status:** 📋 PLANNED\
+> **Status:** � IN PROGRESS (Steps 7.1-7.3 ✅ COMPLETED)\
 > **Prerequisites:** Phases 1–6 (Core system validated via Testing & QA)\
 > **Goal:** Enable declarative multi-agent workflows with dependency resolution, parallel execution, and result aggregation.
 
@@ -5081,7 +5081,7 @@ Currently, ExoFrame supports **single-agent execution** via `AgentRunner`. Phase
 
 ---
 
-### Step 7.3: Dependency Graph Resolver
+### Step 7.3: Dependency Graph Resolver ✅ COMPLETED
 
 - **Dependencies:** Step 7.1
 - **Rollback:** Revert to sequential execution
@@ -5106,22 +5106,22 @@ Input:                          Output Waves:
 
 **Success Criteria:**
 
-- Cycle detection algorithm correctly identifies circular dependencies and throws FlowValidationError with cycle path details
-- Topological sort using Kahn's algorithm produces a valid execution order for acyclic graphs
-- Wave grouping correctly batches steps by dependency levels for parallel execution
-- Complex dependency graphs with multiple branches are resolved into correct execution waves
-- Self-referencing dependencies are detected and rejected
-- Empty dependency arrays are handled correctly
+- [x] Cycle detection algorithm correctly identifies circular dependencies and throws FlowValidationError with cycle path details
+- [x] Topological sort using Kahn's algorithm produces a valid execution order for acyclic graphs
+- [x] Wave grouping correctly batches steps by dependency levels for parallel execution
+- [x] Complex dependency graphs with multiple branches are resolved into correct execution waves
+- [x] Self-referencing dependencies are detected and rejected
+- [x] Empty dependency arrays are handled correctly
 
 **Planned Tests:**
 
-- `tests/flows/dependency_resolver_test.ts`: Comprehensive unit tests for DependencyResolver class
-- Cycle detection tests: A→B→C→A, A→A, complex cycles with multiple nodes
-- Topological sort tests: Linear chain, diamond pattern, complex DAGs
-- Wave grouping tests: Parallel steps in same wave, sequential dependencies across waves
-- Edge case tests: Single step, all parallel steps, all sequential steps, empty flows
-- Error handling tests: Invalid step IDs in dependencies, malformed dependency arrays
-- Performance tests: Large graphs with many steps and dependencies
+- [x] `tests/flows/dependency_resolver_test.ts`: Comprehensive unit tests for DependencyResolver class
+- [x] Cycle detection tests: A→B→C→A, A→A, complex cycles with multiple nodes
+- [x] Topological sort tests: Linear chain, diamond pattern, complex DAGs
+- [x] Wave grouping tests: Parallel steps in same wave, sequential dependencies across waves
+- [x] Edge case tests: Single step, all parallel steps, all sequential steps, empty flows
+- [x] Error handling tests: Invalid step IDs in dependencies, malformed dependency arrays
+- [x] Performance tests: Large graphs with many steps and dependencies
 
 ---
 
@@ -5399,8 +5399,8 @@ tags: [review, pr-42]
 
 ### Phase 7 Exit Criteria
 
-- [ ] `FlowSchema` validates flow definitions
-- [ ] `DependencyResolver` correctly orders steps and detects cycles
+- [x] `FlowSchema` validates flow definitions
+- [x] `DependencyResolver` correctly orders steps and detects cycles
 - [ ] `FlowRunner` executes parallel and sequential flows
 - [ ] CLI commands (`flow list/show/run/plan/validate`) working
 - [ ] Requests can specify `flow:` instead of `agent:`
