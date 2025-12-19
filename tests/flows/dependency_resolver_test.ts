@@ -127,7 +127,7 @@ Deno.test("DependencyResolver: detects self-referencing cycle", () => {
   assertThrows(
     () => resolver.topologicalSort(),
     FlowValidationError,
-    "Cycle detected in dependency graph: step1 -> step1",,
+    "Cycle detected in dependency graph: step1 -> step1",
   );
 });
 
@@ -155,7 +155,7 @@ Deno.test("DependencyResolver: detects simple cycle", () => {
   assertThrows(
     () => resolver.topologicalSort(),
     FlowValidationError,
-    "Cycle detected in dependency graph: step1 -> step2 -> step1",,
+    "Cycle detected in dependency graph: step1 -> step2 -> step1",
   );
 });
 
@@ -191,7 +191,7 @@ Deno.test("DependencyResolver: detects complex cycle", () => {
   assertThrows(
     () => resolver.topologicalSort(),
     FlowValidationError,
-    "Cycle detected in dependency graph: a -> b -> c -> a",,
+    "Cycle detected in dependency graph: a -> b -> c -> a",
   );
 });
 
@@ -260,7 +260,7 @@ Deno.test("DependencyResolver: throws error for invalid dependency", () => {
     () => new DependencyResolver(steps),
     FlowValidationError,
     "Dependency 'nonexistent' not found in step definitions",
-  );,
+  );
 });
 
 Deno.test("DependencyResolver: handles all parallel steps", () => {
