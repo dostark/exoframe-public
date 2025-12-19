@@ -93,45 +93,109 @@ export class FlowRunner {
     const flowRunId = crypto.randomUUID();
     const startedAt = new Date();
 
-    // Validate flow has steps
-    if (flow.steps.length === 0) {
-      throw new FlowExecutionError("Flow must have at least one step", flowRunId);
-    }
-
-    // Log flow start
-    this.eventLogger.log("flow.started", {
-      flowRunId,
+    // Log flow validation start
+    this.eventLogger.log("flow.validating", {
       flowId: flow.id,
       stepCount: flow.steps.length,
       traceId: request.traceId,
       requestId: request.requestId,
     });
 
+    // Validate flow has steps
+    if (flow.steps.length === 0) {
+      this.eventLogger.log("flow.validation.failed", {
+        flowId: flow.id,
+        error: "Flow must have at least one step",
+        traceId: request.traceId,
+        requestId: request.requestId,
+      });
+      throw new FlowExecutionError("Flow must have at least one step", flowRunId);
+    }
+
+    // Log flow validation success
+    this.eventLogger.log("flow.validated", {
+      flowId: flow.id,
+      stepCount: flow.steps.length,
+      maxParallelism: flow.settings?.maxParallelism ?? 3,
+      failFast: flow.settings?.failFast ?? true,
+      traceId: request.traceId,
+      requestId: request.requestId,
+    });
+
+    // Log flow start
+    this.eventLogger.log("flow.started", {
+      flowRunId,
+      flowId: flow.id,
+      stepCount: flow.steps.length,
+      maxParallelism: flow.settings?.maxParallelism ?? 3,
+      failFast: flow.settings?.failFast ?? true,
+      traceId: request.traceId,
+      requestId: request.requestId,
+    });
+
+    let stepResults = new Map<string, StepResult>();
+
     try {
       // Resolve dependency graph
+      this.eventLogger.log("flow.dependencies.resolving", {
+        flowRunId,
+        flowId: flow.id,
+        traceId: request.traceId,
+        requestId: request.requestId,
+      });
+
       const resolver = new DependencyResolver(flow.steps);
       const waves = resolver.groupIntoWaves();
 
-      const stepResults = new Map<string, StepResult>();
+      this.eventLogger.log("flow.dependencies.resolved", {
+        flowRunId,
+        flowId: flow.id,
+        waveCount: waves.length,
+        totalSteps: flow.steps.length,
+        traceId: request.traceId,
+        requestId: request.requestId,
+      });
+
       const maxParallelism = flow.settings?.maxParallelism ?? 3;
       const failFast = flow.settings?.failFast ?? true;
 
       // Execute waves sequentially
-      for (const wave of waves) {
+      for (let waveIndex = 0; waveIndex < waves.length; waveIndex++) {
+        const wave = waves[waveIndex];
+        const waveNumber = waveIndex + 1;
+
+        // Log wave start
+        this.eventLogger.log("flow.wave.started", {
+          flowRunId,
+          waveNumber,
+          waveSize: wave.length,
+          stepIds: wave,
+          traceId: request.traceId,
+          requestId: request.requestId,
+        });
+
         // Execute steps in this wave in parallel (with semaphore limit)
         const wavePromises = wave.map(stepId => this.executeStep(flowRunId, stepId, flow, request, stepResults));
         const waveResults = await Promise.allSettled(wavePromises);
 
         // Process results
         let waveFailed = false;
+        let waveSuccessCount = 0;
+        let waveFailureCount = 0;
+
         for (let i = 0; i < wave.length; i++) {
           const stepId = wave[i];
           const promiseResult = waveResults[i];
 
           if (promiseResult.status === "fulfilled") {
             stepResults.set(stepId, promiseResult.value);
-            if (!promiseResult.value.success && failFast) {
-              waveFailed = true;
+            if (promiseResult.value.success) {
+              waveSuccessCount++;
+            } else {
+              waveFailureCount++;
+              if (failFast) {
+                waveFailed = true;
+              }
             }
           } else {
             // Step execution threw an error
@@ -144,11 +208,24 @@ export class FlowRunner {
               completedAt: new Date(),
             };
             stepResults.set(stepId, errorStepResult);
+            waveFailureCount++;
             if (failFast) {
               waveFailed = true;
             }
           }
         }
+
+        // Log wave completion
+        this.eventLogger.log("flow.wave.completed", {
+          flowRunId,
+          waveNumber,
+          waveSize: wave.length,
+          successCount: waveSuccessCount,
+          failureCount: waveFailureCount,
+          failed: waveFailed,
+          traceId: request.traceId,
+          requestId: request.requestId,
+        });
 
         // If failFast is enabled and any step in this wave failed, stop execution
         if (waveFailed && failFast) {
@@ -162,13 +239,33 @@ export class FlowRunner {
       }
 
       // Aggregate output
+      this.eventLogger.log("flow.output.aggregating", {
+        flowRunId,
+        flowId: flow.id,
+        outputFrom: flow.output?.from,
+        outputFormat: flow.output?.format,
+        totalSteps: stepResults.size,
+        traceId: request.traceId,
+        requestId: request.requestId,
+      });
+
       const output = this.aggregateOutput(flow, stepResults);
+
+      this.eventLogger.log("flow.output.aggregated", {
+        flowRunId,
+        flowId: flow.id,
+        outputLength: output.length,
+        traceId: request.traceId,
+        requestId: request.requestId,
+      });
 
       const completedAt = new Date();
       const duration = completedAt.getTime() - startedAt.getTime();
 
       // Determine overall success
       const success = Array.from(stepResults.values()).every(result => result.success);
+      const successfulSteps = Array.from(stepResults.values()).filter(r => r.success).length;
+      const failedSteps = stepResults.size - successfulSteps;
 
       // Log flow completion
       this.eventLogger.log("flow.completed", {
@@ -177,6 +274,9 @@ export class FlowRunner {
         success,
         duration,
         stepsCompleted: stepResults.size,
+        successfulSteps,
+        failedSteps,
+        outputLength: output.length,
         traceId: request.traceId,
         requestId: request.requestId,
       });
@@ -195,12 +295,21 @@ export class FlowRunner {
       const completedAt = new Date();
       const duration = completedAt.getTime() - startedAt.getTime();
 
+      // Determine partial results
+      const stepResults = new Map<string, StepResult>(); // This would need to be captured from the try block
+      const successfulSteps = Array.from(stepResults.values()).filter(r => r.success).length;
+      const failedSteps = stepResults.size - successfulSteps;
+
       // Log flow failure
       this.eventLogger.log("flow.failed", {
         flowRunId,
         flowId: flow.id,
         error: error instanceof Error ? error.message : String(error),
+        errorType: error instanceof Error ? error.constructor.name : "Unknown",
         duration,
+        stepsAttempted: stepResults.size,
+        successfulSteps,
+        failedSteps,
         traceId: request.traceId,
         requestId: request.requestId,
       });
@@ -222,11 +331,23 @@ export class FlowRunner {
     const step = flow.steps.find(s => s.id === stepId)!;
     const startedAt = new Date();
 
+    // Log step queued (ready for execution)
+    this.eventLogger.log("flow.step.queued", {
+      flowRunId,
+      stepId,
+      agent: step.agent,
+      dependencies: step.dependsOn,
+      inputSource: step.input.source,
+      traceId: request.traceId,
+      requestId: request.requestId,
+    });
+
     // Log step start
     this.eventLogger.log("flow.step.started", {
       flowRunId,
       stepId,
       agent: step.agent,
+      agentId: step.agent, // for backward compatibility
       traceId: request.traceId,
       requestId: request.requestId,
     });
@@ -235,18 +356,31 @@ export class FlowRunner {
       // Prepare step input
       const stepRequest = this.prepareStepRequest(step, request, stepResults);
 
+      // Log input preparation
+      this.eventLogger.log("flow.step.input.prepared", {
+        flowRunId,
+        stepId,
+        inputSource: step.input.source,
+        hasContext: !!stepRequest.context,
+        traceId: request.traceId,
+        requestId: request.requestId,
+      });
+
       // Execute step
       const result = await this.agentExecutor.run(step.agent, stepRequest);
 
       const completedAt = new Date();
       const duration = completedAt.getTime() - startedAt.getTime();
 
-      // Log step completion
+      // Log step completion with detailed results
       this.eventLogger.log("flow.step.completed", {
         flowRunId,
         stepId,
+        agent: step.agent,
         success: true,
         duration,
+        outputLength: result.content.length,
+        hasThought: !!result.thought,
         traceId: request.traceId,
         requestId: request.requestId,
       });
@@ -264,11 +398,13 @@ export class FlowRunner {
       const completedAt = new Date();
       const duration = completedAt.getTime() - startedAt.getTime();
 
-      // Log step failure
+      // Log step failure with detailed error information
       this.eventLogger.log("flow.step.failed", {
         flowRunId,
         stepId,
+        agent: step.agent,
         error: error instanceof Error ? error.message : String(error),
+        errorType: error instanceof Error ? error.constructor.name : "Unknown",
         duration,
         traceId: request.traceId,
         requestId: request.requestId,

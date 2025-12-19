@@ -87,11 +87,28 @@ Deno.test("FlowRunner: executes simple sequential flow", async () => {
   assertEquals(result.output, "Result 2");
   assertEquals(result.success, true);
 
-  // Check logging events
-  assertEquals(mockLogger.events.length, 6); // started, step1 started, step1 completed, step2 started, step2 completed, flow completed
-  assertEquals(mockLogger.events[0].event, "flow.started");
-  assertEquals(mockLogger.events[1].event, "flow.step.started");
-  assertEquals(mockLogger.events[5].event, "flow.completed");
+  // Check logging events - comprehensive flow execution logging
+  assertEquals(mockLogger.events.length, 20); // All flow and step lifecycle events
+  assertEquals(mockLogger.events[0].event, "flow.validating");
+  assertEquals(mockLogger.events[1].event, "flow.validated");
+  assertEquals(mockLogger.events[2].event, "flow.started");
+  assertEquals(mockLogger.events[3].event, "flow.dependencies.resolving");
+  assertEquals(mockLogger.events[4].event, "flow.dependencies.resolved");
+  assertEquals(mockLogger.events[5].event, "flow.wave.started");
+  assertEquals(mockLogger.events[6].event, "flow.step.queued");
+  assertEquals(mockLogger.events[7].event, "flow.step.started");
+  assertEquals(mockLogger.events[8].event, "flow.step.input.prepared");
+  assertEquals(mockLogger.events[9].event, "flow.step.completed");
+  assertEquals(mockLogger.events[10].event, "flow.wave.completed");
+  assertEquals(mockLogger.events[11].event, "flow.wave.started");
+  assertEquals(mockLogger.events[12].event, "flow.step.queued");
+  assertEquals(mockLogger.events[13].event, "flow.step.started");
+  assertEquals(mockLogger.events[14].event, "flow.step.input.prepared");
+  assertEquals(mockLogger.events[15].event, "flow.step.completed");
+  assertEquals(mockLogger.events[16].event, "flow.wave.completed");
+  assertEquals(mockLogger.events[17].event, "flow.output.aggregating");
+  assertEquals(mockLogger.events[18].event, "flow.output.aggregated");
+  assertEquals(mockLogger.events[19].event, "flow.completed");
 });
 
 Deno.test("FlowRunner: executes parallel steps in same wave", async () => {

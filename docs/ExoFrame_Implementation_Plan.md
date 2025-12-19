@@ -5147,12 +5147,25 @@ Input:                          Output Waves:
 
 **Activity Journal Events:**
 
-| Event                 | Payload                                   |
-| --------------------- | ----------------------------------------- |
-| `flow.started`        | `{ flowRunId, stepCount }`                |
-| `flow.step.started`   | `{ flowRunId, agent }`                    |
-| `flow.step.completed` | `{ flowRunId, status, duration }`         |
-| `flow.completed`      | `{ flowRunId, duration, stepsCompleted }` |
+| Event                     | Payload Fields                                      | Description |
+| ------------------------- | --------------------------------------------------- | ----------- |
+| `flow.validating`         | `flowId, stepCount`                                 | Flow validation started |
+| `flow.validated`          | `flowId, stepCount, maxParallelism, failFast`       | Flow validation successful |
+| `flow.validation.failed`  | `flowId, error`                                     | Flow validation failed |
+| `flow.started`            | `flowRunId, flowId, stepCount, maxParallelism, failFast` | Flow execution started |
+| `flow.dependencies.resolving` | `flowRunId, flowId`                             | Dependency resolution started |
+| `flow.dependencies.resolved` | `flowRunId, flowId, waveCount, totalSteps`       | Dependencies resolved into waves |
+| `flow.wave.started`       | `flowRunId, waveNumber, waveSize, stepIds`          | Wave execution started |
+| `flow.wave.completed`     | `flowRunId, waveNumber, waveSize, successCount, failureCount, failed` | Wave execution completed |
+| `flow.step.queued`        | `flowRunId, stepId, agent, dependencies, inputSource` | Step queued for execution |
+| `flow.step.started`       | `flowRunId, stepId, agent`                          | Step execution started |
+| `flow.step.input.prepared`| `flowRunId, stepId, inputSource, hasContext`        | Step input prepared |
+| `flow.step.completed`     | `flowRunId, stepId, agent, success, duration, outputLength, hasThought` | Step completed successfully |
+| `flow.step.failed`        | `flowRunId, stepId, agent, error, errorType, duration` | Step execution failed |
+| `flow.output.aggregating` | `flowRunId, flowId, outputFrom, outputFormat, totalSteps` | Output aggregation started |
+| `flow.output.aggregated`  | `flowRunId, flowId, outputLength`                   | Output aggregation completed |
+| `flow.completed`          | `flowRunId, flowId, success, duration, stepsCompleted, successfulSteps, failedSteps, outputLength` | Flow completed successfully |
+| `flow.failed`             | `flowRunId, flowId, error, errorType, duration, stepsAttempted, successfulSteps, failedSteps` | Flow execution failed |
 
 **Success Criteria:**
 
@@ -5184,42 +5197,162 @@ Input:                          Output Waves:
 
 - **Dependencies:** Step 7.4
 - **Rollback:** Remove commands from CLI
-- **Action:** Add `exoctl flow` subcommands
+- **Action:** Add `exoctl flow` subcommands for flow management and execution
 - **Location:** `src/cli/flow_commands.ts`
+
+**File Structure:**
+
+```
+src/cli/
+├── flow_commands.ts          # Main flow command definitions
+├── base.ts                   # Shared CLI utilities
+└── exoctl.ts                 # Main CLI entry point
+```
+
+**Integration Points:**
+
+- **FlowRunner:** Executes flows via `FlowRunner.execute()`
+- **DependencyResolver:** Analyzes flow dependencies for `show` and `plan` commands
+- **EventLogger:** Records CLI operations in Activity Journal
+- **Request Processor:** Links flow executions to user requests
+- **File System:** Reads flow definitions from `/Blueprints/Flows/`
 
 **Commands:**
 
-| Command                                    | Description                             |
-| ------------------------------------------ | --------------------------------------- |
-| `exoctl flow list`                         | List all flows in `/Blueprints/Flows/`  |
-| `exoctl flow show <id>`                    | Display flow steps and dependency graph |
-| `exoctl flow run <id> --request <req-id>`  | Execute flow for a request              |
-| `exoctl flow plan <id> --request <req-id>` | Dry-run: show execution plan            |
-| `exoctl flow history <id>`                 | Show past executions                    |
-| `exoctl flow validate <file>`              | Validate flow definition                |
+| Command                                    | Description                             | Output Format |
+| ------------------------------------------ | --------------------------------------- | ------------- |
+| `exoctl flow list`                         | List all flows in `/Blueprints/Flows/`  | Table with ID, Name, Steps, Description |
+| `exoctl flow show <id>`                    | Display flow steps and dependency graph | ASCII graph + step details table |
+| `exoctl flow run <id> --request <req-id>`  | Execute flow for a request              | Execution report with step results |
+| `exoctl flow plan <id> --request <req-id>` | Dry-run: show execution plan            | Wave-by-wave execution plan |
+| `exoctl flow history <id>`                 | Show past executions                    | Table of executions with status/timing |
+| `exoctl flow validate <file>`              | Validate flow definition                | Validation report with errors/warnings |
+
+**Command Details:**
+
+**`exoctl flow list`**
+- Scans `/Blueprints/Flows/` directory for `.toml` files
+- Parses flow metadata (id, name, description, version)
+- Counts steps in each flow
+- Displays in tabular format with sorting options
+- Shows flow status (valid/invalid) based on schema validation
+
+**`exoctl flow show <id>`**
+- Loads flow definition from `/Blueprints/Flows/<id>.toml`
+- Validates flow schema and dependencies
+- Renders ASCII dependency graph showing step relationships
+- Displays detailed step information table
+- Shows execution waves and parallel groups
+- Includes flow settings (maxParallelism, failFast, output format)
+
+**`exoctl flow run <id> --request <req-id>`**
+- Validates flow and request existence
+- Creates FlowRunner instance with dependencies
+- Executes flow with real-time progress reporting
+- Generates execution report with step-by-step results
+- Updates request status and links execution trace
+- Handles execution errors with detailed error reporting
+
+**`exoctl flow plan <id> --request <req-id>`**
+- Performs dry-run analysis without executing agents
+- Shows execution waves and step ordering
+- Validates all dependencies and step configurations
+- Estimates execution time based on historical data
+- Reports potential parallelism and bottlenecks
+- Validates request data availability for each step
+
+**`exoctl flow history <id>`**
+- Queries Activity Journal for flow executions
+- Groups executions by flowRunId
+- Shows execution status, duration, and step counts
+- Displays recent executions with timestamps
+- Provides filtering options (date range, status, request ID)
+
+**`exoctl flow validate <file>`**
+- Validates flow TOML against Flow schema
+- Checks step dependencies for cycles and invalid references
+- Validates agent references against available blueprints
+- Reports schema errors with line numbers and suggestions
+- Performs semantic validation (input/output compatibility)
+
+**Error Handling:**
+
+- **Invalid Flow ID:** "Flow 'invalid-id' not found in /Blueprints/Flows/"
+- **Malformed Flow:** "Flow validation failed: missing required field 'steps'"
+- **Dependency Cycle:** "Flow contains circular dependency: step1 → step2 → step1"
+- **Missing Agent:** "Step 'code-review' references unknown agent 'nonexistent-agent'"
+- **Invalid Request:** "Request 'invalid-id' not found in /Inbox/Requests/"
+- **Execution Failure:** "Flow execution failed at step 'test-step': agent timeout"
+
+**Output Formats:**
+
+**Flow List Output:**
+```
+Available Flows:
+┌─────────────┬─────────────────┬───────┬─────────────────────────────────────┐
+│ ID          │ Name            │ Steps │ Description                         │
+├─────────────┼─────────────────┼───────┼─────────────────────────────────────┤
+│ code-review │ Code Review     │ 3     │ Automated code review workflow      │
+│ deploy      │ Deployment      │ 5     │ Multi-stage deployment pipeline     │
+│ research    │ Research        │ 4     │ Research and analysis workflow      │
+└─────────────┴─────────────────┴───────┴─────────────────────────────────────┘
+```
+
+**Flow Show Output:**
+```
+Flow: code-review (v1.0.0)
+Description: Automated code review workflow
+
+Dependency Graph:
+  lint
+    └── test
+        └── review
+
+Execution Waves:
+Wave 1: lint, format (parallel)
+Wave 2: test (depends on Wave 1)
+Wave 3: review (depends on Wave 2)
+
+Steps:
+┌─────────┬──────────────┬─────────────────┬─────────────────────┐
+│ ID      │ Agent        │ Dependencies    │ Description         │
+├─────────┼──────────────┼─────────────────┼─────────────────────┤
+│ lint    │ eslint-agent │ []              │ Code linting        │
+│ format  │ prettier-bot │ []              │ Code formatting     │
+│ test    │ test-runner  │ [lint, format]  │ Unit test execution │
+│ review  │ reviewer-ai  │ [test]          │ Code review         │
+└─────────┴──────────────┴─────────────────┴─────────────────────┘
+
+Settings: maxParallelism=3, failFast=true, output=markdown
+```
 
 **Success Criteria:**
 
-- `exoctl flow list` displays all available flows with their IDs, names, descriptions, and step counts
-- `exoctl flow show <id>` renders a clear dependency graph showing steps and their relationships
-- `exoctl flow plan <id> --request <req-id>` shows execution waves and step order without executing the flow
-- `exoctl flow run <id> --request <req-id>` executes the flow and generates a comprehensive report
-- `exoctl flow validate <file>` validates flow definitions and reports specific schema errors
-- `exoctl flow history <id>` shows past flow executions with status and timing information
-- All commands provide helpful error messages for invalid inputs or missing flows
-- Commands integrate with existing CLI infrastructure and follow consistent patterns
+- [ ] `exoctl flow list` displays all available flows with their IDs, names, descriptions, and step counts
+- [ ] `exoctl flow show <id>` renders a clear dependency graph showing steps and their relationships
+- [ ] `exoctl flow plan <id> --request <req-id>` shows execution waves and step order without executing the flow
+- [ ] `exoctl flow run <id> --request <req-id>` executes the flow and generates a comprehensive report
+- [ ] `exoctl flow validate <file>` validates flow definitions and reports specific schema errors
+- [ ] `exoctl flow history <id>` shows past flow executions with status and timing information
+- [ ] All commands provide helpful error messages for invalid inputs or missing flows
+- [ ] Commands integrate with existing CLI infrastructure and follow consistent patterns
+- [ ] CLI commands handle large flows efficiently without performance degradation
+- [ ] Commands support both interactive and scripted usage patterns
+- [ ] Flow execution reports include timing data and step-by-step results
 
 **Planned Tests:**
 
-- `tests/cli/flow_commands_test.ts`: CLI integration tests for all flow commands
-- `exoctl flow list` tests: Lists flows correctly, handles empty directory, shows step counts
-- `exoctl flow show` tests: Displays dependency graphs, handles missing flows, formats output correctly
-- `exoctl flow plan` tests: Shows execution waves without running, validates request IDs
-- `exoctl flow run` tests: Executes flows end-to-end, creates reports, handles execution errors
-- `exoctl flow validate` tests: Validates correct flows, rejects invalid flows with specific errors
-- `exoctl flow history` tests: Shows execution history, handles flows with no history
-- Error handling tests: Invalid flow IDs, malformed requests, permission issues
-- Integration tests with mock flows and requests
+- [ ] `tests/cli/flow_commands_test.ts`: CLI integration tests for all flow commands
+- [ ] `exoctl flow list` tests: Lists flows correctly, handles empty directory, shows step counts
+- [ ] `exoctl flow show` tests: Displays dependency graphs, handles missing flows, formats output correctly
+- [ ] `exoctl flow plan` tests: Shows execution waves without running, validates request IDs
+- [ ] `exoctl flow run` tests: Executes flows end-to-end, creates reports, handles execution errors
+- [ ] `exoctl flow validate` tests: Validates correct flows, rejects invalid flows with specific errors
+- [ ] `exoctl flow history` tests: Shows execution history, handles flows with no history
+- [ ] Error handling tests: Invalid flow IDs, malformed requests, permission issues
+- [ ] Integration tests with mock flows and requests
+- [ ] Performance tests: Large flow handling, many concurrent executions
+- [ ] Output formatting tests: Table rendering, graph display, report generation
 
 ---
 
