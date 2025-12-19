@@ -14,11 +14,13 @@
     "cli": "deno run --allow-all src/cli/exoctl.ts",
     "test": "deno test --allow-all tests/",
     "test:security": "deno test --allow-all --filter \"[security]\" tests/",
+    "test:llama": "EXO_RUN_LLAMA_TESTS=true deno test --allow-all tests/llama_provider_test.ts",
     "test:watch": "deno test --watch --allow-all tests/",
     "test:coverage": "rm -rf coverage && deno test --allow-all --coverage=coverage tests/",
     "coverage": "deno coverage coverage/ --include='^file://.*ExoFrame/src/' --exclude='test\\.(ts|js)$'",
     "coverage:html": "deno coverage coverage/ --include='^file://.*ExoFrame/src/' --exclude='test\\.(ts|js)$' --html",
     "coverage:lcov": "deno coverage coverage/ --include='^file://.*ExoFrame/src/' --exclude='test\\.(ts|js)$' --lcov --output=coverage/lcov.info",
+    "coverage:with-llama": "rm -rf coverage && ./scripts/coverage.sh summary --with-llama",
     "bench": "deno bench --allow-all tests/benchmarks/",
     "lint": "deno lint src/ tests/",
     "fmt": "deno fmt src/ tests/ docs/",
@@ -37,11 +39,19 @@
     "@cliffy/command": "jsr:@cliffy/command@^1.0.0-rc.8",
     "zod": "https://deno.land/x/zod@v3.22.4/mod.ts"
   },
-  "exclude": ["cov_profile", "exoframe", "dist"],
+  "exclude": [
+    "cov_profile",
+    "exoframe",
+    "dist"
+  ],
   "lint": {
     "rules": {
-      "tags": ["recommended"],
-      "exclude": ["no-explicit-any"]
+      "tags": [
+        "recommended"
+      ],
+      "exclude": [
+        "no-explicit-any"
+      ]
     }
   },
   "fmt": {
@@ -51,7 +61,12 @@
     "semiColons": true,
     "singleQuote": false,
     "proseWrap": "preserve",
-    "include": ["src/", "tests/", "docs/", "scripts/"]
+    "include": [
+      "src/",
+      "tests/",
+      "docs/",
+      "scripts/"
+    ]
   },
   "compilerOptions": {
     "strict": true,

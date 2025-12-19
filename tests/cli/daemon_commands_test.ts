@@ -630,4 +630,63 @@ describe("DaemonCommands - Edge Cases", () => {
     // Uptime should be present (some value from ps command)
     assertEquals(typeof status.uptime, "string");
   });
+
+  it("stop() should use force kill when graceful shutdown fails", async () => {
+    // Create a daemon that ignores SIGTERM (no signal handlers)
+    const srcDir = join(tempDir, "src");
+    await ensureDir(srcDir);
+    const stubbornMainScript = join(srcDir, "stubborn_main.ts");
+
+    // Create a daemon script that ignores SIGTERM
+    await Deno.writeTextFile(
+      stubbornMainScript,
+      `#!/usr/bin/env -S deno run --allow-all
+// Stubborn daemon that ignores SIGTERM
+console.log("Stubborn daemon started");
+// Don't set up signal handlers - this daemon won't respond to SIGTERM
+await new Promise(() => {}); // Run forever
+`,
+    );
+
+    // Start the stubborn daemon
+    const startCmd = new Deno.Command("deno", {
+      args: ["run", "--allow-all", stubbornMainScript],
+      stdout: "piped",
+      stderr: "piped",
+    });
+    const startProcess = startCmd.spawn();
+
+    // Wait a bit for it to start
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Get the PID and write to file
+    const stubbornPid = startProcess.pid;
+    await Deno.writeTextFile(pidFile, stubbornPid.toString());
+
+    // Try to stop it - this should trigger force kill after timeout
+    await daemonCommands.stop();
+
+    // Verify process was killed (either gracefully or forcefully)
+    const isAlive = await isProcessAlive(stubbornPid);
+    assertEquals(isAlive, false, "Process should be killed");
+
+    // Don't try to kill again in cleanup since it's already dead
+  });
+
+  it("logDaemonActivity() should handle logging errors gracefully", async () => {
+    // Mock the EventLogger to throw an error
+    const originalGetActionLogger = (daemonCommands as any).getActionLogger;
+    (daemonCommands as any).getActionLogger = async () => {
+      throw new Error("Database connection failed");
+    };
+
+    try {
+      // This should not throw even though logging fails
+      await (daemonCommands as any).logDaemonActivity("test.action", { test: "data" });
+      assertEquals(true, true); // Should reach here without throwing
+    } finally {
+      // Restore original method
+      (daemonCommands as any).getActionLogger = originalGetActionLogger;
+    }
+  });
 });

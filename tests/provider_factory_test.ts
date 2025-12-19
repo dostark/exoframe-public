@@ -17,7 +17,7 @@
  */
 
 import { assertEquals, assertExists, assertStringIncludes, assertThrows } from "jsr:@std/assert@^1.0.0";
-import { ProviderFactory, ProviderFactoryError } from "../src/ai/provider_factory.ts";
+import { ProviderFactory, ProviderFactoryError, getProviderForModel } from "../src/ai/provider_factory.ts";
 
 import { AiConfig, AiConfigSchema } from "../src/config/ai_config.ts";
 import { Config } from "../src/config/schema.ts";
@@ -409,3 +409,118 @@ Deno.test(
     assertEquals(info.model, "test-model");
   }),
 );
+
+// ============================================================================
+// Anthropic Provider Placeholder Tests
+// ============================================================================
+
+Deno.test(
+  "ProviderFactory: anthropic with API key returns placeholder MockLLMProvider",
+  withEnvVars({
+    EXO_LLM_PROVIDER: "anthropic",
+    ANTHROPIC_API_KEY: "test-key",
+    EXO_LLM_MODEL: "claude-3-sonnet",
+  }, () => {
+    const config = createTestConfig();
+    const provider = ProviderFactory.create(config);
+
+    assertExists(provider);
+    assertStringIncludes(provider.id, "anthropic-claude-3-sonnet");
+    // Should be a MockLLMProvider placeholder
+    assertEquals(provider.id.startsWith("anthropic"), true);
+  }),
+);
+
+// ============================================================================
+// OpenAI Provider Placeholder Tests
+// ============================================================================
+
+Deno.test(
+  "ProviderFactory: openai with API key returns placeholder MockLLMProvider",
+  withEnvVars({
+    EXO_LLM_PROVIDER: "openai",
+    OPENAI_API_KEY: "test-key",
+    EXO_LLM_MODEL: "gpt-4",
+  }, () => {
+    const config = createTestConfig();
+    const provider = ProviderFactory.create(config);
+
+    assertExists(provider);
+    assertStringIncludes(provider.id, "openai-gpt-4");
+    // Should be a MockLLMProvider placeholder
+    assertEquals(provider.id.startsWith("openai"), true);
+  }),
+);
+
+// ============================================================================
+// Llama Model Routing Tests
+// ============================================================================
+
+Deno.test("ProviderFactory: llama model prefix routes to LlamaProvider", () => {
+  const config = createTestConfig({
+    provider: "ollama",
+    model: "codellama:13b",
+  });
+  const provider = ProviderFactory.create(config);
+
+  assertExists(provider);
+  // Should route to LlamaProvider despite ollama config
+  assertStringIncludes(provider.id, "codellama");
+});
+
+Deno.test("ProviderFactory: llama model prefix routes to LlamaProvider from env", () => {
+  const config = createTestConfig();
+  // Set env to use codellama model
+  Deno.env.set("EXO_LLM_MODEL", "llama3.2:8b");
+
+  try {
+    const provider = ProviderFactory.create(config);
+    assertExists(provider);
+    assertStringIncludes(provider.id, "llama3.2");
+  } finally {
+    Deno.env.delete("EXO_LLM_MODEL");
+  }
+});
+
+// ============================================================================
+// Unknown Provider ID Generation Test
+// ============================================================================
+
+Deno.test("ProviderFactory: unknown provider generates unknown ID", () => {
+  // This tests the default case in generateProviderId
+  // We need to access the private method, so we'll test via getProviderInfo
+  const config = createTestConfig();
+
+  // Mock the resolveOptions to return unknown provider
+  const originalResolveOptions = ProviderFactory["resolveOptions"];
+  ProviderFactory["resolveOptions"] = () => ({
+    provider: "unknown" as any,
+    model: "test-model",
+    timeoutMs: 30000,
+  });
+
+  try {
+    const info = ProviderFactory.getProviderInfo(config);
+    assertEquals(info.id, "unknown-unknown");
+  } finally {
+    ProviderFactory["resolveOptions"] = originalResolveOptions;
+  }
+});
+
+// ============================================================================
+// getProviderForModel Helper Tests
+// ============================================================================
+
+Deno.test("getProviderForModel: creates provider for model", () => {
+  const provider = getProviderForModel("codellama:13b");
+
+  assertExists(provider);
+  assertStringIncludes(provider.id, "codellama");
+});
+
+Deno.test("getProviderForModel: handles regular ollama models", () => {
+  const provider = getProviderForModel("llama3.2");
+
+  assertExists(provider);
+  assertStringIncludes(provider.id, "llama3.2");
+});

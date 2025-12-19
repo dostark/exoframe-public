@@ -1,4 +1,20 @@
-Deno.test("LlamaProvider responds to trivial prompt", async () => {
+import { assertEquals, assertRejects, assertThrows } from "https://deno.land/std@0.203.0/testing/asserts.ts";
+import { PlanSchema } from "../src/schemas/plan_schema.ts";
+import { LlamaProvider } from "../src/ai/providers/llama_provider.ts";
+
+// Check if LlamaProvider tests should run
+const shouldRunLlamaTests = Deno.env.get("EXO_RUN_LLAMA_TESTS") === "true";
+
+// Helper function to conditionally run tests
+function llamaTest(name: string, fn: () => void | Promise<void>) {
+  if (shouldRunLlamaTests) {
+    Deno.test(name, fn);
+  } else {
+    Deno.test.ignore(name, fn);
+  }
+}
+
+llamaTest("LlamaProvider responds to trivial prompt", async () => {
   const provider = new LlamaProvider({ model: "llama3.2:1b" });
   const prompt = "Hello";
   let response = "";
@@ -17,7 +33,7 @@ Deno.test("LlamaProvider responds to trivial prompt", async () => {
     throw err;
   }
 });
-Deno.test("Ollama server connection check", async () => {
+llamaTest("Ollama server connection check", async () => {
   const endpoint = "http://localhost:11434";
   try {
     const res = await fetch(endpoint);
@@ -31,11 +47,7 @@ Deno.test("Ollama server connection check", async () => {
     throw err;
   }
 });
-import { assertEquals, assertRejects, assertThrows } from "https://deno.land/std@0.203.0/testing/asserts.ts";
-import { PlanSchema } from "../src/schemas/plan_schema.ts";
-import { LlamaProvider } from "../src/ai/providers/llama_provider.ts";
-
-Deno.test("LlamaProvider generates valid plan for simple prompt (with senior-coder blueprint)", async () => {
+llamaTest("LlamaProvider generates valid plan for simple prompt (with senior-coder blueprint)", async () => {
   // Read the system prompt from the blueprint file
   const decoder = new TextDecoder();
   const blueprintRaw = Deno.readFileSync("Blueprints/Agents/senior-coder.md");
@@ -71,7 +83,7 @@ Deno.test("LlamaProvider generates valid plan for simple prompt (with senior-cod
   }
 });
 
-Deno.test("LlamaProvider handles connection errors", async () => {
+llamaTest("LlamaProvider handles connection errors", async () => {
   const provider = new LlamaProvider({ model: "llama3.2:1b", endpoint: "http://localhost:9999" });
   await assertRejects(
     () => provider.generate("Test connection error"),
@@ -80,7 +92,7 @@ Deno.test("LlamaProvider handles connection errors", async () => {
   );
 });
 
-Deno.test("LlamaProvider rejects invalid model names (constructor)", () => {
+llamaTest("LlamaProvider rejects invalid model names (constructor)", () => {
   // Error is thrown in constructor, not generate()
   assertThrows(
     () => new LlamaProvider({ model: "invalid-model" }),
@@ -91,7 +103,7 @@ Deno.test("LlamaProvider rejects invalid model names (constructor)", () => {
 // NOTE: To run all tests, use:
 // deno test --allow-net --allow-env tests/llama_provider_test.ts
 
-Deno.test("LlamaProvider returns error for invalid JSON output", async () => {
+llamaTest("LlamaProvider returns error for invalid JSON output", async () => {
   // This test assumes you can mock the Ollama response to return invalid JSON
   // For now, just simulate the error
   class BadLlamaProvider extends LlamaProvider {
@@ -112,7 +124,7 @@ Deno.test("LlamaProvider returns error for invalid JSON output", async () => {
   );
 });
 
-Deno.test("Provider selection logic routes Llama models to LlamaProvider", async () => {
+llamaTest("Provider selection logic routes Llama models to LlamaProvider", async () => {
   // This test assumes a provider factory exists
   const { getProviderForModel } = await import("../src/ai/provider_factory.ts");
   const provider = getProviderForModel("llama3.2:1b");

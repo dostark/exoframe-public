@@ -1,5 +1,5 @@
 import { Flow, FlowStep } from "../schemas/flow.ts";
-import { DependencyResolver } from "./dependency_resolver.ts";
+import { DependencyResolver, FlowValidationError } from "./dependency_resolver.ts";
 import { AgentExecutionResult } from "../services/agent_runner.ts";
 
 /**

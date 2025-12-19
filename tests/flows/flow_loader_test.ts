@@ -235,3 +235,106 @@ export default defineFlow({
     await Deno.remove(mockFlowsDir, { recursive: true });
   }
 });
+
+Deno.test("FlowLoader: checks if flow exists", async () => {
+  await Deno.mkdir(mockFlowsDir, { recursive: true });
+
+  try {
+    const loader = new FlowLoader(mockFlowsDir);
+
+    // Test non-existent flow
+    const exists = await loader.flowExists("nonexistent");
+    assertEquals(exists, false);
+
+    // Create a flow file
+    const flowContent = `
+import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
+
+export default defineFlow({
+  id: "existing-flow",
+  name: "Existing Flow",
+  description: "A flow that exists",
+  steps: [{ id: "s1", name: "Step 1", agent: "agent1", dependsOn: [], input: { source: "request", transform: "passthrough" }, retry: { maxAttempts: 1, backoffMs: 1000 } }],
+  output: { from: "s1" },
+});
+`;
+
+    await Deno.writeTextFile(`${mockFlowsDir}/existing-flow.flow.ts`, flowContent);
+
+    // Test existing flow
+    const existsNow = await loader.flowExists("existing-flow");
+    assertEquals(existsNow, true);
+
+    // Test with non-.flow.ts file (should return false)
+    await Deno.writeTextFile(`${mockFlowsDir}/not-a-flow.ts`, "not a flow");
+    const notFlowExists = await loader.flowExists("not-a-flow");
+    assertEquals(notFlowExists, false);
+  } finally {
+    await Deno.remove(mockFlowsDir, { recursive: true });
+  }
+});
+
+Deno.test("FlowLoader: lists available flow IDs", async () => {
+  await Deno.mkdir(mockFlowsDir, { recursive: true });
+
+  try {
+    const loader = new FlowLoader(mockFlowsDir);
+
+    // Test empty directory
+    let flowIds = await loader.listFlowIds();
+    assertEquals(flowIds.length, 0);
+
+    // Create flow files
+    const flow1Content = `
+import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
+
+export default defineFlow({
+  id: "flow-one",
+  name: "Flow One",
+  description: "First flow",
+  steps: [{ id: "s1", name: "Step 1", agent: "agent1", dependsOn: [], input: { source: "request", transform: "passthrough" }, retry: { maxAttempts: 1, backoffMs: 1000 } }],
+  output: { from: "s1" },
+});
+`;
+
+    const flow2Content = `
+import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
+
+export default defineFlow({
+  id: "flow-two",
+  name: "Flow Two",
+  description: "Second flow",
+  steps: [{ id: "s2", name: "Step 2", agent: "agent2", dependsOn: [], input: { source: "request", transform: "passthrough" }, retry: { maxAttempts: 1, backoffMs: 1000 } }],
+  output: { from: "s2" },
+});
+`;
+
+    await Deno.writeTextFile(`${mockFlowsDir}/flow-one.flow.ts`, flow1Content);
+    await Deno.writeTextFile(`${mockFlowsDir}/flow-two.flow.ts`, flow2Content);
+    await Deno.writeTextFile(`${mockFlowsDir}/not-a-flow.ts`, "not a flow file");
+
+    // Test listing flow IDs
+    flowIds = await loader.listFlowIds();
+    assertEquals(flowIds.length, 2);
+    assert(flowIds.includes("flow-one"));
+    assert(flowIds.includes("flow-two"));
+    assert(!flowIds.includes("not-a-flow"));
+  } finally {
+    await Deno.remove(mockFlowsDir, { recursive: true });
+  }
+});
+
+Deno.test("FlowLoader: handles non-existent directory gracefully", async () => {
+  const nonExistentDir = "/tmp/non-existent-flows-dir";
+  const loader = new FlowLoader(nonExistentDir);
+
+  // Should return empty arrays for all methods
+  const flows = await loader.loadAllFlows();
+  assertEquals(flows.length, 0);
+
+  const flowIds = await loader.listFlowIds();
+  assertEquals(flowIds.length, 0);
+
+  const exists = await loader.flowExists("any-flow");
+  assertEquals(exists, false);
+});

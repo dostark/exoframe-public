@@ -4935,7 +4935,7 @@ Implement a `LlamaProvider` that:
 ---
 ## Phase 7: Flow Orchestration (Multi-Agent Coordination)
 
-> **Status:** � IN PROGRESS (Steps 7.1-7.4 ✅ COMPLETED)\
+> **Status:** � IN PROGRESS (Steps 7.1-7.5 ✅ COMPLETED)\
 > **Prerequisites:** Phases 1–6 (Core system validated via Testing & QA)\
 > **Goal:** Enable declarative multi-agent workflows with dependency resolution, parallel execution, and result aggregation.
 
@@ -5328,31 +5328,31 @@ Settings: maxParallelism=3, failFast=true, output=markdown
 
 **Success Criteria:**
 
-- [ ] `exoctl flow list` displays all available flows with their IDs, names, descriptions, and step counts
-- [ ] `exoctl flow show <id>` renders a clear dependency graph showing steps and their relationships
-- [ ] `exoctl flow plan <id> --request <req-id>` shows execution waves and step order without executing the flow
-- [ ] `exoctl flow run <id> --request <req-id>` executes the flow and generates a comprehensive report
-- [ ] `exoctl flow validate <file>` validates flow definitions and reports specific schema errors
-- [ ] `exoctl flow history <id>` shows past flow executions with status and timing information
-- [ ] All commands provide helpful error messages for invalid inputs or missing flows
-- [ ] Commands integrate with existing CLI infrastructure and follow consistent patterns
-- [ ] CLI commands handle large flows efficiently without performance degradation
-- [ ] Commands support both interactive and scripted usage patterns
-- [ ] Flow execution reports include timing data and step-by-step results
+- [x] `exoctl flow list` displays all available flows with their IDs, names, descriptions, and step counts
+- [x] `exoctl flow show <id>` renders a clear dependency graph showing steps and their relationships
+- [x] `exoctl flow plan <id> --request <req-id>` shows execution waves and step order without executing the flow
+- [x] `exoctl flow run <id> --request <req-id>` executes the flow and generates a comprehensive report
+- [x] `exoctl flow validate <file>` validates flow definitions and reports specific schema errors
+- [x] `exoctl flow history <id>` shows past flow executions with status and timing information
+- [x] All commands provide helpful error messages for invalid inputs or missing flows
+- [x] Commands integrate with existing CLI infrastructure and follow consistent patterns
+- [x] CLI commands handle large flows efficiently without performance degradation
+- [x] Commands support both interactive and scripted usage patterns
+- [x] Flow execution reports include timing data and step-by-step results
 
 **Planned Tests:**
 
-- [ ] `tests/cli/flow_commands_test.ts`: CLI integration tests for all flow commands
-- [ ] `exoctl flow list` tests: Lists flows correctly, handles empty directory, shows step counts
-- [ ] `exoctl flow show` tests: Displays dependency graphs, handles missing flows, formats output correctly
-- [ ] `exoctl flow plan` tests: Shows execution waves without running, validates request IDs
-- [ ] `exoctl flow run` tests: Executes flows end-to-end, creates reports, handles execution errors
-- [ ] `exoctl flow validate` tests: Validates correct flows, rejects invalid flows with specific errors
-- [ ] `exoctl flow history` tests: Shows execution history, handles flows with no history
-- [ ] Error handling tests: Invalid flow IDs, malformed requests, permission issues
-- [ ] Integration tests with mock flows and requests
-- [ ] Performance tests: Large flow handling, many concurrent executions
-- [ ] Output formatting tests: Table rendering, graph display, report generation
+- [x] `tests/cli/flow_commands_test.ts`: CLI integration tests for all flow commands
+- [x] `exoctl flow list` tests: Lists flows correctly, handles empty directory, shows step counts
+- [x] `exoctl flow show` tests: Displays dependency graphs, handles missing flows, formats output correctly
+- [x] `exoctl flow plan` tests: Shows execution waves without running, validates request IDs
+- [x] `exoctl flow run` tests: Executes flows end-to-end, creates reports, handles execution errors
+- [x] `exoctl flow validate` tests: Validates correct flows, rejects invalid flows with specific errors
+- [x] `exoctl flow history` tests: Shows execution history, handles flows with no history
+- [x] Error handling tests: Invalid flow IDs, malformed requests, permission issues
+- [x] Integration tests with mock flows and requests
+- [x] Performance tests: Large flow handling, many concurrent executions
+- [x] Output formatting tests: Table rendering, graph display, report generation
 
 ---
 
@@ -5363,45 +5363,126 @@ Settings: maxParallelism=3, failFast=true, output=markdown
 - **Action:** Enable requests to specify `flow:` field for multi-agent execution
 - **Location:** `src/services/request_router.ts`
 
+**File Structure:**
+
+```
+src/services/
+├── request_router.ts          # Main routing logic with flow support
+├── request_processor.ts       # Request lifecycle management
+└── request_parser.ts          # Frontmatter parsing utilities
+```
+
+**Integration Points:**
+
+- **FlowRunner:** Executes flows when `flow:` field is detected
+- **AgentRunner:** Executes single agents for `agent:` field (existing)
+- **FlowValidator:** Validates flow existence and schema before routing
+- **EventLogger:** Records routing decisions in Activity Journal
+- **RequestParser:** Extracts flow/agent fields from frontmatter
+
 **Routing Logic:**
 
-| Request Field | Behavior                        |
-| ------------- | ------------------------------- |
-| `flow: <id>`  | Route to FlowRunner             |
-| `agent: <id>` | Route to AgentRunner (existing) |
-| Neither       | Use default agent               |
+**Priority Order:**
+1. **Flow Field Present**: `flow: <id>` → Route to FlowRunner
+2. **Agent Field Present**: `agent: <id>` → Route to AgentRunner (legacy)
+3. **Neither Field**: Use default agent from configuration
 
-**Request Frontmatter Example:**
+**Validation Steps:**
+1. Parse request frontmatter for `flow` and `agent` fields
+2. If `flow` field exists:
+   - Validate flow ID exists in `/Blueprints/Flows/`
+   - Load and validate flow schema
+   - Check flow dependencies (agents, transforms)
+3. If `agent` field exists:
+   - Validate agent exists in blueprints
+   - Use existing AgentRunner path
+4. If neither field:
+   - Use default agent from `exo.config.toml`
 
+**Request Frontmatter Examples:**
+
+**Flow Request:**
 ```yaml
 ---
-trace_id: "550e8400-..."
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
 status: pending
 flow: code-review
 tags: [review, pr-42]
+priority: high
 ---
+Please review this pull request for security issues and code quality.
 ```
+
+**Agent Request (Legacy):**
+```yaml
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440001"
+status: pending
+agent: senior-coder
+tags: [implementation]
+---
+Implement a new feature following the requirements in the attached spec.
+```
+
+**Default Agent Request:**
+```yaml
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440002"
+status: pending
+tags: [general]
+---
+Please help me understand this codebase structure.
+```
+
+**Error Handling:**
+
+- **Invalid Flow ID:** "Flow 'nonexistent-flow' not found in /Blueprints/Flows/"
+- **Malformed Flow:** "Flow 'broken-flow' has invalid schema: missing required field 'steps'"
+- **Missing Dependencies:** "Flow 'code-review' references unknown agent 'missing-agent'"
+- **Circular Dependencies:** "Flow 'circular-flow' contains dependency cycle: step1 → step2 → step1"
+- **Invalid Agent:** "Agent 'unknown-agent' not found in blueprints"
+- **Conflicting Fields:** "Request cannot specify both 'flow' and 'agent' fields"
+- **Empty Flow:** "Flow 'empty-flow' must contain at least one step"
+
+**Activity Journal Events:**
+
+| Event                     | Payload Fields                                      |
+| ------------------------- | --------------------------------------------------- |
+| `request.routing.flow`    | `requestId, flowId, traceId`                        |
+| `request.routing.agent`   | `requestId, agentId, traceId`                       |
+| `request.routing.default` | `requestId, defaultAgentId, traceId`                |
+| `request.routing.error`   | `requestId, error, field, value, traceId`           |
+| `request.flow.validated`  | `requestId, flowId, stepCount, traceId`             |
+| `request.flow.validation.failed` | `requestId, flowId, error, traceId`            |
 
 **Success Criteria:**
 
-- Requests with `flow:` field in frontmatter are correctly routed to FlowRunner for multi-agent execution
-- Requests with `agent:` field continue to use the existing AgentRunner for single-agent execution
-- Requests without flow or agent fields use the default agent as before
-- Invalid flow IDs produce clear error messages indicating the flow was not found
-- Flow validation occurs before routing to prevent execution of invalid flows
-- Request router maintains backward compatibility with existing single-agent requests
-- Routing decision is logged to Activity Journal with trace_id for audit trail
+- [ ] Requests with `flow:` field in frontmatter are correctly routed to FlowRunner for multi-agent execution
+- [ ] Requests with `agent:` field continue to use the existing AgentRunner for single-agent execution
+- [ ] Requests without flow or agent fields use the default agent as before
+- [ ] Invalid flow IDs produce clear error messages indicating the flow was not found
+- [ ] Flow validation occurs before routing to prevent execution of invalid flows
+- [ ] Request router maintains backward compatibility with existing single-agent requests
+- [ ] Routing decision is logged to Activity Journal with trace_id for audit trail
+- [ ] Conflicting flow/agent fields in the same request produce clear error messages
+- [ ] Flow dependencies (agents, transforms) are validated before routing
+- [ ] Request routing handles malformed frontmatter gracefully with helpful error messages
+- [ ] Routing performance doesn't degrade with large numbers of flows or requests
+- [ ] Request router integrates seamlessly with existing request processing pipeline
 
 **Planned Tests:**
 
-- `tests/services/request_router_test.ts`: Unit and integration tests for request routing logic
-- Flow routing tests: Requests with valid flow IDs are routed to FlowRunner
-- Agent routing tests: Requests with agent IDs use AgentRunner
-- Default routing tests: Requests without flow/agent use default agent
-- Error handling tests: Invalid flow IDs produce descriptive errors
-- Backward compatibility tests: Existing requests continue to work unchanged
-- Activity Journal logging tests: Routing decisions are properly logged
-- Edge case tests: Malformed frontmatter, conflicting flow/agent fields
+- [ ] `tests/services/request_router_test.ts`: Unit and integration tests for request routing logic
+- [ ] Flow routing tests: Requests with valid flow IDs are routed to FlowRunner
+- [ ] Agent routing tests: Requests with agent IDs use AgentRunner
+- [ ] Default routing tests: Requests without flow/agent use default agent
+- [ ] Error handling tests: Invalid flow IDs produce descriptive errors
+- [ ] Backward compatibility tests: Existing requests continue to work unchanged
+- [ ] Activity Journal logging tests: Routing decisions are properly logged
+- [ ] Edge case tests: Malformed frontmatter, conflicting flow/agent fields
+- [ ] Validation tests: Flow schema validation before routing
+- [ ] Performance tests: Routing performance with many flows
+- [ ] Integration tests: End-to-end request processing with routing
 
 ---
 
@@ -5536,7 +5617,7 @@ tags: [review, pr-42]
 - [x] `FlowSchema` validates flow definitions
 - [x] `DependencyResolver` correctly orders steps and detects cycles
 - [x] `FlowRunner` executes parallel and sequential flows
-- [ ] CLI commands (`flow list/show/run/plan/validate`) working
+- [x] CLI commands (`flow list/show/run/plan/validate`) working
 - [ ] Requests can specify `flow:` instead of `agent:`
 - [ ] Inter-step data passing works via transforms
 - [ ] Flow reports generated with step details

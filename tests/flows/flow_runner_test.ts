@@ -449,3 +449,259 @@ Deno.test("FlowRunner: handles empty flow", async () => {
     assert(error.message.includes("Flow must have at least one step"));
   }
 });
+
+Deno.test("FlowRunner: handles step with invalid input source", async () => {
+  const steps: FlowStep[] = [
+    {
+      id: "step1",
+      name: "Step 1",
+      agent: "agent1",
+      dependsOn: [],
+      input: { source: "step" as any, transform: "passthrough" }, // Missing stepId
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+  ];
+
+  const flow: Flow = {
+    id: "invalid-input-flow",
+    name: "Invalid Input Flow",
+    description: "A flow with invalid step input",
+    version: "1.0.0",
+    steps,
+    output: { from: "step1", format: "markdown" },
+    settings: { maxParallelism: 3, failFast: false }, // Don't fail fast so we can check step error
+  };
+
+  const mockResults = {
+    agent1: { thought: "Thinking", content: "Result", raw: "raw result" },
+  };
+
+  const mockAgentRunner = new MockAgentRunner(mockResults);
+  const mockLogger = new MockEventLogger();
+
+  const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
+  const result = await runner.execute(flow, { userPrompt: "test request" });
+
+  assertEquals(result.success, false);
+  assertEquals(result.stepResults.get("step1")?.success, false);
+  assert(result.stepResults.get("step1")?.error?.includes("Step step1 has source \"step\" but no stepId specified"));
+});
+
+Deno.test("FlowRunner: handles step depending on failed step", async () => {
+  const steps: FlowStep[] = [
+    {
+      id: "step1",
+      name: "Step 1",
+      agent: "failing-agent",
+      dependsOn: [],
+      input: { source: "request", transform: "passthrough" },
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+    {
+      id: "step2",
+      name: "Step 2",
+      agent: "agent2",
+      dependsOn: ["step1"],
+      input: { source: "step", stepId: "step1", transform: "passthrough" },
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+  ];
+
+  const flow: Flow = {
+    id: "failed-dependency-flow",
+    name: "Failed Dependency Flow",
+    description: "A flow where step depends on failed step",
+    version: "1.0.0",
+    steps,
+    output: { from: "step2", format: "markdown" },
+    settings: { maxParallelism: 3, failFast: false }, // Don't fail fast to test dependency handling
+  };
+
+  const mockResults = {
+    agent2: { thought: "Thinking 2", content: "Result 2", raw: "raw result 2" },
+  };
+
+  const mockAgentRunner = new MockAgentRunner(mockResults, ["failing-agent"]);
+  const mockLogger = new MockEventLogger();
+
+  const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
+  const result = await runner.execute(flow, { userPrompt: "test request" });
+
+  assertEquals(result.success, false);
+  assertEquals(result.stepResults.get("step1")?.success, false);
+  assertEquals(result.stepResults.get("step2")?.success, false);
+  assert(result.stepResults.get("step2")?.error?.includes("Step step2 depends on step1 which has no result"));
+});
+
+Deno.test("FlowRunner: handles circular dependencies", async () => {
+  const steps: FlowStep[] = [
+    {
+      id: "step1",
+      name: "Step 1",
+      agent: "agent1",
+      dependsOn: ["step2"], // Circular dependency
+      input: { source: "request", transform: "passthrough" },
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+    {
+      id: "step2",
+      name: "Step 2",
+      agent: "agent2",
+      dependsOn: ["step1"], // Circular dependency
+      input: { source: "step", stepId: "step1", transform: "passthrough" },
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+  ];
+
+  const flow: Flow = {
+    id: "circular-flow",
+    name: "Circular Flow",
+    description: "A flow with circular dependencies",
+    version: "1.0.0",
+    steps,
+    output: { from: "step1", format: "markdown" },
+    settings: { maxParallelism: 3, failFast: true },
+  };
+
+  const mockAgentRunner = new MockAgentRunner();
+  const mockLogger = new MockEventLogger();
+
+  const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
+
+  try {
+    await runner.execute(flow, { userPrompt: "test request" });
+    console.log("No error thrown - this is unexpected");
+    throw new Error("Expected an error to be thrown");
+  } catch (error) {
+    console.log("Error thrown:", (error as Error).constructor.name, (error as Error).message);
+    assert(error instanceof FlowExecutionError || error instanceof Error);
+    assert((error as Error).message.includes("Cycle") || (error as Error).message.includes("Circular") || (error as Error).message.includes("dependency"));
+  }
+});
+
+Deno.test("FlowRunner: handles agent execution throwing non-Error", async () => {
+  const steps: FlowStep[] = [
+    {
+      id: "step1",
+      name: "Step 1",
+      agent: "throwing-agent",
+      dependsOn: [],
+      input: { source: "request", transform: "passthrough" },
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+  ];
+
+  const flow: Flow = {
+    id: "throwing-flow",
+    name: "Throwing Flow",
+    description: "A flow with agent that throws non-Error",
+    version: "1.0.0",
+    steps,
+    output: { from: "step1", format: "markdown" },
+    settings: { maxParallelism: 3, failFast: false },
+  };
+
+  // Mock agent runner that throws a string
+  class ThrowingAgentRunner extends MockAgentRunner {
+    override async run(agentId: string, request: any): Promise<AgentExecutionResult> {
+      if (agentId === "throwing-agent") {
+        throw "String error"; // Throw a string, not an Error
+      }
+      return super.run(agentId, request);
+    }
+  }
+
+  const mockAgentRunner = new ThrowingAgentRunner();
+  const mockLogger = new MockEventLogger();
+
+  const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
+  const result = await runner.execute(flow, { userPrompt: "test request" });
+
+  assertEquals(result.success, false);
+  assertEquals(result.stepResults.get("step1")?.success, false);
+  assertEquals(result.stepResults.get("step1")?.error, "String error");
+});
+
+Deno.test("FlowRunner: handles output aggregation with failed steps", async () => {
+  const steps: FlowStep[] = [
+    {
+      id: "step1",
+      name: "Step 1",
+      agent: "agent1",
+      dependsOn: [],
+      input: { source: "request", transform: "passthrough" },
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+    {
+      id: "step2",
+      name: "Step 2",
+      agent: "failing-agent",
+      dependsOn: [],
+      input: { source: "request", transform: "passthrough" },
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+  ];
+
+  const flow: Flow = {
+    id: "mixed-output-flow",
+    name: "Mixed Output Flow",
+    description: "A flow with mixed success/failure for output aggregation",
+    version: "1.0.0",
+    steps,
+    output: { from: ["step1", "step2"], format: "concat" },
+    settings: { maxParallelism: 3, failFast: false },
+  };
+
+  const mockResults = {
+    agent1: { thought: "Thinking 1", content: "Result 1", raw: "raw result 1" },
+  };
+
+  const mockAgentRunner = new MockAgentRunner(mockResults, ["failing-agent"]);
+  const mockLogger = new MockEventLogger();
+
+  const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
+  const result = await runner.execute(flow, { userPrompt: "test request" });
+
+  assertEquals(result.success, false); // Overall flow failed
+  assertEquals(result.output, "Result 1"); // Only successful step included
+});
+
+Deno.test("FlowRunner: handles output aggregation with all failed steps", async () => {
+  const steps: FlowStep[] = [
+    {
+      id: "step1",
+      name: "Step 1",
+      agent: "failing-agent1",
+      dependsOn: [],
+      input: { source: "request", transform: "passthrough" },
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+    {
+      id: "step2",
+      name: "Step 2",
+      agent: "failing-agent2",
+      dependsOn: [],
+      input: { source: "request", transform: "passthrough" },
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+  ];
+
+  const flow: Flow = {
+    id: "all-failed-flow",
+    name: "All Failed Flow",
+    description: "A flow where all steps fail",
+    version: "1.0.0",
+    steps,
+    output: { from: ["step1", "step2"], format: "json" },
+    settings: { maxParallelism: 3, failFast: false },
+  };
+
+  const mockAgentRunner = new MockAgentRunner({}, ["failing-agent1", "failing-agent2"]);
+  const mockLogger = new MockEventLogger();
+
+  const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
+  const result = await runner.execute(flow, { userPrompt: "test request" });
+
+  assertEquals(result.success, false);
+  assertEquals(result.output, "{}"); // Empty JSON object when no successful steps
+});
