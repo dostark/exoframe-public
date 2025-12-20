@@ -1,4 +1,4 @@
-import { Flow, FlowSchema, FlowStep } from "../schemas/flow.ts";
+import { Flow, FlowSchema } from "../schemas/flow.ts";
 
 /**
  * Helper function to define a flow with full TypeScript type safety.
@@ -17,6 +17,7 @@ export function defineFlow(config: {
     input?: {
       source?: "request" | "step" | "aggregate";
       stepId?: string;
+      from?: string[]; // For aggregate source
       transform?: string;
     };
     condition?: string;
@@ -50,6 +51,7 @@ export function defineFlow(config: {
       input: {
         source: step.input?.source ?? "request",
         stepId: step.input?.stepId,
+        from: step.input?.from,
         transform: step.input?.transform ?? "passthrough",
       },
       condition: step.condition,

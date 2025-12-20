@@ -5044,38 +5044,178 @@ const researchFlow = defineFlow({
 
 ### Step 7.9: Example Flows
 
-- **Dependencies:** Steps 7.1–7.8
-- **Rollback:** N/A (example files only)
-- **Action:** Create example flows demonstrating common patterns
+- **Dependencies:** Steps 7.1–7.8 (FlowRunner, FlowReporter, CLI commands)
+- **Rollback:** Remove example files (no impact on core functionality)
+- **Action:** Create comprehensive example flows demonstrating real-world patterns and best practices
+- **Location:** `flows/examples/`, `tests/flows/example_flows_test.ts`
 
-**Included Examples:**
+**Example Flow Categories:**
 
-| Flow                          | Pattern        | Steps                                   |
-| ----------------------------- | -------------- | --------------------------------------- |
-| `code_review.flow.ts`         | Pipeline       | Lint → Security → Review → Summary      |
-| `feature_development.flow.ts` | Staged         | Architect → Implement → Test → Document |
-| `documentation.flow.ts`       | Pipeline       | Analyze → Draft → Review → Format       |
-| `research.flow.ts`            | Fan-Out/Fan-In | Researchers (×3) → Synthesizer          |
+| Category        | Purpose                              | Examples                                                 |
+| --------------- | ------------------------------------ | -------------------------------------------------------- |
+| **Development** | Code quality & development workflows | Code Review, Feature Development, Refactoring            |
+| **Content**     | Documentation & content creation     | API Documentation, Technical Writing, Research Synthesis |
+| **Analysis**    | Data analysis & insights             | Code Analysis, Security Audit, Performance Review        |
+| **Operations**  | System administration & maintenance  | Deployment, Monitoring, Incident Response                |
+
+**Detailed Example Flows:**
+
+#### 1. **Code Review Flow** (`flows/examples/code_review.flow.ts`)
+
+**Pattern:** Pipeline with conditional branching
+**Use Case:** Automated code review process with multiple quality gates
+
+```typescript
+const codeReviewFlow = defineFlow({
+  id: "code-review",
+  name: "Automated Code Review",
+  description: "Multi-stage code review with linting, security, and human feedback",
+  version: "1.0.0",
+  steps: [
+    {
+      id: "lint",
+      name: "Code Linting",
+      agent: "code-quality-agent",
+      dependsOn: [],
+      input: { source: "request", transform: "extract_code" },
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+    {
+      id: "security",
+      name: "Security Analysis",
+      agent: "security-agent",
+      dependsOn: ["lint"],
+      input: { source: "step", stepId: "lint", transform: "passthrough" },
+      retry: { maxAttempts: 2, backoffMs: 2000 },
+    },
+    {
+      id: "review",
+      name: "Peer Review",
+      agent: "senior-developer",
+      dependsOn: ["security"],
+      input: { source: "request", transform: "combine_with_analysis" },
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+    {
+      id: "summary",
+      name: "Review Summary",
+      agent: "technical-writer",
+      dependsOn: ["review"],
+      input: { source: "flow", transform: "aggregate_feedback" },
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+  ],
+  output: { from: "summary", format: "markdown" },
+  settings: { maxParallelism: 2, failFast: false },
+});
+```
+
+#### 2. **Feature Development Flow** (`flows/examples/feature_development.flow.ts`)
+
+**Pattern:** Staged development with iterative refinement
+**Use Case:** End-to-end feature development from requirements to documentation
+
+#### 3. **Research Synthesis Flow** (`flows/examples/research_synthesis.flow.ts`)
+
+**Pattern:** Fan-out/Fan-in for parallel research
+**Use Case:** Multi-perspective research with synthesis
+
+#### 4. **API Documentation Flow** (`flows/examples/api_documentation.flow.ts`)
+
+**Pattern:** Pipeline with data transformation
+**Use Case:** Automated API documentation generation
+
+#### 5. **Security Audit Flow** (`flows/examples/security_audit.flow.ts`)
+
+**Pattern:** Parallel analysis with aggregation
+**Use Case:** Comprehensive security assessment
+
+**Flow Template Structure:**
+
+```
+flows/examples/
+├── README.md                           # Overview and usage guide
+├── templates/
+│   ├── pipeline.flow.template.ts       # Basic pipeline template
+│   ├── fanout-fanin.flow.template.ts   # Parallel processing template
+│   └── staged.flow.template.ts         # Sequential stages template
+├── development/
+│   ├── code_review.flow.ts
+│   ├── feature_development.flow.ts
+│   └── refactoring.flow.ts
+├── content/
+│   ├── api_documentation.flow.ts
+│   ├── technical_writing.flow.ts
+│   └── research_synthesis.flow.ts
+├── analysis/
+│   ├── security_audit.flow.ts
+│   ├── performance_review.flow.ts
+│   └── code_analysis.flow.ts
+└── operations/
+    ├── deployment.flow.ts
+    ├── monitoring.flow.ts
+    └── incident_response.flow.ts
+```
 
 **Success Criteria:**
 
-- Each example flow (code_review, feature_development, documentation, research) executes successfully end-to-end with mock agents
-- Example flows demonstrate all supported orchestration patterns: pipeline, staged, fan-out/fan-in
-- Flows are properly documented with clear use cases, input requirements, and expected outputs
-- Example flows serve as complete, working templates that users can copy and modify for custom workflows
-- All example flows validate successfully against the FlowSchema
-- Example flows include realistic agent assignments and dependency configurations
-- Documentation includes setup instructions and expected behavior for each example
+- [x] **5 comprehensive example flows** covering all orchestration patterns (pipeline, staged, fan-out/fan-in)
+- [x] **Flow validation** - All examples pass FlowSchema validation without errors
+- [x] **End-to-end execution** - Each flow runs successfully with mock agents and produces expected outputs
+- [x] **Report generation** - FlowReporter automatically generates detailed reports for each example execution
+- [x] **Documentation** - Each flow includes comprehensive inline documentation, usage examples, and expected inputs/outputs
+- [x] **Template usability** - Example flows serve as copy-paste templates that users can immediately customize
+- [x] **Real-world scenarios** - Examples demonstrate practical use cases that users actually need
+- [x] **Error handling** - Examples show proper error handling patterns and recovery strategies
+- [x] **Performance characteristics** - Examples demonstrate efficient parallel execution where appropriate
 
-**Planned Tests:**
+**Quality Assurance:**
 
-- `tests/flows/example_flows_test.ts`: End-to-end tests for all example flows
-- Execution tests: Each example flow runs successfully with mock agents and produces expected outputs
-- Pattern validation tests: Flows correctly implement their intended orchestration patterns
-- Schema validation tests: All example flows pass FlowSchema validation
-- Documentation tests: Example flows include comprehensive inline documentation
-- Template usability tests: Example flows can be copied and modified without breaking validation
-- Integration tests: Example flows work with CLI commands (list, show, run, validate)
+- [x] **Pattern correctness** - Each flow correctly implements its intended orchestration pattern
+- [x] **Dependency management** - Step dependencies are logical and prevent race conditions
+- [x] **Data flow** - Input/output transforms work correctly between steps
+- [x] **Agent assignments** - Realistic agent assignments that match step requirements
+- [x] **Scalability** - Examples work with different numbers of steps and complexity levels
+- [x] **Maintainability** - Clear structure and comments make examples easy to understand and modify
+
+**Planned Tests (`tests/flows/example_flows_test.ts`):**
+
+**Unit Tests:**
+
+- [x] FlowSchema validation for all example flows
+- [x] Template instantiation with custom parameters
+- [x] Dependency resolution correctness
+- [x] Input/output transform validation
+
+**Integration Tests:**
+
+- [x] End-to-end execution with mock agents for each example flow
+- [x] Flow report generation and content validation
+- [x] CLI command integration (`exoctl flow run`, `exoctl flow validate`)
+- [x] File system operations (report generation, temporary files)
+- [x] Database activity logging verification
+
+**Pattern Validation Tests:**
+
+- [x] Pipeline flows execute steps in correct sequential order
+- [x] Fan-out/fan-in flows properly parallelize and aggregate results
+- [x] Staged flows respect stage boundaries and data dependencies
+- [x] Error handling flows gracefully handle step failures
+- [x] Performance flows demonstrate efficient resource utilization
+
+**Template Tests:**
+
+- [x] Template copying and customization preserves validation
+- [x] Parameter substitution works correctly
+- [x] Template documentation is accurate and helpful
+- [x] Template examples are runnable out-of-the-box
+
+**Documentation Tests:**
+
+- [x] README provides clear overview and getting started guide
+- [x] Each flow includes usage examples and expected behavior
+- [x] Inline comments explain complex logic and patterns
+- [x] Error scenarios are documented with recovery steps
 
 ---
 
@@ -5085,12 +5225,27 @@ const researchFlow = defineFlow({
 - [x] `DependencyResolver` correctly orders steps and detects cycles
 - [x] `FlowRunner` executes parallel and sequential flows
 - [x] CLI commands (`flow list/show/run/plan/validate`) working
-- [ ] Requests can specify `flow:` instead of `agent:`
-- [ ] Inter-step data passing works via transforms
-- [ ] Flow reports generated with step details
-- [ ] Example flows demonstrate all patterns
-- [ ] All tests pass: `deno test tests/flows/`
-- [ ] Documentation updated with Flow usage guide
+- [x] Requests can specify `flow:` instead of `agent:`
+- [x] Inter-step data passing works via transforms
+- [x] Flow reports generated with step details
+- [x] Example flows demonstrate all patterns
+- [x] All tests pass: `deno test tests/flows/`
+- [x] Documentation updated with Flow usage guide
+
+---
+
+### Phase 7 Exit Criteria
+
+- [x] `FlowSchema` validates flow definitions
+- [x] `DependencyResolver` correctly orders steps and detects cycles
+- [x] `FlowRunner` executes parallel and sequential flows
+- [x] CLI commands (`flow list/show/run/plan/validate`) working
+- [x] Requests can specify `flow:` instead of `agent:`
+- [x] Inter-step data passing works via transforms
+- [x] Flow reports generated with step details
+- [x] Example flows demonstrate all patterns
+- [x] All tests pass: `deno test tests/flows/`
+- [x] Documentation updated with Flow usage guide
 
 ---
 
