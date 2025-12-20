@@ -1,5 +1,5 @@
-import { assert, assertEquals, assertRejects, assertThrows } from "jsr:@std/assert@1";
-import { RequestRouter, RoutingDecision, RoutingError } from "../../src/services/request_router.ts";
+import { assertEquals, assertRejects } from "jsr:@std/assert@1";
+import { RequestRouter, RoutingError } from "../../src/services/request_router.ts";
 
 // Mock dependencies
 class MockFlowRunner {
@@ -7,7 +7,7 @@ class MockFlowRunner {
 
   async execute(flow: any, request: any): Promise<any> {
     this.executedFlows.push({ flow, request });
-    return { success: true, flowId: flow.id, output: `Flow ${flow.id} executed` };
+    return await Promise.resolve({ success: true, flowId: flow.id, output: `Flow ${flow.id} executed` });
   }
 }
 
@@ -16,7 +16,11 @@ class MockAgentRunner {
 
   async run(blueprint: any, request: any): Promise<any> {
     this.executedAgents.push({ blueprint, request });
-    return { success: true, agentId: blueprint.agentId, output: `Agent ${blueprint.agentId} executed` };
+    return await Promise.resolve({
+      success: true,
+      agentId: blueprint.agentId,
+      output: `Agent ${blueprint.agentId} executed`,
+    });
   }
 }
 
@@ -26,12 +30,12 @@ class MockFlowValidator {
 
   async validateFlow(flowId: string): Promise<{ valid: boolean; error?: string }> {
     if (this.validFlows.has(flowId)) {
-      return { valid: true };
+      return await Promise.resolve({ valid: true });
     }
     if (this.invalidFlows.has(flowId)) {
-      return { valid: false, error: `Flow '${flowId}' has validation errors` };
+      return await Promise.resolve({ valid: false, error: `Flow '${flowId}' has validation errors` });
     }
-    return { valid: false, error: `Flow '${flowId}' not found` };
+    return await Promise.resolve({ valid: false, error: `Flow '${flowId}' not found` });
   }
 }
 
@@ -62,7 +66,7 @@ class TestRequestRouter extends RequestRouter {
   }
 
   protected override async loadBlueprint(agentId: string): Promise<any> {
-    return this.mockBlueprints.get(agentId) || null;
+    return await Promise.resolve(this.mockBlueprints.get(agentId) || null);
   }
 }
 
@@ -239,7 +243,7 @@ Deno.test("RequestRouter: flow takes priority over agent when both present (shou
   );
 
   // Temporarily bypass the conflicting fields check for this test
-  const originalRoute = router.route.bind(router);
+  const _originalRoute = router.route.bind(router);
   router.route = async function (request: any) {
     // Skip the conflicting fields check for this test
     const flowId = request.frontmatter.flow;

@@ -9,7 +9,9 @@ export const FlowStepSchema = z.object({
   input: z.object({
     source: z.enum(["request", "step", "aggregate"]).default("request"),
     stepId: z.string().optional(),
-    transform: z.string().default("passthrough"),
+    from: z.array(z.string()).optional(), // For aggregate source
+    transform: z.union([z.string(), z.function()]).default("passthrough"),
+    transformArgs: z.any().optional(), // Arguments for transform functions
   }).default({}),
   condition: z.string().optional(),
   timeout: z.number().positive().optional(),

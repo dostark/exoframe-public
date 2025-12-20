@@ -22,9 +22,7 @@ import type { Config } from "../config/schema.ts";
 import { AgentRunner, type Blueprint, type ParsedRequest } from "./agent_runner.ts";
 import { PlanWriter, type RequestMetadata } from "./plan_writer.ts";
 import { EventLogger } from "./event_logger.ts";
-import { RequestRouter } from "./request_router.ts";
 import { FlowValidatorImpl } from "./flow_validator.ts";
-import { FlowLoader } from "../flows/flow_loader.ts";
 
 // ============================================================================
 // Types and Interfaces
@@ -167,7 +165,7 @@ export class RequestProcessor {
 
     try {
       let planContent: string;
-      let agentId: string;
+      let _agentId: string;
 
       if (hasFlow) {
         // Handle flow request
@@ -193,7 +191,7 @@ export class RequestProcessor {
             flow: frontmatter.flow,
           }],
         });
-        agentId = "flow-executor"; // Special agent ID for flow execution
+        _agentId = "flow-executor"; // Special agent ID for flow execution
 
         // Create mock result for PlanWriter
         const result = {
@@ -251,7 +249,7 @@ export class RequestProcessor {
         // Step 4: Run the agent to generate plan content
         const result = await this.agentRunner.run(blueprint, request);
         planContent = result.content;
-        agentId = frontmatter.agent!;
+        _agentId = frontmatter.agent!;
 
         // Step 5: Write the plan using PlanWriter
         const metadata: RequestMetadata = {

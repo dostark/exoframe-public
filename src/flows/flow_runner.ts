@@ -1,6 +1,14 @@
 import { Flow, FlowStep } from "../schemas/flow.ts";
-import { DependencyResolver, FlowValidationError } from "./dependency_resolver.ts";
+import { DependencyResolver } from "./dependency_resolver.ts";
 import { AgentExecutionResult } from "../services/agent_runner.ts";
+import {
+  appendToRequest,
+  extractSection,
+  jsonExtract,
+  mergeAsContext,
+  passthrough,
+  templateFill,
+} from "./transforms.ts";
 
 /**
  * Error thrown when flow execution fails
@@ -136,7 +144,7 @@ export class FlowRunner {
       requestId: request.requestId,
     });
 
-    let stepResults = new Map<string, StepResult>();
+    const stepResults = new Map<string, StepResult>();
 
     try {
       // Resolve dependency graph
@@ -159,7 +167,7 @@ export class FlowRunner {
         requestId: request.requestId,
       });
 
-      const maxParallelism = flow.settings?.maxParallelism ?? 3;
+      const _maxParallelism = flow.settings?.maxParallelism ?? 3;
       const failFast = flow.settings?.failFast ?? true;
 
       // Execute waves sequentially
@@ -232,7 +240,7 @@ export class FlowRunner {
 
         // If failFast is enabled and any step in this wave failed, stop execution
         if (waveFailed && failFast) {
-          const failedStepId = wave.find((stepId, i) => {
+          const failedStepId = wave.find((_stepId, i) => {
             const result = waveResults[i];
             return result.status === "rejected" ||
               (result.status === "fulfilled" && !result.value.success);
@@ -356,7 +364,7 @@ export class FlowRunner {
 
     try {
       // Prepare step input
-      const stepRequest = this.prepareStepRequest(step, request, stepResults);
+      const stepRequest = this.prepareStepRequest(flowRunId, step, request, stepResults);
 
       // Log input preparation
       this.eventLogger.log("flow.step.input.prepared", {
@@ -426,19 +434,21 @@ export class FlowRunner {
    * Prepare the request for a step execution
    */
   private prepareStepRequest(
+    flowRunId: string,
     step: FlowStep,
     originalRequest: { userPrompt: string; traceId?: string; requestId?: string },
     stepResults: Map<string, StepResult>,
   ): FlowStepRequest {
-    let userPrompt: string;
-    const context: Record<string, unknown> = {};
+    let inputData: string;
 
+    // Collect input data based on source
     switch (step.input.source) {
-      case "request":
-        userPrompt = originalRequest.userPrompt;
+      case "request": {
+        inputData = originalRequest.userPrompt;
         break;
+      }
 
-      case "step":
+      case "step": {
         if (!step.input.stepId) {
           throw new Error(`Step ${step.id} has source "step" but no stepId specified`);
         }
@@ -446,30 +456,130 @@ export class FlowRunner {
         if (!sourceResult?.result) {
           throw new Error(`Step ${step.id} depends on ${step.input.stepId} which has no result`);
         }
-        userPrompt = sourceResult.result.content;
+        inputData = sourceResult.result.content;
         break;
+      }
 
-      case "aggregate":
-        // For aggregate, we'll collect from multiple steps
-        userPrompt = originalRequest.userPrompt; // Default fallback
+      case "aggregate": {
+        if (!step.input.from || step.input.from.length === 0) {
+          throw new Error(`Step ${step.id} has source "aggregate" but no "from" steps specified`);
+        }
+        const aggregatedInputs: string[] = [];
+        for (const stepId of step.input.from) {
+          const result = stepResults.get(stepId);
+          if (!result?.result) {
+            throw new Error(`Step ${step.id} depends on ${stepId} which has no result`);
+          }
+          aggregatedInputs.push(result.result.content);
+        }
+        inputData = aggregatedInputs.length === 1 ? aggregatedInputs[0] : aggregatedInputs.join("\n\n");
         break;
+      }
 
       default:
-        userPrompt = originalRequest.userPrompt;
+        throw new Error(`Invalid input source: ${step.input.source}`);
     }
 
-    // Apply transform (for now, just passthrough)
-    if (step.input.transform !== "passthrough") {
-      // TODO: Implement transforms
-      console.warn(`Transform "${step.input.transform}" not implemented, using passthrough`);
+    // Apply transform
+    let userPrompt = inputData;
+    if (step.input.transform) {
+      const transformStart = Date.now();
+      userPrompt = this.applyTransform(
+        inputData,
+        step.input.transform,
+        step.input.transformArgs,
+        originalRequest.userPrompt,
+      );
+
+      // Log transform application
+      this.eventLogger.log("flow.step.transform.applied", {
+        flowRunId,
+        stepId: step.id,
+        transformName: typeof step.input.transform === "string" ? step.input.transform : "custom",
+        inputSize: inputData.length,
+        outputSize: userPrompt.length,
+        duration: Date.now() - transformStart,
+        traceId: originalRequest.traceId,
+        requestId: originalRequest.requestId,
+      });
     }
 
     return {
       userPrompt,
-      context,
+      context: {},
       traceId: originalRequest.traceId,
       requestId: originalRequest.requestId,
     };
+  }
+
+  /**
+   * Apply a transform function to input data
+   */
+  private applyTransform(
+    input: string,
+    transform: string | ((input: any) => any),
+    transformArgs?: any,
+    originalRequest?: string,
+  ): string {
+    // Handle custom transform functions
+    if (typeof transform === "function") {
+      try {
+        return transform(input);
+      } catch (error) {
+        throw new Error(`Custom transform failed: ${(error as Error).message}`);
+      }
+    }
+
+    // Handle built-in transform functions
+    switch (transform) {
+      case "passthrough":
+        return passthrough(input);
+
+      case "mergeAsContext":
+        // For mergeAsContext, input should be an array
+        if (Array.isArray(transformArgs)) {
+          return mergeAsContext(transformArgs);
+        }
+        // If transformArgs is not provided, treat input as array of strings
+        try {
+          const inputs = JSON.parse(input);
+          if (Array.isArray(inputs)) {
+            return mergeAsContext(inputs);
+          }
+        } catch {
+          // If input is not JSON array, split by double newlines
+          const inputs = input.split("\n\n").filter((s) => s.trim());
+          return mergeAsContext(inputs);
+        }
+        throw new Error("mergeAsContext requires an array of strings");
+
+      case "extractSection":
+        if (typeof transformArgs === "string") {
+          return extractSection(input, transformArgs);
+        }
+        throw new Error("extractSection requires a section name as transformArgs");
+
+      case "appendToRequest":
+        if (originalRequest) {
+          return appendToRequest(originalRequest, input);
+        }
+        throw new Error("appendToRequest requires original request to be available");
+
+      case "jsonExtract":
+        if (typeof transformArgs === "string") {
+          return jsonExtract(input, transformArgs);
+        }
+        throw new Error("jsonExtract requires a field path as transformArgs");
+
+      case "templateFill":
+        if (typeof transformArgs === "object" && transformArgs !== null) {
+          return templateFill(input, transformArgs);
+        }
+        throw new Error("templateFill requires a context object as transformArgs");
+
+      default:
+        throw new Error(`Unknown transform: ${transform}`);
+    }
   }
 
   /**
@@ -491,13 +601,14 @@ export class FlowRunner {
 
     // Multiple outputs - aggregate based on format
     switch (format) {
-      case "concat":
+      case "concat": {
         return outputFrom
           .map((stepId) => stepResults.get(stepId)?.result?.content || "")
           .filter((content) => content.length > 0)
           .join("\n");
+      }
 
-      case "json":
+      case "json": {
         const jsonObj: Record<string, string> = {};
         for (const stepId of outputFrom) {
           const result = stepResults.get(stepId);
@@ -506,6 +617,7 @@ export class FlowRunner {
           }
         }
         return JSON.stringify(jsonObj);
+      }
 
       case "markdown":
       default:

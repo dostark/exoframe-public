@@ -8,7 +8,7 @@
  * - All private methods generate correct content sections
  */
 
-import { assert, assertEquals, assertExists, assertStringIncludes, assertThrows } from "jsr:@std/assert@1";
+import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@1";
 import {
   type AgentExecutionResult,
   PlanWriter,

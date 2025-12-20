@@ -1,8 +1,8 @@
 import { FlowRunner } from "../flows/flow_runner.ts";
 import { AgentRunner, type Blueprint, type ParsedRequest } from "./agent_runner.ts";
 import { EventLogger } from "./event_logger.ts";
-import { join } from "jsr:@std/path";
-import { exists } from "jsr:@std/fs";
+import { join } from "jsr:@std/path@1";
+import { exists } from "jsr:@std/fs@1";
 
 /**
  * RequestRouter - Routes requests to appropriate execution engine

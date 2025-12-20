@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "jsr:@std/assert";
+import { assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { defineFlow } from "../../src/flows/define_flow.ts";
 import { FlowSchema } from "../../src/schemas/flow.ts";
 

@@ -1,4 +1,4 @@
-import { assertEquals, assertThrows } from "jsr:@std/assert";
+import { assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { z, ZodError } from "zod";
 import { FlowSchema, FlowStepSchema } from "../../src/schemas/flow.ts";
 

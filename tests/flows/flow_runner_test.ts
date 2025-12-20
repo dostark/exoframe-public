@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
+import { assert, assertEquals } from "jsr:@std/assert@1";
 import { FlowExecutionError, FlowRunner } from "../../src/flows/flow_runner.ts";
 import { Flow, FlowStep } from "../../src/schemas/flow.ts";
 import { AgentExecutionResult } from "../../src/services/agent_runner.ts";
@@ -17,7 +17,7 @@ class MockAgentRunner {
     }
   }
 
-  async run(agentId: string, request: any): Promise<AgentExecutionResult> {
+  async run(agentId: string, _request: any): Promise<AgentExecutionResult> {
     if (this.failures.has(agentId)) {
       throw new Error(`Mock failure for agent ${agentId}`);
     }
@@ -25,7 +25,7 @@ class MockAgentRunner {
     if (!result) {
       throw new Error(`No mock result for agent ${agentId}`);
     }
-    return result;
+    return await Promise.resolve(result);
   }
 }
 
@@ -88,7 +88,7 @@ Deno.test("FlowRunner: executes simple sequential flow", async () => {
   assertEquals(result.success, true);
 
   // Check logging events - comprehensive flow execution logging
-  assertEquals(mockLogger.events.length, 20); // All flow and step lifecycle events
+  assertEquals(mockLogger.events.length, 22); // All flow and step lifecycle events
   assertEquals(mockLogger.events[0].event, "flow.validating");
   assertEquals(mockLogger.events[1].event, "flow.validated");
   assertEquals(mockLogger.events[2].event, "flow.started");
@@ -97,18 +97,20 @@ Deno.test("FlowRunner: executes simple sequential flow", async () => {
   assertEquals(mockLogger.events[5].event, "flow.wave.started");
   assertEquals(mockLogger.events[6].event, "flow.step.queued");
   assertEquals(mockLogger.events[7].event, "flow.step.started");
-  assertEquals(mockLogger.events[8].event, "flow.step.input.prepared");
-  assertEquals(mockLogger.events[9].event, "flow.step.completed");
-  assertEquals(mockLogger.events[10].event, "flow.wave.completed");
-  assertEquals(mockLogger.events[11].event, "flow.wave.started");
-  assertEquals(mockLogger.events[12].event, "flow.step.queued");
-  assertEquals(mockLogger.events[13].event, "flow.step.started");
-  assertEquals(mockLogger.events[14].event, "flow.step.input.prepared");
-  assertEquals(mockLogger.events[15].event, "flow.step.completed");
-  assertEquals(mockLogger.events[16].event, "flow.wave.completed");
-  assertEquals(mockLogger.events[17].event, "flow.output.aggregating");
-  assertEquals(mockLogger.events[18].event, "flow.output.aggregated");
-  assertEquals(mockLogger.events[19].event, "flow.completed");
+  assertEquals(mockLogger.events[8].event, "flow.step.transform.applied");
+  assertEquals(mockLogger.events[9].event, "flow.step.input.prepared");
+  assertEquals(mockLogger.events[10].event, "flow.step.completed");
+  assertEquals(mockLogger.events[11].event, "flow.wave.completed");
+  assertEquals(mockLogger.events[12].event, "flow.wave.started");
+  assertEquals(mockLogger.events[13].event, "flow.step.queued");
+  assertEquals(mockLogger.events[14].event, "flow.step.started");
+  assertEquals(mockLogger.events[15].event, "flow.step.transform.applied");
+  assertEquals(mockLogger.events[16].event, "flow.step.input.prepared");
+  assertEquals(mockLogger.events[17].event, "flow.step.completed");
+  assertEquals(mockLogger.events[18].event, "flow.wave.completed");
+  assertEquals(mockLogger.events[19].event, "flow.output.aggregating");
+  assertEquals(mockLogger.events[20].event, "flow.output.aggregated");
+  assertEquals(mockLogger.events[21].event, "flow.completed");
 });
 
 Deno.test("FlowRunner: executes parallel steps in same wave", async () => {
@@ -610,7 +612,7 @@ Deno.test("FlowRunner: handles agent execution throwing non-Error", async () => 
       if (agentId === "throwing-agent") {
         throw "String error"; // Throw a string, not an Error
       }
-      return super.run(agentId, request);
+      return await super.run(agentId, request);
     }
   }
 
