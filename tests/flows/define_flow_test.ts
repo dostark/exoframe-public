@@ -419,3 +419,42 @@ Deno.test("defineFlow: throws error for invalid retry maxAttempts", () => {
     "Number must be greater than or equal to 1",
   );
 });
+
+Deno.test("defineFlow: applies all default values when optional fields are omitted", () => {
+  const flow = defineFlow({
+    id: "defaults-test",
+    name: "Defaults Test",
+    description: "Test default value application",
+    steps: [
+      {
+        id: "step1",
+        name: "Step 1",
+        agent: "agent1",
+        // Omitting dependsOn, input, and retry to test defaults
+      },
+    ],
+    output: {
+      from: "step1",
+      // Omitting format to test default
+    },
+    // Omitting settings to test defaults
+  });
+
+  // Verify all default values are applied
+  assertEquals(flow.version, "1.0.0");
+  assertEquals(flow.output.format, "markdown");
+  assertEquals(flow.settings.maxParallelism, 3);
+  assertEquals(flow.settings.failFast, true);
+  assertEquals(flow.settings.timeout, undefined);
+
+  // Verify step defaults
+  assertEquals(flow.steps[0].dependsOn, []);
+  assertEquals(flow.steps[0].input.source, "request");
+  assertEquals(flow.steps[0].input.transform, "passthrough");
+  assertEquals(flow.steps[0].retry.maxAttempts, 1);
+  assertEquals(flow.steps[0].retry.backoffMs, 1000);
+
+  // Validate against schema
+  const result = FlowSchema.parse(flow);
+  assertEquals(result.id, "defaults-test");
+});

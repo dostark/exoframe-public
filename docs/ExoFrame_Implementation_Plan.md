@@ -4916,51 +4916,129 @@ const researchFlow = defineFlow({
 
 ---
 
-### Step 7.8: Flow Reports
+### Step 7.8: Flow Reports ✅ COMPLETED
 
-- **Dependencies:** Steps 7.4, Step 3.4 (Mission Reporter)
-- **Rollback:** Generate simple report without flow details
-- **Action:** Generate detailed reports for flow executions
-- **Location:** `src/services/flow_reporter.ts`
+- **Dependencies:** Steps 7.4 (FlowRunner), Step 3.4 (Mission Reporter)
+- **Rollback:** Generate simple execution summary without detailed reports
+- **Action:** Create FlowReporter service to generate comprehensive reports for flow executions
+- **Location:** `src/services/flow_reporter.ts`, `tests/services/flow_reporter_test.ts`
 
 **Report Frontmatter Fields:**
 
-| Field             | Description              |
-| ----------------- | ------------------------ |
-| `type`            | `"flow_report"`          |
-| `flow`            | Flow ID                  |
-| `flow_run_id`     | Execution UUID           |
-| `duration_ms`     | Total execution time     |
-| `steps_completed` | Count of completed steps |
-| `steps_failed`    | Count of failed steps    |
+| Field             | Description                           | Type    | Required |
+| ----------------- | ------------------------------------- | ------- | -------- |
+| `type`            | Always `"flow_report"`                | string  | Yes      |
+| `flow`            | Flow ID                               | string  | Yes      |
+| `flow_run_id`     | Unique execution UUID                 | string  | Yes      |
+| `duration_ms`     | Total execution time in milliseconds  | number  | Yes      |
+| `steps_completed` | Count of successfully completed steps | number  | Yes      |
+| `steps_failed`    | Count of failed steps                 | number  | Yes      |
+| `success`         | Overall flow execution success        | boolean | Yes      |
+| `completed_at`    | ISO timestamp of completion           | string  | Yes      |
+| `request_id`      | Associated request ID (if available)  | string  | No       |
 
 **Report Body Sections:**
 
-1. **Execution Summary** — Table of steps with status and duration
-2. **Step Outputs** — Each step's output as subsection
-3. **Dependency Graph** — ASCII visualization of flow structure
+1. **Execution Summary** — Markdown table showing:
+   - Step ID, Status (✅/❌), Duration, Start Time, Completion Time
+   - Total duration and overall status summary
+
+2. **Step Outputs** — Detailed subsection for each step:
+   - Success: Status, duration, agent output content, raw response
+   - Failure: Status, duration, error message and details
+
+3. **Dependency Graph** — Visual flow structure:
+   - Mermaid diagram showing step dependencies and agent assignments
+   - Text description of flow structure with dependency relationships
+
+**Integration Points:**
+
+- **FlowRunner**: Automatically generates reports after successful/failed flow execution
+- **Mission Reporter**: Shares configuration patterns, activity logging, and file output conventions
+- **Database Service**: Logs report generation events to activity journal with flow-specific metadata
+- **File System**: Writes reports to `/Knowledge/Reports/` directory with standardized naming
+- **CLI Commands**: Future flow commands (run, list, show) will display report links and summaries
+- **Dataview Integration**: Reports include metadata fields for Obsidian Dataview querying
+
+**Implementation Details:**
+
+**FlowRunner Integration:**
+
+- FlowRunner constructor accepts optional FlowReporter instance
+- After flow execution completes (success or failure), automatically calls FlowReporter.generate()
+- Passes Flow, FlowResult, and requestId to reporter
+- FlowResult contains: flowRunId, success, stepResults (Map), output, duration, startedAt, completedAt
+- Report generation is non-blocking (doesn't affect flow execution time)
+- Event logging includes flow completion events that can trigger reporting
+
+**Configuration:**
+
+- FlowReportConfig extends existing report configuration patterns
+- Uses same reportsDirectory as MissionReporter (`/Knowledge/Reports/`)
+- Integrates with existing database activity logging
+- Supports testing mode (no database required)
+
+**Error Handling:**
+
+- Report generation failures don't affect flow execution results
+- Failed report generation is logged but doesn't throw exceptions
+- Graceful degradation: flows work without reporting enabled
 
 **Success Criteria:**
 
-- Flow reports include comprehensive results from all executed steps with their outputs and status
-- Failed steps display detailed error information including error messages and stack traces where applicable
-- Execution duration is accurately tracked and reported for individual steps and total flow execution time
-- Reports are generated in the correct location (`/Knowledge/Reports/`) with proper frontmatter fields
-- Report body contains execution summary table, individual step outputs, and dependency graph visualization
-- Reports are queryable via Dataview using the flow-specific metadata fields
-- Flow reports integrate with existing Mission Reporter infrastructure while adding flow-specific information
-- Report filenames follow convention including flow ID, run ID, and timestamp
+**Core Functionality:**
+
+- [x] FlowReporter class initializes with Config and FlowReportConfig
+- [x] `generate()` method accepts Flow, FlowResult, and optional requestId
+- [x] Reports are written to correct directory with proper filename convention
+- [x] All required frontmatter fields are present and correctly formatted
+- [x] Report body contains execution summary table with accurate step data
+- [x] Step outputs section shows detailed results for each executed step
+- [x] Failed steps display comprehensive error information and context
+- [x] Dependency graph visualizes flow structure with Mermaid diagrams
+- [x] Execution duration is accurately tracked for steps and total flow
+- [x] Reports integrate with existing Mission Reporter infrastructure
+
+**Quality Assurance:**
+
+- [x] Reports are queryable via Dataview using flow-specific metadata
+- [x] Activity journal logs successful report generation events
+- [x] Error handling gracefully manages report generation failures
+- [x] Report generation works without database (testing mode)
+- [x] Filename format: `flow_{flowId}_{shortRunId}_{timestamp}.md`
+- [x] Frontmatter uses proper YAML formatting with quoted strings
+- [x] Mermaid graphs correctly represent step dependencies and agents
 
 **Planned Tests:**
 
-- `tests/services/flow_reporter_test.ts`: Unit and integration tests for flow report generation
-- Report content tests: All required sections (summary, outputs, graph) are present and correctly formatted
-- Error reporting tests: Failed steps show appropriate error details and stack traces
-- Duration tracking tests: Step and total durations are accurately measured and reported
-- Dataview integration tests: Reports contain proper metadata for querying
-- File output tests: Reports are written to correct location with proper naming convention
-- Frontmatter validation tests: All required TOML fields are present and correctly formatted
-- Integration tests: FlowReporter works with FlowRunner execution results
+**Unit Tests (`tests/services/flow_reporter_test.ts`):**
+
+- [x] Constructor initialization with valid/invalid configs
+- [x] Report generation with successful flow execution
+- [x] Report generation with failed flow execution
+- [x] Frontmatter validation for all required fields
+- [x] Execution summary table format and content accuracy
+- [x] Step outputs section format for success/failure cases
+- [x] Dependency graph visualization with Mermaid syntax
+- [x] Filename generation with correct format
+- [x] Activity logging for successful/failed report generation
+- [x] Error handling for file system and database issues
+- [x] Integration with FlowRunner execution results
+
+**Integration Tests:**
+
+- End-to-end flow execution with automatic report generation
+- Report content validation against actual FlowResult data
+- Dataview query compatibility for report metadata
+- File system operations in correct directories
+- Database activity logging verification
+- Error scenarios (permission denied, disk full, etc.)
+
+**Performance Tests:**
+
+- Report generation time stays under 500ms for typical flows
+- Memory usage remains bounded for large flow results
+- Concurrent report generation doesn't cause conflicts
 
 ---
 

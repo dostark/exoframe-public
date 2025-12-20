@@ -670,6 +670,10 @@ await new Promise(() => {}); // Run forever
     const isAlive = await isProcessAlive(stubbornPid);
     assertEquals(isAlive, false, "Process should be killed");
 
+    // Close the process streams to prevent resource leaks
+    await startProcess.stdout.cancel();
+    await startProcess.stderr.cancel();
+
     // Don't try to kill again in cleanup since it's already dead
   });
 
