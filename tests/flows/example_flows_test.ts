@@ -6,12 +6,10 @@
 import { afterEach, beforeEach, describe, it } from "jsr:@std/testing@^1.0.0/bdd";
 import { assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
-import { exists } from "@std/fs";
 import { FlowSchema } from "../../src/schemas/flow.ts";
 import { defineFlow } from "../../src/flows/define_flow.ts";
-import { FlowRunner, type AgentExecutor, type FlowEventLogger } from "../../src/flows/flow_runner.ts";
+import { type AgentExecutor, type FlowEventLogger, FlowRunner } from "../../src/flows/flow_runner.ts";
 import { MockLLMProvider } from "../../src/ai/providers/mock_llm_provider.ts";
-import { createMockConfig } from "../helpers/config.ts";
 import { initTestDbService } from "../helpers/db.ts";
 import type { Config } from "../../src/config/schema.ts";
 import type { FlowStepRequest } from "../../src/flows/flow_runner.ts";
@@ -130,7 +128,7 @@ describe("Example Flows - Step 7.9", {
 
       // Validate against schema
       const result = FlowSchema.safeParse(codeReviewFlow);
-      assertEquals(result.success, true, `Flow validation failed: ${result.success ? '' : result.error?.message}`);
+      assertEquals(result.success, true, `Flow validation failed: ${result.success ? "" : result.error?.message}`);
     });
 
     it("should execute end-to-end with mock agents", async () => {
@@ -194,7 +192,7 @@ describe("Example Flows - Step 7.9", {
       });
 
       const result = FlowSchema.safeParse(featureDevFlow);
-      assertEquals(result.success, true, `Flow validation failed: ${result.success ? '' : result.error?.message}`);
+      assertEquals(result.success, true, `Flow validation failed: ${result.success ? "" : result.error?.message}`);
     });
   });
 
@@ -235,7 +233,11 @@ describe("Example Flows - Step 7.9", {
             name: "Research Synthesis",
             agent: "research-synthesizer",
             dependsOn: ["researcher-1", "researcher-2", "researcher-3"],
-            input: { source: "aggregate", from: ["researcher-1", "researcher-2", "researcher-3"], transform: "aggregate_research" },
+            input: {
+              source: "aggregate",
+              from: ["researcher-1", "researcher-2", "researcher-3"],
+              transform: "aggregate_research",
+            },
             retry: { maxAttempts: 1, backoffMs: 1000 },
           },
         ],
@@ -244,7 +246,7 @@ describe("Example Flows - Step 7.9", {
       });
 
       const result = FlowSchema.safeParse(researchFlow);
-      assertEquals(result.success, true, `Flow validation failed: ${result.success ? '' : result.error?.message}`);
+      assertEquals(result.success, true, `Flow validation failed: ${result.success ? "" : result.error?.message}`);
     });
   });
 
@@ -277,7 +279,11 @@ describe("Example Flows - Step 7.9", {
             name: "Documentation Writing",
             agent: "technical-writer",
             dependsOn: ["analyze-api", "generate-examples"],
-            input: { source: "aggregate", from: ["analyze-api", "generate-examples"], transform: "combine_analysis_examples" },
+            input: {
+              source: "aggregate",
+              from: ["analyze-api", "generate-examples"],
+              transform: "combine_analysis_examples",
+            },
             retry: { maxAttempts: 1, backoffMs: 1000 },
           },
         ],
@@ -286,7 +292,7 @@ describe("Example Flows - Step 7.9", {
       });
 
       const result = FlowSchema.safeParse(apiDocFlow);
-      assertEquals(result.success, true, `Flow validation failed: ${result.success ? '' : result.error?.message}`);
+      assertEquals(result.success, true, `Flow validation failed: ${result.success ? "" : result.error?.message}`);
     });
   });
 
@@ -325,12 +331,15 @@ describe("Example Flows - Step 7.9", {
           {
             id: "risk-assessment",
 
-         name: "Risk Assessment & Recommendations",
+            name: "Risk Assessment & Recommendations",
 
-   
-      agent: "security-assessor",
+            agent: "security-assessor",
             dependsOn: ["static-analysis", "dependency-check", "configuration-review"],
-            input: { source: "aggregate", from: ["static-analysis", "dependency-check", "configuration-review"], transform: "aggregate_security_findings" },
+            input: {
+              source: "aggregate",
+              from: ["static-analysis", "dependency-check", "configuration-review"],
+              transform: "aggregate_security_findings",
+            },
             retry: { maxAttempts: 1, backoffMs: 1000 },
           },
         ],
@@ -339,7 +348,7 @@ describe("Example Flows - Step 7.9", {
       });
 
       const result = FlowSchema.safeParse(securityFlow);
-      assertEquals(result.success, true, `Flow validation failed: ${result.success ? '' : result.error?.message}`);
+      assertEquals(result.success, true, `Flow validation failed: ${result.success ? "" : result.error?.message}`);
     });
   });
 
@@ -348,6 +357,5 @@ describe("Example Flows - Step 7.9", {
       // Test template concept - this will be implemented with actual templates
       assertEquals(true, true); // Placeholder test
     });
-  }
-);
+  });
 });

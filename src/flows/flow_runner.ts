@@ -240,12 +240,17 @@ export class FlowRunner {
 
         // If failFast is enabled and any step in this wave failed, stop execution
         if (waveFailed && failFast) {
-          const failedStepId = wave.find((_stepId, i) => {
+          const failedStepIndex = wave.findIndex((_stepId, i) => {
             const result = waveResults[i];
             return result.status === "rejected" ||
               (result.status === "fulfilled" && !result.value.success);
           });
-          throw new FlowExecutionError(`Step ${failedStepId} failed`, flowRunId);
+          const failedStepId = wave[failedStepIndex];
+          const failedResult = waveResults[failedStepIndex];
+          const errorMessage = failedResult.status === "fulfilled"
+            ? failedResult.value.error || "Unknown error"
+            : failedResult.reason?.message || "Unknown error";
+          throw new FlowExecutionError(`Step ${failedStepId} failed: ${errorMessage}`, flowRunId);
         }
       }
 

@@ -1,4 +1,4 @@
-import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
+import { assert, assertEquals } from "jsr:@std/assert@1";
 import { FlowExecutionError, FlowRunner } from "../../src/flows/flow_runner.ts";
 import { Flow, FlowStep } from "../../src/schemas/flow.ts";
 import { AgentExecutionResult } from "../../src/services/agent_runner.ts";
@@ -722,6 +722,8 @@ Deno.test("FlowRunner: applies mergeAsContext transform", async () => {
       name: "Step 1",
       agent: "test-agent",
       dependsOn: [],
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+      dependsOn: [],
       input: { source: "request", transform: "mergeAsContext", transformArgs: ["Input 1", "Input 2"] },
       retry: { maxAttempts: 1, backoffMs: 1000 },
     },
@@ -755,8 +757,6 @@ Deno.test("FlowRunner: applies extractSection transform", async () => {
   const flow: Flow = {
     id: "test-flow",
     name: "Test Flow",
-    description: "Test flow",
-    version: "1.0.0",
     steps: [
       {
         id: "step1",
@@ -768,7 +768,6 @@ Deno.test("FlowRunner: applies extractSection transform", async () => {
       },
     ],
     output: { from: "step1", format: "markdown" },
-    settings: { maxParallelism: 3, failFast: true },
   };
 
   const mockAgentRunner = new MockAgentRunner({
@@ -789,8 +788,6 @@ Deno.test("FlowRunner: applies appendToRequest transform", async () => {
   const flow: Flow = {
     id: "test-flow",
     name: "Test Flow",
-    description: "Test flow",
-    version: "1.0.0",
     steps: [
       {
         id: "step1",
@@ -802,7 +799,6 @@ Deno.test("FlowRunner: applies appendToRequest transform", async () => {
       },
     ],
     output: { from: "step1", format: "markdown" },
-    settings: { maxParallelism: 3, failFast: true },
   };
 
   const mockAgentRunner = new MockAgentRunner({
@@ -821,8 +817,6 @@ Deno.test("FlowRunner: applies jsonExtract transform", async () => {
   const flow: Flow = {
     id: "test-flow",
     name: "Test Flow",
-    description: "Test flow",
-    version: "1.0.0",
     steps: [
       {
         id: "step1",
@@ -834,7 +828,6 @@ Deno.test("FlowRunner: applies jsonExtract transform", async () => {
       },
     ],
     output: { from: "step1", format: "markdown" },
-    settings: { maxParallelism: 3, failFast: true },
   };
 
   const mockAgentRunner = new MockAgentRunner({
@@ -855,8 +848,6 @@ Deno.test("FlowRunner: applies templateFill transform", async () => {
   const flow: Flow = {
     id: "test-flow",
     name: "Test Flow",
-    description: "Test flow",
-    version: "1.0.0",
     steps: [
       {
         id: "step1",
@@ -868,7 +859,6 @@ Deno.test("FlowRunner: applies templateFill transform", async () => {
       },
     ],
     output: { from: "step1", format: "markdown" },
-    settings: { maxParallelism: 3, failFast: true },
   };
 
   const mockAgentRunner = new MockAgentRunner({
@@ -891,8 +881,6 @@ Deno.test("FlowRunner: applies custom transform function", async () => {
   const flow: Flow = {
     id: "test-flow",
     name: "Test Flow",
-    description: "Test flow",
-    version: "1.0.0",
     steps: [
       {
         id: "step1",
@@ -900,11 +888,10 @@ Deno.test("FlowRunner: applies custom transform function", async () => {
         agent: "test-agent",
         dependsOn: [],
         retry: { maxAttempts: 1, backoffMs: 1000 },
-        input: { source: "request", transform: customTransform as any },
+        input: { source: "request", transform: customTransform },
       },
     ],
     output: { from: "step1", format: "markdown" },
-    settings: { maxParallelism: 3, failFast: true },
   };
 
   const mockAgentRunner = new MockAgentRunner({
@@ -923,8 +910,6 @@ Deno.test("FlowRunner: handles unknown transform", async () => {
   const flow: Flow = {
     id: "test-flow",
     name: "Test Flow",
-    description: "Test flow",
-    version: "1.0.0",
     steps: [
       {
         id: "step1",
@@ -936,7 +921,6 @@ Deno.test("FlowRunner: handles unknown transform", async () => {
       },
     ],
     output: { from: "step1", format: "markdown" },
-    settings: { maxParallelism: 3, failFast: true },
   };
 
   const mockAgentRunner = new MockAgentRunner({
@@ -946,13 +930,11 @@ Deno.test("FlowRunner: handles unknown transform", async () => {
 
   const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
 
-  try {
-    await runner.execute(flow, { userPrompt: "test" });
-    throw new Error("Expected FlowExecutionError to be thrown");
-  } catch (error) {
-    assert(error instanceof FlowExecutionError);
-    assert((error as Error).message.includes("Unknown transform: unknownTransform"));
-  }
+  await assertRejects(
+    async () => await runner.execute(flow, { userPrompt: "test" }),
+    FlowExecutionError,
+    "Unknown transform: unknownTransform",
+  );
 });
 
 Deno.test("FlowRunner: handles transform function throwing error", async () => {
@@ -963,8 +945,6 @@ Deno.test("FlowRunner: handles transform function throwing error", async () => {
   const flow: Flow = {
     id: "test-flow",
     name: "Test Flow",
-    description: "Test flow",
-    version: "1.0.0",
     steps: [
       {
         id: "step1",
@@ -972,11 +952,10 @@ Deno.test("FlowRunner: handles transform function throwing error", async () => {
         agent: "test-agent",
         dependsOn: [],
         retry: { maxAttempts: 1, backoffMs: 1000 },
-        input: { source: "request", transform: failingTransform as any },
+        input: { source: "request", transform: failingTransform },
       },
     ],
     output: { from: "step1", format: "markdown" },
-    settings: { maxParallelism: 3, failFast: true },
   };
 
   const mockAgentRunner = new MockAgentRunner({
@@ -986,21 +965,17 @@ Deno.test("FlowRunner: handles transform function throwing error", async () => {
 
   const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
 
-  try {
-    await runner.execute(flow, { userPrompt: "test" });
-    throw new Error("Expected FlowExecutionError to be thrown");
-  } catch (error) {
-    assert(error instanceof FlowExecutionError);
-    assert((error as Error).message.includes("Custom transform failed: Transform failed"));
-  }
+  await assertRejects(
+    async () => await runner.execute(flow, { userPrompt: "test" }),
+    FlowExecutionError,
+    "Custom transform failed: Transform failed",
+  );
 });
 
 Deno.test("FlowRunner: handles invalid transform args for extractSection", async () => {
   const flow: Flow = {
     id: "test-flow",
     name: "Test Flow",
-    description: "Test flow",
-    version: "1.0.0",
     steps: [
       {
         id: "step1",
@@ -1012,7 +987,6 @@ Deno.test("FlowRunner: handles invalid transform args for extractSection", async
       },
     ],
     output: { from: "step1", format: "markdown" },
-    settings: { maxParallelism: 3, failFast: true },
   };
 
   const mockAgentRunner = new MockAgentRunner({
@@ -1022,21 +996,17 @@ Deno.test("FlowRunner: handles invalid transform args for extractSection", async
 
   const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
 
-  try {
-    await runner.execute(flow, { userPrompt: "test" });
-    throw new Error("Expected FlowExecutionError to be thrown");
-  } catch (error) {
-    assert(error instanceof FlowExecutionError);
-    assert((error as Error).message.includes("extractSection requires a section name as transformArgs"));
-  }
+  await assertRejects(
+    async () => await runner.execute(flow, { userPrompt: "test" }),
+    FlowExecutionError,
+    "extractSection requires a section name as transformArgs",
+  );
 });
 
 Deno.test("FlowRunner: handles invalid transform args for jsonExtract", async () => {
   const flow: Flow = {
     id: "test-flow",
     name: "Test Flow",
-    description: "Test flow",
-    version: "1.0.0",
     steps: [
       {
         id: "step1",
@@ -1048,7 +1018,6 @@ Deno.test("FlowRunner: handles invalid transform args for jsonExtract", async ()
       },
     ],
     output: { from: "step1", format: "markdown" },
-    settings: { maxParallelism: 3, failFast: true },
   };
 
   const mockAgentRunner = new MockAgentRunner({
@@ -1058,21 +1027,17 @@ Deno.test("FlowRunner: handles invalid transform args for jsonExtract", async ()
 
   const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
 
-  try {
-    await runner.execute(flow, { userPrompt: "test" });
-    throw new Error("Expected FlowExecutionError to be thrown");
-  } catch (error) {
-    assert(error instanceof FlowExecutionError);
-    assert((error as Error).message.includes("jsonExtract requires a field path as transformArgs"));
-  }
+  await assertRejects(
+    async () => await runner.execute(flow, { userPrompt: "test" }),
+    FlowExecutionError,
+    "jsonExtract requires a field path as transformArgs",
+  );
 });
 
 Deno.test("FlowRunner: handles invalid transform args for templateFill", async () => {
   const flow: Flow = {
     id: "test-flow",
     name: "Test Flow",
-    description: "Test flow",
-    version: "1.0.0",
     steps: [
       {
         id: "step1",
@@ -1084,7 +1049,6 @@ Deno.test("FlowRunner: handles invalid transform args for templateFill", async (
       },
     ],
     output: { from: "step1", format: "markdown" },
-    settings: { maxParallelism: 3, failFast: true },
   };
 
   const mockAgentRunner = new MockAgentRunner({
@@ -1105,58 +1069,47 @@ Deno.test("FlowRunner: handles agent execution throwing error in Promise.allSett
   const flow: Flow = {
     id: "test-flow",
     name: "Test Flow",
-    description: "Test flow",
-    version: "1.0.0",
     steps: [
       {
         id: "step1",
         name: "Step 1",
         agent: "throwing-agent",
-        dependsOn: [],
-        retry: { maxAttempts: 1, backoffMs: 1000 },
         input: { source: "request", transform: "passthrough" },
       },
     ],
     output: { from: "step1", format: "markdown" },
-    settings: { maxParallelism: 3, failFast: false },
+    settings: { failFast: false },
   };
 
-  const mockAgentRunner = new MockAgentRunner({}, ["throwing-agent"]);
+  const mockAgentRunner = new MockAgentRunner({}, [], ["throwing-agent"]);
   const mockLogger = new MockEventLogger();
 
   const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
   const result = await runner.execute(flow, { userPrompt: "test request" });
 
   assertEquals(result.success, false);
-  assert(result.stepResults.get("step1")?.error?.includes("Mock failure"));
+  assert(result.error?.includes("Agent execution failed"));
 });
 
 Deno.test("FlowRunner: handles aggregate output with concat format", async () => {
   const flow: Flow = {
     id: "test-flow",
     name: "Test Flow",
-    description: "Test flow",
-    version: "1.0.0",
     steps: [
       {
         id: "step1",
         name: "Step 1",
         agent: "test-agent1",
-        dependsOn: [],
-        retry: { maxAttempts: 1, backoffMs: 1000 },
         input: { source: "request", transform: "passthrough" },
       },
       {
         id: "step2",
         name: "Step 2",
         agent: "test-agent2",
-        dependsOn: [],
-        retry: { maxAttempts: 1, backoffMs: 1000 },
         input: { source: "request", transform: "passthrough" },
       },
     ],
     output: { from: ["step1", "step2"], format: "concat" },
-    settings: { maxParallelism: 3, failFast: true },
   };
 
   const mockAgentRunner = new MockAgentRunner({

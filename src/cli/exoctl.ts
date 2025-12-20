@@ -17,6 +17,7 @@ import { ConfigService } from "../config/service.ts";
 import { DatabaseService } from "../services/db.ts";
 import { GitService } from "../services/git_service.ts";
 import { EventLogger } from "../services/event_logger.ts";
+import { ProviderFactory } from "../ai/provider_factory.ts";
 import { PlanCommands } from "./plan_commands.ts";
 import { RequestCommands } from "./request_commands.ts";
 import { ChangesetCommands } from "./changeset_commands.ts";
@@ -24,18 +25,20 @@ import { GitCommands } from "./git_commands.ts";
 import { DaemonCommands } from "./daemon_commands.ts";
 import { PortalCommands } from "./portal_commands.ts";
 import { BlueprintCommands } from "./blueprint_commands.ts";
+import { FlowCommands } from "./flow_commands.ts";
 
 // Initialize services
 const configService = new ConfigService();
 const config = configService.get();
 const db = new DatabaseService(config);
 const gitService = new GitService({ config, db });
+const provider = ProviderFactory.create(config);
 
 // Display-only logger (no DB writes) for read-only operations
 const display = new EventLogger({});
 
 // Initialize command handlers
-const context = { config, db };
+const context = { config, db, provider };
 const requestCommands = new RequestCommands(context, config.system.root);
 const planCommands = new PlanCommands(context, config.system.root);
 const changesetCommands = new ChangesetCommands(context, gitService);
@@ -43,6 +46,7 @@ const gitCommands = new GitCommands(context);
 const daemonCommands = new DaemonCommands(context);
 const portalCommands = new PortalCommands({ config, db, configService });
 const blueprintCommands = new BlueprintCommands(context);
+const flowCommands = new FlowCommands(context);
 
 await new Command()
   .name("exoctl")
@@ -856,6 +860,41 @@ await new Command()
             display.info("blueprint.removed", agentId, { status: "Removed ✓" });
           },
         ),
+      ),
+  )
+  // Flow commands
+  .command(
+    "flow",
+    new Command()
+      .description("Manage and execute ExoFrame flows")
+      .command(
+        "list",
+        new Command()
+          .description("List all available flows")
+          .option("--json", "Output in JSON format")
+          .action(async (options) => {
+            await flowCommands.listFlows(options);
+          }),
+      )
+      .command(
+        "show <flowId:string>",
+        new Command()
+          .description("Show details of a specific flow")
+          .option("--json", "Output in JSON format")
+          .action(async (options, ...args: string[]) => {
+            const flowId = args[0] as unknown as string;
+            await flowCommands.showFlow(flowId, options);
+          }),
+      )
+      .command(
+        "validate <flowId:string>",
+        new Command()
+          .description("Validate a flow definition")
+          .option("--json", "Output in JSON format")
+          .action(async (options, ...args: string[]) => {
+            const flowId = args[0] as unknown as string;
+            await flowCommands.validateFlow(flowId, options);
+          }),
       ),
   )
   .parse(Deno.args);
