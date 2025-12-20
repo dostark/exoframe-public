@@ -1,7 +1,7 @@
 # ExoFrame Architecture
 
-**Version:** 1.8.0\
-**Date:** December 3, 2025
+**Version:** 1.9.0\
+**Date:** December 20, 2025
 
 This document provides a comprehensive architectural overview of ExoFrame components using Mermaid diagrams.
 
@@ -32,9 +32,11 @@ graph TB
         ReqWatch[Request Watcher<br/>Inbox/Requests]
         PlanWatch[Plan Watcher<br/>System/Active]
         ReqProc[Request Processor]
+        ReqRouter[Request Router]
         PlanExec[Plan Executor]
         AgentRun[Agent Runner]
         FlowEng[Flow Engine]
+        FlowRun[Flow Runner]
         ExecLoop[Execution Loop]
     end
 
@@ -102,13 +104,17 @@ graph TB
     Main --> ReqWatch
     Main --> PlanWatch
     Main --> ReqProc
+    Main --> ReqRouter
     Main --> PlanExec
     ReqWatch --> Inbox
     PlanWatch --> System
-    ReqProc --> AgentRun
+    ReqProc --> ReqRouter
+    ReqRouter --> AgentRun
+    ReqRouter --> FlowRun
     PlanExec --> AgentRun
     AgentRun --> ExecLoop
     ExecLoop --> FlowEng
+    FlowRun --> FlowEng
 
     %% Services integration
     AgentRun --> ContextLoad
@@ -149,7 +155,7 @@ graph TB
 
     class User,Agent actor
     class Exoctl,ReqCmd,PlanCmd,ChangeCmd,GitCmd,DaemonCmd,PortalCmd,BlueprintCmd cli
-    class Main,ReqWatch,PlanWatch,ReqProc,PlanExec,AgentRun,FlowEng,ExecLoop core
+    class Main,ReqWatch,PlanWatch,ReqProc,ReqRouter,PlanExec,AgentRun,FlowEng,FlowRun,ExecLoop core
     class ConfigSvc,DBSvc,GitSvc,EventLog,ContextLoad,PlanWriter,MissionRpt,PathRes,ToolReg,CtxCard service
     class DB,FS,Inbox,Blueprint,Knowledge,Portals,System storage
     class Factory,Ollama,Claude,GPT,Gemini,Mock ai
@@ -166,7 +172,10 @@ sequenceDiagram
     participant I as Inbox/Requests
     participant W as File Watcher
     participant RP as Request Processor
+    participant RR as Request Router
+    participant FV as Flow Validator
     participant AR as Agent Runner
+    participant FR as Flow Runner
     participant AI as AI Provider
     participant PA as Plan Adapter
     participant PS as Plan Schema
@@ -181,24 +190,35 @@ sequenceDiagram
     W->>I: Detect new file
     W->>RP: Trigger processing
     RP->>I: Read request.md
-    RP->>AR: Load blueprint
-    AR->>AI: Generate plan
-    AI-->>AR: Plan response (JSON)
+    RP->>RR: Route request (flow vs agent)
 
-    AR->>PA: Parse & Validate
-    PA->>PS: Validate against Zod Schema
+    alt Flow Request
+        RR->>FV: Validate flow exists
+        FV->>FV: Check flow schema & dependencies
+        FV-->>RR: Flow valid ✓
+        RR->>FR: Generate flow execution plan
+        FR->>AI: Generate plan (JSON)
+        FR->>PA: Parse & Validate
+        PA->>PS: Validate against Zod Schema
+    else Agent Request
+        RR->>AR: Load agent blueprint
+        AR->>AI: Generate plan
+        AI-->>AR: Plan response (JSON)
+        AR->>PA: Parse & Validate
+        PA->>PS: Validate against Zod Schema
+    end
 
     alt Validation Success
         PS-->>PA: Valid Plan Object
         PA->>PA: Convert to Markdown
-        PA-->>AR: Markdown Content
-        AR->>P: Write plan-{uuid}.md
-        AR->>DB: Log plan.generated
+        PA-->>RP: Markdown Content
+        RP->>P: Write plan-{uuid}.md
+        RP->>DB: Log plan.generated
         P-->>U: Ready for review
     else Validation Failed
         PS-->>PA: Zod Validation Error
-        PA-->>AR: PlanValidationError
-        AR->>DB: Log plan.validation_failed
+        PA-->>RP: PlanValidationError
+        RP->>DB: Log plan.validation_failed
     end
 
     U->>CLI: exoctl plan list
@@ -210,6 +230,83 @@ sequenceDiagram
     CLI->>DB: Log plan.approved
     CLI-->>U: Approved ✓
 ```
+
+---
+
+## Flow-Aware Request Routing
+
+The **Request Router** service enables intelligent routing of requests based on their frontmatter configuration. It supports both single-agent execution (legacy) and multi-agent flow execution (Phase 7).
+
+### Routing Decision Flow
+
+```mermaid
+graph TD
+    A[Request Detected] --> B[Parse Frontmatter]
+    B --> C{Has 'flow' field?}
+    B --> D{Has 'agent' field?}
+    B --> E{No routing fields?}
+
+    C -->|Yes| F[Validate Flow]
+    F -->|Valid| G[Route to FlowRunner]
+    F -->|Invalid| H[Log Error & Fail]
+
+    D -->|Yes| I[Validate Agent]
+    I -->|Valid| J[Route to AgentRunner]
+    I -->|Invalid| K[Log Error & Fail]
+
+    E -->|Yes| L[Use Default Agent]
+    L --> M[Route to AgentRunner]
+
+    G --> N[Generate Flow Plan]
+    J --> O[Generate Agent Plan]
+    M --> O
+
+    N --> P[Write Plan to Inbox]
+    O --> P
+```
+
+### Request Types
+
+**Flow Request (Multi-Agent):**
+
+```yaml
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+flow: code-review
+tags: [review, security]
+---
+Please perform a comprehensive code review of this pull request.
+```
+
+**Agent Request (Single-Agent):**
+
+```yaml
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440001"
+agent: senior-coder
+tags: [implementation]
+---
+Implement the new authentication feature.
+```
+
+**Default Agent Request:**
+
+```yaml
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440002"
+tags: [general]
+---
+Help me understand this codebase.
+```
+
+### Flow Validation
+
+Before routing to FlowRunner, the Request Router validates:
+
+- **Flow Existence:** Flow blueprint exists in `/Blueprints/Flows/`
+- **Schema Validity:** Flow conforms to expected structure
+- **Dependencies:** All referenced agents and transforms exist
+- **No Cycles:** Flow doesn't contain circular dependencies
 
 ---
 

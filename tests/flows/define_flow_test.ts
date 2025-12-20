@@ -214,199 +214,208 @@ Deno.test("defineFlow: allows valid dependency references", () => {
 
 Deno.test("defineFlow: throws error for empty flow ID", () => {
   assertThrows(
-    () => defineFlow({
-      id: "",
-      name: "Test",
-      description: "Test",
-      steps: [
-        {
-          id: "step1",
-          name: "Step 1",
-          agent: "agent1",
-          dependsOn: [],
-          input: { source: "request", transform: "passthrough" },
-          retry: { maxAttempts: 1, backoffMs: 1000 },
-        },
-      ],
-      output: { from: "step1" },
-    }),
+    () =>
+      defineFlow({
+        id: "",
+        name: "Test",
+        description: "Test",
+        steps: [
+          {
+            id: "step1",
+            name: "Step 1",
+            agent: "agent1",
+            dependsOn: [],
+            input: { source: "request", transform: "passthrough" },
+            retry: { maxAttempts: 1, backoffMs: 1000 },
+          },
+        ],
+        output: { from: "step1" },
+      }),
     Error,
-    "Flow ID cannot be empty"
+    "Flow ID cannot be empty",
   );
 });
 
 Deno.test("defineFlow: throws error for empty flow name", () => {
   assertThrows(
-    () => defineFlow({
-      id: "test",
-      name: "",
-      description: "Test",
-      steps: [
-        {
-          id: "step1",
-          name: "Step 1",
-          agent: "agent1",
-          dependsOn: [],
-          input: { source: "request", transform: "passthrough" },
-          retry: { maxAttempts: 1, backoffMs: 1000 },
-        },
-      ],
-      output: { from: "step1" },
-    }),
+    () =>
+      defineFlow({
+        id: "test",
+        name: "",
+        description: "Test",
+        steps: [
+          {
+            id: "step1",
+            name: "Step 1",
+            agent: "agent1",
+            dependsOn: [],
+            input: { source: "request", transform: "passthrough" },
+            retry: { maxAttempts: 1, backoffMs: 1000 },
+          },
+        ],
+        output: { from: "step1" },
+      }),
     Error,
-    "Flow name cannot be empty"
+    "Flow name cannot be empty",
   );
 });
 
 Deno.test("defineFlow: throws error for empty flow description", () => {
   assertThrows(
-    () => defineFlow({
-      id: "test",
-      name: "Test",
-      description: "",
-      steps: [
-        {
-          id: "step1",
-          name: "Step 1",
-          agent: "agent1",
-          dependsOn: [],
-          input: { source: "request", transform: "passthrough" },
-          retry: { maxAttempts: 1, backoffMs: 1000 },
-        },
-      ],
-      output: { from: "step1" },
-    }),
+    () =>
+      defineFlow({
+        id: "test",
+        name: "Test",
+        description: "",
+        steps: [
+          {
+            id: "step1",
+            name: "Step 1",
+            agent: "agent1",
+            dependsOn: [],
+            input: { source: "request", transform: "passthrough" },
+            retry: { maxAttempts: 1, backoffMs: 1000 },
+          },
+        ],
+        output: { from: "step1" },
+      }),
     Error,
-    "Flow description cannot be empty"
+    "Flow description cannot be empty",
   );
 });
 
 Deno.test("defineFlow: throws error for empty steps array", () => {
   assertThrows(
-    () => defineFlow({
-      id: "test",
-      name: "Test",
-      description: "Test",
-      steps: [],
-      output: { from: "step1" },
-    }),
+    () =>
+      defineFlow({
+        id: "test",
+        name: "Test",
+        description: "Test",
+        steps: [],
+        output: { from: "step1" },
+      }),
     Error,
-    "Flow must have at least one step"
+    "Flow must have at least one step",
   );
 });
 
 Deno.test("defineFlow: throws error for empty step ID", () => {
   assertThrows(
-    () => defineFlow({
-      id: "test",
-      name: "Test",
-      description: "Test",
-      steps: [
-        {
-          id: "",
-          name: "Step 1",
-          agent: "agent1",
-          dependsOn: [],
-          input: { source: "request", transform: "passthrough" },
-          retry: { maxAttempts: 1, backoffMs: 1000 },
-        },
-      ],
-      output: { from: "step1" },
-    }),
+    () =>
+      defineFlow({
+        id: "test",
+        name: "Test",
+        description: "Test",
+        steps: [
+          {
+            id: "",
+            name: "Step 1",
+            agent: "agent1",
+            dependsOn: [],
+            input: { source: "request", transform: "passthrough" },
+            retry: { maxAttempts: 1, backoffMs: 1000 },
+          },
+        ],
+        output: { from: "step1" },
+      }),
     Error,
-    "Step ID cannot be empty"
+    "Step ID cannot be empty",
   );
 });
 
 Deno.test("defineFlow: throws error for empty step name", () => {
   assertThrows(
-    () => defineFlow({
-      id: "test",
-      name: "Test",
-      description: "Test",
-      steps: [
-        {
-          id: "step1",
-          name: "",
-          agent: "agent1",
-          dependsOn: [],
-          input: { source: "request", transform: "passthrough" },
-          retry: { maxAttempts: 1, backoffMs: 1000 },
-        },
-      ],
-      output: { from: "step1" },
-    }),
+    () =>
+      defineFlow({
+        id: "test",
+        name: "Test",
+        description: "Test",
+        steps: [
+          {
+            id: "step1",
+            name: "",
+            agent: "agent1",
+            dependsOn: [],
+            input: { source: "request", transform: "passthrough" },
+            retry: { maxAttempts: 1, backoffMs: 1000 },
+          },
+        ],
+        output: { from: "step1" },
+      }),
     Error,
-    "Step name cannot be empty"
+    "Step name cannot be empty",
   );
 });
 
 Deno.test("defineFlow: throws error for empty agent reference", () => {
   assertThrows(
-    () => defineFlow({
-      id: "test",
-      name: "Test",
-      description: "Test",
-      steps: [
-        {
-          id: "step1",
-          name: "Step 1",
-          agent: "",
-          dependsOn: [],
-          input: { source: "request", transform: "passthrough" },
-          retry: { maxAttempts: 1, backoffMs: 1000 },
-        },
-      ],
-      output: { from: "step1" },
-    }),
+    () =>
+      defineFlow({
+        id: "test",
+        name: "Test",
+        description: "Test",
+        steps: [
+          {
+            id: "step1",
+            name: "Step 1",
+            agent: "",
+            dependsOn: [],
+            input: { source: "request", transform: "passthrough" },
+            retry: { maxAttempts: 1, backoffMs: 1000 },
+          },
+        ],
+        output: { from: "step1" },
+      }),
     Error,
-    "Agent reference cannot be empty"
+    "Agent reference cannot be empty",
   );
 });
 
 Deno.test("defineFlow: throws error for invalid maxParallelism", () => {
   assertThrows(
-    () => defineFlow({
-      id: "test",
-      name: "Test",
-      description: "Test",
-      steps: [
-        {
-          id: "step1",
-          name: "Step 1",
-          agent: "agent1",
-          dependsOn: [],
-          input: { source: "request", transform: "passthrough" },
-          retry: { maxAttempts: 1, backoffMs: 1000 },
-        },
-      ],
-      output: { from: "step1" },
-      settings: { maxParallelism: 0 },
-    }),
+    () =>
+      defineFlow({
+        id: "test",
+        name: "Test",
+        description: "Test",
+        steps: [
+          {
+            id: "step1",
+            name: "Step 1",
+            agent: "agent1",
+            dependsOn: [],
+            input: { source: "request", transform: "passthrough" },
+            retry: { maxAttempts: 1, backoffMs: 1000 },
+          },
+        ],
+        output: { from: "step1" },
+        settings: { maxParallelism: 0 },
+      }),
     Error,
-    "Number must be greater than or equal to 1"
+    "Number must be greater than or equal to 1",
   );
 });
 
 Deno.test("defineFlow: throws error for invalid retry maxAttempts", () => {
   assertThrows(
-    () => defineFlow({
-      id: "test",
-      name: "Test",
-      description: "Test",
-      steps: [
-        {
-          id: "step1",
-          name: "Step 1",
-          agent: "agent1",
-          dependsOn: [],
-          input: { source: "request", transform: "passthrough" },
-          retry: { maxAttempts: 0, backoffMs: 1000 },
-        },
-      ],
-      output: { from: "step1" },
-    }),
+    () =>
+      defineFlow({
+        id: "test",
+        name: "Test",
+        description: "Test",
+        steps: [
+          {
+            id: "step1",
+            name: "Step 1",
+            agent: "agent1",
+            dependsOn: [],
+            input: { source: "request", transform: "passthrough" },
+            retry: { maxAttempts: 0, backoffMs: 1000 },
+          },
+        ],
+        output: { from: "step1" },
+      }),
     Error,
-    "Number must be greater than or equal to 1"
+    "Number must be greater than or equal to 1",
   );
 });

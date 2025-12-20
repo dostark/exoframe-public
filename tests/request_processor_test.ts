@@ -40,18 +40,24 @@ function createMockResponse(thought: string, content: string): string {
 function createRequestContent(opts: {
   traceId: string;
   agent?: string;
+  flow?: string;
   status?: string;
   priority?: string;
   body: string;
 }): string {
+  const fields = [
+    `trace_id: "${opts.traceId}"`,
+    `created: "${new Date().toISOString()}"`,
+    `status: ${opts.status || "pending"}`,
+    `priority: ${opts.priority || "normal"}`,
+    opts.flow ? null : `agent: ${opts.agent || "default"}`, // Only include agent if no flow
+    opts.flow ? `flow: ${opts.flow}` : null,
+    `source: cli`,
+    `created_by: "test@example.com"`,
+  ].filter(Boolean);
+
   return `---
-trace_id: "${opts.traceId}"
-created: "${new Date().toISOString()}"
-status: ${opts.status || "pending"}
-priority: ${opts.priority || "normal"}
-agent: ${opts.agent || "default"}
-source: cli
-created_by: "test@example.com"
+${fields.join("\n")}
 ---
 
 # Request
@@ -500,6 +506,107 @@ You are an expert code reviewer. Analyze code changes and provide feedback.
       const result = await processor.process(requestPath);
 
       assert(result !== null, "Should work with default blueprint");
+    });
+  });
+
+  describe("Flow Request Support", () => {
+    it("should process requests with flow field", async () => {
+      const traceId = crypto.randomUUID();
+      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const requestContent = `---
+trace_id: "${traceId}"
+created: "${new Date().toISOString()}"
+status: pending
+priority: high
+flow: code-review
+source: cli
+created_by: "test@example.com"
+---
+
+Review this pull request for security issues.`;
+
+      await Deno.writeTextFile(requestPath, requestContent);
+
+      // Mock provider that returns flow execution plan
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse(
+          "Flow execution planning",
+          JSON.stringify({
+            title: "Flow Execution Plan",
+            description: "Execute code-review flow",
+            steps: [{
+              step: 1,
+              title: "Execute Flow",
+              description: "Execute the code-review flow with the given request",
+            }],
+          }),
+        )],
+      });
+
+      // Create processor with RequestRouter integration
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      const planPath = await processor.process(requestPath);
+      assert(planPath !== null, "Should process flow requests");
+
+      const planContent = await Deno.readTextFile(planPath!);
+      assertStringIncludes(planContent, `trace_id: "${traceId}"`);
+      assertStringIncludes(planContent, "status: review");
+    });
+
+    it("should process requests with nonexistent flow when validation is disabled", async () => {
+      const traceId = crypto.randomUUID();
+      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const requestContent = `---
+trace_id: "${traceId}"
+created: "${new Date().toISOString()}"
+status: pending
+priority: high
+flow: nonexistent-flow
+source: cli
+created_by: "test@example.com"
+---
+
+Test flow processing.`;
+
+      await Deno.writeTextFile(requestPath, requestContent);
+
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Should not be called", "{}")],
+      });
+
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      const result = await processor.process(requestPath);
+      assert(result !== null, "Should process flow requests even when validation is disabled");
+    });
+
+    it("should reject requests with both flow and agent fields", async () => {
+      const traceId = crypto.randomUUID();
+      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const requestContent = `---
+trace_id: "${traceId}"
+created: "${new Date().toISOString()}"
+status: pending
+priority: high
+flow: code-review
+agent: senior-coder
+source: cli
+created_by: "test@example.com"
+---
+
+Conflicting request.`;
+
+      await Deno.writeTextFile(requestPath, requestContent);
+
+      const provider = new MockLLMProvider("scripted", {
+        responses: [createMockResponse("Should not be called", "{}")],
+      });
+
+      const processor = new RequestProcessor(config, provider, db, processorConfig);
+
+      const result = await processor.process(requestPath);
+      assertEquals(result, null, "Should reject conflicting flow/agent fields");
     });
   });
 });

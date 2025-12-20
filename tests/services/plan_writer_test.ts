@@ -9,7 +9,12 @@
  */
 
 import { assert, assertEquals, assertExists, assertStringIncludes, assertThrows } from "jsr:@std/assert@1";
-import { PlanWriter, type RequestMetadata, type PlanWriterConfig, type AgentExecutionResult } from "../../src/services/plan_writer.ts";
+import {
+  type AgentExecutionResult,
+  PlanWriter,
+  type PlanWriterConfig,
+  type RequestMetadata,
+} from "../../src/services/plan_writer.ts";
 import { initTestDbService } from "../helpers/db.ts";
 
 /**
@@ -107,7 +112,6 @@ Deno.test("PlanWriter: writePlan creates plan file with correct structure", asyn
     // Check next steps section
     assertStringIncludes(content, "## Next Steps");
     assertStringIncludes(content, "test-request-123");
-
   } finally {
     await Deno.remove(tempDir, { recursive: true });
   }
@@ -148,7 +152,6 @@ Deno.test("PlanWriter: writePlan handles minimal plan content", async () => {
     assertStringIncludes(content, "# Minimal Plan");
     assertStringIncludes(content, "Just the basics");
     assertStringIncludes(content, "Do something");
-
   } finally {
     await Deno.remove(tempDir, { recursive: true });
   }
@@ -188,14 +191,13 @@ Deno.test("PlanWriter: writePlan logs activity when database available", async (
     assert(activities.length >= 2, `Expected at least 2 activities, got ${activities.length}`);
 
     // Check for plan.created activity
-    const createdActivity = activities.find(a => a.action_type === "plan.created");
+    const createdActivity = activities.find((a) => a.action_type === "plan.created");
     assertExists(createdActivity);
     assertEquals(createdActivity.target, "logging-test");
 
     const payload = JSON.parse(createdActivity.payload);
     assertEquals(payload.request_id, "logging-test");
     assertEquals(payload.context_files_count, 1);
-
   } finally {
     db.close();
     await cleanup();
@@ -229,7 +231,6 @@ Deno.test("PlanWriter: writePlan works without database (testing mode)", async (
 
     // Should not throw error and should create file
     assert(await Deno.stat(writeResult.planPath).then(() => true).catch(() => false));
-
   } finally {
     await Deno.remove(tempDir, { recursive: true });
   }
@@ -264,7 +265,6 @@ Deno.test("PlanWriter: writePlan handles invalid JSON gracefully", async () => {
     }
 
     assert(threw, "Expected PlanValidationError to be thrown for invalid JSON");
-
   } finally {
     await Deno.remove(tempDir, { recursive: true });
   }

@@ -29,7 +29,7 @@ export class RoutingError extends Error {
 }
 
 export interface FlowValidator {
-  validateFlow(flowId: string): Promise<{valid: boolean, error?: string}>;
+  validateFlow(flowId: string): Promise<{ valid: boolean; error?: string }>;
 }
 
 /**
@@ -42,7 +42,7 @@ export class RequestRouter {
     private flowValidator: FlowValidator,
     private eventLogger: EventLogger,
     private defaultAgentId: string,
-    private blueprintsPath: string
+    private blueprintsPath: string,
   ) {}
 
   /**
@@ -72,7 +72,7 @@ export class RequestRouter {
       });
       throw new RoutingError(
         "Request cannot specify both 'flow' and 'agent' fields",
-        requestId
+        requestId,
       );
     }
 
@@ -128,7 +128,7 @@ export class RequestRouter {
         userPrompt: request.body,
         traceId,
         requestId,
-      }
+      },
     );
 
     return {

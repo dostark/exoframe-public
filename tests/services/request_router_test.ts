@@ -1,30 +1,30 @@
-import { assertEquals, assertThrows, assertRejects, assert } from "jsr:@std/assert@1";
+import { assert, assertEquals, assertRejects, assertThrows } from "jsr:@std/assert@1";
 import { RequestRouter, RoutingDecision, RoutingError } from "../../src/services/request_router.ts";
 
 // Mock dependencies
 class MockFlowRunner {
-  executedFlows: Array<{flow: any, request: any}> = [];
+  executedFlows: Array<{ flow: any; request: any }> = [];
 
   async execute(flow: any, request: any): Promise<any> {
-    this.executedFlows.push({flow, request});
+    this.executedFlows.push({ flow, request });
     return { success: true, flowId: flow.id, output: `Flow ${flow.id} executed` };
   }
 }
 
 class MockAgentRunner {
-  executedAgents: Array<{blueprint: any, request: any}> = [];
+  executedAgents: Array<{ blueprint: any; request: any }> = [];
 
   async run(blueprint: any, request: any): Promise<any> {
-    this.executedAgents.push({blueprint, request});
+    this.executedAgents.push({ blueprint, request });
     return { success: true, agentId: blueprint.agentId, output: `Agent ${blueprint.agentId} executed` };
   }
 }
 
 class MockFlowValidator {
-  validFlows = new Set(['code-review', 'deploy', 'research']);
-  invalidFlows = new Set(['broken-flow', 'missing-deps']);
+  validFlows = new Set(["code-review", "deploy", "research"]);
+  invalidFlows = new Set(["broken-flow", "missing-deps"]);
 
-  async validateFlow(flowId: string): Promise<{valid: boolean, error?: string}> {
+  async validateFlow(flowId: string): Promise<{ valid: boolean; error?: string }> {
     if (this.validFlows.has(flowId)) {
       return { valid: true };
     }
@@ -36,7 +36,7 @@ class MockFlowValidator {
 }
 
 class MockEventLogger {
-  events: Array<{action: string, target: string, payload?: any, traceId?: string}> = [];
+  events: Array<{ action: string; target: string; payload?: any; traceId?: string }> = [];
 
   log(event: any) {
     this.events.push(event);
@@ -53,12 +53,12 @@ class TestRequestRouter extends RequestRouter {
     flowValidator: any,
     eventLogger: any,
     defaultAgentId: string,
-    blueprintsPath: string
+    blueprintsPath: string,
   ) {
     super(flowRunner, agentRunner, flowValidator, eventLogger, defaultAgentId, blueprintsPath);
     // Set up mock blueprints
-    this.mockBlueprints.set('senior-coder', { agentId: 'senior-coder', name: 'Senior Coder' });
-    this.mockBlueprints.set('default-agent', { agentId: 'default-agent', name: 'Default Agent' });
+    this.mockBlueprints.set("senior-coder", { agentId: "senior-coder", name: "Senior Coder" });
+    this.mockBlueprints.set("default-agent", { agentId: "default-agent", name: "Default Agent" });
   }
 
   protected override async loadBlueprint(agentId: string): Promise<any> {
@@ -79,14 +79,14 @@ Deno.test("RequestRouter: routes flow requests to FlowRunner", async () => {
     mockFlowValidator as any,
     mockLogger as any,
     "default-agent",
-    "/tmp/blueprints"
+    "/tmp/blueprints",
   );
 
   const request = {
     traceId: "test-trace-123",
     requestId: "req-123",
     frontmatter: { flow: "code-review" },
-    body: "Test request body"
+    body: "Test request body",
   };
 
   const result = await router.route(request);
@@ -111,14 +111,14 @@ Deno.test("RequestRouter: routes agent requests to AgentRunner", async () => {
     mockFlowValidator as any,
     mockLogger as any,
     "default-agent",
-    "/tmp/blueprints"
+    "/tmp/blueprints",
   );
 
   const request = {
     traceId: "test-trace-123",
     requestId: "req-123",
     frontmatter: { agent: "senior-coder" },
-    body: "Test request body"
+    body: "Test request body",
   };
 
   const result = await router.route(request);
@@ -142,14 +142,14 @@ Deno.test("RequestRouter: routes requests without flow/agent to default agent", 
     mockFlowValidator as any,
     mockLogger as any,
     "default-agent",
-    "/tmp/blueprints"
+    "/tmp/blueprints",
   );
 
   const request = {
     traceId: "test-trace-123",
     requestId: "req-123",
     frontmatter: {},
-    body: "Test request body"
+    body: "Test request body",
   };
 
   const result = await router.route(request);
@@ -173,20 +173,20 @@ Deno.test("RequestRouter: throws error for invalid flow ID", async () => {
     mockFlowValidator as any,
     mockLogger as any,
     "default-agent",
-    "/tmp/blueprints"
+    "/tmp/blueprints",
   );
 
   const request = {
     traceId: "test-trace-123",
     requestId: "req-123",
     frontmatter: { flow: "nonexistent-flow" },
-    body: "Test request body"
+    body: "Test request body",
   };
 
   await assertRejects(
     () => router.route(request),
     RoutingError,
-    "Flow 'nonexistent-flow' not found"
+    "Flow 'nonexistent-flow' not found",
   );
 
   assertEquals(mockLogger.events[0].action, "request.routing.flow");
@@ -204,20 +204,20 @@ Deno.test("RequestRouter: throws error for conflicting flow and agent fields", a
     mockFlowValidator as any,
     mockLogger as any,
     "default-agent",
-    "/tmp/blueprints"
+    "/tmp/blueprints",
   );
 
   const request = {
     traceId: "test-trace-123",
     requestId: "req-123",
     frontmatter: { flow: "code-review", agent: "senior-coder" },
-    body: "Test request body"
+    body: "Test request body",
   };
 
   await assertRejects(
     () => router.route(request),
     RoutingError,
-    "Request cannot specify both 'flow' and 'agent' fields"
+    "Request cannot specify both 'flow' and 'agent' fields",
   );
 });
 
@@ -235,12 +235,12 @@ Deno.test("RequestRouter: flow takes priority over agent when both present (shou
     mockFlowValidator as any,
     mockLogger as any,
     "default-agent",
-    "/tmp/blueprints"
+    "/tmp/blueprints",
   );
 
   // Temporarily bypass the conflicting fields check for this test
   const originalRoute = router.route.bind(router);
-  router.route = async function(request: any) {
+  router.route = async function (request: any) {
     // Skip the conflicting fields check for this test
     const flowId = request.frontmatter.flow;
     const agentId = request.frontmatter.agent;
@@ -258,7 +258,7 @@ Deno.test("RequestRouter: flow takes priority over agent when both present (shou
     traceId: "test-trace-123",
     requestId: "req-123",
     frontmatter: { flow: "code-review", agent: "senior-coder" },
-    body: "Test request body"
+    body: "Test request body",
   };
 
   const result = await router.route(request);

@@ -1,5 +1,5 @@
-import { assertEquals, assertThrows, assert } from "jsr:@std/assert@1";
-import { FlowRunner, FlowExecutionError } from "../../src/flows/flow_runner.ts";
+import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
+import { FlowExecutionError, FlowRunner } from "../../src/flows/flow_runner.ts";
 import { Flow, FlowStep } from "../../src/schemas/flow.ts";
 import { AgentExecutionResult } from "../../src/services/agent_runner.ts";
 
@@ -31,10 +31,10 @@ class MockAgentRunner {
 
 // Mock EventLogger for testing
 class MockEventLogger {
-  events: Array<{event: string, payload: any}> = [];
+  events: Array<{ event: string; payload: any }> = [];
 
   log(event: string, payload: any) {
-    this.events.push({event, payload});
+    this.events.push({ event, payload });
   }
 }
 
@@ -484,7 +484,7 @@ Deno.test("FlowRunner: handles step with invalid input source", async () => {
 
   assertEquals(result.success, false);
   assertEquals(result.stepResults.get("step1")?.success, false);
-  assert(result.stepResults.get("step1")?.error?.includes("Step step1 has source \"step\" but no stepId specified"));
+  assert(result.stepResults.get("step1")?.error?.includes('Step step1 has source "step" but no stepId specified'));
 });
 
 Deno.test("FlowRunner: handles step depending on failed step", async () => {
@@ -575,7 +575,10 @@ Deno.test("FlowRunner: handles circular dependencies", async () => {
   } catch (error) {
     console.log("Error thrown:", (error as Error).constructor.name, (error as Error).message);
     assert(error instanceof FlowExecutionError || error instanceof Error);
-    assert((error as Error).message.includes("Cycle") || (error as Error).message.includes("Circular") || (error as Error).message.includes("dependency"));
+    assert(
+      (error as Error).message.includes("Cycle") || (error as Error).message.includes("Circular") ||
+        (error as Error).message.includes("dependency"),
+    );
   }
 });
 

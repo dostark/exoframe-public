@@ -1,7 +1,7 @@
 # Project ExoFrame: Technical Specification & Architecture
 
-- **Version:** 1.8.0
-- **Release Date:** 2025-12-03
+- **Version:** 1.9.0
+- **Release Date:** 2025-12-20
 - **Status:** Engineering Specification
 - **Reference:** [ExoFrame White Paper](./ExoFrame_White_Paper.md)
 - **Architecture:** [ExoFrame Architecture Diagrams](./ExoFrame_Architecture.md)
@@ -21,7 +21,8 @@
 - **Lease:** Exclusive lock on a file (stored in `leases` table)
 - **Actor:** Entity performing action (agent name, "system", or "user")
 - **Blueprint:** TOML definition of an agent (model, capabilities, prompt)
-- **Flow:** TypeScript orchestration defining multi-agent workflows (planned Phase 8)
+- **Flow:** TypeScript orchestration defining multi-agent workflows (Phase 7 - Flow Orchestration)
+- **Request Router:** Service that routes requests to appropriate execution engine (agent vs flow)
 
 ---
 
@@ -30,7 +31,7 @@
 ExoFrame is a secure, daemon-based orchestration platform. It operates on the **"Files as API"** principle, utilizing a
 watched folder structure to trigger typed workflows.
 
-ExoFrame deliberately supports **three agent execution modes**:
+ExoFrame deliberately supports **four agent execution modes**:
 
 1. **Local/Sovereign Agents** — run entirely on the user’s hardware (e.g., Ollama, deterministic scripts). They have
    unrestricted access to on-disk context within the allowed portals and do not require token-budget enforcement.
@@ -39,6 +40,8 @@ ExoFrame deliberately supports **three agent execution modes**:
    pipeline.
 3. **Hybrid Agents** — orchestrations that mix local + federated sub-agents inside a single trace. Hybrid mode must log
    every cross-boundary handoff and only share context slices that the blueprint explicitly authorizes.
+4. **Multi-Agent Flows** — declarative workflows that coordinate multiple agents in sequence or parallel, enabled by
+   flow-aware request routing (Phase 7).
 
 **Security Upgrade:** Migrated from Bun/Node to **Deno**, leveraging its capability-based security model and codifying
 permission governance across CLI, daemon, and agents.
@@ -681,6 +684,118 @@ const planWatcher = new FileWatcher(
 // Start both watchers concurrently
 await Promise.all([requestWatcher.start(), planWatcher.start()]);
 ```
+
+### 5.8.2.1. Flow-Aware Request Processing (Step 7.6 ✅ Implemented)
+
+**Purpose:** Enable intelligent routing of requests to either single-agent execution or multi-agent flow execution based on frontmatter configuration.
+
+**Request Processing Flow:**
+
+1. **File Detection:** RequestWatcher detects new `.md` file in `Inbox/Requests/`
+2. **Frontmatter Parsing:** Extract YAML frontmatter with routing fields (`flow`, `agent`)
+3. **Routing Decision:**
+   - If `flow` field present → Route to FlowRunner (multi-agent)
+   - If `agent` field present → Route to AgentRunner (single-agent)
+   - If neither field → Use default agent from configuration
+4. **Validation:** Validate routing target exists and is properly configured
+5. **Plan Generation:** Generate appropriate execution plan
+6. **Status Update:** Update request status and log to Activity Journal
+
+**Routing Priority (Step 7.6):**
+
+| Priority | Condition             | Action                  | Target      |
+| :------- | :-------------------- | :---------------------- | :---------- |
+| 1        | `flow: <id>` present  | Multi-agent execution   | FlowRunner  |
+| 2        | `agent: <id>` present | Single-agent execution  | AgentRunner |
+| 3        | Neither field         | Default agent execution | AgentRunner |
+
+**Request Frontmatter Examples:**
+
+**Flow Request (Multi-Agent):**
+
+```yaml
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440000"
+status: pending
+flow: code-review
+tags: [review, security, pr-42]
+priority: high
+created: "2025-12-20T10:00:00Z"
+source: cli
+created_by: user@example.com
+---
+Please perform a comprehensive security and code quality review of this pull request.
+```
+
+**Agent Request (Single-Agent):**
+
+```yaml
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440001"
+status: pending
+agent: senior-coder
+tags: [implementation, auth]
+priority: medium
+created: "2025-12-20T10:15:00Z"
+source: cli
+created_by: user@example.com
+---
+Implement JWT-based authentication for the API endpoints.
+```
+
+**Default Agent Request:**
+
+```yaml
+---
+trace_id: "550e8400-e29b-41d4-a716-446655440002"
+status: pending
+tags: [general, documentation]
+priority: low
+created: "2025-12-20T10:30:00Z"
+source: cli
+created_by: user@example.com
+---
+Help me understand the project structure and architecture.
+```
+
+**Validation Rules:**
+
+- ✓ **Mutual Exclusion:** Request cannot specify both `flow` and `agent` fields
+- ✓ **Required Field:** Request must specify either `flow` or `agent` field
+- ✓ **Flow Existence:** Referenced flow must exist in `/Blueprints/Flows/`
+- ✓ **Agent Existence:** Referenced agent must exist in `/Blueprints/Agents/`
+- ✓ **Schema Validity:** Flow must conform to expected structure
+- ✓ **Dependencies:** Flow dependencies (agents, transforms) must exist
+
+**Activity Journal Events:**
+
+| Event                     | Payload Fields                                | Condition                   |
+| ------------------------- | --------------------------------------------- | :-------------------------- |
+| `request.processing`      | `requestId, traceId, flow?, agent?, priority` | Request processing started  |
+| `request.routing.flow`    | `requestId, flowId, traceId`                  | Routed to flow execution    |
+| `request.routing.agent`   | `requestId, agentId, traceId`                 | Routed to agent execution   |
+| `request.routing.default` | `requestId, defaultAgentId, traceId`          | Used default agent          |
+| `request.routing.error`   | `requestId, error, field, value, traceId`     | Routing validation failed   |
+| `flow.validation.failed`  | `requestId, flowId, error, traceId`           | Flow validation failed      |
+| `request.planned`         | `requestId, planPath, flow?, agent?, traceId` | Plan successfully generated |
+| `request.failed`          | `requestId, error, traceId`                   | Request processing failed   |
+
+**Error Handling:**
+
+- **Conflicting Fields:** `"Request cannot specify both 'flow' and 'agent' fields"`
+- **Missing Routing:** `"Request must specify either 'flow' or 'agent' field"`
+- **Invalid Flow ID:** `"Flow 'nonexistent-flow' not found in /Blueprints/Flows/"`
+- **Invalid Agent ID:** `"Agent 'unknown-agent' not found in blueprints"`
+- **Malformed Flow:** `"Flow 'broken-flow' has invalid schema: missing required field 'steps'"`
+
+**Integration Points:**
+
+- **RequestRouter:** Determines routing target based on frontmatter
+- **FlowValidator:** Validates flow existence and schema before routing
+- **AgentRunner:** Executes single-agent requests (existing)
+- **FlowRunner:** Executes multi-agent flow requests (Phase 7)
+- **PlanWriter:** Generates plan files for both routing types
+- **EventLogger:** Records all routing decisions and validation results
 
 ### 5.8.3. Step 5.12.1: Detection (✅ Implemented)
 

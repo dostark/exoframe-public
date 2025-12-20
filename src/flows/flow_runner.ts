@@ -89,7 +89,10 @@ export class FlowRunner {
   /**
    * Execute a flow with the given request
    */
-  async execute(flow: Flow, request: { userPrompt: string; traceId?: string; requestId?: string }): Promise<FlowResult> {
+  async execute(
+    flow: Flow,
+    request: { userPrompt: string; traceId?: string; requestId?: string },
+  ): Promise<FlowResult> {
     const flowRunId = crypto.randomUUID();
     const startedAt = new Date();
 
@@ -175,7 +178,7 @@ export class FlowRunner {
         });
 
         // Execute steps in this wave in parallel (with semaphore limit)
-        const wavePromises = wave.map(stepId => this.executeStep(flowRunId, stepId, flow, request, stepResults));
+        const wavePromises = wave.map((stepId) => this.executeStep(flowRunId, stepId, flow, request, stepResults));
         const waveResults = await Promise.allSettled(wavePromises);
 
         // Process results
@@ -232,7 +235,7 @@ export class FlowRunner {
           const failedStepId = wave.find((stepId, i) => {
             const result = waveResults[i];
             return result.status === "rejected" ||
-                   (result.status === "fulfilled" && !result.value.success);
+              (result.status === "fulfilled" && !result.value.success);
           });
           throw new FlowExecutionError(`Step ${failedStepId} failed`, flowRunId);
         }
@@ -263,8 +266,8 @@ export class FlowRunner {
       const duration = completedAt.getTime() - startedAt.getTime();
 
       // Determine overall success
-      const success = Array.from(stepResults.values()).every(result => result.success);
-      const successfulSteps = Array.from(stepResults.values()).filter(r => r.success).length;
+      const success = Array.from(stepResults.values()).every((result) => result.success);
+      const successfulSteps = Array.from(stepResults.values()).filter((r) => r.success).length;
       const failedSteps = stepResults.size - successfulSteps;
 
       // Log flow completion
@@ -290,14 +293,13 @@ export class FlowRunner {
         startedAt,
         completedAt,
       };
-
     } catch (error) {
       const completedAt = new Date();
       const duration = completedAt.getTime() - startedAt.getTime();
 
       // Determine partial results
       const stepResults = new Map<string, StepResult>(); // This would need to be captured from the try block
-      const successfulSteps = Array.from(stepResults.values()).filter(r => r.success).length;
+      const successfulSteps = Array.from(stepResults.values()).filter((r) => r.success).length;
       const failedSteps = stepResults.size - successfulSteps;
 
       // Log flow failure
@@ -326,9 +328,9 @@ export class FlowRunner {
     stepId: string,
     flow: Flow,
     request: { userPrompt: string; traceId?: string; requestId?: string },
-    stepResults: Map<string, StepResult>
+    stepResults: Map<string, StepResult>,
   ): Promise<StepResult> {
-    const step = flow.steps.find(s => s.id === stepId)!;
+    const step = flow.steps.find((s) => s.id === stepId)!;
     const startedAt = new Date();
 
     // Log step queued (ready for execution)
@@ -393,7 +395,6 @@ export class FlowRunner {
         startedAt,
         completedAt,
       };
-
     } catch (error) {
       const completedAt = new Date();
       const duration = completedAt.getTime() - startedAt.getTime();
@@ -427,7 +428,7 @@ export class FlowRunner {
   private prepareStepRequest(
     step: FlowStep,
     originalRequest: { userPrompt: string; traceId?: string; requestId?: string },
-    stepResults: Map<string, StepResult>
+    stepResults: Map<string, StepResult>,
   ): FlowStepRequest {
     let userPrompt: string;
     const context: Record<string, unknown> = {};
@@ -492,8 +493,8 @@ export class FlowRunner {
     switch (format) {
       case "concat":
         return outputFrom
-          .map(stepId => stepResults.get(stepId)?.result?.content || "")
-          .filter(content => content.length > 0)
+          .map((stepId) => stepResults.get(stepId)?.result?.content || "")
+          .filter((content) => content.length > 0)
           .join("\n");
 
       case "json":
@@ -509,7 +510,7 @@ export class FlowRunner {
       case "markdown":
       default:
         return outputFrom
-          .map(stepId => {
+          .map((stepId) => {
             const result = stepResults.get(stepId);
             const content = result?.result?.content || "";
             return `## ${stepId}\n\n${content}`;

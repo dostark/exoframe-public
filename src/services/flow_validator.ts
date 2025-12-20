@@ -9,13 +9,13 @@ import type { FlowValidator } from "./request_router.ts";
 export class FlowValidatorImpl implements FlowValidator {
   constructor(
     private flowLoader: FlowLoader,
-    private blueprintsPath: string
+    private blueprintsPath: string,
   ) {}
 
   /**
    * Validate a flow by ID
    */
-  async validateFlow(flowId: string): Promise<{valid: boolean, error?: string}> {
+  async validateFlow(flowId: string): Promise<{ valid: boolean; error?: string }> {
     try {
       // Check if flow exists
       const exists = await this.flowLoader.flowExists(flowId);
@@ -38,16 +38,16 @@ export class FlowValidatorImpl implements FlowValidator {
       } catch (error) {
         return {
           valid: false,
-          error: `Flow '${flowId}' has invalid dependencies: ${error instanceof Error ? error.message : String(error)}`
+          error: `Flow '${flowId}' has invalid dependencies: ${error instanceof Error ? error.message : String(error)}`,
         };
       }
 
       // Validate agents exist (basic check - could be enhanced)
       for (const step of flow.steps) {
-        if (!step.agent || typeof step.agent !== 'string') {
+        if (!step.agent || typeof step.agent !== "string") {
           return {
             valid: false,
-            error: `Flow '${flowId}' step '${step.id}' has invalid agent: ${step.agent}`
+            error: `Flow '${flowId}' step '${step.id}' has invalid agent: ${step.agent}`,
           };
         }
         // Note: Full agent validation would require loading agent blueprints
@@ -59,26 +59,25 @@ export class FlowValidatorImpl implements FlowValidator {
         if (!flow.output.from || !flow.output.format) {
           return {
             valid: false,
-            error: `Flow '${flowId}' has invalid output configuration`
+            error: `Flow '${flowId}' has invalid output configuration`,
           };
         }
 
         // Check that output.from references a valid step
-        const outputStepExists = flow.steps.some(step => step.id === flow.output!.from);
+        const outputStepExists = flow.steps.some((step) => step.id === flow.output!.from);
         if (!outputStepExists) {
           return {
             valid: false,
-            error: `Flow '${flowId}' output.from references non-existent step: ${flow.output.from}`
+            error: `Flow '${flowId}' output.from references non-existent step: ${flow.output.from}`,
           };
         }
       }
 
       return { valid: true };
-
     } catch (error) {
       return {
         valid: false,
-        error: `Flow '${flowId}' validation failed: ${error instanceof Error ? error.message : String(error)}`
+        error: `Flow '${flowId}' validation failed: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   }

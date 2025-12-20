@@ -298,4 +298,3 @@ Deno.test("DependencyResolver: handles all parallel steps", () => {
   assertEquals(waves[0].includes("step2"), true);
   assertEquals(waves[0].includes("step3"), true);
 });
-

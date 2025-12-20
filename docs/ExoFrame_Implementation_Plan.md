@@ -1181,830 +1181,6 @@ PermissionDenied: write access to /etc/passwd is not allowed at PathResolver.val
 
 ---
 
-### Step 4: The Hands (Tools & Git) ✅ COMPLETED
-
-**Goal:** Agents execute actions securely and robustly.
-
-### Step 4.1: The Tool Registry ✅ COMPLETED
-
-- **Dependencies:** Steps 3.1-3.4 (Model Adapter, Agent Runner, Context Loader, Plan Writer)
-- **Action:** Implement tool registry that maps LLM function calls (JSON) to safe Deno operations (`read_file`,
-  `write_file`, `run_command`, `list_directory`).
-- **Requirement:** Tools must be sandboxed within allowed paths and enforce security policies from Step 2.3.
-- **Justification:** Enables agents to execute concrete actions while maintaining security boundaries.
-
-**The Solution:** Create a `ToolRegistry` service that:
-
-1. Registers available tools with JSON schemas (for LLM function calling)
-2. Validates tool invocations against security policies
-3. Executes tools within sandboxed context (Deno permissions, path restrictions)
-4. Logs all tool executions to Activity Journal
-5. Returns structured results for LLM to interpret
-
-**Core Tools:**
-
-- `read_file(path: string)` - Read file content within allowed paths
-- `write_file(path: string, content: string)` - Write/modify files
-- `list_directory(path: string)` - List directory contents
-- `run_command(command: string, args: string[])` - Execute shell commands (restricted)
-- `search_files(pattern: string, path: string)` - Search for files/content
-
-**Security Requirements:**
-
-- All paths must be validated through `PathResolver` (Step 2.3)
-- Commands must be whitelisted (no arbitrary shell execution)
-- Tool execution must be logged with trace_id for audit (non-blocking batched writes)
-- Failures must return structured errors (not raw exceptions)
-
-**Success Criteria:**
-
-- LLM outputting `{"tool": "read_file", "path": "Knowledge/docs.md"}` triggers file read
-- Path traversal attempts (`../../etc/passwd`) are rejected
-- Tool execution logged to Activity Journal with trace_id
-- Restricted commands (`rm -rf /`) are blocked
-
-### Step 4.2: Git Integration (Identity Aware) ✅ COMPLETED
-
-- **Dependencies:** Step 4.1 (Tool Registry)
-- **Action:** Implement `GitService` class for managing agent-created branches and commits.
-- **Requirement:** All agent changes must be tracked in git with trace_id linking back to original request.
-- **Justification:** Provides audit trail, enables rollback, and integrates with standard PR review workflow.
-
-**The Solution:** Create a `GitService` that:
-
-1. Auto-initializes git repository if not present
-2. Auto-configures git identity (user.name, user.email) if missing
-3. Creates feature branches with naming convention: `feat/{requestId}-{traceId}`
-4. Commits changes with trace_id in commit message footer
-5. Handles branch name conflicts (appends timestamp if needed)
-6. Validates changes exist before attempting commit
-
-**Branch Naming Convention:**
-
-```
-feat/implement-auth-550e8400
-feat/fix-bug-abc12345
-```
-
-**Commit Message Format:**
-
-```
-Implement authentication system
-
-Created login handler, JWT tokens, and user session management.
-
-[ExoTrace: 550e8400-e29b-41d4-a716-446655440000]
-```
-
-**Error Handling:**
-
-- Repository not initialized → auto-run `git init` + empty commit
-- Identity not configured → use default bot identity (`bot@exoframe.local`)
-- Branch already exists → append timestamp to make unique
-- No changes to commit → throw clear error (don't create empty commit)
-- Git command failures → wrap in descriptive error with command context
-
-**Success Criteria:**
-
-- Run in non-git directory → auto-initializes with initial commit
-- Run with no git config → auto-configures bot identity
-- Create branch twice with same name → second gets unique name
-- Attempt commit with no changes → throws clear error
-- Commit message includes trace_id footer for audit
-- All git operations logged to Activity Journal
-
-### Step 4.3: The Execution Loop (Resilient) ✅ COMPLETED
-
-- **Dependencies:** Steps 4.1–4.2 (Tool Registry, Git Integration) — **Rollback:** pause queue processing through config
-  and replay from last clean snapshot.
-- **Action:** Implement execution loop that processes active tasks from `/System/Active` with comprehensive error
-  handling.
-- **Requirement:** All execution paths (success or failure) must be logged, and users must receive clear feedback.
-- **Justification:** Ensures system resilience and user visibility into agent operations.
-
-**The Solution:** Create an `ExecutionLoop` service that:
-
-1. Monitors `/System/Active` for approved plans
-2. Acquires lease on active task file (prevents concurrent execution)
-3. Executes plan using Tool Registry and Git Service
-4. Handles both success and failure paths with appropriate reporting
-5. Cleans up resources (releases leases, closes connections)
-
-**Execution Flow:**
-
-```
-Agent creates plan → /Inbox/Plans/{requestId}_plan.md (status: review)
-  ↓
-[HUMAN REVIEWS PLAN IN OBSIDIAN]
-  ↓
-  ├─ APPROVE: Move plan → /System/Active/{requestId}.md
-  │   └─ Log: plan.approved (action_type, trace_id, actor: 'human')
-  │
-  ├─ REJECT: Move plan → /Inbox/Rejected/{requestId}_rejected.md
-  │   ├─ Add frontmatter: rejection_reason, rejected_by, rejected_at
-  │   └─ Log: plan.rejected (action_type, trace_id, actor: 'human', metadata: reason)
-  │
-  └─ REQUEST CHANGES: Add comments to plan file, keep in /Inbox/Plans
-      ├─ Append "## Review Comments" section to plan
-      ├─ Update frontmatter: status: 'needs_revision', reviewed_by, reviewed_at
-      └─ Log: plan.revision_requested (action_type, trace_id, actor: 'human', metadata: comments)
-
-      Agent responds: reads comments → generates revised plan
-        ├─ Update plan in-place or create new version
-        └─ Log: plan.revised (action_type, trace_id, actor: 'agent')
-  ↓
-/System/Active/{requestId}.md detected by ExecutionLoop
-  ↓
-Acquire lease (or skip if locked)
-  ↓
-Load plan + context
-  ↓
-Create git branch (feat/{requestId}-{traceId})
-  ↓
-Execute tools (wrapped in try/catch)
-  ↓
-  ├─ SUCCESS:
-  │   ├─ Commit changes to branch
-  │   ├─ Generate Mission Report → /Knowledge/Reports
-  │   ├─ Archive plan → /Inbox/Archive
-  │   └─ Log: execution.completed (trace_id, actor: 'agent', metadata: files_changed)
-  │
-  │   [HUMAN REVIEWS PULL REQUEST]
-  │     ↓
-  │     ├─ APPROVE: Merge PR to main
-  │     │   └─ Log: pr.merged (trace_id, actor: 'human', metadata: commit_sha)
-  │     │
-  │     └─ REJECT: Close PR without merging
-  │         └─ Log: pr.rejected (trace_id, actor: 'human', metadata: reason)
-  │
-  └─ FAILURE:
-      ├─ Rollback git changes (reset branch)
-      ├─ Generate Failure Report → /Knowledge/Reports
-      ├─ Move plan back → /Inbox/Requests (status: error)
-      └─ Log: execution.failed (trace_id, actor: 'system', metadata: error_details)
-  ↓
-Release lease
-```
-
-**Human Review Actions:**
-
-1. **Approve Plan**
-   - Action: Move file from `/Inbox/Plans/{requestId}_plan.md` to `/System/Active/{requestId}.md`
-   - Logging: Insert activity record with `action_type: 'plan.approved'`, `actor: 'human'`
-
-2. **Reject Plan**
-   - Action: Move file to `/Inbox/Rejected/{requestId}_rejected.md`
-   - Add to frontmatter:
-     ```toml
-     status = "rejected"
-     rejected_by = "user@example.com"
-     rejected_at = "2024-11-25T15:30:00Z"
-     rejection_reason = "Approach is too risky, use incremental strategy instead"
-     ```
-   - Logging: Insert activity record with `action_type: 'plan.rejected'`, `actor: 'human'`, `metadata: {reason: "..."}`
-
-3. **Request Changes**
-   - Action: Edit plan file in-place, append comments section:
-     ```markdown
-     ## Review Comments
-
-     **Reviewed by:** user@example.com\
-     **Reviewed at:** 2024-11-25T15:30:00Z
-
-     - ❌ Don't modify the production database directly
-     - ⚠️ Need to add rollback migration
-     - ✅ Login handler looks good
-     - 💡 Consider adding rate limiting to prevent brute force
-     ```
-   - Update frontmatter:
-     ```toml
-     status = "needs_revision"
-     reviewed_by = "user@example.com"
-     reviewed_at = "2024-11-25T15:30:00Z"
-     ```
-   - Logging: Insert activity record with `action_type: 'plan.revision_requested'`, `actor: 'human'`,
-     `metadata: {comment_count: 4}`
-
-**Activity Logging:**
-
-All actions in the execution loop are logged using `DatabaseService.logActivity()`. The current implementation uses direct method calls for activity logging. All logs are batched and written asynchronously for performance.
-
-**Query Examples:**
-
-```sql
--- Get all human review actions for a trace
-SELECT action_type, metadata->>'reviewed_by', timestamp
-FROM activity
-WHERE trace_id = '550e8400-e29b-41d4-a716-446655440000'
-  AND actor = 'human'
-ORDER BY timestamp;
-
--- Find plans awaiting human review
-SELECT entity_id, timestamp
-FROM activity
-WHERE action_type = 'plan.created'
-  AND entity_id NOT IN (
-    SELECT entity_id FROM activity
-    WHERE action_type IN ('plan.approved', 'plan.rejected')
-  )
-ORDER BY timestamp DESC;
-
--- Get rejection rate
-SELECT
-  COUNT(*) FILTER (WHERE action_type = 'plan.rejected') * 100.0 / COUNT(*) as rejection_rate
-FROM activity
-WHERE action_type IN ('plan.approved', 'plan.rejected');
-```
-
-**Failure Report Format:**
-
-```markdown
-+++
-trace_id = "550e8400-e29b-41d4-a716-446655440000"
-request_id = "implement-auth"
-status = "failed"
-failed_at = "2024-11-25T12:00:00Z"
-error_type = "ToolExecutionError"
-+++
-
-# Failure Report: Implement Authentication
-
-## Error Summary
-
-Execution failed during tool operation: write_file
-
-## Error Details
-```
-
-PermissionDenied: write access to /etc/passwd is not allowed at PathResolver.validatePath
-(src/services/path_resolver.ts:45) at ToolRegistry.executeTool (src/services/tool_registry.ts:89)
-
-```
-## Execution Context
-
-- Agent: senior-coder
-- Branch: feat/implement-auth-550e8400
-- Tools executed before failure: read_file (3), list_directory (1)
-- Last successful operation: Read /Knowledge/API_Spec.md
-
-## Next Steps
-
-1. Review the error and adjust the request
-2. Move corrected request back to /Inbox/Requests
-3. System will retry execution
-```
-
----
-
-### Step 4: The Hands (Tools & Git) ✅ COMPLETED
-
-**Goal:** Agents execute actions securely and robustly.
-
-### Step 4.1: The Tool Registry ✅ COMPLETED
-
-- **Dependencies:** Steps 3.1-3.4 (Model Adapter, Agent Runner, Context Loader, Plan Writer)
-- **Action:** Implement tool registry that maps LLM function calls (JSON) to safe Deno operations (`read_file`,
-  `write_file`, `run_command`, `list_directory`).
-- **Requirement:** Tools must be sandboxed within allowed paths and enforce security policies from Step 2.3.
-- **Justification:** Enables agents to execute concrete actions while maintaining security boundaries.
-
-**The Solution:** Create a `ToolRegistry` service that:
-
-1. Registers available tools with JSON schemas (for LLM function calling)
-2. Validates tool invocations against security policies
-3. Executes tools within sandboxed context (Deno permissions, path restrictions)
-4. Logs all tool executions to Activity Journal
-5. Returns structured results for LLM to interpret
-
-**Core Tools:**
-
-- `read_file(path: string)` - Read file content within allowed paths
-- `write_file(path: string, content: string)` - Write/modify files
-- `list_directory(path: string)` - List directory contents
-- `run_command(command: string, args: string[])` - Execute shell commands (restricted)
-- `search_files(pattern: string, path: string)` - Search for files/content
-
-**Security Requirements:**
-
-- All paths must be validated through `PathResolver` (Step 2.3)
-- Commands must be whitelisted (no arbitrary shell execution)
-- Tool execution must be logged with trace_id for audit (non-blocking batched writes)
-- Failures must return structured errors (not raw exceptions)
-
-**Success Criteria:**
-
-- LLM outputting `{"tool": "read_file", "path": "Knowledge/docs.md"}` triggers file read
-- Path traversal attempts (`../../etc/passwd`) are rejected
-- Tool execution logged to Activity Journal with trace_id
-- Restricted commands (`rm -rf /`) are blocked
-
-### Step 4.2: Git Integration (Identity Aware) ✅ COMPLETED
-
-- **Dependencies:** Step 4.1 (Tool Registry)
-- **Action:** Implement `GitService` class for managing agent-created branches and commits.
-- **Requirement:** All agent changes must be tracked in git with trace_id linking back to original request.
-- **Justification:** Provides audit trail, enables rollback, and integrates with standard PR review workflow.
-
-**The Solution:** Create a `GitService` that:
-
-1. Auto-initializes git repository if not present
-2. Auto-configures git identity (user.name, user.email) if missing
-3. Creates feature branches with naming convention: `feat/{requestId}-{traceId}`
-4. Commits changes with trace_id in commit message footer
-5. Handles branch name conflicts (appends timestamp if needed)
-6. Validates changes exist before attempting commit
-
-**Branch Naming Convention:**
-
-```
-feat/implement-auth-550e8400
-feat/fix-bug-abc12345
-```
-
-**Commit Message Format:**
-
-```
-Implement authentication system
-
-Created login handler, JWT tokens, and user session management.
-
-[ExoTrace: 550e8400-e29b-41d4-a716-446655440000]
-```
-
-**Error Handling:**
-
-- Repository not initialized → auto-run `git init` + empty commit
-- Identity not configured → use default bot identity (`bot@exoframe.local`)
-- Branch already exists → append timestamp to make unique
-- No changes to commit → throw clear error (don't create empty commit)
-- Git command failures → wrap in descriptive error with command context
-
-**Success Criteria:**
-
-- Run in non-git directory → auto-initializes with initial commit
-- Run with no git config → auto-configures bot identity
-- Create branch twice with same name → second gets unique name
-- Attempt commit with no changes → throws clear error
-- Commit message includes trace_id footer for audit
-- All git operations logged to Activity Journal
-
-### Step 4.3: The Execution Loop (Resilient) ✅ COMPLETED
-
-- **Dependencies:** Steps 4.1–4.2 (Tool Registry, Git Integration) — **Rollback:** pause queue processing through config
-  and replay from last clean snapshot.
-- **Action:** Implement execution loop that processes active tasks from `/System/Active` with comprehensive error
-  handling.
-- **Requirement:** All execution paths (success or failure) must be logged, and users must receive clear feedback.
-- **Justification:** Ensures system resilience and user visibility into agent operations.
-
-**The Solution:** Create an `ExecutionLoop` service that:
-
-1. Monitors `/System/Active` for approved plans
-2. Acquires lease on active task file (prevents concurrent execution)
-3. Executes plan using Tool Registry and Git Service
-4. Handles both success and failure paths with appropriate reporting
-5. Cleans up resources (releases leases, closes connections)
-
-**Execution Flow:**
-
-```
-Agent creates plan → /Inbox/Plans/{requestId}_plan.md (status: review)
-  ↓
-[HUMAN REVIEWS PLAN IN OBSIDIAN]
-  ↓
-  ├─ APPROVE: Move plan → /System/Active/{requestId}.md
-  │   └─ Log: plan.approved (action_type, trace_id, actor: 'human')
-  │
-  ├─ REJECT: Move plan → /Inbox/Rejected/{requestId}_rejected.md
-  │   ├─ Add frontmatter: rejection_reason, rejected_by, rejected_at
-  │   └─ Log: plan.rejected (action_type, trace_id, actor: 'human', metadata: reason)
-  │
-  └─ REQUEST CHANGES: Add comments to plan file, keep in /Inbox/Plans
-      ├─ Append "## Review Comments" section to plan
-      ├─ Update frontmatter: status: 'needs_revision', reviewed_by, reviewed_at
-      └─ Log: plan.revision_requested (action_type, trace_id, actor: 'human', metadata: comments)
-
-      Agent responds: reads comments → generates revised plan
-        ├─ Update plan in-place or create new version
-        └─ Log: plan.revised (action_type, trace_id, actor: 'agent')
-  ↓
-/System/Active/{requestId}.md detected by ExecutionLoop
-  ↓
-Acquire lease (or skip if locked)
-  ↓
-Load plan + context
-  ↓
-Create git branch (feat/{requestId}-{traceId})
-  ↓
-Execute tools (wrapped in try/catch)
-  ↓
-  ├─ SUCCESS:
-  │   ├─ Commit changes to branch
-  │   ├─ Generate Mission Report → /Knowledge/Reports
-  │   ├─ Archive plan → /Inbox/Archive
-  │   └─ Log: execution.completed (trace_id, actor: 'agent', metadata: files_changed)
-  │
-  │   [HUMAN REVIEWS PULL REQUEST]
-  │     ↓
-  │     ├─ APPROVE: Merge PR to main
-  │     │   └─ Log: pr.merged (trace_id, actor: 'human', metadata: commit_sha)
-  │     │
-  │     └─ REJECT: Close PR without merging
-  │         └─ Log: pr.rejected (trace_id, actor: 'human', metadata: reason)
-  │
-  └─ FAILURE:
-      ├─ Rollback git changes (reset branch)
-      ├─ Generate Failure Report → /Knowledge/Reports
-      ├─ Move plan back → /Inbox/Requests (status: error)
-      └─ Log: execution.failed (trace_id, actor: 'system', metadata: error_details)
-  ↓
-Release lease
-```
-
-**Human Review Actions:**
-
-1. **Approve Plan**
-   - Action: Move file from `/Inbox/Plans/{requestId}_plan.md` to `/System/Active/{requestId}.md`
-   - Logging: Insert activity record with `action_type: 'plan.approved'`, `actor: 'human'`
-
-2. **Reject Plan**
-   - Action: Move file to `/Inbox/Rejected/{requestId}_rejected.md`
-   - Add to frontmatter:
-     ```toml
-     status = "rejected"
-     rejected_by = "user@example.com"
-     rejected_at = "2024-11-25T15:30:00Z"
-     rejection_reason = "Approach is too risky, use incremental strategy instead"
-     ```
-   - Logging: Insert activity record with `action_type: 'plan.rejected'`, `actor: 'human'`, `metadata: {reason: "..."}`
-
-3. **Request Changes**
-   - Action: Edit plan file in-place, append comments section:
-     ```markdown
-     ## Review Comments
-
-     **Reviewed by:** user@example.com\
-     **Reviewed at:** 2024-11-25T15:30:00Z
-
-     - ❌ Don't modify the production database directly
-     - ⚠️ Need to add rollback migration
-     - ✅ Login handler looks good
-     - 💡 Consider adding rate limiting to prevent brute force
-     ```
-   - Update frontmatter:
-     ```toml
-     status = "needs_revision"
-     reviewed_by = "user@example.com"
-     reviewed_at = "2024-11-25T15:30:00Z"
-     ```
-   - Logging: Insert activity record with `action_type: 'plan.revision_requested'`, `actor: 'human'`,
-     `metadata: {comment_count: 4}`
-
-**Activity Logging:**
-
-All actions in the execution loop are logged using `DatabaseService.logActivity()`. The current implementation uses direct method calls for activity logging. All logs are batched and written asynchronously for performance.
-
-**Query Examples:**
-
-```sql
--- Get all human review actions for a trace
-SELECT action_type, metadata->>'reviewed_by', timestamp
-FROM activity
-WHERE trace_id = '550e8400-e29b-41d4-a716-446655440000'
-  AND actor = 'human'
-ORDER BY timestamp;
-
--- Find plans awaiting human review
-SELECT entity_id, timestamp
-FROM activity
-WHERE action_type = 'plan.created'
-  AND entity_id NOT IN (
-    SELECT entity_id FROM activity
-    WHERE action_type IN ('plan.approved', 'plan.rejected')
-  )
-ORDER BY timestamp DESC;
-
--- Get rejection rate
-SELECT
-  COUNT(*) FILTER (WHERE action_type = 'plan.rejected') * 100.0 / COUNT(*) as rejection_rate
-FROM activity
-WHERE action_type IN ('plan.approved', 'plan.rejected');
-```
-
-**Failure Report Format:**
-
-```markdown
-+++
-trace_id = "550e8400-e29b-41d4-a716-446655440000"
-request_id = "implement-auth"
-status = "failed"
-failed_at = "2024-11-25T12:00:00Z"
-error_type = "ToolExecutionError"
-+++
-
-# Failure Report: Implement Authentication
-
-## Error Summary
-
-Execution failed during tool operation: write_file
-
-## Error Details
-```
-
-PermissionDenied: write access to /etc/passwd is not allowed at PathResolver.validatePath
-(src/services/path_resolver.ts:45) at ToolRegistry.executeTool (src/services/tool_registry.ts:89)
-
-```
-## Execution Context
-
-- Agent: senior-coder
-- Branch: feat/implement-auth-550e8400
-- Tools executed before failure: read_file (3), list_directory (1)
-- Last successful operation: Read /Knowledge/API_Spec.md
-
-## Next Steps
-
-1. Review the error and adjust the request
-2. Move corrected request back to /Inbox/Requests
-3. System will retry execution
-```
-
----
-
-### Step 4: The Hands (Tools & Git) ✅ COMPLETED
-
-**Goal:** Agents execute actions securely and robustly.
-
-### Step 4.1: The Tool Registry ✅ COMPLETED
-
-- **Dependencies:** Steps 3.1-3.4 (Model Adapter, Agent Runner, Context Loader, Plan Writer)
-- **Action:** Implement tool registry that maps LLM function calls (JSON) to safe Deno operations (`read_file`,
-  `write_file`, `run_command`, `list_directory`).
-- **Requirement:** Tools must be sandboxed within allowed paths and enforce security policies from Step 2.3.
-- **Justification:** Enables agents to execute concrete actions while maintaining security boundaries.
-
-**The Solution:** Create a `ToolRegistry` service that:
-
-1. Registers available tools with JSON schemas (for LLM function calling)
-2. Validates tool invocations against security policies
-3. Executes tools within sandboxed context (Deno permissions, path restrictions)
-4. Logs all tool executions to Activity Journal
-5. Returns structured results for LLM to interpret
-
-**Core Tools:**
-
-- `read_file(path: string)` - Read file content within allowed paths
-- `write_file(path: string, content: string)` - Write/modify files
-- `list_directory(path: string)` - List directory contents
-- `run_command(command: string, args: string[])` - Execute shell commands (restricted)
-- `search_files(pattern: string, path: string)` - Search for files/content
-
-**Security Requirements:**
-
-- All paths must be validated through `PathResolver` (Step 2.3)
-- Commands must be whitelisted (no arbitrary shell execution)
-- Tool execution must be logged with trace_id for audit (non-blocking batched writes)
-- Failures must return structured errors (not raw exceptions)
-
-**Success Criteria:**
-
-- LLM outputting `{"tool": "read_file", "path": "Knowledge/docs.md"}` triggers file read
-- Path traversal attempts (`../../etc/passwd`) are rejected
-- Tool execution logged to Activity Journal with trace_id
-- Restricted commands (`rm -rf /`) are blocked
-
-### Step 4.2: Git Integration (Identity Aware) ✅ COMPLETED
-
-- **Dependencies:** Step 4.1 (Tool Registry)
-- **Action:** Implement `GitService` class for managing agent-created branches and commits.
-- **Requirement:** All agent changes must be tracked in git with trace_id linking back to original request.
-- **Justification:** Provides audit trail, enables rollback, and integrates with standard PR review workflow.
-
-**The Solution:** Create a `GitService` that:
-
-1. Auto-initializes git repository if not present
-2. Auto-configures git identity (user.name, user.email) if missing
-3. Creates feature branches with naming convention: `feat/{requestId}-{traceId}`
-4. Commits changes with trace_id in commit message footer
-5. Handles branch name conflicts (appends timestamp if needed)
-6. Validates changes exist before attempting commit
-
-**Branch Naming Convention:**
-
-```
-feat/implement-auth-550e8400
-feat/fix-bug-abc12345
-```
-
-**Commit Message Format:**
-
-```
-Implement authentication system
-
-Created login handler, JWT tokens, and user session management.
-
-[ExoTrace: 550e8400-e29b-41d4-a716-446655440000]
-```
-
-**Error Handling:**
-
-- Repository not initialized → auto-run `git init` + empty commit
-- Identity not configured → use default bot identity (`bot@exoframe.local`)
-- Branch already exists → append timestamp to make unique
-- No changes to commit → throw clear error (don't create empty commit)
-- Git command failures → wrap in descriptive error with command context
-  **Success Criteria:**
-
-- Run in non-git directory → auto-initializes with initial commit
-- Run with no git config → auto-configures bot identity
-- Create branch twice with same name → second gets unique name
-- Attempt commit with no changes → throws clear error
-- Commit message includes trace_id footer for audit
-- All git operations logged to Activity Journal
-
-### Step 4.3: The Execution Loop (Resilient) ✅ COMPLETED
-
-- **Dependencies:** Steps 4.1–4.2 (Tool Registry, Git Integration) — **Rollback:** pause queue processing through config
-  and replay from last clean snapshot.
-- **Action:** Implement execution loop that processes active tasks from `/System/Active` with comprehensive error
-  handling.
-- **Requirement:** All execution paths (success or failure) must be logged, and users must receive clear feedback.
-- **Justification:** Ensures system resilience and user visibility into agent operations.
-
-**The Solution:** Create an `ExecutionLoop` service that:
-
-1. Monitors `/System/Active` for approved plans
-2. Acquires lease on active task file (prevents concurrent execution)
-3. Executes plan using Tool Registry and Git Service
-4. Handles both success and failure paths with appropriate reporting
-5. Cleans up resources (releases leases, closes connections)
-
-**Execution Flow:**
-
-```
-Agent creates plan → /Inbox/Plans/{requestId}_plan.md (status: review)
-  ↓
-[HUMAN REVIEWS PLAN IN OBSIDIAN]
-  ↓
-  ├─ APPROVE: Move plan → /System/Active/{requestId}.md
-  │   └─ Log: plan.approved (action_type, trace_id, actor: 'human')
-  │
-  ├─ REJECT: Move plan → /Inbox/Rejected/{requestId}_rejected.md
-  │   ├─ Add frontmatter: rejection_reason, rejected_by, rejected_at
-  │   └─ Log: plan.rejected (action_type, trace_id, actor: 'human', metadata: reason)
-  │
-  └─ REQUEST CHANGES: Add comments to plan file, keep in /Inbox/Plans
-      ├─ Append "## Review Comments" section to plan
-      ├─ Update frontmatter: status: 'needs_revision', reviewed_by, reviewed_at
-      └─ Log: plan.revision_requested (action_type, trace_id, actor: 'human', metadata: comments)
-
-      Agent responds: reads comments → generates revised plan
-        ├─ Update plan in-place or create new version
-        └─ Log: plan.revised (action_type, trace_id, actor: 'agent')
-  ↓
-/System/Active/{requestId}.md detected by ExecutionLoop
-  ↓
-Acquire lease (or skip if locked)
-  ↓
-Load plan + context
-  ↓
-Create git branch (feat/{requestId}-{traceId})
-  ↓
-Execute tools (wrapped in try/catch)
-  ↓
-  ├─ SUCCESS:
-  │   ├─ Commit changes to branch
-  │   ├─ Generate Mission Report → /Knowledge/Reports
-  │   ├─ Archive plan → /Inbox/Archive
-  │   └─ Log: execution.completed (trace_id, actor: 'agent', metadata: files_changed)
-  │
-  │   [HUMAN REVIEWS PULL REQUEST]
-  │     ↓
-  │     ├─ APPROVE: Merge PR to main
-  │     │   └─ Log: pr.merged (trace_id, actor: 'human', metadata: commit_sha)
-  │     │
-  │     └─ REJECT: Close PR without merging
-  │         └─ Log: pr.rejected (trace_id, actor: 'human', metadata: reason)
-  │
-  └─ FAILURE:
-      ├─ Rollback git changes (reset branch)
-      ├─ Generate Failure Report → /Knowledge/Reports
-      ├─ Move plan back → /Inbox/Requests (status: error)
-      └─ Log: execution.failed (trace_id, actor: 'system', metadata: error_details)
-  ↓
-Release lease
-```
-
-**Human Review Actions:**
-
-1. **Approve Plan**
-   - Action: Move file from `/Inbox/Plans/{requestId}_plan.md` to `/System/Active/{requestId}.md`
-   - Logging: Insert activity record with `action_type: 'plan.approved'`, `actor: 'human'`
-
-2. **Reject Plan**
-   - Action: Move file to `/Inbox/Rejected/{requestId}_rejected.md`
-   - Add to frontmatter:
-     ```toml
-     status = "rejected"
-     rejected_by = "user@example.com"
-     rejected_at = "2024-11-25T15:30:00Z"
-     rejection_reason = "Approach is too risky, use incremental strategy instead"
-     ```
-   - Logging: Insert activity record with `action_type: 'plan.rejected'`, `actor: 'human'`, `metadata: {reason: "..."}`
-
-3. **Request Changes**
-   - Action: Edit plan file in-place, append comments section:
-     ```markdown
-     ## Review Comments
-
-     **Reviewed by:** user@example.com\
-     **Reviewed at:** 2024-11-25T15:30:00Z
-
-     - ❌ Don't modify the production database directly
-     - ⚠️ Need to add rollback migration
-     - ✅ Login handler looks good
-     - 💡 Consider adding rate limiting to prevent brute force
-     ```
-   - Update frontmatter:
-     ```toml
-     status = "needs_revision"
-     reviewed_by = "user@example.com"
-     reviewed_at = "2024-11-25T15:30:00Z"
-     ```
-   - Logging: Insert activity record with `action_type: 'plan.revision_requested'`, `actor: 'human'`,
-     `metadata: {comment_count: 4}`
-
-**Activity Logging:**
-
-All actions in the execution loop are logged using `DatabaseService.logActivity()`. The current implementation uses direct method calls for activity logging. All logs are batched and written asynchronously for performance.
-
-**Query Examples:**
-
-```sql
--- Get all human review actions for a trace
-SELECT action_type, metadata->>'reviewed_by', timestamp
-FROM activity
-WHERE trace_id = '550e8400-e29b-41d4-a716-446655440000'
-  AND actor = 'human'
-ORDER BY timestamp;
-
--- Find plans awaiting human review
-SELECT entity_id, timestamp
-FROM activity
-WHERE action_type = 'plan.created'
-  AND entity_id NOT IN (
-    SELECT entity_id FROM activity
-    WHERE action_type IN ('plan.approved', 'plan.rejected')
-  )
-ORDER BY timestamp DESC;
-
--- Get rejection rate
-SELECT
-  COUNT(*) FILTER (WHERE action_type = 'plan.rejected') * 100.0 / COUNT(*) as rejection_rate
-FROM activity
-WHERE action_type IN ('plan.approved', 'plan.rejected');
-```
-
-**Failure Report Format:**
-
-```markdown
-+++
-trace_id = "550e8400-e29b-41d4-a716-446655440000"
-request_id = "implement-auth"
-status = "failed"
-failed_at = "2024-11-25T12:00:00Z"
-error_type = "ToolExecutionError"
-+++
-
-# Failure Report: Implement Authentication
-
-## Error Summary
-
-Execution failed during tool operation: write_file
-
-## Error Details
-```
-
-PermissionDenied: write access to /etc/passwd is not allowed at PathResolver.validatePath
-(src/services/path_resolver.ts:45) at ToolRegistry.executeTool (src/services/tool_registry.ts:89)
-
-```
-## Execution Context
-
-- Agent: senior-coder
-- Branch: feat/implement-auth-550e8400
-- Tools executed before failure: read_file (3), list_directory (1)
-- Last successful operation: Read /Knowledge/API_Spec.md
-
-## Next Steps
-
-1. Review the error and adjust the request
-2. Move corrected request back to /Inbox/Requests
-3. System will retry execution
-```
-
----
-
 ## Phase 5: Obsidian Setup & Runtime Integration ✅ COMPLETED
 
 **Goal:** Configure Obsidian as the primary UI for ExoFrame, enabling users to view dashboards, manage tasks, and monitor agent activity without leaving their knowledge management environment.
@@ -3466,23 +2642,124 @@ tags: [dashboard, exoframe]
 
 ## 📊 System Status
 
-| Metric                | Value                                                                      |
-| --------------------- | -------------------------------------------------------------------------- |
-| Active Tasks          | `= length(filter(dv.pages('"System/Active"'), p => p.status = "running"))` |
-| `plan.parsed`         | Steps extracted                                                            |
-| `plan.parsing_failed` | Step parse error                                                           |
+| Metric          | Value                                                                         |
+| --------------- | ----------------------------------------------------------------------------- |
+| Active Tasks    | `= length(filter(dv.pages('"System/Active"'), p => p.status = "running"))`    |
+| Pending Plans   | `= length(filter(dv.pages('"System/Active"'), p => p.status = "approved"))`   |
+| Completed Tasks | `= length(filter(dv.pages('"System/Archive"'), p => p.status = "completed"))` |
+| Failed Tasks    | `= length(filter(dv.pages('"System/Archive"'), p => p.status = "failed"))`    |
+
+## 📋 Recent Activity
+
+### Active Plans
+
+```dataview
+TABLE status, created, agent
+FROM "System/Active"
+SORT created DESC
+LIMIT 10
+```
+````
+
+### Recent Changesets
+
+```dataview
+TABLE status, created_by, portal
+FROM "System/Changesets"
+SORT created DESC
+LIMIT 10
+```
+
+### Activity Journal (Last 24h)
+
+```dataview
+TABLE action_type, actor, timestamp
+FROM "System/Journal"
+WHERE timestamp >= date(today) - dur(1 day)
+SORT timestamp DESC
+```
+
+## 🔍 Quick Actions
+
+- [[Create New Request|➕ New Request]]
+- [[View All Plans|📋 All Plans]]
+- [[System Status|⚙️ System Status]]
+- [[Agent Blueprints|🤖 Agents]]
+
+```
+**Success Criteria:**
+
+1. [x] Dashboard file created at `/Knowledge/Dashboard.md`
+2. [x] Dataview queries render correctly in Obsidian
+3. [x] System status metrics display current values
+4. [x] Recent activity sections show live data
+5. [x] Quick action links work correctly
+6. [x] Dashboard loads without errors in Obsidian
+
+---
+
+## Phase 6: Plan Execution via MCP ✅ COMPLETE
+
+**Goal:** Enable end-to-end plan execution using Model Context Protocol (MCP) for secure agent-tool communication.
+
+**Status:** ✅ COMPLETE
+**Timebox:** 2 weeks
+**Entry Criteria:** Phase 5 complete + portal system
+**Exit Criteria:** Plan execution via MCP working end-to-end
+---
+
+### Step 6.1: Plan Detection & Parsing ✅ COMPLETED
+
+- **Dependencies:** Step 5.12 (Plan Detection & Parsing from Phase 5)
+- **Rollback:** Disable plan watcher, plans remain in System/Active/ without execution
+- **Action:** Implement file watcher for System/Active/ directory to detect approved plans and parse plan structure
+- **Location:** `src/services/plan_executor.ts`, `src/services/plan_parser.ts`
+
+**Plan Detection Flow:**
+
+1. FileWatcher monitors `System/Active/` for `_plan.md` files
+2. Parse YAML frontmatter for required fields (trace_id, request_id, status=approved)
+3. Extract plan body and parse step structure using regex
+4. Validate sequential step numbering and non-empty titles
+5. Build structured plan object for execution
+6. Log plan detection and parsing events to Activity Journal
+
+**Plan Structure Validation:**
+
+- ✓ YAML frontmatter with required fields
+- ✓ Status must be "approved"
+- ✓ Sequential step numbering (1, 2, 3...)
+- ✓ Non-empty step titles
+- ✓ Valid step content
+
+**Activity Journal Events:**
+
+| Event                         | Payload                           | Description                        |
+| :---------------------------- | :-------------------------------- | :--------------------------------- |
+| `plan.detected`               | `{trace_id, request_id}`          | Plan file found in System/Active/  |
+| `plan.parsed`                 | `{trace_id, step_count, steps[]}` | Plan structure successfully parsed |
+| `plan.invalid_frontmatter`    | `{error}`                         | YAML parsing failed                |
+| `plan.missing_required_field` | `{field, value}`                  | Required field missing/invalid     |
+| `plan.parsing_failed`         | `{error, content}`                | Step parsing failed                |
 
 **Success Criteria:**
 
-1. [x] FileWatcher detects _plan.md files in System/Active/
-2. [x] YAML frontmatter parsed correctly
-3. [x] trace_id extracted and validated
-4. [x] Plan steps extracted with regex pattern
-5. [x] Step numbering validated (sequential 1, 2, 3...)
-6. [x] Step titles validated (non-empty)
-7. [x] All parsing events logged to Activity Journal
-8. [x] 19 unit tests passing
-9. [x] 5 integration tests passing
+- [x] FileWatcher detects new plan files in System/Active/
+- [x] YAML frontmatter parsing extracts trace_id and metadata
+- [x] Regex-based step extraction identifies all plan steps
+- [x] Step validation ensures proper numbering and content
+- [x] Activity Journal logs all detection and parsing events
+- [x] Error handling provides clear messages for invalid plans
+- [x] Plan parsing is resilient to format variations
+
+**Planned Tests:**
+
+- [x] `tests/services/plan_executor_test.ts`: Unit tests for plan detection
+- [x] `tests/services/plan_parser_test.ts`: Unit tests for plan parsing logic
+- [x] File watcher integration tests
+- [x] YAML frontmatter validation tests
+- [x] Step extraction and validation tests
+- [x] Activity Journal logging tests
 
 ---
 
@@ -3514,22 +2791,22 @@ LLM agents need a standardized, secure interface to interact with ExoFrame and p
 Implement an MCP (Model Context Protocol) server that exposes tools, resources, and prompts to LLM agents:
 
 **Architecture:**
-
 ```
+
 ┌─────────────────────────────────────────────┐
-│         ExoFrame MCP Server                 │
+│ ExoFrame MCP Server │
 ├─────────────────────────────────────────────┤
-│ Tools:      6 tools (read_file, write_file, │
-│             list_directory, git_*)          │
+│ Tools: 6 tools (read_file, write_file, │
+│ list_directory, git_*) │
 ├─────────────────────────────────────────────┤
-│ Resources:  portal://PortalName/path URIs   │
+│ Resources: portal://PortalName/path URIs │
 ├─────────────────────────────────────────────┤
-│ Prompts:    execute_plan, create_changeset  │
+│ Prompts: execute_plan, create_changeset │
 ├─────────────────────────────────────────────┤
-│ Transport:  stdio or SSE (HTTP)             │
+│ Transport: stdio or SSE (HTTP) │
 └─────────────────────────────────────────────┘
-```
 
+````
 **MCP Tools Specification:**
 
 ```typescript
@@ -3621,7 +2898,7 @@ Implement an MCP (Model Context Protocol) server that exposes tools, resources, 
     required: ["portal"],
   },
 }
-```
+````
 
 **MCP Resources:**
 
@@ -4933,9 +4210,11 @@ Implement a `LlamaProvider` that:
 5. [x] No TypeScript errors, lint warnings, or test failures
 
 ---
+
+---
 ## Phase 7: Flow Orchestration (Multi-Agent Coordination)
 
-> **Status:** � IN PROGRESS (Steps 7.1-7.5 ✅ COMPLETED)\
+> **Status:** � IN PROGRESS (Steps 7.1-7.6 ✅ COMPLETED)\
 > **Prerequisites:** Phases 1–6 (Core system validated via Testing & QA)\
 > **Goal:** Enable declarative multi-agent workflows with dependency resolution, parallel execution, and result aggregation.
 
@@ -5147,25 +4426,25 @@ Input:                          Output Waves:
 
 **Activity Journal Events:**
 
-| Event                     | Payload Fields                                      | Description |
-| ------------------------- | --------------------------------------------------- | ----------- |
-| `flow.validating`         | `flowId, stepCount`                                 | Flow validation started |
-| `flow.validated`          | `flowId, stepCount, maxParallelism, failFast`       | Flow validation successful |
-| `flow.validation.failed`  | `flowId, error`                                     | Flow validation failed |
-| `flow.started`            | `flowRunId, flowId, stepCount, maxParallelism, failFast` | Flow execution started |
-| `flow.dependencies.resolving` | `flowRunId, flowId`                             | Dependency resolution started |
-| `flow.dependencies.resolved` | `flowRunId, flowId, waveCount, totalSteps`       | Dependencies resolved into waves |
-| `flow.wave.started`       | `flowRunId, waveNumber, waveSize, stepIds`          | Wave execution started |
-| `flow.wave.completed`     | `flowRunId, waveNumber, waveSize, successCount, failureCount, failed` | Wave execution completed |
-| `flow.step.queued`        | `flowRunId, stepId, agent, dependencies, inputSource` | Step queued for execution |
-| `flow.step.started`       | `flowRunId, stepId, agent`                          | Step execution started |
-| `flow.step.input.prepared`| `flowRunId, stepId, inputSource, hasContext`        | Step input prepared |
-| `flow.step.completed`     | `flowRunId, stepId, agent, success, duration, outputLength, hasThought` | Step completed successfully |
-| `flow.step.failed`        | `flowRunId, stepId, agent, error, errorType, duration` | Step execution failed |
-| `flow.output.aggregating` | `flowRunId, flowId, outputFrom, outputFormat, totalSteps` | Output aggregation started |
-| `flow.output.aggregated`  | `flowRunId, flowId, outputLength`                   | Output aggregation completed |
-| `flow.completed`          | `flowRunId, flowId, success, duration, stepsCompleted, successfulSteps, failedSteps, outputLength` | Flow completed successfully |
-| `flow.failed`             | `flowRunId, flowId, error, errorType, duration, stepsAttempted, successfulSteps, failedSteps` | Flow execution failed |
+| Event                         | Payload Fields                                                                                     | Description                      |
+| ----------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------- |
+| `flow.validating`             | `flowId, stepCount`                                                                                | Flow validation started          |
+| `flow.validated`              | `flowId, stepCount, maxParallelism, failFast`                                                      | Flow validation successful       |
+| `flow.validation.failed`      | `flowId, error`                                                                                    | Flow validation failed           |
+| `flow.started`                | `flowRunId, flowId, stepCount, maxParallelism, failFast`                                           | Flow execution started           |
+| `flow.dependencies.resolving` | `flowRunId, flowId`                                                                                | Dependency resolution started    |
+| `flow.dependencies.resolved`  | `flowRunId, flowId, waveCount, totalSteps`                                                         | Dependencies resolved into waves |
+| `flow.wave.started`           | `flowRunId, waveNumber, waveSize, stepIds`                                                         | Wave execution started           |
+| `flow.wave.completed`         | `flowRunId, waveNumber, waveSize, successCount, failureCount, failed`                              | Wave execution completed         |
+| `flow.step.queued`            | `flowRunId, stepId, agent, dependencies, inputSource`                                              | Step queued for execution        |
+| `flow.step.started`           | `flowRunId, stepId, agent`                                                                         | Step execution started           |
+| `flow.step.input.prepared`    | `flowRunId, stepId, inputSource, hasContext`                                                       | Step input prepared              |
+| `flow.step.completed`         | `flowRunId, stepId, agent, success, duration, outputLength, hasThought`                            | Step completed successfully      |
+| `flow.step.failed`            | `flowRunId, stepId, agent, error, errorType, duration`                                             | Step execution failed            |
+| `flow.output.aggregating`     | `flowRunId, flowId, outputFrom, outputFormat, totalSteps`                                          | Output aggregation started       |
+| `flow.output.aggregated`      | `flowRunId, flowId, outputLength`                                                                  | Output aggregation completed     |
+| `flow.completed`              | `flowRunId, flowId, success, duration, stepsCompleted, successfulSteps, failedSteps, outputLength` | Flow completed successfully      |
+| `flow.failed`                 | `flowRunId, flowId, error, errorType, duration, stepsAttempted, successfulSteps, failedSteps`      | Flow execution failed            |
 
 **Success Criteria:**
 
@@ -5219,18 +4498,19 @@ src/cli/
 
 **Commands:**
 
-| Command                                    | Description                             | Output Format |
-| ------------------------------------------ | --------------------------------------- | ------------- |
+| Command                                    | Description                             | Output Format                           |
+| ------------------------------------------ | --------------------------------------- | --------------------------------------- |
 | `exoctl flow list`                         | List all flows in `/Blueprints/Flows/`  | Table with ID, Name, Steps, Description |
-| `exoctl flow show <id>`                    | Display flow steps and dependency graph | ASCII graph + step details table |
-| `exoctl flow run <id> --request <req-id>`  | Execute flow for a request              | Execution report with step results |
-| `exoctl flow plan <id> --request <req-id>` | Dry-run: show execution plan            | Wave-by-wave execution plan |
-| `exoctl flow history <id>`                 | Show past executions                    | Table of executions with status/timing |
-| `exoctl flow validate <file>`              | Validate flow definition                | Validation report with errors/warnings |
+| `exoctl flow show <id>`                    | Display flow steps and dependency graph | ASCII graph + step details table        |
+| `exoctl flow run <id> --request <req-id>`  | Execute flow for a request              | Execution report with step results      |
+| `exoctl flow plan <id> --request <req-id>` | Dry-run: show execution plan            | Wave-by-wave execution plan             |
+| `exoctl flow history <id>`                 | Show past executions                    | Table of executions with status/timing  |
+| `exoctl flow validate <file>`              | Validate flow definition                | Validation report with errors/warnings  |
 
 **Command Details:**
 
 **`exoctl flow list`**
+
 - Scans `/Blueprints/Flows/` directory for `.toml` files
 - Parses flow metadata (id, name, description, version)
 - Counts steps in each flow
@@ -5238,6 +4518,7 @@ src/cli/
 - Shows flow status (valid/invalid) based on schema validation
 
 **`exoctl flow show <id>`**
+
 - Loads flow definition from `/Blueprints/Flows/<id>.toml`
 - Validates flow schema and dependencies
 - Renders ASCII dependency graph showing step relationships
@@ -5246,6 +4527,7 @@ src/cli/
 - Includes flow settings (maxParallelism, failFast, output format)
 
 **`exoctl flow run <id> --request <req-id>`**
+
 - Validates flow and request existence
 - Creates FlowRunner instance with dependencies
 - Executes flow with real-time progress reporting
@@ -5254,6 +4536,7 @@ src/cli/
 - Handles execution errors with detailed error reporting
 
 **`exoctl flow plan <id> --request <req-id>`**
+
 - Performs dry-run analysis without executing agents
 - Shows execution waves and step ordering
 - Validates all dependencies and step configurations
@@ -5262,6 +4545,7 @@ src/cli/
 - Validates request data availability for each step
 
 **`exoctl flow history <id>`**
+
 - Queries Activity Journal for flow executions
 - Groups executions by flowRunId
 - Shows execution status, duration, and step counts
@@ -5269,6 +4553,7 @@ src/cli/
 - Provides filtering options (date range, status, request ID)
 
 **`exoctl flow validate <file>`**
+
 - Validates flow TOML against Flow schema
 - Checks step dependencies for cycles and invalid references
 - Validates agent references against available blueprints
@@ -5287,6 +4572,7 @@ src/cli/
 **Output Formats:**
 
 **Flow List Output:**
+
 ```
 Available Flows:
 ┌─────────────┬─────────────────┬───────┬─────────────────────────────────────┐
@@ -5299,6 +4585,7 @@ Available Flows:
 ```
 
 **Flow Show Output:**
+
 ```
 Flow: code-review (v1.0.0)
 Description: Automated code review workflow
@@ -5383,11 +4670,13 @@ src/services/
 **Routing Logic:**
 
 **Priority Order:**
+
 1. **Flow Field Present**: `flow: <id>` → Route to FlowRunner
 2. **Agent Field Present**: `agent: <id>` → Route to AgentRunner (legacy)
 3. **Neither Field**: Use default agent from configuration
 
 **Validation Steps:**
+
 1. Parse request frontmatter for `flow` and `agent` fields
 2. If `flow` field exists:
    - Validate flow ID exists in `/Blueprints/Flows/`
@@ -5402,6 +4691,7 @@ src/services/
 **Request Frontmatter Examples:**
 
 **Flow Request:**
+
 ```yaml
 ---
 trace_id: "550e8400-e29b-41d4-a716-446655440000"
@@ -5414,6 +4704,7 @@ Please review this pull request for security issues and code quality.
 ```
 
 **Agent Request (Legacy):**
+
 ```yaml
 ---
 trace_id: "550e8400-e29b-41d4-a716-446655440001"
@@ -5425,6 +4716,7 @@ Implement a new feature following the requirements in the attached spec.
 ```
 
 **Default Agent Request:**
+
 ```yaml
 ---
 trace_id: "550e8400-e29b-41d4-a716-446655440002"
@@ -5446,43 +4738,43 @@ Please help me understand this codebase structure.
 
 **Activity Journal Events:**
 
-| Event                     | Payload Fields                                      |
-| ------------------------- | --------------------------------------------------- |
-| `request.routing.flow`    | `requestId, flowId, traceId`                        |
-| `request.routing.agent`   | `requestId, agentId, traceId`                       |
-| `request.routing.default` | `requestId, defaultAgentId, traceId`                |
-| `request.routing.error`   | `requestId, error, field, value, traceId`           |
-| `request.flow.validated`  | `requestId, flowId, stepCount, traceId`             |
-| `request.flow.validation.failed` | `requestId, flowId, error, traceId`            |
+| Event                            | Payload Fields                            |
+| -------------------------------- | ----------------------------------------- |
+| `request.routing.flow`           | `requestId, flowId, traceId`              |
+| `request.routing.agent`          | `requestId, agentId, traceId`             |
+| `request.routing.default`        | `requestId, defaultAgentId, traceId`      |
+| `request.routing.error`          | `requestId, error, field, value, traceId` |
+| `request.flow.validated`         | `requestId, flowId, stepCount, traceId`   |
+| `request.flow.validation.failed` | `requestId, flowId, error, traceId`       |
 
 **Success Criteria:**
 
-- [ ] Requests with `flow:` field in frontmatter are correctly routed to FlowRunner for multi-agent execution
-- [ ] Requests with `agent:` field continue to use the existing AgentRunner for single-agent execution
-- [ ] Requests without flow or agent fields use the default agent as before
-- [ ] Invalid flow IDs produce clear error messages indicating the flow was not found
-- [ ] Flow validation occurs before routing to prevent execution of invalid flows
-- [ ] Request router maintains backward compatibility with existing single-agent requests
-- [ ] Routing decision is logged to Activity Journal with trace_id for audit trail
-- [ ] Conflicting flow/agent fields in the same request produce clear error messages
-- [ ] Flow dependencies (agents, transforms) are validated before routing
-- [ ] Request routing handles malformed frontmatter gracefully with helpful error messages
-- [ ] Routing performance doesn't degrade with large numbers of flows or requests
-- [ ] Request router integrates seamlessly with existing request processing pipeline
+- [x] Requests with `flow:` field in frontmatter are correctly routed to FlowRunner for multi-agent execution
+- [x] Requests with `agent:` field continue to use the existing AgentRunner for single-agent execution
+- [x] Requests without flow or agent fields use the default agent as before
+- [x] Invalid flow IDs produce clear error messages indicating the flow was not found
+- [x] Flow validation occurs before routing to prevent execution of invalid flows
+- [x] Request router maintains backward compatibility with existing single-agent requests
+- [x] Routing decision is logged to Activity Journal with trace_id for audit trail
+- [x] Conflicting flow/agent fields in the same request produce clear error messages
+- [x] Flow dependencies (agents, transforms) are validated before routing
+- [x] Request routing handles malformed frontmatter gracefully with helpful error messages
+- [x] Routing performance doesn't degrade with large numbers of flows or requests
+- [x] Request router integrates seamlessly with existing request processing pipeline
 
 **Planned Tests:**
 
-- [ ] `tests/services/request_router_test.ts`: Unit and integration tests for request routing logic
-- [ ] Flow routing tests: Requests with valid flow IDs are routed to FlowRunner
-- [ ] Agent routing tests: Requests with agent IDs use AgentRunner
-- [ ] Default routing tests: Requests without flow/agent use default agent
-- [ ] Error handling tests: Invalid flow IDs produce descriptive errors
-- [ ] Backward compatibility tests: Existing requests continue to work unchanged
-- [ ] Activity Journal logging tests: Routing decisions are properly logged
-- [ ] Edge case tests: Malformed frontmatter, conflicting flow/agent fields
-- [ ] Validation tests: Flow schema validation before routing
-- [ ] Performance tests: Routing performance with many flows
-- [ ] Integration tests: End-to-end request processing with routing
+- [x] `tests/services/request_router_test.ts`: Unit and integration tests for request routing logic
+- [x] Flow routing tests: Requests with valid flow IDs are routed to FlowRunner
+- [x] Agent routing tests: Requests with agent IDs use AgentRunner
+- [x] Default routing tests: Requests without flow/agent use default agent
+- [x] Error handling tests: Invalid flow IDs produce descriptive errors
+- [x] Backward compatibility tests: Existing requests continue to work unchanged
+- [x] Activity Journal logging tests: Routing decisions are properly logged
+- [x] Edge case tests: Malformed frontmatter, conflicting flow/agent fields
+- [x] Validation tests: Flow schema validation before routing
+- [x] Performance tests: Routing performance with many flows
+- [x] Integration tests: End-to-end request processing with routing
 
 ---
 
@@ -6570,4 +5862,6 @@ _End of Implementation Plan_
 
 ```
 ```
-````
+
+```
+```
