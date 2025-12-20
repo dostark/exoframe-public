@@ -375,11 +375,11 @@ async process(filePath: string): Promise<string | null> {
     return result;
   } catch (error) {
     console.error(`[MyService] Error processing: ${filePath}`, error);
-    
+
     this.logActivity("request.failed", filePath, {
       error: error instanceof Error ? error.message : String(error),
     }, traceId);
-    
+
     return null;
   }
 }
@@ -408,27 +408,27 @@ async parseFile(filePath: string): Promise<ParsedFile | null> {
 
 ## Frontmatter Parsing
 
-### Request files use TOML frontmatter (`+++`)
+### Request files use YAML frontmatter (`---`)
 
 ```typescript
-// Parse TOML frontmatter
-const tomlMatch = content.match(/^\+\+\+\n([\s\S]*?)\n\+\+\+\n?([\s\S]*)$/);
-if (!tomlMatch) {
-  console.error(`[Parser] Invalid TOML frontmatter format`);
+// Parse YAML frontmatter
+const yamlMatch = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+if (!yamlMatch) {
+  console.error(`[Parser] Invalid YAML frontmatter format`);
   return null;
 }
 
-const tomlContent = tomlMatch[1];
-const body = tomlMatch[2] || "";
+const yamlContent = yamlMatch[1];
+const body = yamlMatch[2] || "";
 
-import { parse as parseToml } from "@std/toml";
-const frontmatter = parseToml(tomlContent);
+import { parse as parseYaml } from "@std/yaml";
+const frontmatter = parseYaml(yamlContent);
 ```
 
 ### Plan files use YAML frontmatter (`---`)
 
 ```typescript
-// Parse YAML frontmatter
+// Parse YAML frontmatter (same as requests)
 const yamlMatch = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
 if (!yamlMatch) {
   console.error(`[Parser] Invalid YAML frontmatter format`);
@@ -673,31 +673,89 @@ export class MyService {
 
 ### When Creating Agent Blueprints
 
-Blueprints define AI agents with specific capabilities, models, and system prompts. Follow these guidelines:
+Blueprints define AI agents with specific capabilities, models, and system prompts. Follow these guidelines and use the comprehensive examples from Step 6.10 as templates.
 
 **Blueprint File Structure:**
 
-- Location: `Blueprints/Agents/{agent_id}.md`
-- Format: TOML frontmatter with `+++` delimiters + Markdown content
-- Required fields: `agent_id`, `name`, `model`, `capabilities`, `created`, `created_by`, `version`
+- Location: `Blueprints/Agents/{agent_id}.md` or `Blueprints/Agents/examples/{agent_id}.md`
+- Format: YAML frontmatter with `---` delimiters + Markdown content
+- Required fields: `name`, `model`, `capabilities`, `system_prompt`
 
 **Validation Rules:**
 
-1. **agent_id**: Lowercase alphanumeric + hyphens only (e.g., `senior-coder`)
+1. **name**: Lowercase alphanumeric + hyphens only (e.g., `code-reviewer`)
 2. **Reserved names**: Cannot use `system`, `default`, `test`
-3. **Model format**: `provider:model-name` (e.g., `anthropic:claude-sonnet`)
-4. **System prompt**: Must include `<thought>` and `<content>` output format instructions
-5. **Capabilities**: Array of strings describing agent abilities
+3. **Model format**: `provider:model-name` (e.g., `anthropic:claude-3-5-sonnet-20241022`)
+4. **System prompt**: Must include clear role definition, capabilities, and output format instructions
+5. **Capabilities**: Array of MCP tool names the agent can use
+
+**Available MCP Tools:**
+
+```typescript
+// File operations
+"read_file"; // Read files from portals
+"write_file"; // Write files to portals
+"list_directory"; // List directory contents
+
+// Git operations
+"git_create_branch"; // Create feature branches
+"git_commit"; // Commit changes
+"git_status"; // Check git status
+```
+
+**System Prompt Best Practices:**
+
+1. **Clear Role Definition**: Start with "You are a [specialized role]..."
+2. **Capability Description**: List what the agent can do
+3. **Workflow Guidance**: Describe how the agent should approach tasks
+4. **Output Format**: Specify expected response formats
+5. **Context Awareness**: Mention portal and MCP tool usage
+
+**Example System Prompts:**
+
+```markdown
+# Code Reviewer Agent
+
+system_prompt: |
+You are an expert code reviewer with 10+ years of experience in software development.
+Your role is to analyze code changes for quality, security, and best practices.
+
+When reviewing code:
+
+1. Check for common security vulnerabilities
+2. Validate code style and consistency
+3. Identify potential bugs or edge cases
+4. Suggest improvements for performance and maintainability
+5. Ensure proper error handling and logging
+
+Always provide constructive feedback with specific examples and actionable recommendations.
+
+# Feature Developer Agent
+
+system_prompt: |
+You are a senior full-stack developer specializing in feature implementation.
+Your expertise includes modern web development, API design, and best practices.
+
+When implementing features:
+
+1. Analyze requirements thoroughly
+2. Design clean, maintainable solutions
+3. Write comprehensive tests
+4. Follow established patterns and conventions
+5. Ensure proper error handling and validation
+
+Always consider scalability, security, and user experience in your implementations.
+```
 
 **Available Templates:**
 
-- `default` - General-purpose agent (Ollama)
-- `coder` - Software development (Claude Sonnet)
-- `reviewer` - Code review (GPT-4)
-- `architect` - System design (Claude Opus)
-- `researcher` - Research and analysis (GPT-4 Turbo)
-- `mock` - Testing agent (MockLLMProvider)
-- `gemini` - Google's multimodal AI (Gemini 2.0)
+See Step 6.10 examples for comprehensive agent blueprints:
+
+- `code-reviewer` - Quality-focused code review and analysis
+- `feature-developer` - End-to-end feature implementation
+- `api-documenter` - API documentation generation
+- `security-auditor` - Security vulnerability assessment
+- `research-synthesizer` - Research analysis and synthesis
 
 **CLI Commands:**
 
@@ -724,6 +782,274 @@ All blueprint operations are logged to Activity Journal:
 - `blueprint.removed` - When blueprint is deleted
 
 ---
+
+## Flow Creation Guidelines
+
+### When Creating Multi-Agent Flows
+
+Flows orchestrate multiple agents working together on complex tasks. Use the comprehensive examples from Step 7.9 as templates for different flow patterns.
+
+**Flow File Structure:**
+
+- Location: `flows/examples/{category}/{flow_name}.flow.ts`
+- Format: TypeScript using `defineFlow()` helper
+- Required fields: `id`, `name`, `description`, `version`, `steps[]`
+
+**Flow Patterns (from Step 7.9 examples):**
+
+1. **Pipeline**: Sequential execution (code-review.flow.ts)
+   - Steps execute in order with dependencies
+   - Each step builds on previous results
+   - Best for linear workflows
+
+2. **Fan-Out/Fan-In**: Parallel execution (research-synthesis.flow.ts)
+   - Multiple agents work simultaneously
+   - Results combined by final agent
+   - Best for gathering diverse inputs
+
+3. **Staged**: Conditional execution (feature-development.flow.ts)
+   - Gates between stages
+   - Human approval may be required
+   - Best for iterative refinement
+
+**Flow Definition Best Practices:**
+
+```typescript
+import { defineFlow } from "../define_flow.ts";
+
+const myFlow = defineFlow({
+  id: "my-custom-flow",
+  name: "My Custom Flow",
+  description: "Detailed description of what this flow accomplishes",
+  version: "1.0.0",
+  steps: [
+    {
+      id: "analyze",
+      name: "Initial Analysis",
+      agent: "research-synthesizer", // Use agents from Step 6.10 examples
+      dependsOn: [], // No dependencies = first step
+      input: { source: "request", transform: "passthrough" },
+      retry: { maxAttempts: 2, backoffMs: 1000 },
+    },
+    {
+      id: "implement",
+      name: "Implementation",
+      agent: "feature-developer",
+      dependsOn: ["analyze"], // Must complete after analyze
+      input: { source: "step", stepId: "analyze", transform: "extract_requirements" },
+      retry: { maxAttempts: 1, backoffMs: 2000 },
+    },
+    {
+      id: "review",
+      name: "Code Review",
+      agent: "code-reviewer",
+      dependsOn: ["implement"],
+      input: { source: "request", transform: "combine_with_implementation" },
+      retry: { maxAttempts: 1, backoffMs: 1000 },
+    },
+  ],
+});
+```
+
+**Input Source Types:**
+
+- `"request"`: Use original request content
+- `"step"`: Use output from another step
+- `"context"`: Use shared context data
+
+**Transform Functions:**
+
+- `"passthrough"`: Use input as-is
+- `"extract_code"`: Extract code blocks from input
+- `"extract_requirements"`: Parse requirements from text
+- `"combine_with_analysis"`: Merge multiple inputs
+- `"jsonExtract"`: Extract JSON data
+- `"templateFill"`: Fill template with variables
+
+**Flow Categories (from Step 7.9):**
+
+- **Development**: Code quality, feature development, refactoring
+- **Content**: Documentation, technical writing, research synthesis
+- **Analysis**: Code analysis, security audit, performance review
+- **Operations**: Deployment, monitoring, incident response
+
+**Flow Templates:**
+
+See `flows/examples/templates/` for reusable patterns:
+
+- `pipeline.flow.template.ts` - Sequential workflow template
+- `fan-out-fan-in.flow.template.ts` - Parallel processing template
+- `staged.flow.template.ts` - Multi-stage approval template
+
+**Testing Flows:**
+
+```typescript
+// flows/examples/my_flow_test.ts
+import { myFlow } from "./my_flow.flow.ts";
+
+Deno.test("MyFlow: executes complete pipeline", async () => {
+  // Test flow execution with mock agents
+});
+
+Deno.test("MyFlow: handles step failures gracefully", async () => {
+  // Test error handling and retries
+});
+
+Deno.test("MyFlow: validates dependencies correctly", async () => {
+  // Test dependency resolution
+});
+```
+
+**Flow Execution:**
+
+Flows are executed by the FlowRunner service with dependency resolution, parallel execution where possible, and comprehensive error handling. See Step 7.1-7.8 for FlowRunner implementation details.
+
+---
+
+## MCP Tool Usage Guidelines
+
+### When Using MCP Tools in Agents
+
+Agents interact with the file system and git repositories through MCP (Model Context Protocol) tools. Always use these tools instead of direct file system access.
+
+**Available MCP Tools:**
+
+```typescript
+// File Operations
+await useTool("read_file", {
+  portal: "MyProject",
+  path: "src/main.ts",
+});
+
+await useTool("write_file", {
+  portal: "MyProject",
+  path: "src/new_feature.ts",
+  content: "// New feature implementation",
+});
+
+await useTool("list_directory", {
+  portal: "MyProject",
+  path: "src",
+});
+
+// Git Operations
+await useTool("git_create_branch", {
+  portal: "MyProject",
+  branch: "feature/new-feature",
+});
+
+await useTool("git_commit", {
+  portal: "MyProject",
+  message: "feat: Add new feature implementation",
+  files: ["src/new_feature.ts", "tests/new_feature_test.ts"],
+});
+
+await useTool("git_status", {
+  portal: "MyProject",
+});
+```
+
+**Portal Permissions:**
+
+- Agents can only access portals listed in their `capabilities` and the portal's `agents_allowed` whitelist
+- Operations are restricted by the portal's `operations` array (`["read", "write", "git"]`)
+- Path traversal attacks (`../`) are blocked by the PathResolver
+- Git branch names are validated (must follow patterns like `feat/`, `fix/`, `docs/`)
+
+**Security Modes:**
+
+1. **Sandboxed Mode** (recommended): Agent has no direct file access, all operations via MCP tools
+2. **Hybrid Mode**: Agent can read portal files directly but must use MCP tools for writes
+
+**Error Handling:**
+
+```typescript
+try {
+  const result = await useTool("read_file", {
+    portal: "MyProject",
+    path: "src/main.ts",
+  });
+  // Process result
+} catch (error) {
+  if (error.message.includes("permission denied")) {
+    // Handle permission errors
+  } else if (error.message.includes("file not found")) {
+    // Handle missing files
+  }
+  // Log error and continue
+}
+```
+
+**Best Practices:**
+
+1. **Validate paths** before using tools
+2. **Check permissions** in system prompts
+3. **Handle errors gracefully** - tools may fail due to permissions or file system issues
+4. **Use appropriate portals** - match the task to the correct portal
+5. **Log tool usage** - all tool invocations are logged to Activity Journal
+
+---
+
+## Portal Configuration Guidelines
+
+### When Working with Portal Permissions
+
+Portals provide controlled access to external project directories. Configure permissions carefully for security.
+
+**Portal Configuration Structure:**
+
+```toml
+# exo.config.toml
+[[portals]]
+name = "MyProject"
+path = "/home/user/projects/MyProject"
+agents_allowed = ["feature-developer", "code-reviewer"]  # Whitelist
+operations = ["read", "write", "git"]  # Allowed operations
+
+[portals.MyProject.security]
+mode = "sandboxed"  # or "hybrid"
+audit_enabled = true
+log_all_actions = true
+```
+
+**Security Mode Selection:**
+
+- **Sandboxed**: Maximum security, no direct file access, all operations through MCP tools
+- **Hybrid**: Performance optimized, direct read access but MCP tools required for writes
+
+**Permission Validation:**
+
+- Agent must be in `agents_allowed` array (or `"*"` for all agents)
+- Operation must be in `operations` array
+- Path must be within portal directory (no traversal outside)
+- Git operations validate branch names and commit messages
+
+**CLI Portal Management:**
+
+```bash
+# Add a portal
+exoctl portal add MyProject /path/to/project --agents feature-developer,code-reviewer
+
+# List portals
+exoctl portal list
+
+# Update portal permissions
+exoctl portal update MyProject --agents feature-developer,api-documenter --operations read,write
+
+# Remove portal
+exoctl portal remove MyProject
+```
+
+**Activity Logging:**
+
+All portal operations are logged:
+
+- `portal.added` - Portal configuration added
+- `portal.updated` - Portal permissions modified
+- `portal.removed` - Portal removed
+- `portal.access_granted` - Agent accessed portal
+- `portal.access_denied` - Agent access blocked
+- `portal.operation_performed` - MCP tool operation completed
 
 ## Final Step: Format Code
 

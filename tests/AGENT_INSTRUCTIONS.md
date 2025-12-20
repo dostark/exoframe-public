@@ -80,6 +80,137 @@ created_at: "2025-01-01T00:00:00Z"
 # Proposed Plan
 ```
 
+### Agent Blueprints: Use YAML frontmatter (`---`)
+
+```markdown
+---
+name: "code-reviewer"
+model: "anthropic:claude-3-5-sonnet-20241022"
+capabilities: ["read_file", "write_file", "list_directory"]
+---
+
+# Code Reviewer Agent
+
+System prompt and description here...
+```
+
+## Agent Blueprint Testing
+
+### Test Agent Loading and Validation
+
+```typescript
+import { BlueprintService } from "../../src/services/blueprint_service.ts";
+import { createMockConfig } from "./helpers/config.ts";
+
+Deno.test("BlueprintService: loads example agents from Step 6.10", async () => {
+  const config = createMockConfig(tempDir);
+  const blueprintService = new BlueprintService({ config });
+
+  // Test loading code-reviewer agent
+  const codeReviewer = await blueprintService.loadBlueprint("code-reviewer");
+  assertExists(codeReviewer);
+  assertEquals(codeReviewer.name, "code-reviewer");
+  assertEquals(codeReviewer.model, "anthropic:claude-3-5-sonnet-20241022");
+  assert(codeReviewer.capabilities.includes("read_file"));
+});
+
+Deno.test("BlueprintService: validates agent capabilities", async () => {
+  const config = createMockConfig(tempDir);
+  const blueprintService = new BlueprintService({ config });
+
+  // Test invalid capability
+  await assertRejects(
+    async () => await blueprintService.loadBlueprint("invalid-agent"),
+    Error,
+    "Blueprint not found",
+  );
+});
+```
+
+### Test MCP Tool Interactions
+
+```typescript
+import { MCPToolRegistry } from "../../src/mcp/tools.ts";
+import { createPortalConfigTestContext } from "./helpers/portal_test_helper.ts";
+
+Deno.test("MCP Tools: agent can read files with proper permissions", async () => {
+  const { helper, cleanup } = await createPortalConfigTestContext("mcp-test");
+
+  try {
+    const registry = new MCPToolRegistry(helper.config);
+
+    // Test read_file tool with code-reviewer agent
+    const result = await registry.invokeTool("read_file", {
+      portal: "TestPortal",
+      path: "src/main.ts",
+    }, "code-reviewer");
+
+    assertExists(result);
+    assertEquals(result.success, true);
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("MCP Tools: blocks unauthorized portal access", async () => {
+  const { helper, cleanup } = await createPortalConfigTestContext("mcp-test");
+
+  try {
+    const registry = new MCPToolRegistry(helper.config);
+
+    // Test unauthorized agent
+    await assertRejects(
+      async () =>
+        await registry.invokeTool("write_file", {
+          portal: "RestrictedPortal",
+          path: "secret.txt",
+          content: "secret data",
+        }, "unauthorized-agent"),
+      Error,
+      "permission denied",
+    );
+  } finally {
+    await cleanup();
+  }
+});
+```
+
+### Test Agent Execution in Flows
+
+```typescript
+import { FlowRunner } from "../../src/services/flow_runner.ts";
+import { defineFlow } from "../../src/flows/define_flow.ts";
+
+Deno.test("FlowRunner: executes agent from Step 6.10 examples", async () => {
+  const { helper, cleanup } = await createPortalConfigTestContext("flow-test");
+
+  try {
+    const flow = defineFlow({
+      id: "test-flow",
+      name: "Test Flow",
+      description: "Test agent execution",
+      version: "1.0.0",
+      steps: [{
+        id: "review",
+        name: "Code Review",
+        agent: "code-reviewer", // From Step 6.10 examples
+        dependsOn: [],
+        input: { source: "request", transform: "passthrough" },
+        retry: { maxAttempts: 1, backoffMs: 1000 },
+      }],
+    });
+
+    const runner = new FlowRunner({ config: helper.config });
+    const result = await runner.executeFlow(flow, "test-request-id");
+
+    assertExists(result);
+    assertEquals(result.success, true);
+  } finally {
+    await cleanup();
+  }
+});
+```
+
 ## MockLLMProvider Usage
 
 ### Scripted Responses
@@ -580,3 +711,89 @@ deno fmt --check
 ```
 
 This ensures consistent code style across the codebase and prevents formatting-related lint errors.
+
+## Flow Testing Guidelines
+
+### Test Flow Definition and Validation
+
+```typescript
+import { defineFlow } from "../../src/flows/define_flow.ts";
+import { FlowSchema } from "../../src/schemas/flow.ts";
+
+Deno.test("Flow Definition: validates Step 7.9 example flows", async () => {
+  // Test pipeline flow from examples
+  const pipelineFlow = defineFlow({
+    id: "code-review-pipeline",
+    name: "Code Review Pipeline",
+    description: "Multi-stage code review from Step 7.9",
+    version: "1.0.0",
+    steps: [
+      {
+        id: "lint",
+        name: "Code Linting",
+        agent: "code-quality-agent",
+        dependsOn: [],
+        input: { source: "request", transform: "extract_code" },
+        retry: { maxAttempts: 1, backoffMs: 1000 },
+      },
+      {
+        id: "security",
+        name: "Security Analysis",
+        agent: "security-agent",
+        dependsOn: ["lint"],
+        input: { source: "step", stepId: "lint", transform: "passthrough" },
+        retry: { maxAttempts: 2, backoffMs: 2000 },
+      },
+    ],
+  });
+
+  // Validate against schema
+  const validation = FlowSchema.safeParse(pipelineFlow);
+  assert(validation.success, `Flow validation failed: ${validation.error}`);
+});
+```
+
+### Test Flow Execution with Mock Agents
+
+```typescript
+import { FlowRunner } from "../../src/services/flow_runner.ts";
+
+Deno.test("FlowRunner: executes fan-out-fan-in pattern from Step 7.9", async () => {
+  const { helper, cleanup } = await createPortalConfigTestContext("flow-test");
+
+  try {
+    const fanOutFlow = defineFlow({
+      id: "research-synthesis",
+      name: "Research Synthesis",
+      description: "Fan-out-fan-in pattern from Step 7.9",
+      version: "1.0.0",
+      steps: [
+        {
+          id: "researcher1",
+          name: "Researcher 1",
+          agent: "research-synthesizer",
+          dependsOn: [],
+          input: { source: "request", transform: "extract_topic" },
+          retry: { maxAttempts: 1, backoffMs: 1000 },
+        },
+        {
+          id: "synthesizer",
+          name: "Synthesizer",
+          agent: "research-synthesizer",
+          dependsOn: ["researcher1", "researcher2"],
+          input: { source: "step", stepId: "researcher1", transform: "mergeAsContext" },
+          retry: { maxAttempts: 1, backoffMs: 1000 },
+        },
+      ],
+    });
+
+    const runner = new FlowRunner({ config: helper.config });
+    const result = await runner.executeFlow(fanOutFlow, "test-request-id");
+
+    assertExists(result);
+    assertEquals(result.steps.length, 3);
+  } finally {
+    await cleanup();
+  }
+});
+```
