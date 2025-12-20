@@ -4,7 +4,7 @@
  */
 
 import { afterEach, beforeEach, describe, it } from "jsr:@std/testing@^1.0.0/bdd";
-import { assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
+import { assertEquals } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { FlowSchema } from "../../src/schemas/flow.ts";
 import { defineFlow } from "../../src/flows/define_flow.ts";
@@ -20,23 +20,22 @@ describe("Example Flows - Step 7.9", {
   sanitizeOps: false,
 }, () => {
   let tempDir: string;
-  let config: Config;
-  let db: any;
+  let _config: Config;
+  let _db: any;
   let cleanup: () => Promise<void>;
-  let mockProvider: MockLLMProvider;
+  let _mockProvider: MockLLMProvider;
   let mockAgentExecutor: AgentExecutor;
   let mockEventLogger: FlowEventLogger;
-  let flowRunner: FlowRunner;
-
+  let _flowRunner: FlowRunner;
   beforeEach(async () => {
     const dbResult = await initTestDbService();
     tempDir = dbResult.tempDir;
-    config = dbResult.config;
-    db = dbResult.db;
+    _config = dbResult.config;
+    _db = dbResult.db;
     cleanup = dbResult.cleanup;
 
     // Create mock LLM provider for testing
-    mockProvider = new MockLLMProvider("scripted", {
+    _mockProvider = new MockLLMProvider("scripted", {
       responses: [
         "Code analysis complete. Found 3 potential issues.",
         "Security review passed. No vulnerabilities detected.",
@@ -48,24 +47,24 @@ describe("Example Flows - Step 7.9", {
 
     // Create mock agent executor
     mockAgentExecutor = {
-      run: async (agentId: string, request: FlowStepRequest): Promise<AgentExecutionResult> => {
-        return {
+      run: (agentId: string, _request: FlowStepRequest): Promise<AgentExecutionResult> => {
+        return Promise.resolve({
           thought: `Mock response for ${agentId}`,
           content: `Processed request for ${agentId}`,
           raw: `Mock raw response for ${agentId}`,
-        };
+        });
       },
     };
 
     // Create mock event logger
     mockEventLogger = {
-      log: (event: string, payload: any) => {
+      log: (_event: string, _payload: any) => {
         // Mock logging - do nothing
       },
     };
 
     // Create FlowRunner instance
-    flowRunner = new FlowRunner(mockAgentExecutor, mockEventLogger);
+    _flowRunner = new FlowRunner(mockAgentExecutor, mockEventLogger);
   });
 
   afterEach(async () => {
@@ -73,8 +72,8 @@ describe("Example Flows - Step 7.9", {
   });
 
   describe("Flow Examples Directory Structure", () => {
-    it("should have examples directory structure", async () => {
-      const examplesDir = join(tempDir, "flows", "examples");
+    it("should have examples directory structure", () => {
+      const _examplesDir = join(tempDir, "flows", "examples");
       // Note: We'll create this during implementation
       // For now, just test that the concept is valid
       assertEquals(true, true); // Placeholder test
@@ -131,7 +130,7 @@ describe("Example Flows - Step 7.9", {
       assertEquals(result.success, true, `Flow validation failed: ${result.success ? "" : result.error?.message}`);
     });
 
-    it("should execute end-to-end with mock agents", async () => {
+    it("should execute end-to-end with mock agents", () => {
       // This test will be implemented once the flow files are created
       // For now, just test the basic structure
       assertEquals(true, true); // Placeholder test

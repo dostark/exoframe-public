@@ -487,7 +487,7 @@ $ exoctl plan approve implement-auth
 ✓ Plan 'implement-auth' approved
   Moved to: /System/Active/implement-auth.md
   Status: Plan detected and parsed (agent-driven execution in development)
-  
+
   Note: Currently, approved plans are detected and validated. Future: agents
   will have portal access to create changesets directly. Agent-driven execution
   (Step 5.12.3-5.12.6) is in development.
@@ -613,7 +613,7 @@ exoctl portal list
 
 # Portal listing output:
 # 🔗 Configured Portals (2):
-# 
+#
 # MyWebsite
 #   Status: Active ✓
 #   Target: /home/user/Dev/MyWebsite
@@ -800,9 +800,27 @@ exoctl blueprint validate senior-coder
 # Edit blueprint in $EDITOR
 exoctl blueprint edit <agent-id>
 
-# Remove blueprint
+# Remove a blueprint
 exoctl blueprint remove <agent-id>
-exoctl blueprint remove security-auditor --force  # Skip confirmation
+exoctl blueprint remove security-auditor --force # Skip confirmation
+```
+
+#### **Flow Commands** - Manage multi-agent workflows
+
+Flows allow you to coordinate multiple agents to perform complex tasks.
+
+```bash
+# List all available flows
+exoctl flow list
+exoctl flow list --json
+
+# Show flow details and dependency graph
+exoctl flow show <flow-id>
+exoctl flow show research-pipeline
+
+# Validate a flow definition
+exoctl flow validate <flow-id>
+exoctl flow validate research-pipeline
 ```
 
 **Available Templates:**
@@ -965,7 +983,7 @@ exoctl plan show <id>                      # Review plan details
 exoctl plan approve <id>                   # Approve for execution
 exoctl plan reject <id> --reason "..."     # Reject with feedback
 
-# Code review workflow  
+# Code review workflow
 exoctl changeset list                      # See agent-created branches
 exoctl changeset show <id>                 # Review code changes
 exoctl changeset approve <id>              # Merge to main
@@ -1119,7 +1137,7 @@ approved: true
 With YAML frontmatter, Dataview queries work natively:
 
 ```dataview
-TABLE 
+TABLE
   status AS "Status",
   priority AS "Priority",
   agent AS "Agent",
@@ -1186,7 +1204,7 @@ exoctl plan approve implement-auth
 
 # Current Status:
 # ✅ Request creation automated
-# ✅ Plan generation automated  
+# ✅ Plan generation automated
 # ✅ Plan approval workflow complete
 # ✅ Plan detection and parsing implemented
 # 🚧 Agent-driven execution in development

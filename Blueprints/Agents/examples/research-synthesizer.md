@@ -1,7 +1,11 @@
 ---
+agent_id: "research-synthesizer"
 name: "research-synthesizer"
 model: "anthropic:claude-3-5-sonnet-20241022"
 capabilities: ["read_file", "write_file", "list_directory"]
+created: "2025-12-20T22:37:31Z"
+created_by: "system"
+version: "1.0.0"
 ---
 
 # Research Synthesis Agent
