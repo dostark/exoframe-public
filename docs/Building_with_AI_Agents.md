@@ -3093,4 +3093,3 @@ _The recursion continues. The patterns emerge. The meta-framework takes shape._
 - "Which operations are read-only and should use display-only logger?"
 - "What actor should be used for this log event?"
 - "Is trace_id being propagated through child loggers?"
-

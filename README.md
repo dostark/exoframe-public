@@ -8,7 +8,20 @@
 
 ---
 
-## 🚀 Why ExoFrame?
+## �️ Core Strengths for AI Agent Orchestration
+
+ExoFrame is built from the ground up to be the "Mission Control" for AI agents, focusing on reliability, security, and transparency.
+
+- **Permanent Audit Trail (Activity Journal)**: Every agent thought, tool call, and file modification is logged to a persistent SQLite database. Trace IDs link requests → plans → code changes → commits, providing a complete "black box" recorder for your AI workflows.
+- **Security-First Sandboxing**: Leverages Deno's granular permission system to sandbox agent operations. Agents are restricted at the OS level from unauthorized network or filesystem access—security that prompt-engineering alone cannot provide.
+- **Human-in-the-Loop Governance**: Agents generate structured **Plans** that must be reviewed and approved by a human before execution. No "oops" moments; you are always the final authority.
+- **Multi-Project Context (Portals)**: Securely link multiple external repositories into a single agent context. Agents can reason across your entire stack (e.g., API, Frontend, and Docs) simultaneously.
+- **Data Sovereignty & Local-First**: 100% local-first option with Ollama. Your code never leaves your machine unless you explicitly configure cloud APIs. Ideal for air-gapped or high-security environments.
+- **Files-as-API Interoperability**: Interact with the system via CLI or by dropping Markdown files into folders. This "invisible" interface makes ExoFrame easy to integrate into any existing developer toolchain.
+
+---
+
+## 🚀 ExoFrame vs. IDE Agents
 
 While IDE-integrated agents (Cursor, Copilot, Windsurf) excel at interactive pair programming, ExoFrame is built for **asynchronous, high-trust, and multi-project** scenarios.
 
