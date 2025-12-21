@@ -2,6 +2,59 @@
 
 This document contains instructions for AI coding agents when creating or refactoring tests in the ExoFrame project.
 
+## Core Testing Patterns
+
+### Pattern 12: Coverage-Driven TDD
+
+**Target**: Minimum 70% branch coverage on new features.
+
+**Process**:
+
+1. Request implementation with coverage target
+2. Implement and run coverage report (`deno test --coverage`)
+3. Identify uncovered branches
+4. Add specific tests for those branches
+
+**Why**: Branch coverage catches conditional logic gaps that line coverage misses.
+
+### Pattern 13: Test Organization and Deduplication
+
+**Structure**:
+
+- `tests/cli/` - CLI command tests
+- `tests/services/` - Service unit tests
+- `tests/integration/` - End-to-end workflows
+- `tests/helpers/` - Shared test utilities
+
+**Deduplication Checklist**:
+
+1. Search for similar test file names
+2. Compare test case names for duplicates
+3. Merge unique cases into canonical location
+4. Delete duplicate files
+
+### Pattern 22: Security Tests as First-Class Citizens
+
+**Requirement**: Every security boundary needs explicit tests.
+
+**Practice**: Label security tests explicitly with `[security]`.
+
+**Coverage**:
+
+- Path traversal (e.g., `../../etc/passwd`)
+- Shell injection (e.g., `; rm -rf /`)
+- Network exfiltration
+- Env variable leakage
+
+**Example**:
+
+```typescript
+Deno.test({
+  name: "[security] path traversal attack should be blocked",
+  fn: async () => { ... }
+});
+```
+
 ## Database Initialization
 
 ### ✅ DO: Use `initTestDbService()` for DatabaseService tests
@@ -333,7 +386,7 @@ Deno.test("FeatureName: does something", async () => {
 
 ### ⚠️ CRITICAL: Avoid Duplicated Test Setup/Teardown
 
-**Target**: Keep overall duplication below **3%** (currently 2.35% ✅)
+**Target**: Keep overall duplication below **3%**.
 
 ### Use Existing Test Helpers
 
@@ -469,7 +522,7 @@ try {
 }
 ```
 
-**Documentation**: See `docs/Remaining_Code_Duplication_Analysis.md` for refactoring patterns and helper examples.
+**Documentation**: Refer to project documentation for refactoring patterns and helper examples.
 
 ## Success Criteria
 

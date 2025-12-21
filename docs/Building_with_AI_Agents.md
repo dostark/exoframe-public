@@ -278,13 +278,6 @@ try {
 npx jscpd src tests --reporters json --output ./report
 
 # Identify high-impact targets (most clones)
-python3 -c "import json; data=json.load(open('report/jscpd-report.json')); \
-  files={}; \
-  for d in data['duplicates']: \
-    for f in d['fragment']: \
-      files[f['loc']] = files.get(f['loc'], 0) + 1; \
-  sorted_files = sorted(files.items(), key=lambda x: x[1], reverse=True); \
-  [print(f'{count} clones: {file}') for file, count in sorted_files[:10]]"
 
 # After refactoring, verify improvement
 npx jscpd src tests --reporters json --output ./report
@@ -1321,641 +1314,6 @@ Refinement isn't a phase—it's a continuous process. Be ready to elaborate:
 
 **The Rule**: Treat implementation plans as living documents that grow in detail as understanding deepens.
 
-## Part IX: The Human Skills That Matter
-
-### What AI Didn't Replace
-
-**1. Product Vision**
-
-- AI can critique, but you decide _what to build_
-- The Implementation Plan came from human insight
-- The "why" still requires human judgment
-
-**2. Architectural Taste**
-
-- "Should this be batched?" requires understanding tradeoffs
-- AI proposes options, you choose based on values (latency vs. throughput)
-
-**3. Security Paranoia**
-
-- AI will implement security if you specify it
-- You must _remember to ask_ for security tests
-- The whitelist mindset comes from experience
-
-**4. The Question**
-
-- Good questions unlock good answers
-- "Why is this slow?" beats "Make it faster"
-- "What's missing?" beats "Looks good"
-
-**5. The Refinement Instinct**
-
-- Knowing when specs are too vague
-- Pushing for concrete examples before coding
-- Asking "How would we test this?" up front
-
-### What AI Amplified
-
-**1. Implementation Speed**
-
-- TDD cycle: 5-10x faster with AI
-- Boilerplate: instant
-- Test coverage: more comprehensive than I'd write alone
-- Refinement: AI can expand brief specs into detailed requirements
-
-**2. Consistency**
-
-- AI doesn't forget to log actions
-- Error handling patterns stay uniform
-- Code style is consistent
-- Naming conventions enforced naturally
-
-**3. Exhaustive Testing**
-
-- AI writes edge cases I'd skip ("too unlikely")
-- Security tests I'd forget
-- Integration tests for every permutation
-
-**4. Refactoring Courage**
-
-- With comprehensive tests, changes are safe
-- AI handles tedious parts (updating all call sites)
-- You focus on design decisions
-
-**5. Format Migration Confidence**
-
-- TOML migration touched 14 files across parser, services, CLI, tests, and docs
-- All 304 tests continued passing throughout
-- Zero regressions because tests caught every dependent code path
-- ~22% token savings achieved without breaking anything
-
-## Conclusion: The New Collaboration Model
-
-### What We Built
-
-**ExoFrame**: A meta-framework where AI agents collaborate on codebases using:
-
-- Activity Journal (audit trail)
-- Tool Registry (safe function calling)
-- Git Integration (identity-aware commits)
-- Execution Loop (lease-based coordination)
-- Human checkpoints (approve/reject/request-changes)
-- TOML-based structured metadata (token-efficient, consistent)
-
-**Built With**: The same patterns it enables. We ate our own dog food before the kitchen passed inspection.
-
-### What We Learned
-
-**The Partnership**:
-
-- Humans: vision, taste, questions, decisions
-- AI: investigation, implementation, testing, consistency
-- Together: faster than either alone
-
-**The Process**:
-
-- TDD isn't optional, it's the contract
-- Questions beat commands
-- Configuration beats hardcoding
-- Tests are the real documentation
-- Format consistency matters for LLM context efficiency
-
-**The Surprise**:
-Building a system for AI agents _with_ AI agents revealed exactly what agents need:
-
-- Structured communication (Activity Journal)
-- Safe tools (ToolRegistry with validation)
-- Identity (agent_id tracking)
-- Human oversight (approval workflow)
-- Token-efficient formats (TOML over YAML saves ~22%)
-
-### The Future
-
-**For Developers**:
-This playbook isn't ExoFrame-specific. Apply it to:
-
-- Web applications
-- CLI tools
-- Infrastructure automation
-- Any software you'd normally build
-
-**The Shift**:
-From "I write code with AI assistance"
-To "I architect systems that AI implements"
-
-Your job isn't writing lines—it's asking the right questions, making the right decisions, and verifying the results with tests.
-
-### The Meta-Achievement
-
-We set out to build a framework for humans and AI to collaborate on software projects.
-
-We succeeded by proving the collaboration works _while building the collaboration framework itself_.
-
-The system we built to enable AI-human teamwork was built by AI-human teamwork.
-
-That's not just irony—it's validation.
-
----
-
-## Appendix: Quick Reference
-
-### The Essential Patterns
-
-| Pattern                       | Command                                                | Result                                         |
-| ----------------------------- | ------------------------------------------------------ | ---------------------------------------------- |
-| **Design Review**             | "Review these docs. What's wrong?"                     | AI critiques design pre-implementation         |
-| **Refinement**                | "Refine Phase X steps with success criteria"           | Expands brief specs into detailed requirements |
-| **Walking Skeleton**          | "Build minimal end-to-end flow"                        | Demo-able system from day 1                    |
-| **TDD Feature**               | "Implement step X in TDD manner"                       | Tests first, implementation follows            |
-| **Coverage Target**           | "Implement in TDD manner. Achieve 70% branch coverage" | Measurable test quality                        |
-| **Performance Investigation** | "Why is X slow?"                                       | Measurement, not guessing                      |
-| **Configuration**             | "Make X configurable"                                  | Replaces magic numbers with schema             |
-| **Security Audit**            | "What attacks could work on Y?"                        | AI proposes vulnerabilities to test            |
-| **Code Archaeology**          | "Is X actually used anywhere?"                         | Find zombie code                               |
-| **Test Deduplication**        | "Check if there are test duplications"                 | Consolidate scattered tests                    |
-| **Activity Logging Audit**    | "Verify every CLI command is traced in activity log"   | Complete audit trail                           |
-| **Format Migration**          | "Migrate frontmatter to YAML for Dataview"             | Consistent format, ecosystem compatibility     |
-| **Full Verification**         | "Run all tests"                                        | Verify nothing broke                           |
-| **Agent Instructions**        | Create AGENT_INSTRUCTIONS.md in key directories        | AI helpers follow same patterns                |
-| **Unified Logging**           | "Migrate console.log to EventLogger"                   | Audit trail + consistent output                |
-| **Display Logger**            | EventLogger without db parameter                       | Console-only for read operations               |
-| **Provider Selection**        | Environment → Config → Defaults hierarchy              | Flexible LLM provider configuration            |
-| **Security Test Label**       | `[security]` prefix in test names                      | Filterable security test suite                 |
-| **Integration Scenarios**     | TestEnvironment helper for isolated tests              | Full workflow testing                          |
-
-### The Question Templates
-
-**Before Implementing**:
-
-- "Refine all steps in Phase X with success criteria, examples, and test requirements"
-- "What's missing from this spec?"
-- "What edge cases should we handle?"
-- "What could go wrong?"
-- "How would we test this?"
-
-**During Implementation**:
-
-- "Why is X behaving like Y?"
-- "What are the tradeoffs between options A, B, C?"
-- "How should we test this?"
-- "What does 'done' look like for this feature?"
-
-**After Implementation**:
-
-- "What did we forget to test?"
-- "What could be simplified?"
-- "What's no longer used?"
-
-**For Format/Architecture Decisions**:
-
-- "What format should we standardize on? YAML, TOML, JSON?"
-- "How many tokens does each format use in LLM context?"
-- "What are all the places that would need updating if we change format?"
-- "Can we do this migration without breaking existing files?"
-
-**For Unified Logging**:
-
-- "What console.log calls need to be migrated to EventLogger?"
-- "Which operations are read-only and should use display-only logger?"
-- "What actor should be used for this log event?"
-- "Is trace_id being propagated through child loggers?"
-
-### Pattern 12: Coverage-Driven TDD
-
-**The Target**: Minimum 70% branch coverage on all new features.
-
-**The Request Pattern**:
-
-```
-You: "Proceed with implementation in TDD manner. Try to achieve 70% in branch coverage."
-Agent: [writes comprehensive test suite]
-Agent: [implements feature]
-Agent: [runs coverage report]
-Agent: "Branch coverage: 84.2%"
-```
-
-**Real Results from ExoFrame**:
-
-| Feature         | Tests | Branch Coverage |
-| --------------- | ----- | --------------- |
-| Portal Commands | 31    | 84.2%           |
-| MissionReporter | 28    | 83.3%           |
-| GitService      | 11    | 78.4%           |
-| ToolRegistry    | 14    | 82.1%           |
-
-**The Coverage Request**:
-
-```
-You: "Run tests with coverage for src/cli/portal_commands.ts"
-Agent: [runs deno test --coverage]
-Agent: [generates lcov report]
-Agent: "Branch coverage: 84.2% (target: 70%)"
-```
-
-**Why Branch Coverage Matters**:
-
-- Line coverage misses untested branches (if/else paths)
-- Branch coverage catches conditional logic gaps
-- 70% minimum ensures edge cases are tested
-- Higher coverage = safer refactoring
-
-**The Coverage Improvement Loop**:
-
-```
-1. Run coverage report
-2. Identify uncovered branches
-3. Add tests for those branches
-4. Verify coverage increased
-5. Repeat until target met
-```
-
-**The Anti-Pattern**:
-
-```
-❌ "Add tests to improve coverage" (vague)
-✅ "Add test for the else branch on line 145 where config is undefined"
-```
-
-### Pattern 13: Test Organization and Deduplication
-
-**The Discovery**:
-
-```
-You: "Run all tests"
-Agent: [runs tests]
-Agent: "Found 305 tests"
-You: "Check if there is some tests duplications"
-Agent: [searches test files]
-Agent: "Found duplicate tests in tests/daemon_commands_test.ts and
-        tests/cli/daemon_commands_test.ts"
-```
-
-**The Problem**:
-
-- Tests scattered across multiple locations
-- Same functionality tested twice
-- Inconsistent test patterns
-
-**The Solution**:
-
-```
-You: "Move unique tests from tests/foo_test.ts to tests/cli/foo_test.ts
-     and delete the duplicate file"
-Agent: [identifies unique tests]
-Agent: [merges into canonical location]
-Agent: [removes duplicate file]
-Agent: [runs full test suite to verify]
-```
-
-**The Result**:
-
-```
-Before: 305 tests (with duplicates)
-After:  278 tests (consolidated, all passing)
-```
-
-**The Test Organization Pattern**:
-
-```
-tests/
-├── cli/                    # CLI command tests
-│   ├── daemon_commands_test.ts
-│   ├── portal_commands_test.ts
-│   └── plan_commands_test.ts
-├── helpers/                # Test utilities
-│   ├── config.ts
-│   └── db.ts
-├── services/               # Service unit tests
-│   ├── db_test.ts
-│   └── git_service_test.ts
-└── integration/            # E2E tests
-```
-
-**The Deduplication Checklist**:
-
-1. Search for similar test file names across directories
-2. Compare test case names for duplicates
-3. Identify unique vs. redundant tests
-4. Merge unique cases into canonical location
-5. Delete duplicate files
-6. Run full suite to verify nothing broke
-
-### Pattern 14: CLI Activity Logging Audit
-
-**The Audit Trigger**:
-
-```
-You: "Verify that every exoctl CLI command call correctly traced in activity log"
-Agent: [creates comprehensive audit report]
-```
-
-**The Audit Report Format**:
-
-```markdown
-## CLI Activity Logging Verification Report
-
-### Commands with Complete Logging ✅
-
-| Command | Actions Logged |
-| plan create | plan.created |
-| portal add | portal.added |
-| changeset apply | changeset.applied |
-
-### Commands Missing Logging ❌
-
-| Command | Issue |
-| daemon start | No logging |
-| daemon stop | No logging |
-| daemon restart | No logging |
-```
-
-**The Fix Pattern**:
-
-```
-You: "Yes, update daemon commands"
-Agent: [adds logDaemonActivity() helper]
-Agent: [adds daemon.started, daemon.stopped, daemon.restarted events]
-Agent: [updates tests to verify logging]
-```
-
-**The Activity Logging Checklist**:
-
-Every CLI command that modifies state must log:
-
-- ✅ `command.action` event type (e.g., `daemon.started`)
-- ✅ Actor: `"human"` for CLI operations
-- ✅ Via: `"cli"` in payload
-- ✅ Timestamp: ISO 8601 format
-- ✅ Relevant context (PID, file paths, method)
-
-**The Verification Test Pattern**:
-
-```typescript
-it("should log daemon.started to activity journal", async () => {
-  await daemonCommands.start();
-  await db.waitForFlush();
-
-  const logs = db.instance.prepare(
-    "SELECT * FROM activity WHERE action_type = ?",
-  ).all("daemon.started");
-
-  assertEquals(logs.length, 1);
-  const payload = JSON.parse(logs[0].payload);
-  assertExists(payload.pid);
-  assertEquals(payload.via, "cli");
-  assertExists(payload.timestamp);
-});
-```
-
-**Why This Matters**:
-
-- Complete audit trail for all user actions
-- Debugging multi-step operations
-- Compliance and accountability
-- Understanding system behavior
-
-### Pattern 15: Format Standardization Migration (TOML Migration)
-
-**The Context**:
-ExoFrame originally used mixed formats—YAML frontmatter in requests/plans (`---` delimiters), different syntax across components. This created inconsistency and higher token usage when files were included in LLM context.
-
-**The Decision**:
-
-```
-You: "I think we should standardize on TOML format across the codebase"
-Agent: [analyzes current format usage]
-Agent: "Found YAML frontmatter in requests, plans. TOML in config.
-        Inconsistent."
-```
-
-**The Migration Strategy** (TDD-Driven):
-
-1. **Update Parser First** (the core change):
-   ```
-   You: "Update FrontmatterParser to use TOML (+++ delimiters) instead of YAML (---)"
-   Agent: [updates tests first]
-   Agent: [changes parser to only accept +++]
-   Agent: [removes @std/yaml dependency]
-   ```
-
-2. **Update Dependent Services** (cascade):
-   ```
-   You: "Now update services that generate frontmatter"
-   Agent: [updates plan_writer.ts, execution_loop.ts, mission_reporter.ts]
-   Agent: [updates CLI base.ts, plan_commands.ts]
-   ```
-
-3. **Update All Test Fixtures**:
-   ```
-   You: "Convert test fixtures from YAML to TOML"
-   Agent: [bulk updates across 5 test files]
-   Agent: [changes --- to +++ and key: value to key = "value"]
-   ```
-
-4. **Update Documentation**:
-   ```
-   You: "Update all YAML mentions in documentation to TOML"
-   Agent: [grep for YAML references]
-   Agent: [updates Implementation Plan, White Paper, User Guide]
-   ```
-
-**The Result**:
-
-| Metric             | Before     | After     |
-| ------------------ | ---------- | --------- |
-| Frontmatter Format | Mixed YAML | TOML only |
-| Delimiter          | `---`      | `+++`     |
-| Token Usage        | ~45/file   | ~35/file  |
-| Token Savings      | -          | ~22%      |
-| Dependencies       | @std/yaml  | (removed) |
-| Tests              | 304        | 304       |
-
-**The TOML Format**:
-
-```toml
-+++
-trace_id = "550e8400-e29b-41d4-a716-446655440000"
-status = "pending"
-priority = "normal"
-agent = "default"
-created_at = 2025-11-27T10:30:00Z
-tags = ["feature", "api"]
-+++
-
-# Request body here
-```
-
-**Why TOML Over YAML**:
-
-- **Explicit strings**: No type coercion surprises (`yes` != boolean)
-- **Simpler syntax**: No indentation sensitivity
-- **Token efficiency**: ~22% savings in LLM context windows
-- **Consistency**: Already using TOML for `exo.config.toml`
-- **Cleaner arrays**: `tags = ["a", "b"]` vs multi-line YAML
-
-**The Migration Pattern**:
-
-```
-1. Define target format clearly (examples, schema)
-2. Update tests FIRST to expect new format
-3. Update parser/core logic to produce new format
-4. Run tests → find all dependent code that breaks
-5. Update each dependent service
-6. Update test fixtures
-7. Update documentation
-8. Remove old format support (clean break)
-```
-
-**The Lesson**: Format migrations are best done atomically with TDD—update tests first, then watch them guide you to every place that needs changing.
-
-**Files Changed in Migration**:
-
-- Parser: `src/parsers/markdown.ts`
-- Services: `plan_writer.ts`, `execution_loop.ts`, `mission_reporter.ts`
-- CLI: `base.ts`, `plan_commands.ts`
-- Tests: `frontmatter_test.ts`, `plan_writer_test.ts`, `mission_reporter_test.ts`, `execution_loop_test.ts`, `cli/base_test.ts`, `cli/plan_commands_test.ts`
-- Docs: 4 documentation files updated
-
-### Pattern 16: Test Database Setup
-
-**The Discovery**:
-
-```
-Agent: [runs tests]
-Error: "no such table: activity"
-```
-
-**The Problem**:
-
-- Test was querying activity table
-- Test setup didn't initialize the table
-- Other tests worked because they used `initTestDbService()`
-
-**The Lesson**: When adding tests that use database features, ensure proper setup.
-
-**The Helper Pattern**:
-
-```typescript
-// tests/helpers/db.ts
-export async function initTestDbService(): Promise<{
-  db: DatabaseService;
-  tempDir: string;
-  cleanup: () => Promise<void>;
-}> {
-  const tempDir = await Deno.makeTempDir({ prefix: "exo-test-" });
-  const config = createMockConfig(tempDir);
-  const db = new DatabaseService(config);
-
-  // Initialize required tables
-  db.instance.exec(`
-    CREATE TABLE IF NOT EXISTS activity (
-      id TEXT PRIMARY KEY,
-      trace_id TEXT NOT NULL,
-      actor TEXT NOT NULL,
-      agent_id TEXT,
-      action_type TEXT NOT NULL,
-      target TEXT,
-      payload TEXT NOT NULL,
-      timestamp DATETIME DEFAULT (datetime('now'))
-    );
-    CREATE INDEX IF NOT EXISTS idx_activity_trace ON activity(trace_id);
-  `);
-
-  return { db, tempDir, cleanup: async () => { ... } };
-}
-```
-
-**The Test Setup Pattern**:
-
-```typescript
-// Option 1: Use shared helper
-const { db, cleanup } = await initTestDbService();
-
-// Option 2: Inline table creation (for specific tests)
-beforeEach(async () => {
-  db = new DatabaseService(config);
-  db.instance.exec(`
-    CREATE TABLE IF NOT EXISTS activity (...);
-  `);
-});
-```
-
-**The Database Test Checklist**:
-
-- ✅ Initialize required tables in test setup
-- ✅ Use in-memory database for isolation (`:memory:`)
-- ✅ Clean up temp directories in `afterEach`
-- ✅ Wait for async operations (`db.waitForFlush()`)
-- ✅ Use shared helpers for common setup
-
-### The Test Checklist
-
-Every feature needs tests for:
-
-- ✅ Happy path (works as expected)
-- ✅ Sad path (fails gracefully)
-- ✅ Edge cases (empty, null, huge, tiny)
-- ✅ Security boundaries (injection, traversal, escalation)
-- ✅ Error handling (network, filesystem, validation)
-- ✅ Integration (works with existing code)
-- ✅ Performance (meets requirements)
-- ✅ Activity logging (operations traced)
-- ✅ Format consistency (YAML frontmatter with --- delimiters for Dataview compatibility)
-
-### The Success Metrics
-
-**You know it's working when**:
-
-- Implementation steps have concrete success criteria before coding
-- You can demo working features every week
-- You review tests, not implementation
-- Changes don't break existing functionality
-- Security tests exist before vulnerabilities
-- Configuration options grow over time
-- Tests serve as documentation
-- You trust the test suite
-- Branch coverage meets targets (70%+ minimum)
-- All CLI commands have activity logging
-- No duplicate test files exist
-- Format is consistent across all structured files (YAML frontmatter for Dataview compatibility)
-
-**You know it's not working when**:
-
-- Specs say "implement X" without explaining what "done" means
-- First demo is in month 3
-- You're rewriting implementations repeatedly
-- Tests are added after bugs are found
-- Changes cascade unpredictably
-- You're afraid to refactor
-- Comments contradict code
-- Manual testing is required
-- Coverage is unknown or unmeasured
-- Operations happen without audit trail
-- Mixed formats create parsing complexity (YAML here, TOML there)
-
-### The Refinement Red Flags vs. Green Lights
-
-**❌ Needs Refinement**:
-
-- "Handle errors appropriately"
-- "Make it fast"
-- "Implement feature X"
-- "Add validation"
-- "Should be secure"
-
-**✅ Implementation-Ready**:
-
-- "Throw Error with message 'nothing to commit' when working tree is clean"
-- "Batch writes with 100ms flush interval (configurable via config.database.batch_flush_ms)"
-- "Implement read_file tool that validates paths through PathResolver and logs to Activity Journal"
-- "Reject inputs with zod schema, return validation errors in structured format"
-- "Whitelist commands: [echo, git, deno], block all others including rm, dd, chmod"
-- "Use YAML frontmatter with --- delimiters, key: value syntax (for Dataview compatibility)"
-
-**The Test**: If you can't write a test case from the description, it needs refinement.
-
----
-
 ## Part X: The Great YAML Migration (November 28, 2025)
 
 ### The Plot Twist Nobody Asked For
@@ -2896,7 +2254,7 @@ subprocess security enforcement requires Step 6.4
 
 ---
 
-## Part III: The Implementation Evolution - JSON Plans and Executor Patterns
+## Part XIV: The Implementation Evolution - JSON Plans and Executor Patterns
 
 ### The Format Shift: "From Markdown to JSON - Why Structure Matters"
 
@@ -3097,4 +2455,642 @@ Result: 73.4% branch coverage on FlowRunner, all routing tests passing
 
 _Written from the trenches of the ExoFrame project, where the builders were also the users, and the documentation wrote itself (with a little help from the AI we were building the framework for)._
 
+## Part XV: The Testing Discipline
+
+### Pattern 12: Coverage-Driven TDD
+
+**The Target**: Minimum 70% branch coverage on all new features.
+
+**The Request Pattern**:
+
+```
+You: "Proceed with implementation in TDD manner. Try to achieve 70% in branch coverage."
+Agent: [writes comprehensive test suite]
+Agent: [implements feature]
+Agent: [runs coverage report]
+Agent: "Branch coverage: 84.2%"
+```
+
+**Real Results from ExoFrame**:
+
+| Feature         | Tests | Branch Coverage |
+| --------------- | ----- | --------------- |
+| Portal Commands | 31    | 84.2%           |
+| MissionReporter | 28    | 83.3%           |
+| GitService      | 11    | 78.4%           |
+| ToolRegistry    | 14    | 82.1%           |
+
+**The Coverage Request**:
+
+```
+You: "Run tests with coverage for src/cli/portal_commands.ts"
+Agent: [runs deno test --coverage]
+Agent: [generates lcov report]
+Agent: "Branch coverage: 84.2% (target: 70%)"
+```
+
+**Why Branch Coverage Matters**:
+
+- Line coverage misses untested branches (if/else paths)
+- Branch coverage catches conditional logic gaps
+- 70% minimum ensures edge cases are tested
+- Higher coverage = safer refactoring
+
+**The Coverage Improvement Loop**:
+
+```
+1. Run coverage report
+2. Identify uncovered branches
+3. Add tests for those branches
+4. Verify coverage increased
+5. Repeat until target met
+```
+
+**The Anti-Pattern**:
+
+```
+❌ "Add tests to improve coverage" (vague)
+✅ "Add test for the else branch on line 145 where config is undefined"
+```
+
+### Pattern 13: Test Organization and Deduplication
+
+**The Discovery**:
+
+```
+You: "Run all tests"
+Agent: [runs tests]
+Agent: "Found 305 tests"
+You: "Check if there is some tests duplications"
+Agent: [searches test files]
+Agent: "Found duplicate tests in tests/daemon_commands_test.ts and
+        tests/cli/daemon_commands_test.ts"
+```
+
+**The Problem**:
+
+- Tests scattered across multiple locations
+- Same functionality tested twice
+- Inconsistent test patterns
+
+**The Solution**:
+
+```
+You: "Move unique tests from tests/foo_test.ts to tests/cli/foo_test.ts
+     and delete the duplicate file"
+Agent: [identifies unique tests]
+Agent: [merges into canonical location]
+Agent: [removes duplicate file]
+Agent: [runs full test suite to verify]
+```
+
+**The Result**:
+
+```
+Before: 305 tests (with duplicates)
+After:  278 tests (consolidated, all passing)
+```
+
+**The Test Organization Pattern**:
+
+```
+tests/
+├── cli/                    # CLI command tests
+│   ├── daemon_commands_test.ts
+│   ├── portal_commands_test.ts
+│   └── plan_commands_test.ts
+├── helpers/                # Test utilities
+│   ├── config.ts
+│   └── db.ts
+├── services/               # Service unit tests
+│   ├── db_test.ts
+│   └── git_service_test.ts
+└── integration/            # E2E tests
+```
+
+**The Deduplication Checklist**:
+
+1. Search for similar test file names across directories
+2. Compare test case names for duplicates
+3. Identify unique vs. redundant tests
+4. Merge unique cases into canonical location
+5. Delete duplicate files
+6. Run full suite to verify nothing broke
+
+### Pattern 14: CLI Activity Logging Audit
+
+**The Audit Trigger**:
+
+```
+You: "Verify that every exoctl CLI command call correctly traced in activity log"
+Agent: [creates comprehensive audit report]
+```
+
+**The Audit Report Format**:
+
+```markdown
+## CLI Activity Logging Verification Report
+
+### Commands with Complete Logging ✅
+
+| Command | Actions Logged |
+| plan create | plan.created |
+| portal add | portal.added |
+| changeset apply | changeset.applied |
+
+### Commands Missing Logging ❌
+
+| Command | Issue |
+| daemon start | No logging |
+| daemon stop | No logging |
+| daemon restart | No logging |
+```
+
+**The Fix Pattern**:
+
+```
+You: "Yes, update daemon commands"
+Agent: [adds logDaemonActivity() helper]
+Agent: [adds daemon.started, daemon.stopped, daemon.restarted events]
+Agent: [updates tests to verify logging]
+```
+
+**The Activity Logging Checklist**:
+
+Every CLI command that modifies state must log:
+
+- ✅ `command.action` event type (e.g., `daemon.started`)
+- ✅ Actor: `"human"` for CLI operations
+- ✅ Via: `"cli"` in payload
+- ✅ Timestamp: ISO 8601 format
+- ✅ Relevant context (PID, file paths, method)
+
+**The Verification Test Pattern**:
+
+```typescript
+it("should log daemon.started to activity journal", async () => {
+  await daemonCommands.start();
+  await db.waitForFlush();
+
+  const logs = db.instance.prepare(
+    "SELECT * FROM activity WHERE action_type = ?",
+  ).all("daemon.started");
+
+  assertEquals(logs.length, 1);
+  const payload = JSON.parse(logs[0].payload);
+  assertExists(payload.pid);
+  assertEquals(payload.via, "cli");
+  assertExists(payload.timestamp);
+});
+```
+
+**Why This Matters**:
+
+- Complete audit trail for all user actions
+- Debugging multi-step operations
+- Compliance and accountability
+- Understanding system behavior
+
+### Pattern 15: Format Standardization Migration (TOML Migration)
+
+**The Context**:
+ExoFrame originally used mixed formats—YAML frontmatter in requests/plans (`---` delimiters), different syntax across components. This created inconsistency and higher token usage when files were included in LLM context.
+
+**The Decision**:
+
+```
+You: "I think we should standardize on TOML format across the codebase"
+Agent: [analyzes current format usage]
+Agent: "Found YAML frontmatter in requests, plans. TOML in config.
+        Inconsistent."
+```
+
+**The Migration Strategy** (TDD-Driven):
+
+1. **Update Parser First** (the core change):
+   ```
+   You: "Update FrontmatterParser to use TOML (+++ delimiters) instead of YAML (---)"
+   Agent: [updates tests first]
+   Agent: [changes parser to only accept +++]
+   Agent: [removes @std/yaml dependency]
+   ```
+
+2. **Update Dependent Services** (cascade):
+   ```
+   You: "Now update services that generate frontmatter"
+   Agent: [updates plan_writer.ts, execution_loop.ts, mission_reporter.ts]
+   Agent: [updates CLI base.ts, plan_commands.ts]
+   ```
+
+3. **Update All Test Fixtures**:
+   ```
+   You: "Convert test fixtures from YAML to TOML"
+   Agent: [bulk updates across 5 test files]
+   Agent: [changes --- to +++ and key: value to key = "value"]
+   ```
+
+4. **Update Documentation**:
+   ```
+   You: "Update all YAML mentions in documentation to TOML"
+   Agent: [grep for YAML references]
+   Agent: [updates Implementation Plan, White Paper, User Guide]
+   ```
+
+**The Result**:
+
+| Metric             | Before     | After     |
+| ------------------ | ---------- | --------- |
+| Frontmatter Format | Mixed YAML | TOML only |
+| Delimiter          | `---`      | `+++`     |
+| Token Usage        | ~45/file   | ~35/file  |
+| Token Savings      | -          | ~22%      |
+| Dependencies       | @std/yaml  | (removed) |
+| Tests              | 304        | 304       |
+
+**The TOML Format**:
+
+```toml
++++
+trace_id = "550e8400-e29b-41d4-a716-446655440000"
+status = "pending"
+priority = "normal"
+agent = "default"
+created_at = 2025-11-27T10:30:00Z
+tags = ["feature", "api"]
++++
+
+# Request body here
+```
+
+**Why TOML Over YAML**:
+
+- **Explicit strings**: No type coercion surprises (`yes` != boolean)
+- **Simpler syntax**: No indentation sensitivity
+- **Token efficiency**: ~22% savings in LLM context windows
+- **Consistency**: Already using TOML for `exo.config.toml`
+- **Cleaner arrays**: `tags = ["a", "b"]` vs multi-line YAML
+
+**The Migration Pattern**:
+
+```
+1. Define target format clearly (examples, schema)
+2. Update tests FIRST to expect new format
+3. Update parser/core logic to produce new format
+4. Run tests → find all dependent code that breaks
+5. Update each dependent service
+6. Update test fixtures
+7. Update documentation
+8. Remove old format support (clean break)
+```
+
+**The Lesson**: Format migrations are best done atomically with TDD—update tests first, then watch them guide you to every place that needs changing.
+
+**Files Changed in Migration**:
+
+- Parser: `src/parsers/markdown.ts`
+- Services: `plan_writer.ts`, `execution_loop.ts`, `mission_reporter.ts`
+- CLI: `base.ts`, `plan_commands.ts`
+- Tests: `frontmatter_test.ts`, `plan_writer_test.ts`, `mission_reporter_test.ts`, `execution_loop_test.ts`, `cli/base_test.ts`, `cli/plan_commands_test.ts`
+- Docs: 4 documentation files updated
+
+### Pattern 16: Test Database Setup
+
+**The Discovery**:
+
+```
+Agent: [runs tests]
+Error: "no such table: activity"
+```
+
+**The Problem**:
+
+- Test was querying activity table
+- Test setup didn't initialize the table
+- Other tests worked because they used `initTestDbService()`
+
+**The Lesson**: When adding tests that use database features, ensure proper setup.
+
+**The Helper Pattern**:
+
+```typescript
+// tests/helpers/db.ts
+export async function initTestDbService(): Promise<{
+  db: DatabaseService;
+  tempDir: string;
+  cleanup: () => Promise<void>;
+}> {
+  const tempDir = await Deno.makeTempDir({ prefix: "exo-test-" });
+  const config = createMockConfig(tempDir);
+  const db = new DatabaseService(config);
+
+  // Initialize required tables
+  db.instance.exec(`
+    CREATE TABLE IF NOT EXISTS activity (
+      id TEXT PRIMARY KEY,
+      trace_id TEXT NOT NULL,
+      actor TEXT NOT NULL,
+      agent_id TEXT,
+      action_type TEXT NOT NULL,
+      target TEXT,
+      payload TEXT NOT NULL,
+      timestamp DATETIME DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_activity_trace ON activity(trace_id);
+  `);
+
+  return { db, tempDir, cleanup: async () => { ... } };
+}
+```
+
+**The Test Setup Pattern**:
+
+```typescript
+// Option 1: Use shared helper
+const { db, cleanup } = await initTestDbService();
+
+// Option 2: Inline table creation (for specific tests)
+beforeEach(async () => {
+  db = new DatabaseService(config);
+  db.instance.exec(`
+    CREATE TABLE IF NOT EXISTS activity (...);
+  `);
+});
+```
+
+**The Database Test Checklist**:
+
+- ✅ Initialize required tables in test setup
+- ✅ Use in-memory database for isolation (`:memory:`)
+- ✅ Clean up temp directories in `afterEach`
+- ✅ Wait for async operations (`db.waitForFlush()`)
+- ✅ Use shared helpers for common setup
+
+### The Test Checklist
+
+Every feature needs tests for:
+
+- ✅ Happy path (works as expected)
+- ✅ Sad path (fails gracefully)
+- ✅ Edge cases (empty, null, huge, tiny)
+- ✅ Security boundaries (injection, traversal, escalation)
+- ✅ Error handling (network, filesystem, validation)
+- ✅ Integration (works with existing code)
+- ✅ Performance (meets requirements)
+- ✅ Activity logging (operations traced)
+- ✅ Format consistency (YAML frontmatter with --- delimiters for Dataview compatibility)
+
+### The Success Metrics
+
+**You know it's working when**:
+
+- Implementation steps have concrete success criteria before coding
+- You can demo working features every week
+- You review tests, not implementation
+- Changes don't break existing functionality
+- Security tests exist before vulnerabilities
+- Configuration options grow over time
+- Tests serve as documentation
+- You trust the test suite
+- Branch coverage meets targets (70%+ minimum)
+- All CLI commands have activity logging
+- No duplicate test files exist
+- Format is consistent across all structured files (YAML frontmatter for Dataview compatibility)
+
+**You know it's not working when**:
+
+- Specs say "implement X" without explaining what "done" means
+- First demo is in month 3
+- You're rewriting implementations repeatedly
+- Tests are added after bugs are found
+- Changes cascade unpredictably
+- You're afraid to refactor
+- Comments contradict code
+- Manual testing is required
+- Coverage is unknown or unmeasured
+- Operations happen without audit trail
+- Mixed formats create parsing complexity (YAML here, TOML there)
+
+### The Refinement Red Flags vs. Green Lights
+
+**❌ Needs Refinement**:
+
+- "Handle errors appropriately"
+- "Make it fast"
+- "Implement feature X"
+- "Add validation"
+- "Should be secure"
+
+**✅ Implementation-Ready**:
+
+- "Throw Error with message 'nothing to commit' when working tree is clean"
+- "Batch writes with 100ms flush interval (configurable via config.database.batch_flush_ms)"
+- "Implement read_file tool that validates paths through PathResolver and logs to Activity Journal"
+- "Reject inputs with zod schema, return validation errors in structured format"
+- "Whitelist commands: [echo, git, deno], block all others including rm, dd, chmod"
+- "Use YAML frontmatter with --- delimiters, key: value syntax (for Dataview compatibility)"
+
+**The Test**: If you can't write a test case from the description, it needs refinement.
+
+---
+
+## Part IX: The Human Skills That Matter
+
+### What AI Didn't Replace
+
+**1. Product Vision**
+
+- AI can critique, but you decide _what to build_
+- The Implementation Plan came from human insight
+- The "why" still requires human judgment
+
+**2. Architectural Taste**
+
+- "Should this be batched?" requires understanding tradeoffs
+- AI proposes options, you choose based on values (latency vs. throughput)
+
+**3. Security Paranoia**
+
+- AI will implement security if you specify it
+- You must _remember to ask_ for security tests
+- The whitelist mindset comes from experience
+
+**4. The Question**
+
+- Good questions unlock good answers
+- "Why is this slow?" beats "Make it faster"
+- "What's missing?" beats "Looks good"
+
+**5. The Refinement Instinct**
+
+- Knowing when specs are too vague
+- Pushing for concrete examples before coding
+- Asking "How would we test this?" up front
+
+### What AI Amplified
+
+**1. Implementation Speed**
+
+- TDD cycle: 5-10x faster with AI
+- Boilerplate: instant
+- Test coverage: more comprehensive than I'd write alone
+- Refinement: AI can expand brief specs into detailed requirements
+
+**2. Consistency**
+
+- AI doesn't forget to log actions
+- Error handling patterns stay uniform
+- Code style is consistent
+- Naming conventions enforced naturally
+
+**3. Exhaustive Testing**
+
+- AI writes edge cases I'd skip ("too unlikely")
+- Security tests I'd forget
+- Integration tests for every permutation
+
+**4. Refactoring Courage**
+
+- With comprehensive tests, changes are safe
+- AI handles tedious parts (updating all call sites)
+- You focus on design decisions
+
+**5. Format Migration Confidence**
+
+- TOML migration touched 14 files across parser, services, CLI, tests, and docs
+- All 304 tests continued passing throughout
+- Zero regressions because tests caught every dependent code path
+- ~22% token savings achieved without breaking anything
+
+## Conclusion: The New Collaboration Model
+
+### What We Built
+
+**ExoFrame**: A meta-framework where AI agents collaborate on codebases using:
+
+- Activity Journal (audit trail)
+- Tool Registry (safe function calling)
+- Git Integration (identity-aware commits)
+- Execution Loop (lease-based coordination)
+- Human checkpoints (approve/reject/request-changes)
+- TOML-based structured metadata (token-efficient, consistent)
+
+**Built With**: The same patterns it enables. We ate our own dog food before the kitchen passed inspection.
+
+### What We Learned
+
+**The Partnership**:
+
+- Humans: vision, taste, questions, decisions
+- AI: investigation, implementation, testing, consistency
+- Together: faster than either alone
+
+**The Process**:
+
+- TDD isn't optional, it's the contract
+- Questions beat commands
+- Configuration beats hardcoding
+- Tests are the real documentation
+- Format consistency matters for LLM context efficiency
+
+**The Surprise**:
+Building a system for AI agents _with_ AI agents revealed exactly what agents need:
+
+- Structured communication (Activity Journal)
+- Safe tools (ToolRegistry with validation)
+- Identity (agent_id tracking)
+- Human oversight (approval workflow)
+- Token-efficient formats (TOML over YAML saves ~22%)
+
+### The Future
+
+**For Developers**:
+This playbook isn't ExoFrame-specific. Apply it to:
+
+- Web applications
+- CLI tools
+- Infrastructure automation
+- Any software you'd normally build
+
+**The Shift**:
+From "I write code with AI assistance"
+To "I architect systems that AI implements"
+
+Your job isn't writing lines—it's asking the right questions, making the right decisions, and verifying the results with tests.
+
+### The Meta-Achievement
+
+We set out to build a framework for humans and AI to collaborate on software projects.
+
+We succeeded by proving the collaboration works _while building the collaboration framework itself_.
+
+The system we built to enable AI-human teamwork was built by AI-human teamwork.
+
+That's not just irony—it's validation.
+
+---
+
 _The recursion continues. The patterns emerge. The meta-framework takes shape._
+
+## Appendix: Quick Reference
+
+### The Essential Patterns
+
+| Pattern                       | Command                                                | Result                                         |
+| ----------------------------- | ------------------------------------------------------ | ---------------------------------------------- |
+| **Design Review**             | "Review these docs. What's wrong?"                     | AI critiques design pre-implementation         |
+| **Refinement**                | "Refine Phase X steps with success criteria"           | Expands brief specs into detailed requirements |
+| **Walking Skeleton**          | "Build minimal end-to-end flow"                        | Demo-able system from day 1                    |
+| **TDD Feature**               | "Implement step X in TDD manner"                       | Tests first, implementation follows            |
+| **Coverage Target**           | "Implement in TDD manner. Achieve 70% branch coverage" | Measurable test quality                        |
+| **Performance Investigation** | "Why is X slow?"                                       | Measurement, not guessing                      |
+| **Configuration**             | "Make X configurable"                                  | Replaces magic numbers with schema             |
+| **Security Audit**            | "What attacks could work on Y?"                        | AI proposes vulnerabilities to test            |
+| **Code Archaeology**          | "Is X actually used anywhere?"                         | Find zombie code                               |
+| **Test Deduplication**        | "Check if there are test duplications"                 | Consolidate scattered tests                    |
+| **Activity Logging Audit**    | "Verify every CLI command is traced in activity log"   | Complete audit trail                           |
+| **Format Migration**          | "Migrate frontmatter to YAML for Dataview"             | Consistent format, ecosystem compatibility     |
+| **Full Verification**         | "Run all tests"                                        | Verify nothing broke                           |
+| **Agent Instructions**        | Create AGENT_INSTRUCTIONS.md in key directories        | AI helpers follow same patterns                |
+| **Unified Logging**           | "Migrate console.log to EventLogger"                   | Audit trail + consistent output                |
+| **Display Logger**            | EventLogger without db parameter                       | Console-only for read operations               |
+| **Provider Selection**        | Environment → Config → Defaults hierarchy              | Flexible LLM provider configuration            |
+| **Security Test Label**       | `[security]` prefix in test names                      | Filterable security test suite                 |
+| **Integration Scenarios**     | TestEnvironment helper for isolated tests              | Full workflow testing                          |
+
+### The Question Templates
+
+**Before Implementing**:
+
+- "Refine all steps in Phase X with success criteria, examples, and test requirements"
+- "What's missing from this spec?"
+- "What edge cases should we handle?"
+- "What could go wrong?"
+- "How would we test this?"
+
+**During Implementation**:
+
+- "Why is X behaving like Y?"
+- "What are the tradeoffs between options A, B, C?"
+- "How should we test this?"
+- "What does 'done' look like for this feature?"
+
+**After Implementation**:
+
+- "What did we forget to test?"
+- "What could be simplified?"
+- "What's no longer used?"
+
+**For Format/Architecture Decisions**:
+
+- "What format should we standardize on? YAML, TOML, JSON?"
+- "How many tokens does each format use in LLM context?"
+- "What are all the places that would need updating if we change format?"
+- "Can we do this migration without breaking existing files?"
+
+**For Unified Logging**:
+
+- "What console.log calls need to be migrated to EventLogger?"
+- "Which operations are read-only and should use display-only logger?"
+- "What actor should be used for this log event?"
+- "Is trace_id being propagated through child loggers?"
+

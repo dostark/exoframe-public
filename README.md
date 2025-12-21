@@ -1,3 +1,107 @@
-# ExoFrame
+# ExoFrame: Auditable Agent Orchestration Platform
 
-ExoFrame - local-first agent orchestration
+[![Deno](https://img.shields.io/badge/runtime-Deno-green.svg)](https://deno.land/)
+[![SQLite](https://img.shields.io/badge/storage-SQLite-blue.svg)](https://www.sqlite.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**ExoFrame** is a secure, auditable agent orchestration platform designed for developers who need more than just real-time coding assistance. It operates as a background daemon, managing complex, multi-project workflows with explicit human approval gates and a permanent audit trail.
+
+---
+
+## 🚀 Why ExoFrame?
+
+While IDE-integrated agents (Cursor, Copilot, Windsurf) excel at interactive pair programming, ExoFrame is built for **asynchronous, high-trust, and multi-project** scenarios.
+
+| Feature | IDE Agents | ExoFrame |
+| :--- | :---: | :---: |
+| **Workflow** | Real-time / Interactive | Asynchronous / Daemon-based |
+| **Audit Trail** | ❌ None | ✅ Full Trace ID linking |
+| **Approval Gates** | ⚠️ Implicit | ✅ Explicit (Plans & Changesets) |
+| **Context** | Single Workspace | ✅ Multi-project Portals |
+| **Privacy** | ⚠️ Cloud Default | ✅ 100% Local (Ollama) |
+| **Execution** | Immediate | ✅ Reviewed & Audited |
+
+---
+
+## ✨ Key Features
+
+- **Activity Journal**: A permanent SQLite-backed audit trail of every thought, tool call, and file modification.
+- **Human-in-the-Loop**: Agents generate **Plans** that you review and approve before a single line of code is changed.
+- **Portals**: Securely link multiple external repositories into a single agent context.
+- **Deno-Powered Security**: Leverages Deno's granular permission system to sandbox agent operations (no unauthorized network or filesystem access).
+- **Files-as-API**: Interact with the system by dropping Markdown files into folders or using the `exoctl` CLI.
+- **Obsidian Integration**: The `Knowledge/` directory is a ready-to-use Obsidian vault with live dashboards.
+
+---
+
+## 🛠️ Quick Start
+
+### 1. Installation
+
+ExoFrame requires [Deno](https://deno.land/). Once installed, deploy a workspace:
+
+```bash
+# Clone the repository
+git clone https://github.com/dostark/exoframe.git
+cd exoframe
+
+# Deploy a workspace to your home directory
+./scripts/deploy_workspace.sh ~/ExoFrame
+```
+
+### 2. Start the Daemon
+
+```bash
+cd ~/ExoFrame
+deno task start
+```
+
+### 3. Submit a Request
+
+Use the CLI to tell ExoFrame what to do:
+
+```bash
+exoctl request "Implement a new user authentication module in the MyProject portal" --priority high
+```
+
+### 4. Review and Approve
+
+1. **Review the Plan**: `exoctl plan show <plan-id>`
+2. **Approve**: `exoctl plan approve <plan-id>`
+3. **Review Changes**: Once the agent finishes, review the diff with `exoctl changeset show <request-id>`
+4. **Merge**: `exoctl changeset approve <request-id>`
+
+---
+
+## 🏗️ Architecture
+
+ExoFrame is built on a "Files-as-API" philosophy:
+
+- **`Inbox/`**: Where new **Requests** and AI-generated **Plans** live.
+- **`Portals/`**: Symlinks to your actual project repositories.
+- **`Knowledge/`**: An Obsidian-compatible vault containing project context, agent reports, and the **Activity Journal** dashboard.
+- **`System/`**: Internal state, SQLite database, and active task tracking.
+
+---
+
+## 🔒 Security
+
+ExoFrame takes security seriously. Unlike other agent frameworks that run with full user privileges, ExoFrame:
+- Uses **Deno's sandbox** to restrict agents to specific directories and domains.
+- Requires **explicit approval** for all code changes.
+- Maintains a **tamper-evident log** in the Activity Journal.
+
+---
+
+## 📖 Documentation
+
+- [White Paper](./docs/ExoFrame_White_Paper.md) - Vision and Strategy
+- [Technical Spec](./docs/ExoFrame_Technical_Spec.md) - Architecture and Schemas
+- [User Guide](./docs/ExoFrame_User_Guide.md) - Detailed Usage and Setup
+- [Building with AI Agents](./docs/Building_with_AI_Agents.md) - Our TDD-first development philosophy
+
+---
+
+## 📄 License
+
+MIT © [dostark](https://github.com/dostark)

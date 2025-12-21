@@ -3,6 +3,29 @@
 This document contains instructions for AI coding agents when creating or modifying
 documentation in the ExoFrame `docs/` directory.
 
+## Core Documentation Patterns
+
+### Pattern 1: The Refinement Loop
+
+**Problem**: Initial implementation steps are always too brief and ambiguous.
+
+**Solution**: Before implementing, explicitly request refinement of the plan.
+
+**The Loop**:
+
+1. **Identify** the next phase
+2. **Request Refinement**: "Refine all steps in Phase X with success criteria, example inputs/outputs, error cases, and test requirements."
+3. **Review**: Ensure success criteria are measurable
+4. **Iterate** until the spec is implementation-ready
+
+**Rule**: If you can't write clear success criteria, you're not ready to implement.
+
+### Pattern 27: Documentation Cleanup Without Breaking History
+
+**Practice**: Remove planning artifacts (like "Step 6.2" comments) from code once implemented. Keep history in git and planning docs.
+
+**Rule**: Code should be clean and self-contained. Planning context belongs in the Implementation Plan, not in code comments.
+
 ## ⚠️ CRITICAL: Test-Driven Development & Implementation Plan
 
 **All documentation changes MUST be coordinated with implementation work.**

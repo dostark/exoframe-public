@@ -38,7 +38,72 @@ After completing implementation with all tests passing, you MUST:
 
 **Zero tolerance for Problems:** The implementation must have no TypeScript errors, no lint warnings, and pass all code quality checks. A clean Problems tab is required for completion.
 
-This ensures all code is properly planned, tested, documented, and meets all requirements.
+This ensures all code is properly properly planned, tested, documented, and meets all requirements.
+
+## Core Development Patterns
+
+### Pattern 3: The Walking Skeleton (Ship Early)
+
+**Philosophy**: Get a minimal end-to-end flow working first, then add features.
+
+**Process**:
+
+1. Identify the critical path (e.g., Input -> Process -> Output)
+2. Build the skeleton (minimal config, db, core logic)
+3. Verify end-to-end (demo-able)
+4. Add "meat" (features) and "organs" (complexity) later
+
+**Rule**: If you can't demo progress weekly, you're building in the dark.
+
+### Pattern 6: The Configuration Escape Hatch
+
+**Rule**: Every magic number should be a config option.
+
+**What to Config**:
+
+- Timeouts and retry limits
+- Batch sizes and flush intervals
+- File paths and directory names
+- Token budgets and model parameters
+
+**Implementation**:
+
+1. Update `src/config/schema.ts` with Zod validation
+2. Update `exo.config.toml` examples
+3. Use `config.section.option` in code instead of hardcoded values
+
+### Pattern 9: The Command Whitelist
+
+**Requirement**: Agents need to run commands, but not dangerous ones.
+
+**Strategy**: Whitelist safe commands (`echo`, `git`, `ls`) and block everything else.
+
+**Rule**: Whitelists beat blacklists.
+
+### Pattern 17: The Pragmatic Reversal
+
+**Lesson**: It's okay to reverse a decision (e.g., format migration) if new information warrants it.
+
+**Safety**:
+
+1. Use TDD to ensure the reversal doesn't break functionality
+2. Update tests FIRST to expect the new behavior
+3. Run full suite after changes
+
+### Pattern 24: JSON Plans (Structured Communication)
+
+**Problem**: Markdown-based plans are fragile to parse.
+
+**Solution**: Use JSON for machine communication, Markdown for human readability.
+
+**Workflow**:
+
+1. **Blueprint**: Instructs LLM to output JSON
+2. **AgentRunner**: Captures JSON
+3. **PlanAdapter**: Validates against Zod schema
+4. **PlanWriter**: Converts to Markdown for storage/display
+
+**Rule**: Don't make the LLM format for humans _and_ machines simultaneously. Ask for JSON, render to Markdown.
 
 ## Project Structure
 
@@ -191,8 +256,6 @@ constructor() {
 
 **Target**: Keep code duplication below **3%** as measured by jscpd.
 
-**Current Status**: 2.35% (937 lines, 99 clones) ✅
-
 ### Measure Duplication
 
 Before and after significant changes, check duplication:
@@ -209,8 +272,8 @@ Find files with the most clones:
 python3 -c "import json; data=json.load(open('report/jscpd-report.json')); \
   files={}; \
   for d in data['duplicates']: \
-    for f in d['fragment']: \
-      files[f['loc']] = files.get(f['loc'], 0) + 1; \
+  for f in d['fragment']: \
+    files[f['loc']] = files.get(f['loc'], 0) + 1; \
   sorted_files = sorted(files.items(), key=lambda x: x[1], reverse=True); \
   [print(f'{count} clones: {file}') for file, count in sorted_files[:10]]"
 ```
@@ -234,7 +297,7 @@ python3 -c "import json; data=json.load(open('report/jscpd-report.json')); \
 - **Validation logic** - Create reusable validator functions
 - **Configuration setup** - Extract to factory functions
 
-**Example - Before (duplicated 5 times)**:
+**Example - Before**:
 
 ```typescript
 try {
@@ -271,7 +334,7 @@ try {
 }
 ```
 
-**Documentation**: See `docs/Remaining_Code_Duplication_Analysis.md` for detailed refactoring history and patterns.
+**Documentation**: Refer to project documentation for detailed refactoring history and patterns.
 
 ## Activity Logging with EventLogger
 
