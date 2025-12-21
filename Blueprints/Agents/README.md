@@ -2,12 +2,31 @@
 
 This directory contains agent blueprint templates that instruct LLMs to output JSON-formatted execution plans.
 
-## What Changed (Step 6.7)
+## Directory Structure
 
-**Before:** Agents output markdown-formatted plans
-**After:** Agents output JSON plans validated against PlanSchema, then converted to markdown for storage
+- `examples/`: **Reference Implementations**. Comprehensive, ready-to-use agent blueprints (e.g., `code-reviewer`, `security-auditor`). Use these to learn best practices or as a base for custom agents.
+- `templates/`: **Abstract Patterns**. Reusable templates (e.g., `pipeline-agent`, `collaborative-agent`) with placeholders. Use these when you need a specific behavioral pattern but want to define the persona from scratch.
+- `*.md`: **Active Blueprints**. Agents available for immediate use in your workspace (e.g., `default.md`, `senior-coder.md`).
 
-## Blueprint Structure
+## Usage Guide
+
+### Using Active Blueprints
+Active blueprints are ready to use:
+```bash
+exoctl request "Task description" --agent senior-coder
+```
+
+### Using Examples
+Examples in `examples/` are for learning. To use one:
+1. Copy it to this directory: `cp examples/code-reviewer.md .`
+2. Run `exoctl blueprint validate code-reviewer` to check it.
+3. Use it: `exoctl request "Review this code" --agent code-reviewer`
+
+### Using Templates
+Templates in `templates/` are for creating new agents:
+1. Copy a template: `cp templates/pipeline-agent.md.template my-agent.md`
+2. Edit the file to replace placeholders (e.g., `{agent_name}`) with your values.
+3. Validate and use.
 
 Each blueprint file contains:
 

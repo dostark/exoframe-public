@@ -4,9 +4,30 @@ This directory contains Flow definitions and templates for multi-agent orchestra
 
 ## Directory Structure
 
-- `examples/`: Comprehensive example flows demonstrating various patterns.
-- `templates/`: Reusable flow templates for creating new flows.
-- `*.flow.ts`: Active flow definitions.
+- `examples/`: **Reference Implementations**. Comprehensive, educational examples demonstrating complex patterns (e.g., fan-out/fan-in) and specialized agent usage. Use these to learn and as a base for complex custom flows.
+- `templates/`: **Abstract Patterns**. Generic, reusable structures (e.g., Pipeline, Staged) with placeholders. Use these as a starting point for new flows when you know the structure but need to define the logic.
+- `*.flow.ts`: **Active Flows**. Ready-to-use flows available in your workspace. These typically use standard agents and are simpler than examples.
+
+## Usage Guide
+
+### Running Active Flows
+Active flows in this directory can be run immediately:
+```bash
+exoctl flow run --id code-review
+```
+
+### Using Examples
+Examples in `examples/` are for learning. To use one:
+1. Copy it to this directory: `cp examples/development/code-review.flow.ts .`
+2. Review the required agents in the file.
+3. Create any missing agents using `exoctl blueprint create`.
+4. Run the flow.
+
+### Using Templates
+Templates in `templates/` are for building new flows:
+1. Copy a template: `cp templates/pipeline.flow.template.ts my-new-flow.flow.ts`
+2. Edit the file to replace placeholders (e.g., `agent: "coordinator-agent"`) with your actual agents.
+3. Customize the logic.
 
 ## What are Flows?
 

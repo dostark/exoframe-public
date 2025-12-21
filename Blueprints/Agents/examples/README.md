@@ -18,6 +18,15 @@ Blueprints/Agents/templates/
 └── collaborative-agent.md.template     # Template for multi-agent workflows
 ```
 
+## ⚠️ Prerequisites
+
+These examples are **reference implementations**. They demonstrate best practices for system prompts, capabilities, and persona definitions.
+
+**To use an example agent:**
+1. **Copy it** to the parent directory (`Blueprints/Agents/`).
+2. **Validate it** using `exoctl blueprint validate <filename>`.
+3. **Ensure model availability:** Check that the `model` specified in the frontmatter is available in your environment (e.g., via Ollama).
+
 ## 🤖 Example Agents
 
 ### Development Agents

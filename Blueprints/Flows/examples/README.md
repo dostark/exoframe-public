@@ -11,6 +11,15 @@ ExoFrame flows enable sophisticated multi-agent orchestration with support for:
 - **Staged workflows** - Multi-phase processes with dependencies
 - **Error handling** - Retry logic and failure recovery
 
+## ⚠️ Prerequisites
+
+These examples are **reference implementations**. They often use specialized agents (e.g., `security-reviewer`, `performance-reviewer`) that may not exist in your workspace by default.
+
+**Before running an example:**
+1. **Check the code:** Open the `.flow.ts` file and look for the `agent:` fields.
+2. **Verify agents:** Run `exoctl blueprint list` to see if you have matching agents.
+3. **Create missing agents:** Use `exoctl blueprint create` or copy from `Blueprints/Agents/examples/` if available.
+
 ## Example Categories
 
 ### 🔧 Development Workflows
