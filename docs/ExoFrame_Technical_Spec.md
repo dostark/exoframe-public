@@ -50,14 +50,41 @@ permission governance across CLI, daemon, and agents.
 
 ## 2. Core Technical Stack
 
-| Component        | Technology       | Justification                                                     |
-| :--------------- | :--------------- | :---------------------------------------------------------------- |
-| **Runtime**      | **Deno** (v2.0+) | Native TypeScript, Web Standards, and **Permission System**.      |
-| **Language**     | **TypeScript**   | No transpilation needed. Strict typing via Zod.                   |
-| **Config**       | **TOML**         | All config & metadata uses TOML. Token-efficient for LLM context. |
-| **Journal**      | **SQLite**       | Accessible via `jsr:@db/sqlite` (WASM) or FFI for performance.    |
-| **Dependencies** | **ES Modules**   | No `node_modules`. Dependencies cached globally or in vendor dir. |
-| **Interface**    | **Obsidian**     | Viewer for Markdown files and Dashboard.                          |
+| Component        | Technology            | Justification                                                                    |
+| :--------------- | :-------------------- | :------------------------------------------------------------------------------- |
+| **Runtime**      | **Deno** (v2.0+)      | Native TypeScript, Web Standards, and **Permission System**.                     |
+| **Language**     | **TypeScript**        | No transpilation needed. Strict typing via Zod.                                  |
+| **Config**       | **TOML**              | All config & metadata uses TOML. Token-efficient for LLM context.                |
+| **Journal**      | **SQLite**            | Accessible via `jsr:@db/sqlite` (WASM) or FFI for performance.                   |
+| **Dependencies** | **ES Modules**        | No `node_modules`. Dependencies cached globally or in vendor dir.                |
+| **Interface**    | **Obsidian**, **TUI** | Obsidian for knowledge management; TUI (exoctl dashboard) for real-time cockpit. |
+
+## 2.2. TUI Dashboard Architecture (`exoctl dashboard`)
+
+The TUI dashboard, launched via `exoctl dashboard`, is a terminal-based cockpit for ExoFrame. It is implemented using a Deno-compatible TUI library (e.g., `cliffy` or `deno-tui`) and integrates directly with ExoFrame's file/database APIs.
+
+**Key Features:**
+
+- Real-time log streaming from the Activity Journal (file watcher or polling)
+- Plan review/approval with diff visualization and trace navigation
+- Portal management (list, add, remove, refresh, sync)
+- Daemon control (start, stop, restart, status, logs)
+- Agent health/status view
+- Keyboard navigation, theming, notifications, and accessibility
+- **Split View:** Multi-pane layout allows simultaneous display of multiple views (e.g., logs and plan review). Users can split, resize, and switch panes dynamically.
+
+**Data Flow:**
+
+- Reads from Activity Journal (SQLite), Inbox/Plans, Portals, and System directories
+- Writes actions (approvals, portal changes, daemon control) back to the Activity Journal and relevant files
+- All actions are auditable and reflected in the system log
+
+**Extensibility:**
+
+- Modular widget/view system for future dashboard panels
+- Hooks for remote monitoring or web dashboard integration (future)
+
+See the [Implementation Plan](./ExoFrame_Implementation_Plan.md#step-95-tui-cockpit-implementation-plan) for implementation steps and test criteria.
 
 ### 2.0.1 Supported LLM Providers
 
@@ -66,28 +93,28 @@ contract, enabling seamless switching between local and cloud models.
 
 #### Anthropic (Claude)
 
-| Model             | Context Window | Use Case                                                              |
-| ----------------- | -------------- | --------------------------------------------------------------------- |
-| `claude-opus-4.5` | 200K           | Tops agentic coding/reasoning; superior Plan-Execute loops (Default)  |
-| `claude-3.5-sonnet` | 200K           | Previous best-in-class for coding and reasoning                     |
-| `claude-3.5-haiku`  | 200K           | Fast, cost-effective                                                |
+| Model               | Context Window | Use Case                                                             |
+| ------------------- | -------------- | -------------------------------------------------------------------- |
+| `claude-opus-4.5`   | 200K           | Tops agentic coding/reasoning; superior Plan-Execute loops (Default) |
+| `claude-3.5-sonnet` | 200K           | Previous best-in-class for coding and reasoning                      |
+| `claude-3.5-haiku`  | 200K           | Fast, cost-effective                                                 |
 
 #### OpenAI (GPT)
 
-| Model         | Context Window | Use Case                                                              |
-| ------------- | -------------- | --------------------------------------------------------------------- |
-| `gpt-5.2-pro` | 200K           | Best for pro/agentic tasks; excels in multi-step workflows (Default)  |
-| `gpt-4o`      | 128K           | Previous generation default multimodal                                |
-| `gpt-4o-mini` | 128K           | Fast, cost-effective                                                  |
-| `o1`          | 200K           | Advanced reasoning                                                    |
+| Model         | Context Window | Use Case                                                             |
+| ------------- | -------------- | -------------------------------------------------------------------- |
+| `gpt-5.2-pro` | 200K           | Best for pro/agentic tasks; excels in multi-step workflows (Default) |
+| `gpt-4o`      | 128K           | Previous generation default multimodal                               |
+| `gpt-4o-mini` | 128K           | Fast, cost-effective                                                 |
+| `o1`          | 200K           | Advanced reasoning                                                   |
 
 #### Google (Gemini)
 
-| Model              | Context Window | Use Case                                                              |
-| ------------------ | -------------- | --------------------------------------------------------------------- |
+| Model              | Context Window | Use Case                                                             |
+| ------------------ | -------------- | -------------------------------------------------------------------- |
 | `gemini-3-pro`     | 2M             | Massive context (2M+), 78% SWE-Bench; rivals GPT-5.2 speed (Default) |
-| `gemini-3-flash`   | 1M             | Fastest, lowest cost for codebase ingestion                           |
-| `gemini-2.0-flash` | 1M             | Previous generation balanced model                                    |
+| `gemini-3-flash`   | 1M             | Fastest, lowest cost for codebase ingestion                          |
+| `gemini-2.0-flash` | 1M             | Previous generation balanced model                                   |
 
 #### Ollama (Local)
 

@@ -5549,16 +5549,17 @@ flows/examples/
 
 For the initial integration, the following models have been selected as the primary targets for each provider:
 
-1.  **Anthropic: `claude-opus-4.5`**
-    *   **Why:** Tops agentic coding and reasoning benchmarks. It achieves near 0% code edit errors and supports 30+ hour autonomy, making it superior for complex Plan-Execute loops.
-2.  **OpenAI: `gpt-5.2-pro`**
-    *   **Why:** Optimized for professional agentic tasks. It excels in multi-step workflows, complex tool-chaining, and managing long-running agents.
-3.  **Google: `gemini-3-pro`**
-    *   **Why:** Combines a massive context window (1M+) with high performance (78% on SWE-Bench). It rivals GPT-5.2 in speed and cost for large-scale codebase ingestion.
+1. **Anthropic: `claude-opus-4.5`**
+   - **Why:** Tops agentic coding and reasoning benchmarks. It achieves near 0% code edit errors and supports 30+ hour autonomy, making it superior for complex Plan-Execute loops.
+2. **OpenAI: `gpt-5.2-pro`**
+   - **Why:** Optimized for professional agentic tasks. It excels in multi-step workflows, complex tool-chaining, and managing long-running agents.
+3. **Google: `gemini-3-pro`**
+   - **Why:** Combines a massive context window (1M+) with high performance (78% on SWE-Bench). It rivals GPT-5.2 in speed and cost for large-scale codebase ingestion.
 
 ---
 
 ### Step 8.1: Anthropic Provider ✅ COMPLETED
+
 - **Dependencies:** Step 3.1 (IModelProvider interface)
 - **Rollback:** Fall back to Ollama/Mock
 - **Action:** Implement `AnthropicProvider` class
@@ -5626,6 +5627,7 @@ export class AnthropicProvider implements IModelProvider {
 ---
 
 ### Step 8.2: OpenAI Provider ✅ COMPLETED
+
 - **Dependencies:** Step 3.1 (IModelProvider interface)
 - **Rollback:** Fall back to Ollama/Mock
 - **Action:** Implement `OpenAIProvider` class
@@ -5699,6 +5701,7 @@ export class OpenAIProvider implements IModelProvider {
 ---
 
 ### Step 8.3: Google Provider (Gemini) ✅ COMPLETED
+
 - **Dependencies:** Step 3.1 (IModelProvider interface)
 - **Rollback:** Fall back to Ollama/Mock
 - **Action:** Implement `GoogleProvider` class
@@ -5765,6 +5768,7 @@ export class GoogleProvider implements IModelProvider {
 ---
 
 ### Step 8.4: Common Infrastructure ✅ COMPLETED
+
 - **Dependencies:** Step 7.9 (Example Flows)
 - **Rollback:** N/A
 - **Action:** Implement shared error handling, retry logic, and token tracking
@@ -5908,7 +5912,7 @@ export class ModelFactory {
 
 ---
 
-## Phase 9: UX Improvements & UI Evaluation ✅ COMPLETED
+## Phase 9: UX Improvements & UI Evaluation 🏗️ IN PROGRESS
 
 **Goal:** Reduce friction in the ExoFrame workflow while evaluating whether a dedicated UI is needed beyond Obsidian.
 
@@ -6060,69 +6064,278 @@ ${markdown}
 
 ---
 
-### Step 9.3: VS Code Integration (Future Consideration)
+### Step 9.3: TUI Cockpit Implementation Plan
 
-**If VS Code extension is prioritized:**
+**Goal:** Deliver an interactive, terminal-based dashboard (TUI) for ExoFrame, providing a native developer experience for monitoring, approval, and control—without requiring a browser or Obsidian.
 
-```typescript
-// vscode-exoframe/src/extension.ts (Future)
-import * as vscode from "vscode";
+#### Rationale
 
-export function activate(context: vscode.ExtensionContext) {
-  // Command: Create Request
-  context.subscriptions.push(
-    vscode.commands.registerCommand("exoframe.createRequest", async () => {
-      const description = await vscode.window.showInputBox({
-        prompt: "What should the agent do?",
-        placeHolder: "Implement user authentication...",
-      });
+- **Fits Developer Workflow:** Most ExoFrame users operate in the terminal; a TUI cockpit feels native and fast.
+- **Interactivity:** Enables real-time plan approval, log streaming, and portal management—features not possible with static dashboards.
+- **No External Dependencies:** No need for Obsidian or a web server; works anywhere Deno runs.
 
-      if (description) {
-        const terminal = vscode.window.createTerminal("ExoFrame");
-        terminal.sendText(`exoctl request "${description}"`);
-      }
-    }),
-  );
+#### Implementation Steps
 
-  // Status bar item
-  const statusBar = vscode.window.createStatusBarItem();
-  statusBar.text = "$(robot) ExoFrame";
-  statusBar.command = "exoframe.showStatus";
-  statusBar.show();
-}
-```
+1. **Library Selection & Setup**
 
-**Decision:** Defer to v2.0 unless strong user demand.
+- Evaluate and select a Deno-compatible TUI library (e.g., `cliffy` or `deno-tui`).
+- Scaffold a new TUI module under `src/ui/tui/`.
+
+2. **TUI Command Integration**
+
+- Implement and document the `exoctl dashboard` command as the entry point for the TUI cockpit.
+- Ensure the TUI can run in parallel with the ExoFrame daemon.
+- Update User Guide, Technical Spec, and Manual Test Scenarios to include full usage, options, and troubleshooting for `exoctl dashboard`.
+
+3. **TUI Cockpit Features**
+
+**Core Views (all support split view):**
+
+- **Monitor:**
+  - Real-time log streaming from the Activity Journal (tail and filter events)
+  - Advanced filtering/search (by agent, trace_id, severity, time window)
+  - Pause/resume log stream
+  - Export logs to file
+- **Plan Reviewer:**
+  - List all pending plans with status and metadata
+  - Diff visualization (side-by-side, colorized, inline)
+  - Approve/Reject actions with confirmation dialogs
+  - View full plan/task history and trace navigation (follow a request from creation to completion)
+  - Comment or annotate plans (MVP: local notes, Future: persistent comments)
+- **Portal Manager:**
+  - List all active portals with status, target, and health
+  - Portal actions: open, close, refresh, create, edit, remove, sync
+  - Quick jump to portal directory in shell
+- **Daemon Control:**
+  - Start/Stop/Restart the daemon
+  - Show daemon status, uptime, and recent errors
+  - View and manage daemon logs
+- **Agent Status:**
+  - List all registered agents, their health, and last activity
+  - Show agent-specific logs and errors
+
+**User Experience & Navigation:**
+
+- Keyboard-driven navigation (tab, arrows, shortcuts for actions)
+- Customizable keybindings (config file or in-app)
+- Clear status indicators (colors/icons for running, pending, error states)
+- Notifications/alerts for errors, approvals needed, or system events
+- Accessibility: high-contrast mode, screen reader support (where possible)
+- Theming: light/dark mode, color customization
+- Graceful fallback if TUI cannot be launched (error message, exit code)
+
+**Extensibility & Future-Proofing:**
+
+- Modular widget/view system for adding new dashboard panels
+- Hooks for future integrations (web dashboard, remote monitoring)
+- Plugin or extension support (Future)
+
+**Optional/Advanced Features (Future):**
+
+- Multi-user session support (for remote/SSH collaboration)
+- Inline help and onboarding walkthrough
+- Activity heatmaps or visual analytics
+- Quick actions: re-run plan, duplicate request, escalate to human
+
+**Testing & Documentation:**
+
+- Manual and automated tests for TUI flows (mock Activity Journal, plan approval, etc.)
+- Update User Guide and README with TUI usage instructions and screenshots
+
+4. **Architecture & Data Flow**
+
+- Use ExoFrame's existing file/database APIs for data (no new backend required).
+- Implement event polling or file watching for real-time updates.
+- Ensure all actions (approve, reject, control) are reflected in the Activity Journal for auditability.
+
+5. **User Experience**
+
+- Keyboard-driven navigation (tab, arrows, shortcuts for actions).
+- Clear status indicators (colors/icons for running, pending, error states).
+- Graceful fallback if TUI cannot be launched (error message, exit code).
+
+6. **Testing & Documentation**
+
+- Manual and automated tests for TUI flows (mock Activity Journal, plan approval, etc.).
+- Update User Guide and README with TUI usage instructions and screenshots.
+
+- Manual and automated tests for TUI flows (mock Activity Journal, plan approval, etc.).
+- Update User Guide and README with TUI usage instructions and screenshots.
+
+#### Milestones
+
+- [ ] TUI cockpit foundation (library, command, basic layout)
+- [ ] Real-time log monitor view
+- [ ] Interactive plan review/approval
+- [ ] Portal management view
+- [ ] Daemon control integration
+- [ ] Documentation and user testing
+
+#### Notes
+
+- Obsidian dashboards remain for knowledge management and historical review.
+- TUI cockpit is the primary interactive UI for ExoFrame MVP; web dashboard is deferred to v2.0 unless user demand shifts.
 
 ---
 
-### Step 9.4: Documentation Updates ✅ COMPLETED
+### Step 9.4: Implement Monitor View (Log Streaming)
 
-Update all docs to reflect new positioning:
+**Description:**
+Design and implement the Monitor panel for real-time log streaming, filtering, and export. Integrate with Activity Journal and provide color-coded log levels and clear status indicators.
 
-1. **White Paper:** ✅ Updated Executive Summary (v1.6.0)
-2. **User Guide:** Add quick request examples
-3. **README:** Clarify "when to use ExoFrame vs IDE agents"
+**Test Description:**
 
-**README Update:**
+- Automated tests: Simulate Activity Journal events and verify correct display, filtering, and color-coding in the TUI.
+- Manual tests: User can pause/resume, search, and export logs; verify correct behavior with real data.
+- Edge cases: Large log volumes, rapid updates, empty logs, invalid filters.
 
-```markdown
-## When to Use ExoFrame
+**Success Criteria:**
 
-| Scenario                          | Tool                           |
-| --------------------------------- | ------------------------------ |
-| Quick code fix while coding       | Use IDE agent (Copilot/Cursor) |
-| Interactive feature development   | Use IDE agent                  |
-| **Overnight batch processing**    | **ExoFrame**                   |
-| **Audit/compliance requirements** | **ExoFrame**                   |
-| **Multi-project refactoring**     | **ExoFrame**                   |
-| **Air-gapped environments**       | **ExoFrame**                   |
+- All log events are displayed in real time with correct filtering and color.
+- Pause/resume and export work as expected.
+- No crashes or UI glitches with large or empty logs.
 
-ExoFrame is not competing with IDE agents for real-time assistance.
-It's an **auditable agent orchestration platform** for async workflows.
-```
+- Design the Monitor panel layout for real-time log streaming.
+- Integrate with Activity Journal to stream and filter logs (by agent, trace_id, severity, time window).
+- Implement controls for pause/resume, search/filter, and export logs.
+- Add color-coded log levels and clear status indicators.
+- Test with simulated and real Activity Journal data.
 
----
+### Step 9.5: Implement Plan Reviewer View
+
+**Description:**
+Implement the Plan Reviewer view to list pending plans, show diffs, enable approve/reject actions, and support navigation through plan/task history. Add local comments/annotations and ensure all actions are logged.
+
+**Test Description:**
+
+- Automated tests: Mock plan data and verify correct listing, diff rendering, and action handling.
+- Manual tests: User can review, approve, reject, and annotate plans; navigation through plan history works.
+- Edge cases: Large diffs, conflicting plans, rapid plan updates.
+
+**Success Criteria:**
+
+- All pending plans are visible and actionable.
+- Diff view is clear and accurate; actions update plan status and log to Activity Journal.
+- No data loss or UI errors with large/complex plans.
+
+- List all pending plans with status, agent, and metadata.
+- Implement diff visualization (side-by-side, colorized, inline options).
+- Add Approve/Reject actions with confirmation dialogs and feedback.
+- Enable navigation through plan/task history and trace chains.
+- Support local comments/annotations on plans (MVP).
+- Ensure all actions are logged in the Activity Journal.
+
+### Step 9.6: Implement Portal Manager View
+
+**Description:**
+Build the Portal Manager view to display all active portals, their status, and health. Implement portal actions (open, close, refresh, create, edit, remove, sync), quick-jump to portal directory, and show portal activity/errors.
+
+**Test Description:**
+
+- Automated tests: Simulate portal state changes and verify correct display and action handling.
+- Manual tests: User can perform all portal actions and see immediate feedback/status.
+- Edge cases: Portal errors, unavailable targets, rapid portal changes.
+
+**Success Criteria:**
+
+- All portal actions work and update status in real time.
+- Errors are clearly shown; no orphaned or inconsistent portal states.
+
+- Display all active portals with status, target, and health indicators.
+- Implement portal actions: open, close, refresh, create, edit, remove, sync.
+- Add quick-jump to portal directory in shell.
+- Integrate with portal management APIs/filesystem.
+- Show portal activity and errors in context.
+
+### Step 9.7: Implement Daemon Control View
+
+**Description:**
+Create the Daemon Control view to show daemon status, uptime, and errors. Provide controls to start/stop/restart the daemon, display/manage logs, and ensure safe lifecycle handling.
+
+**Test Description:**
+
+- Automated tests: Mock daemon state transitions and verify correct status display and control actions.
+- Manual tests: User can start/stop/restart daemon and view logs; errors are handled gracefully.
+- Edge cases: Daemon crashes, rapid state changes, permission errors.
+
+**Success Criteria:**
+
+- Daemon status is always accurate; controls work as intended.
+- No unhandled errors or orphaned processes.
+
+- Show daemon status, uptime, and recent errors.
+- Provide controls to Start/Stop/Restart the daemon.
+- Display and manage daemon logs.
+- Ensure safe handling of daemon lifecycle events.
+
+### Step 9.8: Implement Agent Status View
+
+**Description:**
+Develop the Agent Status view to list all registered agents, show their health, last activity, and agent-specific logs/errors. Add clear indicators for agent availability and issues.
+
+**Test Description:**
+
+- Automated tests: Simulate agent health/status changes and verify correct display.
+- Manual tests: User can view agent details and logs; issues are clearly indicated.
+- Edge cases: No agents, all agents down, rapid status changes.
+
+**Success Criteria:**
+
+- Agent list is always up to date; health and issues are clearly shown.
+- No missing or stale agent data.
+
+### Step 9.9: TUI Integration, Testing, and UX Polish
+
+- Integrate all views into a unified, keyboard-navigable dashboard.
+- Implement notifications/alerts for errors and approvals.
+- Add theming, accessibility, and keybinding customization.
+- Conduct user testing and gather feedback for improvements.
+- Update documentation and provide usage examples/screenshots.
+
+**Test Description:**
+
+- Automated tests: End-to-end flows across all views, keyboard navigation, and notification triggers.
+- Manual tests: User can switch views, customize settings, and receive alerts; accessibility and theming work.
+- Edge cases: Simultaneous events, conflicting actions, unusual terminal sizes.
+
+**Success Criteria:**
+
+- All views work together seamlessly; navigation and notifications are reliable.
+- Theming and accessibility meet requirements; documentation is complete and accurate.
+
+### Step 9.10: Implement Split View (Multi-Pane) Functionality
+
+**Description:**
+Add the ability to split the TUI into two or more panes, each displaying a different view (e.g., Monitor and Plan Reviewer). Support dynamic resizing, focus switching, preset layouts, and visual indicators for active/inactive panes. Enable actions in one pane to update/filter content in another.
+
+**Test Description:**
+
+- Automated tests: Simulate opening, closing, and resizing multiple panes; verify each pane remains interactive and updates independently.
+- Manual tests: User can split, resize, and switch focus between panes; actions in one pane update content in another.
+- Edge cases: Minimum/maximum pane sizes, rapid layout changes, simultaneous actions in both panes.
+
+**Success Criteria:**
+
+- User can view and interact with multiple panels at once.
+- No UI glitches or crashes when resizing or switching panes.
+- Actions in one pane can update/filter content in another as expected.
+
+### Step 9.11: Save and Restore Preferred Dashboard Views
+
+**Description:**
+Implement persistent storage of user’s preferred dashboard layout and active views (e.g., which panes are open, their arrangement, and which views are shown in each pane). On dashboard launch, automatically restore the last used layout and views. Provide a command/menu to reset to default. Store preferences in a config file and ensure compatibility across upgrades and terminal sizes.
+
+**Test Description:**
+
+- Automated tests: Simulate saving and restoring layouts, verify correct restoration after relaunch.
+- Manual tests: User customizes layout, closes dashboard, and sees the same layout/views on next launch.
+- Edge cases: Corrupted config, terminal size changes, upgrades.
+
+**Success Criteria:**
+
+- User’s preferred dashboard layout and views are restored on every session.
+- No data loss or crashes if config is missing or corrupted.
+- Reset to default works as expected.
 
 ### Phase 9 Exit Criteria
 
@@ -6131,6 +6344,14 @@ It's an **auditable agent orchestration platform** for async workflows.
 - [x] Obsidian dashboard templates in `Knowledge/`
 - [x] Documentation updated with clear positioning
 - [x] User Guide includes quick request examples
+- [ ] TUI Dashboard (`exoctl dashboard`) implemented:
+  - [ ] All core views (Monitor, Plan Reviewer, Portal Manager, Daemon Control, Agent Status) are accessible and functional
+  - [ ] Split view (multi-pane) functionality works with dynamic resizing, focus switching, and preset layouts
+  - [ ] User’s preferred layout and views are saved and restored between sessions
+  - [ ] Keyboard navigation, theming, and accessibility features are implemented
+  - [ ] All actions are logged to the Activity Journal and reflected in the UI
+  - [ ] Documentation and user guide are updated with usage, troubleshooting, and examples
+  - [ ] Manual and automated tests for all dashboard features pass
 
 ---
 
@@ -6503,9 +6724,3 @@ Deno.test("MCP Server - list plans tool", async () => {
 ---
 
 _End of Implementation Plan_
-
-```
-```
-
-```
-```

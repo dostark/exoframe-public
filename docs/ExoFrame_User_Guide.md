@@ -421,6 +421,56 @@ exoctl <command>
 ````
 ### 4.2 Command Groups
 
+#### **Dashboard Command** - Terminal UI Cockpit
+**Split View (Multi-Pane) Mode:**
+- Press `s` or use the on-screen menu to split the dashboard into two or more panes.
+- Each pane can show a different view (e.g., Monitor + Plans, Plans + Portals).
+- Resize panes with `Ctrl+Arrow` keys. Switch focus with `Tab`.
+- Preset layouts (vertical/horizontal) available in the settings panel (`?`).
+- Example: Review a plan in one pane while watching logs in another.
+
+The `exoctl dashboard` command launches the interactive Terminal User Interface (TUI) cockpit for ExoFrame. This dashboard provides real-time monitoring, plan review, portal management, and daemon control—all from your terminal.
+
+```bash
+# Launch the TUI dashboard
+exoctl dashboard
+
+# Optional: run in a specific workspace
+exoctl dashboard --workspace /path/to/ExoFrame
+
+# See help and options
+exoctl dashboard --help
+```
+
+**Features:**
+- Real-time log streaming and filtering
+- Review and approve/reject plans with diff view
+- Manage portals (add, remove, refresh, view status)
+- Control daemon (start, stop, restart, view status)
+- View agent health and activity
+- Keyboard navigation, theming, and notifications
+
+**Example workflow:**
+
+```bash
+# 1. Launch the dashboard
+$ exoctl dashboard
+
+# 2. Navigate between Monitor, Plans, Portals, Daemon, and Agents views
+#    (use Tab/Arrow keys, see on-screen help)
+
+# 3. Approve a plan from the Plan Reviewer view
+# 4. Watch logs in real time in the Monitor view
+# 5. Add or refresh a portal in the Portal Manager
+# 6. Start/stop the daemon from the Daemon Control view
+```
+
+**Troubleshooting:**
+- If the dashboard fails to launch, ensure your terminal supports ANSI escape codes and your workspace is initialized.
+- For accessibility or theming issues, see the dashboard settings panel (press `?` in the TUI).
+
+See the [Implementation Plan](./ExoFrame_Implementation_Plan.md#step-95-tui-cockpit-implementation-plan) for technical details and roadmap.
+
 ExoFrame CLI is organized into six main command groups:
 
 #### **Request Commands** - Primary Interface for Creating Requests
@@ -903,7 +953,7 @@ exoctl flow validate research-pipeline
 | `reviewer`   | openai:gpt-4            | Code review and quality           |
 | `architect`  | anthropic:claude-opus   | System design and architecture    |
 | `researcher` | openai:gpt-4-turbo      | Research and analysis             |
-| `gemini`     | google:gemini-3-flash | Multimodal AI with fast responses |
+| `gemini`     | google:gemini-3-flash   | Multimodal AI with fast responses |
 | `mock`       | mock:test-model         | Testing and CI/CD                 |
 
 **Blueprint File Structure:**
@@ -1020,10 +1070,12 @@ exoctl daemon logs --follow              # Stream logs (like tail -f)
 ExoFrame includes a pre-configured Obsidian Dashboard to monitor your workspace activity visually.
 
 **Setup:**
+
 1. Install the [Dataview](https://github.com/blacksmithgu/obsidian-dataview) plugin in Obsidian.
 2. Open `Knowledge/Dashboard.md` in your Obsidian vault.
 
 **Features:**
+
 - **Daemon Status:** Real-time check if the ExoFrame daemon is running.
 - **Pending Plans:** List of plans awaiting your review.
 - **Recent Activity:** Audit log of recent agent actions (requires activity export).
@@ -1031,6 +1083,7 @@ ExoFrame includes a pre-configured Obsidian Dashboard to monitor your workspace 
 
 **Updating Activity Log:**
 The activity log in the dashboard is populated from the SQLite journal. To update the markdown export, run:
+
 ```bash
 # Manually export activity log
 deno task export-activity

@@ -13,21 +13,28 @@ The current ExoFrame workflow relies on manual file manipulation in the `Inbox/R
 | **D. TUI (Terminal UI)** | No browser needed, fits developer workflow, fast. | Limited visualization (diffs), learning curve for TUI libraries. | Medium |
 | **E. VS Code Extension** | Integrated with dev workflow, high visibility. | VS Code only, extension maintenance, complex API. | Medium |
 
-## 3. Decision: Option A (Obsidian + Dataview) for MVP
+## 3. Decision: Option D (TUI - Terminal User Interface)
 
 ### Rationale:
-1. **Zero Deployment Overhead**: Users already have Obsidian if they are following the recommended setup.
-2. **Architecture Alignment**: Fits the "Files-as-API" and "Auditability" goals. Every dashboard view is just a query over the existing filesystem.
-3. **Speed to Market**: Can be implemented in hours rather than weeks.
+1. **Developer Workflow**: Developers spend most of their time in the terminal. A TUI provides a "cockpit" that feels native to the existing `exoctl` workflow.
+2. **Interactivity**: Unlike Obsidian/Dataview (which is read-only), a TUI can provide interactive plan approval, log streaming, and portal management without leaving the shell.
+3. **No External Dependencies**: Does not require users to install or configure Obsidian to get a high-level view of the system.
+4. **Performance**: TUIs are extremely fast and lightweight, fitting the "Iron Skeleton" philosophy of ExoFrame.
 
 ### Future Path:
-- **Option C (Web Dashboard)** will be evaluated for v2.0 if users require remote access or real-time log streaming.
-- **Option E (VS Code Extension)** will be considered if the community shows strong preference for IDE integration over Obsidian.
+- **Option A (Obsidian)** will remain the primary tool for **Knowledge Management** and long-term auditability (viewing historical plans and activity logs).
+- **Option C (Web Dashboard)** will be considered for v2.0 if multi-user or remote monitoring becomes a requirement.
 
-## 4. MVP Implementation Plan (Phase 9)
-1. **Dashboard Template**: Create `Knowledge/Dashboard.md` with Dataview queries for:
-    - Daemon Status (via `daemon.pid`)
-    - Pending Plans (via `Inbox/Plans`)
-    - Recent Activity (via `System/activity_export.md`)
-    - Active Portals (via `Knowledge/Portals`)
-2. **Activity Export Service**: Implement a background task or script to export the SQLite activity log to a Markdown file for Dataview consumption.
+## 4. Implementation Plan (Phase 9 & 10)
+
+### Step 9.5: TUI Cockpit Foundation
+1. **Library Selection**: Use a lightweight TUI library (e.g., `cliffy` or `deno-tui`) to build the dashboard.
+2. **Dashboard Views**:
+    - **Monitor**: Real-time log streaming from the Activity Journal.
+    - **Plan Reviewer**: Interactive diff viewer for pending plans with Approve/Reject buttons.
+    - **Portal Manager**: List and status of active portals.
+    - **Daemon Control**: Start/Stop/Restart the daemon from within the TUI.
+
+### Step 9.6: Integration with exoctl
+1. Implement `exoctl dashboard` (or `exoctl cockpit`) to launch the TUI.
+2. Ensure the TUI can run in parallel with the daemon.

@@ -2893,6 +2893,100 @@ Every feature needs tests for:
 
 ---
 
+## Part XVI: The Multi-Provider & Observability Era (December 2025)
+
+### The Scaling Challenge
+As ExoFrame moved from a prototype to a multi-provider system, we hit a new level of complexity. We weren't just talking to one model anymore; we were talking to three different clouds (Anthropic, OpenAI, Google) and local models (Ollama). This required a shift from "hardcoded models" to "named abstractions."
+
+### Pattern 29: Named Model Abstraction
+
+**The Problem**:
+Hardcoding `provider: "openai"` and `model: "gpt-4"` in every request or config file made it impossible to switch providers without a massive search-and-replace. It also prevented users from easily choosing between "fast" and "smart" models.
+
+**The Solution**:
+Introduce a layer of indirection. Define named models in the config (e.g., `default`, `fast`, `local`) and reference them by name.
+
+```toml
+# exo.config.toml
+[models.default]
+provider = "anthropic"
+model = "claude-3-5-sonnet-20241022"
+
+[models.fast]
+provider = "openai"
+model = "gpt-4o-mini"
+```
+
+**The Implementation**:
+- `ProviderFactory.createByName(name)` resolves the configuration.
+- `exoctl request --model fast` allows per-request overrides.
+- Request frontmatter can specify `model: local` to force local execution.
+
+**The Lesson**: Decouple the *intent* (e.g., "I want a fast response") from the *implementation* (e.g., "Use GPT-4o-mini"). This makes the system resilient to model deprecations and provider outages.
+
+### Pattern 30: Multi-Provider Resilience
+
+**The Problem**:
+Every LLM provider has different error codes, rate limits, and retry requirements. Implementing this logic inside each provider led to massive code duplication and inconsistent behavior.
+
+**The Solution**:
+Extract a shared provider infrastructure (`common.ts`) that handles the "boring" parts of distributed systems.
+
+**What We Built**:
+- **Standardized Errors**: `RateLimitError`, `AuthenticationError`, `ProviderError`.
+- **Exponential Backoff**: A shared `withRetry` utility that all providers use.
+- **Token Tracking**: Standardized logging of input/output tokens to the Activity Journal.
+
+**The Result**:
+Adding a new provider (like Google Gemini) took less than an hour because 80% of the logic (retries, logging, error mapping) was already in the shared base.
+
+### Pattern 31: Activity Export for Observability
+
+**The Problem**:
+The Activity Journal (SQLite) is great for machines, but humans can't "see" what the daemon is doing without running SQL queries. We needed a way to bridge the gap between the CLI/Daemon and the Obsidian Dashboard.
+
+**The Solution**:
+The "Export Pattern." Create a script that periodically (or on-demand) exports the internal state to a human-readable format that the existing UI (Obsidian) already understands.
+
+```typescript
+// scripts/export_activity.ts
+const logs = await db.getRecentActivity(100);
+const markdown = formatAsDataviewTable(logs);
+await Deno.writeTextFile("System/activity_export.md", markdown);
+```
+
+**The Lesson**: You don't always need a custom Web UI. If your users already use a tool (like Obsidian), export your data into their format. It's faster to build and provides a better user experience.
+
+### Pattern 32: User-Defined Portals & Security
+
+**The Problem**:
+ExoFrame started with fixed portals (@blueprints, @inbox). But users needed to define their own project boundaries (e.g., `@MyProject`). This opened a massive security hole: how do we prevent an agent from using a user-defined portal to escape the sandbox?
+
+**The Pattern**:
+"Security-First Extension." When adding a feature that extends system boundaries, the security tests must be implemented *before* the feature is exposed.
+
+**The Implementation**:
+- `PathResolver` was updated to resolve user-defined aliases from `exo.config.toml`.
+- **Mandatory Security Tests**:
+    - Path traversal: `@MyProject/../../etc/passwd` → Blocked.
+    - Symlink escape: `@MyProject/link_to_outside` → Blocked.
+    - Absolute path injection: `/etc/passwd` → Blocked.
+
+**The Lesson**: Flexibility (user-defined portals) must never come at the cost of security. If you can't prove it's safe with a test, don't ship the feature.
+
+### Pattern 33: Positioning: ExoFrame vs IDE Agents
+
+**The Finding**:
+During the implementation of Phase 9, we realized that ExoFrame isn't a competitor to "IDE Agents" (like Cursor or GitHub Copilot). It's an **orchestrator**.
+
+- **IDE Agents**: Great for interactive, line-by-line coding.
+- **ExoFrame**: Great for batch processing, multi-project coordination, and maintaining a permanent audit trail of *why* decisions were made.
+
+**The Pattern**: "Complementary Positioning." Don't try to build a better version of an existing tool. Build the tool that handles what the existing ones can't (e.g., long-running background tasks, cross-repository refactoring, and structured activity logging).
+
+---
+
+
 ## Part IX: The Human Skills That Matter
 
 ### What AI Didn't Replace
@@ -3049,6 +3143,10 @@ _The recursion continues. The patterns emerge. The meta-framework takes shape._
 | **Test Deduplication**        | "Check if there are test duplications"                 | Consolidate scattered tests                    |
 | **Activity Logging Audit**    | "Verify every CLI command is traced in activity log"   | Complete audit trail                           |
 | **Format Migration**          | "Migrate frontmatter to YAML for Dataview"             | Consistent format, ecosystem compatibility     |
+| **Named Model Abstraction**   | "Use model: fast in request frontmatter"               | Decouple intent from implementation            |
+| **Multi-Provider Resilience** | Shared `withRetry` in `common.ts`                      | Robust error handling across all clouds        |
+| **Activity Export**           | `deno task export-activity`                            | Bridge SQLite to Obsidian Dataview             |
+| **User-Defined Portals**      | Define `@Alias` in `exo.config.toml`                   | Secure, flexible project boundaries            |
 | **Full Verification**         | "Run all tests"                                        | Verify nothing broke                           |
 | **Agent Instructions**        | Create AGENT_INSTRUCTIONS.md in key directories        | AI helpers follow same patterns                |
 | **Unified Logging**           | "Migrate console.log to EventLogger"                   | Audit trail + consistent output                |

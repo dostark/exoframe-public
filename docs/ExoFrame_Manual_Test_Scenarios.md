@@ -1,3 +1,100 @@
+## Scenario MT-XX: TUI Dashboard Launch and Core Flows
+
+## Scenario MT-YY: TUI Split View (Multi-Pane) Functionality
+
+**Purpose:** Verify the split view feature in `exoctl dashboard` allows simultaneous display and interaction with multiple panels.
+
+### Preconditions
+
+- ExoFrame workspace deployed and initialized
+- Daemon running (for full functionality)
+
+### Steps
+
+```bash
+# Step 1: Launch the dashboard
+exoctl dashboard
+
+# Step 2: Activate split view (press `s` or use menu)
+# Step 3: Set left pane to Monitor, right pane to Plans
+# Step 4: Resize panes with Ctrl+Arrow keys
+# Step 5: Switch focus with Tab and interact with both panes
+# Step 6: Try other layouts (vertical/horizontal)
+# Step 7: Close split view and return to single pane
+```
+
+### Expected Results
+
+- Both panes display different views and remain interactive
+- Resizing and switching focus works smoothly
+- Actions in one pane (e.g., selecting a plan) can update/filter content in the other (e.g., show related logs)
+- No UI glitches or crashes
+
+### Verification
+
+```bash
+# Observe both panes update as expected
+# Check Activity Journal for logged actions from both panes
+```
+
+### Cleanup
+
+- Exit the dashboard (press `q` or use on-screen exit)
+
+### Pass Criteria
+
+- [ ] User can open, resize, and close split view
+- [ ] Each pane is fully interactive and updates independently
+- [ ] No critical errors or crashes
+
+**Purpose:** Verify `exoctl dashboard` launches the TUI cockpit and all core views function as expected.
+
+### Preconditions
+
+- ExoFrame workspace deployed and initialized
+- Daemon running (for full functionality)
+
+### Steps
+
+```bash
+# Step 1: Launch the dashboard
+exoctl dashboard
+
+# Step 2: Switch between Monitor, Plans, Portals, Daemon, and Agents views
+#         (use Tab/Arrow keys, see on-screen help)
+
+# Step 3: In Monitor, verify real-time log streaming and filtering
+# Step 4: In Plans, review and approve/reject a plan
+# Step 5: In Portals, add, remove, and refresh a portal
+# Step 6: In Daemon, start/stop/restart and view logs
+# Step 7: In Agents, view agent health and logs
+```
+
+### Expected Results
+
+- Dashboard launches without errors
+- All views are accessible and update in real time
+- Actions (approve, add portal, restart daemon) succeed and are reflected in the Activity Journal
+- No crashes or major UI glitches
+
+### Verification
+
+```bash
+# Check Activity Journal for logged actions
+sqlite3 ~/ExoFrame/System/journal.db "SELECT * FROM activity WHERE actor='human' AND via='tui' ORDER BY timestamp DESC LIMIT 10;"
+# Confirm portal, plan, and daemon changes in their respective directories
+```
+
+### Cleanup
+
+- Exit the dashboard (press `q` or use on-screen exit)
+
+### Pass Criteria
+
+- [ ] Dashboard launches and all views work
+- [ ] Actions are logged and reflected in the system
+- [ ] No critical errors or crashes
+
 # ExoFrame Manual Test Scenarios
 
 - **Version:** 1.7.0
