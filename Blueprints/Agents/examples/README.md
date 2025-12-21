@@ -133,4 +133,4 @@ See `tests/AGENT_INSTRUCTIONS.md` for comprehensive testing guidelines.
 - `docs/ExoFrame_Implementation_Plan.md` - Step 6.10: Agent Examples
 - `src/AGENT_INSTRUCTIONS.md` - Blueprint creation guidelines
 - `tests/AGENT_INSTRUCTIONS.md` - Testing guidelines
-- `flows/examples/` - Flow examples that use these agents
+- `Blueprints/Flows/examples/` - Flow examples that use these agents

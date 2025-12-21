@@ -100,14 +100,14 @@ const stagedFlow = defineFlow({
 
 3. **Validate a flow:**
    ```bash
-   exoctl flow validate flows/examples/development/code_review.flow.ts
+   exoctl flow validate Blueprints/Flows/examples/development/code_review.flow.ts
    ```
 
 ### Using as Templates
 
 1. **Copy an example:**
    ```bash
-   cp flows/examples/development/code_review.flow.ts my_custom_flow.flow.ts
+   cp Blueprints/Flows/examples/development/code_review.flow.ts my_custom_flow.flow.ts
    ```
 
 2. **Modify for your needs:**
