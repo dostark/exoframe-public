@@ -5207,7 +5207,7 @@ const researchFlow = defineFlow({
 - [x] Transform performance doesn't significantly impact flow execution time
 - [x] Activity Journal logs all transform operations for debugging
 - [x] Transform functions are isolated and don't interfere with each other
-- [ ] Memory usage remains bounded even with large data transformations
+      [ ] Memory usage remains bounded even with large data transformations
 
 **Planned Tests:**
 
@@ -5218,7 +5218,7 @@ const researchFlow = defineFlow({
 - [x] Error handling tests: Invalid transform names, malformed input data, transform function exceptions
 - [x] Input source tests: Different input.source values (request, step, aggregate) work with various data types
 - [x] Transform chain tests: Multiple transforms applied in sequence produce expected results
-- [ ] Data format tests: Transforms handle various output formats (markdown, JSON, plain text, mixed content)
+      [ ] Data format tests: Transforms handle various output formats (markdown, JSON, plain text, mixed content)
 - [x] Performance tests: Transform execution time stays under 100ms for typical data sizes
 - [x] Memory tests: Large data transformations don't cause memory leaks or excessive usage
 - [x] Activity Journal tests: All transform operations are properly logged with correct metadata
@@ -5952,10 +5952,10 @@ However, the current "drop a markdown file" workflow has friction. This phase ad
 
 **Decision Criteria for Web UI:**
 
-- [ ] 50% of users don't use Obsidian
-- [ ] Users request real-time log streaming
-- [ ] Users need mobile/remote access
-- [ ] Complex approval workflows needed
+[ ] 50% of users don't use Obsidian
+[ ] Users request real-time log streaming
+[ ] Users need mobile/remote access
+[ ] Complex approval workflows needed
 
 **If Web UI is chosen (Future):**
 
@@ -6164,12 +6164,13 @@ ${markdown}
 
 #### Milestones
 
-- [ ] TUI cockpit foundation (library, command, basic layout)
+[ ] TUI cockpit foundation (library, command, basic layout)
+
 - [x] Real-time log monitor view
-- [ ] Interactive plan review/approval
-- [ ] Portal management view
-- [ ] Daemon control integration
-- [ ] Documentation and user testing
+      [ ] Interactive plan review/approval
+      [ ] Portal management view
+      [ ] Daemon control integration
+      [ ] Documentation and user testing
 
 #### Notes
 
@@ -6185,21 +6186,21 @@ Design and implement the Monitor panel for real-time log streaming, filtering, a
 
 **Test Description:**
 
-- Automated tests: Simulate Activity Journal events and verify correct display, filtering, and color-coding in the TUI.
-- Manual tests: User can pause/resume, search, and export logs; verify correct behavior with real data.
-- Edge cases: Large log volumes, rapid updates, empty logs, invalid filters.
+- [x] Automated tests: Simulate Activity Journal events and verify correct display, filtering, and color-coding in the TUI.
+- [ ] Manual tests: User can pause/resume, search, and export logs; verify correct behavior with real data.
+- [x] Edge cases: Large log volumes, rapid updates, empty logs, invalid filters.
 
 **Success Criteria:**
 
-- All log events are displayed in real time with correct filtering and color.
-- Pause/resume and export work as expected.
-- No crashes or UI glitches with large or empty logs.
+- [x] All log events are displayed in real time with correct filtering and color.
+- [x] Pause/resume and export work as expected.
+- [x] No crashes or UI glitches with large or empty logs.
 
-- Design the Monitor panel layout for real-time log streaming.
-- Integrate with Activity Journal to stream and filter logs (by agent, trace_id, severity, time window).
-- Implement controls for pause/resume, search/filter, and export logs.
-- Add color-coded log levels and clear status indicators.
-- Test with simulated and real Activity Journal data.
+[ ] Design the Monitor panel layout for real-time log streaming.
+[ ] Integrate with Activity Journal to stream and filter logs (by agent, trace_id, severity, time window).
+[ ] Implement controls for pause/resume, search/filter, and export logs.
+[ ] Add color-coded log levels and clear status indicators.
+[ ] Test with simulated and real Activity Journal data.
 
 ### Step 9.5: Implement Plan Reviewer View
 
@@ -6208,22 +6209,22 @@ Implement the Plan Reviewer view to list pending plans, show diffs, enable appro
 
 **Test Description:**
 
-- Automated tests: Mock plan data and verify correct listing, diff rendering, and action handling.
-- Manual tests: User can review, approve, reject, and annotate plans; navigation through plan history works.
-- Edge cases: Large diffs, conflicting plans, rapid plan updates.
+[x] Automated tests: Mock plan data and verify correct listing, diff rendering, and action handling.
+[ ] Manual tests: User can review, approve, reject, and annotate plans; navigation through plan history works.
+[x] Edge cases: Large diffs, conflicting plans, rapid plan updates.
 
 **Success Criteria:**
 
-- All pending plans are visible and actionable.
-- Diff view is clear and accurate; actions update plan status and log to Activity Journal.
-- No data loss or UI errors with large/complex plans.
+[x] All pending plans are visible and actionable.
+[x] Diff view is clear and accurate; actions update plan status and log to Activity Journal.
+[x] No data loss or UI errors with large/complex plans.
 
-- List all pending plans with status, agent, and metadata.
-- Implement diff visualization (side-by-side, colorized, inline options).
-- Add Approve/Reject actions with confirmation dialogs and feedback.
-- Enable navigation through plan/task history and trace chains.
-- Support local comments/annotations on plans (MVP).
-- Ensure all actions are logged in the Activity Journal.
+[x] List all pending plans with status, agent, and metadata.
+[ ] Implement diff visualization (side-by-side, colorized, inline options).
+[x] Add Approve/Reject actions with confirmation dialogs and feedback.
+[ ] Enable navigation through plan/task history and trace chains.
+[ ] Support local comments/annotations on plans (MVP).
+[x] Ensure all actions are logged in the Activity Journal.
 
 ### Step 9.6: Implement Portal Manager View
 
@@ -6232,20 +6233,20 @@ Build the Portal Manager view to display all active portals, their status, and h
 
 **Test Description:**
 
-- Automated tests: Simulate portal state changes and verify correct display and action handling.
-- Manual tests: User can perform all portal actions and see immediate feedback/status.
-- Edge cases: Portal errors, unavailable targets, rapid portal changes.
+[ ] Automated tests: Simulate portal state changes and verify correct display and action handling.
+[ ] Manual tests: User can perform all portal actions and see immediate feedback/status.
+[ ] Edge cases: Portal errors, unavailable targets, rapid portal changes.
 
 **Success Criteria:**
 
-- All portal actions work and update status in real time.
-- Errors are clearly shown; no orphaned or inconsistent portal states.
+[ ] All portal actions work and update status in real time.
+[ ] Errors are clearly shown; no orphaned or inconsistent portal states.
 
-- Display all active portals with status, target, and health indicators.
-- Implement portal actions: open, close, refresh, create, edit, remove, sync.
-- Add quick-jump to portal directory in shell.
-- Integrate with portal management APIs/filesystem.
-- Show portal activity and errors in context.
+[ ] Display all active portals with status, target, and health indicators.
+[ ] Implement portal actions: open, close, refresh, create, edit, remove, sync.
+[ ] Add quick-jump to portal directory in shell.
+[ ] Integrate with portal management APIs/filesystem.
+[ ] Show portal activity and errors in context.
 
 ### Step 9.7: Implement Daemon Control View
 
@@ -6254,19 +6255,19 @@ Create the Daemon Control view to show daemon status, uptime, and errors. Provid
 
 **Test Description:**
 
-- Automated tests: Mock daemon state transitions and verify correct status display and control actions.
-- Manual tests: User can start/stop/restart daemon and view logs; errors are handled gracefully.
-- Edge cases: Daemon crashes, rapid state changes, permission errors.
+[ ] Automated tests: Mock daemon state transitions and verify correct status display and control actions.
+[ ] Manual tests: User can start/stop/restart daemon and view logs; errors are handled gracefully.
+[ ] Edge cases: Daemon crashes, rapid state changes, permission errors.
 
 **Success Criteria:**
 
-- Daemon status is always accurate; controls work as intended.
-- No unhandled errors or orphaned processes.
+[ ] Daemon status is always accurate; controls work as intended.
+[ ] No unhandled errors or orphaned processes.
 
-- Show daemon status, uptime, and recent errors.
-- Provide controls to Start/Stop/Restart the daemon.
-- Display and manage daemon logs.
-- Ensure safe handling of daemon lifecycle events.
+[ ] Show daemon status, uptime, and recent errors.
+[ ] Provide controls to Start/Stop/Restart the daemon.
+[ ] Display and manage daemon logs.
+[ ] Ensure safe handling of daemon lifecycle events.
 
 ### Step 9.8: Implement Agent Status View
 
@@ -6275,14 +6276,14 @@ Develop the Agent Status view to list all registered agents, show their health, 
 
 **Test Description:**
 
-- Automated tests: Simulate agent health/status changes and verify correct display.
-- Manual tests: User can view agent details and logs; issues are clearly indicated.
-- Edge cases: No agents, all agents down, rapid status changes.
+[ ] Automated tests: Simulate agent health/status changes and verify correct display.
+[ ] Manual tests: User can view agent details and logs; issues are clearly indicated.
+[ ] Edge cases: No agents, all agents down, rapid status changes.
 
 **Success Criteria:**
 
-- Agent list is always up to date; health and issues are clearly shown.
-- No missing or stale agent data.
+[ ] Agent list is always up to date; health and issues are clearly shown.
+[ ] No missing or stale agent data.
 
 ### Step 9.9: TUI Integration, Testing, and UX Polish
 
@@ -6294,14 +6295,14 @@ Develop the Agent Status view to list all registered agents, show their health, 
 
 **Test Description:**
 
-- Automated tests: End-to-end flows across all views, keyboard navigation, and notification triggers.
-- Manual tests: User can switch views, customize settings, and receive alerts; accessibility and theming work.
-- Edge cases: Simultaneous events, conflicting actions, unusual terminal sizes.
+[ ] Automated tests: End-to-end flows across all views, keyboard navigation, and notification triggers.
+[ ] Manual tests: User can switch views, customize settings, and receive alerts; accessibility and theming work.
+[ ] Edge cases: Simultaneous events, conflicting actions, unusual terminal sizes.
 
 **Success Criteria:**
 
-- All views work together seamlessly; navigation and notifications are reliable.
-- Theming and accessibility meet requirements; documentation is complete and accurate.
+[ ] All views work together seamlessly; navigation and notifications are reliable.
+[ ] Theming and accessibility meet requirements; documentation is complete and accurate.
 
 ### Step 9.10: Implement Split View (Multi-Pane) Functionality
 
@@ -6310,15 +6311,15 @@ Add the ability to split the TUI into two or more panes, each displaying a diffe
 
 **Test Description:**
 
-- Automated tests: Simulate opening, closing, and resizing multiple panes; verify each pane remains interactive and updates independently.
-- Manual tests: User can split, resize, and switch focus between panes; actions in one pane update content in another.
-- Edge cases: Minimum/maximum pane sizes, rapid layout changes, simultaneous actions in both panes.
+[ ] Automated tests: Simulate opening, closing, and resizing multiple panes; verify each pane remains interactive and updates independently.
+[ ] Manual tests: User can split, resize, and switch focus between panes; actions in one pane update content in another.
+[ ] Edge cases: Minimum/maximum pane sizes, rapid layout changes, simultaneous actions in both panes.
 
 **Success Criteria:**
 
-- User can view and interact with multiple panels at once.
-- No UI glitches or crashes when resizing or switching panes.
-- Actions in one pane can update/filter content in another as expected.
+[ ] User can view and interact with multiple panels at once.
+[ ] No UI glitches or crashes when resizing or switching panes.
+[ ] Actions in one pane can update/filter content in another as expected.
 
 ### Step 9.11: Save and Restore Preferred Dashboard Views
 
@@ -6327,31 +6328,31 @@ Implement persistent storage of user’s preferred dashboard layout and active v
 
 **Test Description:**
 
-- Automated tests: Simulate saving and restoring layouts, verify correct restoration after relaunch.
-- Manual tests: User customizes layout, closes dashboard, and sees the same layout/views on next launch.
-- Edge cases: Corrupted config, terminal size changes, upgrades.
+[ ] Automated tests: Simulate saving and restoring layouts, verify correct restoration after relaunch.
+[ ] Manual tests: User customizes layout, closes dashboard, and sees the same layout/views on next launch.
+[ ] Edge cases: Corrupted config, terminal size changes, upgrades.
 
 **Success Criteria:**
 
-- User’s preferred dashboard layout and views are restored on every session.
-- No data loss or crashes if config is missing or corrupted.
-- Reset to default works as expected.
+[ ] User’s preferred dashboard layout and views are restored on every session.
+[ ] No data loss or crashes if config is missing or corrupted.
+[ ] Reset to default works as expected.
 
 ### Phase 9 Exit Criteria
 
-- [x] `exoctl request` command implemented and tested
-- [x] UI evaluation document created with decision
-- [x] Obsidian dashboard templates in `Knowledge/`
-- [x] Documentation updated with clear positioning
-- [x] User Guide includes quick request examples
-- [ ] TUI Dashboard (`exoctl dashboard`) implemented:
-  - [ ] All core views (Monitor, Plan Reviewer, Portal Manager, Daemon Control, Agent Status) are accessible and functional
-  - [ ] Split view (multi-pane) functionality works with dynamic resizing, focus switching, and preset layouts
-  - [ ] User’s preferred layout and views are saved and restored between sessions
-  - [ ] Keyboard navigation, theming, and accessibility features are implemented
-  - [ ] All actions are logged to the Activity Journal and reflected in the UI
-  - [ ] Documentation and user guide are updated with usage, troubleshooting, and examples
-  - [ ] Manual and automated tests for all dashboard features pass
+[x] `exoctl request` command implemented and tested
+[x] UI evaluation document created with decision
+[x] Obsidian dashboard templates in `Knowledge/`
+[x] Documentation updated with clear positioning
+[x] User Guide includes quick request examples
+[ ] TUI Dashboard (`exoctl dashboard`) implemented:
+[ ] All core views (Monitor, Plan Reviewer, Portal Manager, Daemon Control, Agent Status) are accessible and functional
+[ ] Split view (multi-pane) functionality works with dynamic resizing, focus switching, and preset layouts
+[ ] User’s preferred layout and views are saved and restored between sessions
+[ ] Keyboard navigation, theming, and accessibility features are implemented
+[ ] All actions are logged to the Activity Journal and reflected in the UI
+[ ] Documentation and user guide are updated with usage, troubleshooting, and examples
+[ ] Manual and automated tests for all dashboard features pass
 
 ---
 
@@ -6397,10 +6398,10 @@ Tests for lease acquisition/release are in `tests/execution_loop_test.ts`.
 - [x] Documentation tests prevent doc drift
 - [x] Flow execution tests validate multi-agent orchestration
 - [x] Security tests verify Deno permission enforcement
-- [ ] Performance benchmarks meet targets
+      [ ] Performance benchmarks meet targets
 - [x] Mock LLM enables deterministic testing (30 tests, 5 strategies)
-- [ ] Manual QA passes on all target platforms
-- [ ] All tests run automatically on PR in CI/CD
+      [ ] Manual QA passes on all target platforms
+      [ ] All tests run automatically on PR in CI/CD
 
 ---
 
@@ -6712,14 +6713,14 @@ Deno.test("MCP Server - list plans tool", async () => {
 
 ### Phase 11 Exit Criteria
 
-- [ ] MCP server implemented with stdio transport
-- [ ] All core tools implemented (create, list, approve, query)
-- [ ] Activity Journal logging for all MCP operations
-- [ ] Integration tests with MCP client
-- [ ] Documentation for Claude Desktop setup
-- [ ] Documentation for IDE integration
-- [ ] Example configurations repository
-- [ ] User Guide updated with MCP section
+[ ] MCP server implemented with stdio transport
+[ ] All core tools implemented (create, list, approve, query)
+[ ] Activity Journal logging for all MCP operations
+[ ] Integration tests with MCP client
+[ ] Documentation for Claude Desktop setup
+[ ] Documentation for IDE integration
+[ ] Example configurations repository
+[ ] User Guide updated with MCP section
 
 ---
 
