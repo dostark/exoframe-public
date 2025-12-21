@@ -32,7 +32,7 @@ const configService = new ConfigService();
 const config = configService.get();
 const db = new DatabaseService(config);
 const gitService = new GitService({ config, db });
-const provider = ProviderFactory.create(config);
+const provider = ProviderFactory.createByName(config, config.agents.default_model);
 
 // Display-only logger (no DB writes) for read-only operations
 const display = new EventLogger({});
@@ -61,6 +61,7 @@ await new Command()
       .option("-a, --agent <agent:string>", "Target agent blueprint", { default: "default" })
       .option("-p, --priority <priority:string>", "Priority: low, normal, high, critical", { default: "normal" })
       .option("--portal <portal:string>", "Portal alias for context")
+      .option("-m, --model <model:string>", "Named model configuration")
       .option("-f, --file <file:string>", "Read description from file")
       .option("--dry-run", "Show what would be created without writing")
       .option("--json", "Output in JSON format")
@@ -72,6 +73,7 @@ await new Command()
               agent: options.agent,
               priority: options.priority as "low" | "normal" | "high" | "critical",
               portal: options.portal,
+              model: options.model,
             });
             printRequestResult(result, !!options.json, !!options.dryRun);
             return;
@@ -90,6 +92,7 @@ await new Command()
             agent: options.agent,
             priority: options.priority as "low" | "normal" | "high" | "critical",
             portal: options.portal,
+            model: options.model,
           });
 
           if (options.dryRun) {

@@ -29,10 +29,10 @@ export const ConfigSchema = z.object({
     stability_check: true,
   }),
   agents: z.object({
-    default_model: z.string().default("gpt-5.2-pro"),
+    default_model: z.string().default("default"),
     timeout_sec: z.number().min(1).max(300).default(60),
   }).default({
-    default_model: "gpt-5.2-pro",
+    default_model: "default",
     timeout_sec: 60,
   }),
   portals: z.array(z.object({
@@ -40,8 +40,14 @@ export const ConfigSchema = z.object({
     target_path: z.string(),
     created: z.string().optional(),
   })).default([]),
-  /** AI/LLM provider configuration */
+  /** AI/LLM provider configuration (legacy/single) */
   ai: AiConfigSchema.optional(),
+  /** Named model configurations (default, fast, local, etc.) */
+  models: z.record(AiConfigSchema).default({
+    default: { provider: "mock", model: "mock-model" },
+    fast: { provider: "mock", model: "mock-fast" },
+    local: { provider: "ollama", model: "llama3.2" },
+  }),
   /** MCP (Model Context Protocol) server configuration */
   mcp: MCPConfigSchema.optional().default({
     enabled: true,

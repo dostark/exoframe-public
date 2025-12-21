@@ -23,6 +23,7 @@ import { AgentRunner, type Blueprint, type ParsedRequest } from "./agent_runner.
 import { PlanWriter, type RequestMetadata } from "./plan_writer.ts";
 import { EventLogger } from "./event_logger.ts";
 import { FlowValidatorImpl } from "./flow_validator.ts";
+import { ProviderFactory } from "../ai/provider_factory.ts";
 
 // ============================================================================
 // Types and Interfaces
@@ -55,6 +56,7 @@ interface RequestFrontmatter {
   source: string;
   created_by: string;
   portal?: string;
+  model?: string;
 }
 
 /**
@@ -207,6 +209,7 @@ export class RequestProcessor {
           createdAt: new Date(frontmatter.created),
           contextFiles: [],
           contextWarnings: [],
+          model: frontmatter.model,
         };
 
         const planResult = await this.planWriter.writePlan(result, metadata);
@@ -247,7 +250,24 @@ export class RequestProcessor {
         };
 
         // Step 4: Run the agent to generate plan content
-        const result = await this.agentRunner.run(blueprint, request);
+        // Use model override if specified in request
+        let currentRunner = this.agentRunner;
+        if (frontmatter.model) {
+          try {
+            const overrideProvider = ProviderFactory.createByName(this.config, frontmatter.model);
+            currentRunner = new AgentRunner(overrideProvider, { db: this.db });
+            traceLogger.info("request.model_override", frontmatter.model, {
+              trace_id: traceId,
+            });
+          } catch (error) {
+            traceLogger.warn("request.model_override_failed", frontmatter.model, {
+              error: error instanceof Error ? error.message : String(error),
+              fallback: "using default provider",
+            });
+          }
+        }
+
+        const result = await currentRunner.run(blueprint, request);
         planContent = result.content;
         _agentId = frontmatter.agent!;
 
@@ -258,6 +278,7 @@ export class RequestProcessor {
           createdAt: new Date(frontmatter.created),
           contextFiles: [],
           contextWarnings: [],
+          model: frontmatter.model,
         };
 
         const planResult = await this.planWriter.writePlan(result, metadata);

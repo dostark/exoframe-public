@@ -225,7 +225,7 @@ INSERT INTO schema_version (version) VALUES (1);
 
 ---
 
-## Phase 2: The Nervous System (Events & State)
+## Phase 2: The Nervous System (Events & State) ✅ COMPLETED
 
 **Goal:** The system reacts to file changes securely and reliably.
 
@@ -404,7 +404,7 @@ await generator.generate({
 
 ---
 
-## Phase 3: The Brain (Intelligence & Agency)
+## Phase 3: The Brain (Intelligence & Agency) ✅ COMPLETED
 
 **Goal:** Connect LLMs, inject memory, and generate plans.
 
@@ -2698,7 +2698,7 @@ SORT timestamp DESC
 
 ---
 
-## Phase 6: Plan Execution via MCP ✅ COMPLETE
+## Phase 6: Plan Execution via MCP ✅ COMPLETED
 
 **Goal:** Enable end-to-end plan execution using Model Context Protocol (MCP) for secure agent-tool communication.
 
@@ -4520,10 +4520,10 @@ This agent is optimized for collaborative workflows and multi-agent coordination
 
 ---
 
-## Phase 7: Flow Orchestration (Multi-Agent Coordination)
+## Phase 7: Flow Orchestration (Multi-Agent Coordination) ✅ COMPLETED
 
-> **Status:** � IN PROGRESS (Steps 7.1-7.6 ✅ COMPLETED)\
-> **Prerequisites:** Phases 1–6 (Core system validated via Testing & QA)\
+> **Status:** ✅ COMPLETED
+> **Prerequisites:** Phases 1–6 (Core system validated via Testing & QA)
 > **Goal:** Enable declarative multi-agent workflows with dependency resolution, parallel execution, and result aggregation.
 
 ### Overview
@@ -4781,7 +4781,7 @@ Input:                          Output Waves:
 
 ---
 
-### Step 7.5: Flow CLI Commands
+### Step 7.5: Flow CLI Commands ✅ COMPLETED
 
 - **Dependencies:** Step 7.4
 - **Rollback:** Remove commands from CLI
@@ -4952,7 +4952,7 @@ Settings: maxParallelism=3, failFast=true, output=markdown
 
 ---
 
-### Step 7.6: Flow-Aware Request Routing
+### Step 7.6: Flow-Aware Request Routing ✅ COMPLETED
 
 - **Dependencies:** Steps 7.4, 7.5
 - **Rollback:** Ignore `flow` field in requests
@@ -5351,7 +5351,7 @@ const researchFlow = defineFlow({
 
 ---
 
-### Step 7.9: Example Flows
+### Step 7.9: Example Flows ✅ COMPLETED
 
 - **Dependencies:** Steps 7.1–7.8 (FlowRunner, FlowReporter, CLI commands)
 - **Rollback:** Remove example files (no impact on core functionality)
@@ -5543,7 +5543,7 @@ flows/examples/
 
 ---
 
-## Phase 8: Third-Party LLM Providers
+## Phase 8: Third-Party LLM Providers ✅ COMPLETED
 
 ### Target Integration Models
 
@@ -5557,14 +5557,12 @@ For the initial integration, the following models have been selected as the prim
     *   **Why:** Combines a massive context window (1M+) with high performance (78% on SWE-Bench). It rivals GPT-5.2 in speed and cost for large-scale codebase ingestion.
 
 ---
----
 
-### Step 8.1: Anthropic Provider
-
+### Step 8.1: Anthropic Provider ✅ COMPLETED
 - **Dependencies:** Step 3.1 (IModelProvider interface)
 - **Rollback:** Fall back to Ollama/Mock
 - **Action:** Implement `AnthropicProvider` class
-- **Location:** `src/ai/providers/anthropic.ts`
+- **Location:** `src/ai/providers/anthropic_provider.ts`
 
 ```typescript
 export class AnthropicProvider implements IModelProvider {
@@ -5608,21 +5606,30 @@ export class AnthropicProvider implements IModelProvider {
 }
 ```
 
+**TDD Test Cases:**
+
+- [x] `AnthropicProvider - initialization`: Verify ID is set to `anthropic-claude-opus-4.5` by default and can be overridden.
+- [x] `AnthropicProvider - generate success`: Mock `fetch` to return `{"content": [{"text": "Hello"}]}` and verify `generate` returns `"Hello"`.
+- [x] `AnthropicProvider - generate headers`: Verify `fetch` is called with `x-api-key` and `anthropic-version: 2023-06-01`.
+- [x] `AnthropicProvider - generate error handling`: Mock `fetch` with 401 status and verify it throws `ModelProviderError`.
+- [x] `AnthropicProvider - options mapping`: Verify `ModelOptions` (temperature, max_tokens, etc.) are correctly mapped to Anthropic's API format in the request body.
+- [x] `AnthropicProvider - token usage reporting`: Verify token usage is logged via `EventLogger`.
+- [x] `AnthropicProvider - retry on 429`: Verify it retries on rate limit errors with exponential backoff.
+
 **Success Criteria:**
 
-- [ ] Sends correct headers (`x-api-key`, `anthropic-version`)
-- [ ] Formats messages array correctly
-- [ ] Handles rate limit (429) with retry
-- [ ] Reports token usage from response
+- [x] Sends correct headers (`x-api-key`, `anthropic-version`)
+- [x] Formats messages array correctly
+- [x] Handles rate limit (429) with retry
+- [x] Reports token usage from response
 
 ---
 
-### Step 8.2: OpenAI Provider
-
+### Step 8.2: OpenAI Provider ✅ COMPLETED
 - **Dependencies:** Step 3.1 (IModelProvider interface)
 - **Rollback:** Fall back to Ollama/Mock
 - **Action:** Implement `OpenAIProvider` class
-- **Location:** `src/ai/providers/openai.ts`
+- **Location:** `src/ai/providers/openai_provider.ts`
 
 ```typescript
 export class OpenAIProvider implements IModelProvider {
@@ -5671,21 +5678,31 @@ export class OpenAIProvider implements IModelProvider {
 }
 ```
 
+**TDD Test Cases:**
+
+- [x] `OpenAIProvider - initialization`: Verify ID is set to `openai-gpt-5.2-pro` by default and can be overridden.
+- [x] `OpenAIProvider - generate success`: Mock `fetch` to return `{"choices": [{"message": {"content": "Hello"}}], "usage": {"prompt_tokens": 5, "completion_tokens": 5}}` and verify `generate` returns `"Hello"`.
+- [x] `OpenAIProvider - generate headers`: Verify `fetch` is called with `Authorization: Bearer test-key`.
+- [x] `OpenAIProvider - custom baseUrl`: Verify `fetch` uses the provided `baseUrl` (e.g., for Azure).
+- [x] `OpenAIProvider - generate error handling`: Mock `fetch` with 401 status and verify it throws `ModelProviderError`.
+- [x] `OpenAIProvider - options mapping`: Verify `ModelOptions` (temperature, max_tokens, etc.) are correctly mapped to OpenAI's API format.
+- [x] `OpenAIProvider - token usage reporting`: Verify token usage is logged via `EventLogger`.
+- [x] `OpenAIProvider - retry on 429`: Verify it retries on rate limit errors with exponential backoff.
+
 **Success Criteria:**
 
-- [ ] Sends correct Authorization header
-- [ ] Supports custom baseUrl for Azure OpenAI
-- [ ] Handles rate limit (429) with retry
-- [ ] Reports token usage from response
+- [x] Sends correct Authorization header
+- [x] Supports custom baseUrl for Azure OpenAI
+- [x] Handles rate limit (429) with retry
+- [x] Reports token usage from response
 
 ---
 
-### Step 8.3: Google Provider (Gemini)
-
+### Step 8.3: Google Provider (Gemini) ✅ COMPLETED
 - **Dependencies:** Step 3.1 (IModelProvider interface)
 - **Rollback:** Fall back to Ollama/Mock
 - **Action:** Implement `GoogleProvider` class
-- **Location:** `src/ai/providers/google.ts`
+- **Location:** `src/ai/providers/google_provider.ts`
 
 ```typescript
 export class GoogleProvider implements IModelProvider {
@@ -5728,17 +5745,26 @@ export class GoogleProvider implements IModelProvider {
 }
 ```
 
+**TDD Test Cases:**
+
+- [x] `GoogleProvider - initialization`: Verify ID is set to `google-gemini-3-pro` by default and can be overridden.
+- [x] `GoogleProvider - generate success`: Mock `fetch` to return `{"candidates": [{"content": {"parts": [{"text": "Hello"}]}}], "usageMetadata": {"promptTokenCount": 5, "candidatesTokenCount": 5}}` and verify `generate` returns `"Hello"`.
+- [x] `GoogleProvider - generate URL`: Verify `fetch` is called with the correct URL including the API key as a query parameter.
+- [x] `GoogleProvider - generate error handling`: Mock `fetch` with 400 status and verify it throws `ModelProviderError`.
+- [x] `GoogleProvider - options mapping`: Verify `ModelOptions` (temperature, max_tokens, etc.) are correctly mapped to Gemini's `generationConfig`.
+- [x] `GoogleProvider - token usage reporting`: Verify token usage is logged via `EventLogger`.
+- [x] `GoogleProvider - retry on 429`: Verify it retries on rate limit errors with exponential backoff.
+
 **Success Criteria:**
 
-- [ ] Sends API key in URL query parameter
-- [ ] Formats contents/parts structure correctly
-- [ ] Handles rate limit (429) with retry
-- [ ] Reports token usage from response
+- [x] Sends API key in URL query parameter
+- [x] Formats contents/parts structure correctly
+- [x] Handles rate limit (429) with retry
+- [x] Reports token usage from response
 
 ---
 
-### Step 8.4: Common Infrastructure
-
+### Step 8.4: Common Infrastructure ✅ COMPLETED
 - **Dependencies:** Step 7.9 (Example Flows)
 - **Rollback:** N/A
 - **Action:** Implement shared error handling, retry logic, and token tracking
@@ -5794,14 +5820,14 @@ export interface GenerateResult {
 
 **Success Criteria:**
 
-- [ ] Retry logic uses exponential backoff
-- [ ] Rate limit errors trigger retry
-- [ ] Auth/quota errors do not retry
-- [ ] Token usage logged to Activity Journal
+- [x] Retry logic uses exponential backoff
+- [x] Rate limit errors trigger retry
+- [x] Auth/quota errors do not retry
+- [x] Token usage logged to Activity Journal
 
 ---
 
-### Step 8.5: Configuration & Factory Updates
+### Step 8.5: Configuration & Factory Updates ✅ COMPLETED
 
 - **Dependencies:** Steps 8.1–8.4
 - **Rollback:** Revert config schema changes
@@ -5862,27 +5888,27 @@ export class ModelFactory {
 
 **Success Criteria:**
 
-- [ ] Config schema validates provider/model combinations
-- [ ] ModelFactory creates correct provider from config
-- [ ] Missing API key throws `AuthenticationError`
-- [ ] Environment variables take precedence over config file
+- [x] Config schema validates provider/model combinations
+- [x] ModelFactory creates correct provider from config
+- [x] Missing API key throws `AuthenticationError`
+- [x] Environment variables take precedence over config file
 
 ---
 
 ### Phase 8 Exit Criteria
 
-- [ ] `AnthropicProvider` implemented with all models
-- [ ] `OpenAIProvider` implemented with all models (+ Azure support)
-- [ ] `GoogleProvider` implemented with Gemini 2.0 models
-- [ ] Retry logic with exponential backoff for rate limits
-- [ ] Token usage tracking logged to Activity Journal
-- [ ] Config schema supports multi-provider selection
-- [ ] Integration tests for each provider (with mocked HTTP)
-- [ ] Documentation updated with provider setup instructions
+- [x] `AnthropicProvider` implemented with `claude-opus-4.5` support
+- [x] `OpenAIProvider` implemented with `gpt-5.2-pro` support (+ Azure support)
+- [x] `GoogleProvider` implemented with `gemini-3-pro` and `gemini-3-flash`
+- [x] Retry logic with exponential backoff for rate limits (429)
+- [x] Token usage tracking logged to Activity Journal for all providers
+- [x] Config schema supports multi-provider selection and API key environment variables
+- [x] Integration tests for each provider (using mocked HTTP responses)
+- [x] Documentation updated with provider setup and cost comparison instructions
 
 ---
 
-## Phase 9: UX Improvements & UI Evaluation
+## Phase 9: UX Improvements & UI Evaluation ✅ COMPLETED
 
 **Goal:** Reduce friction in the ExoFrame workflow while evaluating whether a dedicated UI is needed beyond Obsidian.
 
@@ -5899,7 +5925,7 @@ However, the current "drop a markdown file" workflow has friction. This phase ad
 
 ---
 
-### Step 9.1: UI Strategy Evaluation
+### Step 9.1: UI Strategy Evaluation ✅ COMPLETED
 
 **Problem:** Obsidian with Dataview provides read-only dashboards, but lacks:
 
@@ -5957,7 +5983,7 @@ router.get("/ws", (ctx) => {
 
 ---
 
-### Step 9.2: Obsidian Dashboard Enhancement
+### Step 9.2: Obsidian Dashboard Enhancement ✅ COMPLETED
 
 **Current State:** Basic Dataview queries exist but are underdeveloped.
 
@@ -6070,7 +6096,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 ---
 
-### Step 9.4: Documentation Updates
+### Step 9.4: Documentation Updates ✅ COMPLETED
 
 Update all docs to reflect new positioning:
 
@@ -6100,17 +6126,17 @@ It's an **auditable agent orchestration platform** for async workflows.
 
 ### Phase 9 Exit Criteria
 
-- [ ] `exoctl request` command implemented and tested
-- [ ] UI evaluation document created with decision
-- [ ] Obsidian dashboard templates in `Knowledge/`
-- [ ] Documentation updated with clear positioning
-- [ ] User Guide includes quick request examples
+- [x] `exoctl request` command implemented and tested
+- [x] UI evaluation document created with decision
+- [x] Obsidian dashboard templates in `Knowledge/`
+- [x] Documentation updated with clear positioning
+- [x] User Guide includes quick request examples
 
 ---
 
 ## Phase 10: Testing & Quality Assurance
 
-> **Status:** 🔲 PLANNED\
+> **Status:** 🏗️ IN PROGRESS (Steps 10.1-10.7 ✅ COMPLETED)\
 > **Prerequisites:** Phases 1–9 (Runtime, Events, Intelligence, Tools, Obsidian, Portal, Flows, LLM Providers, UX)\
 > **Goal:** Validate single-agent and multi-agent workflows end-to-end with both local and cloud providers.
 
@@ -6134,8 +6160,8 @@ Phase 10 establishes the testing infrastructure needed to confidently ship ExoFr
 | 10.3 | CLI Command Tests             | `tests/cli/`         | ✅ Complete |
 | 10.4 | Integration Test Scenarios    | `tests/integration/` | ✅ Complete |
 | 10.5 | Documentation Structure Tests | `tests/docs/`        | ✅ Complete |
-| 10.6 | Flow Execution Tests          | `tests/flows/`       | 🔲 Planned  |
-| 10.7 | Security Validation Tests     | `tests/security/`    | 🔲 Planned  |
+| 10.6 | Flow Execution Tests          | `tests/flows/`       | ✅ Complete |
+| 10.7 | Security Validation Tests     | `tests/security/`    | ✅ Complete |
 | 10.8 | Performance Benchmarks        | `tests/benchmarks/`  | 🔲 Planned  |
 | 10.9 | Manual QA Checklist           | Testing Strategy §4  | 🔲 Planned  |
 
@@ -6148,8 +6174,8 @@ Tests for lease acquisition/release are in `tests/execution_loop_test.ts`.
 - [x] Obsidian integration verified (Dataview queries work)
 - [x] All 10 integration scenarios pass (44 tests, 77 steps)
 - [x] Documentation tests prevent doc drift
-- [ ] Flow execution tests validate multi-agent orchestration
-- [ ] Security tests verify Deno permission enforcement
+- [x] Flow execution tests validate multi-agent orchestration
+- [x] Security tests verify Deno permission enforcement
 - [ ] Performance benchmarks meet targets
 - [x] Mock LLM enables deterministic testing (30 tests, 5 strategies)
 - [ ] Manual QA passes on all target platforms
@@ -6167,7 +6193,7 @@ Tests for lease acquisition/release are in `tests/execution_loop_test.ts`.
 
 Implement an MCP server that exposes ExoFrame operations as standardized tools, enabling external AI assistants (Claude Desktop, Cline, IDE agents) to interact with ExoFrame programmatically while preserving the file-based core architecture.
 
-### Step 11.1: MCP Server Foundation
+### Step 11.1: MCP Server Foundation ✅ COMPLETED
 
 **Implementation:**
 

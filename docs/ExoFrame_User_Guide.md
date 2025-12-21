@@ -37,6 +37,24 @@ ExoFrame is **not** a replacement for IDE-integrated AI assistants (Copilot, Cur
 - **Approval:** Human review gate before agent executes
 - **Trace ID:** UUID linking everything together for audit
 
+### 1.3 Quick Request Examples
+
+Submit requests via the CLI to get started quickly:
+
+```bash
+# 1. Simple task
+exoctl request "Refactor src/utils.ts to use async/await"
+
+# 2. High priority task with specific agent
+exoctl request "Audit security in src/api/" --agent security-auditor --priority high
+
+# 3. Task targeting a specific portal
+exoctl request "Update README in the MyProject portal" --portal MyProject
+
+# 4. Use a specific model configuration
+exoctl request "Generate unit tests for src/math.ts" --model fast
+```
+
 ## 2. Installation & Deployment
 
 ### 2.1 Standard Deployment
@@ -132,8 +150,12 @@ ollama run llama3.2 "Explain what ExoFrame does in one sentence."
 EXO_LLM_PROVIDER=ollama EXO_LLM_MODEL=llama3.2 exoctl daemon start
 
 # Option 2: Config file (permanent)
+# Add to [models.local] or set as default
 cat >> ~/ExoFrame/exo.config.toml << 'EOF'
-[ai]
+[agents]
+default_model = "local"
+
+[models.local]
 provider = "ollama"
 model = "llama3.2"
 EOF
@@ -147,6 +169,55 @@ EOF
 | Slow inference | Use smaller model or enable GPU support |
 | Out of memory | Switch to smaller model (3b or 1b variant) |
 | GPU not detected (WSL) | Install NVIDIA drivers on Windows host |
+
+### 2.4 Cloud LLM Setup (Anthropic, OpenAI, Google)
+
+ExoFrame supports premium cloud models for higher reasoning capabilities. These require API keys and an internet connection.
+
+#### 2.4.1 API Key Configuration
+
+Set your API keys as environment variables in your shell profile (`~/.bashrc` or `~/.zshrc`):
+
+```bash
+# Anthropic (Claude)
+export ANTHROPIC_API_KEY="your-key-here"
+
+# OpenAI (GPT)
+export OPENAI_API_KEY="your-key-here"
+
+# Google (Gemini)
+export GOOGLE_API_KEY="your-key-here"
+```
+
+#### 2.4.2 Model Configuration
+
+Configure your preferred models in `exo.config.toml`. You can define multiple named models and switch between them.
+
+```toml
+[agents]
+default_model = "default"
+
+[models.default]
+provider = "anthropic"
+model = "claude-opus-4.5"
+
+[models.fast]
+provider = "openai"
+model = "gpt-5.2-pro-mini"
+
+[models.local]
+provider = "ollama"
+model = "llama3.2"
+```
+
+#### 2.4.3 Provider Comparison
+
+| Provider | Best For | Recommended Model | Cost |
+| --- | --- | --- | --- |
+| **Anthropic** | Complex reasoning, large context | `claude-opus-4.5` | $$$ |
+| **OpenAI** | General purpose, speed | `gpt-5.2-pro` | $$ |
+| **Google** | Long context, multimodal | `gemini-3-pro` | $$ |
+| **Ollama** | Privacy, zero cost, offline | `llama3.2` | Free |
 
 ### 2.4 Advanced Deployment Options
 
@@ -943,6 +1014,29 @@ exoctl daemon logs
 exoctl daemon logs --lines 100           # Show last 100 lines
 exoctl daemon logs --follow              # Stream logs (like tail -f)
 ```
+
+#### **Obsidian Dashboard** - Visual Workspace Monitoring
+
+ExoFrame includes a pre-configured Obsidian Dashboard to monitor your workspace activity visually.
+
+**Setup:**
+1. Install the [Dataview](https://github.com/blacksmithgu/obsidian-dataview) plugin in Obsidian.
+2. Open `Knowledge/Dashboard.md` in your Obsidian vault.
+
+**Features:**
+- **Daemon Status:** Real-time check if the ExoFrame daemon is running.
+- **Pending Plans:** List of plans awaiting your review.
+- **Recent Activity:** Audit log of recent agent actions (requires activity export).
+- **Active Portals:** Overview of all connected external projects.
+
+**Updating Activity Log:**
+The activity log in the dashboard is populated from the SQLite journal. To update the markdown export, run:
+```bash
+# Manually export activity log
+deno task export-activity
+```
+
+---
 
 **Example workflow:**
 

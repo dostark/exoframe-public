@@ -14,6 +14,9 @@ import { MockLLMProvider, MockStrategy } from "./providers/mock_llm_provider.ts"
 import { Config } from "../config/schema.ts";
 import { AiConfig, DEFAULT_MODELS, ProviderType } from "../config/ai_config.ts";
 import { LlamaProvider } from "./providers/llama_provider.ts";
+import { AnthropicProvider } from "./providers/anthropic_provider.ts";
+import { OpenAIProvider } from "./providers/openai_provider.ts";
+import { GoogleProvider } from "./providers/google_provider.ts";
 
 // ============================================================================
 // Types and Interfaces
@@ -92,6 +95,18 @@ export class ProviderFactory {
   }
 
   /**
+   * Create an LLM provider by name from the models configuration.
+   *
+   * @param config - ExoFrame configuration
+   * @param name - Name of the model configuration (e.g., "default", "fast")
+   * @returns An IModelProvider instance
+   */
+  static createByName(config: Config, name: string): IModelProvider {
+    const options = this.resolveOptionsByName(config, name);
+    return this.createProvider(options);
+  }
+
+  /**
    * Get information about what provider would be created
    *
    * @param config - ExoFrame configuration
@@ -109,6 +124,25 @@ export class ProviderFactory {
     };
   }
 
+  /**
+   * Get information about what provider would be created by name
+   *
+   * @param config - ExoFrame configuration
+   * @param name - Name of the model configuration
+   * @returns Provider information for logging
+   */
+  static getProviderInfoByName(config: Config, name: string): ProviderInfo {
+    const options = this.resolveOptionsByName(config, name);
+    const source = this.determineSource();
+
+    return {
+      type: options.provider,
+      id: this.generateProviderId(options),
+      model: options.model,
+      source,
+    };
+  }
+
   // ============================================================================
   // Private Methods
   // ============================================================================
@@ -116,7 +150,7 @@ export class ProviderFactory {
   /**
    * Resolve provider options from environment and config
    */
-  private static resolveOptions(config: Config): ResolvedProviderOptions {
+  private static resolveOptions(config: Config, overrideAiConfig?: AiConfig): ResolvedProviderOptions {
     // Read environment variables
     const envProvider = Deno.env.get("EXO_LLM_PROVIDER");
     const envModel = Deno.env.get("EXO_LLM_MODEL");
@@ -124,14 +158,14 @@ export class ProviderFactory {
     const envTimeout = Deno.env.get("EXO_LLM_TIMEOUT_MS");
 
     // Get config values (with defaults)
-    const aiConfig: AiConfig = config.ai ?? { provider: "mock", timeout_ms: 30000 };
+    const aiConfig: AiConfig = overrideAiConfig ?? config.ai ?? { provider: "mock", timeout_ms: 30000 };
 
     // Resolve provider type
     let providerType: ProviderType = "mock";
     if (envProvider) {
       // Validate env provider
       const normalized = envProvider.toLowerCase().trim();
-      if (["mock", "ollama", "anthropic", "openai"].includes(normalized)) {
+      if (["mock", "ollama", "anthropic", "openai", "google"].includes(normalized)) {
         providerType = normalized as ProviderType;
       } else {
         console.warn(
@@ -165,6 +199,14 @@ export class ProviderFactory {
   }
 
   /**
+   * Resolve provider options by name
+   */
+  private static resolveOptionsByName(config: Config, name: string): ResolvedProviderOptions {
+    const modelConfig = config.models?.[name] ?? config.models?.["default"] ?? config.ai;
+    return this.resolveOptions(config, modelConfig);
+  }
+
+  /**
    * Determine the source of configuration
    */
   private static determineSource(): "env" | "config" | "default" {
@@ -195,6 +237,8 @@ export class ProviderFactory {
 
       case "openai":
         return this.createOpenAIProvider(options);
+      case "google":
+        return this.createGoogleProvider(options);
 
       default:
         // This shouldn't happen due to Zod validation, but just in case
@@ -228,7 +272,7 @@ export class ProviderFactory {
   }
 
   /**
-   * Create an Anthropic provider (stub - throws if no API key)
+   * Create an Anthropic provider
    */
   private static createAnthropicProvider(options: ResolvedProviderOptions): IModelProvider {
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
@@ -238,17 +282,11 @@ export class ProviderFactory {
       );
     }
 
-    // For now, return a mock provider as a placeholder
-    // TODO: Implement real AnthropicProvider in Phase 9
-    console.warn("AnthropicProvider not yet implemented, using MockLLMProvider as placeholder");
-    return new MockLLMProvider("pattern", {
+    return new AnthropicProvider({
+      apiKey,
+      model: options.model,
       id: this.generateProviderId(options),
-      patterns: [
-        {
-          pattern: /.*/,
-          response: `[Anthropic placeholder - model: ${options.model}]`,
-        },
-      ],
+      // In a real scenario, we might pass a logger here if available
     });
   }
 
@@ -263,17 +301,11 @@ export class ProviderFactory {
       );
     }
 
-    // For now, return a mock provider as a placeholder
-    // TODO: Implement real OpenAIProvider in Phase 9
-    console.warn("OpenAIProvider not yet implemented, using MockLLMProvider as placeholder");
-    return new MockLLMProvider("pattern", {
+    return new OpenAIProvider({
+      apiKey,
+      model: options.model,
+      baseUrl: options.baseUrl,
       id: this.generateProviderId(options),
-      patterns: [
-        {
-          pattern: /.*/,
-          response: `[OpenAI placeholder - model: ${options.model}]`,
-        },
-      ],
     });
   }
 
@@ -283,16 +315,36 @@ export class ProviderFactory {
   private static generateProviderId(options: ResolvedProviderOptions): string {
     switch (options.provider) {
       case "mock":
-        return `mock-${options.mockStrategy ?? "recorded"}`;
+        return `mock-${options.mockStrategy ?? "recorded"}-${options.model}`;
       case "ollama":
         return `ollama-${options.model}`;
       case "anthropic":
         return `anthropic-${options.model}`;
       case "openai":
         return `openai-${options.model}`;
+      case "google":
+        return `google-${options.model}`;
       default:
         return `unknown-${options.provider}`;
     }
+  }
+
+  /**
+   * Create a Google provider
+   */
+  private static createGoogleProvider(options: ResolvedProviderOptions): IModelProvider {
+    const apiKey = Deno.env.get("GOOGLE_API_KEY");
+    if (!apiKey) {
+      throw new ProviderFactoryError(
+        "GOOGLE_API_KEY environment variable required for Google provider",
+      );
+    }
+
+    return new GoogleProvider({
+      apiKey,
+      model: options.model,
+      id: this.generateProviderId(options),
+    });
   }
 }
 

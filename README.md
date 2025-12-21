@@ -21,18 +21,20 @@ ExoFrame is built from the ground up to be the "Mission Control" for AI agents, 
 
 ---
 
-## 🚀 ExoFrame vs. IDE Agents
+## When to Use ExoFrame
 
-While IDE-integrated agents (Cursor, Copilot, Windsurf) excel at interactive pair programming, ExoFrame is built for **asynchronous, high-trust, and multi-project** scenarios.
+While IDE-integrated agents (Cursor, Copilot, Windsurf) excel at real-time pair programming, ExoFrame is an **auditable agent orchestration platform** for asynchronous, high-trust, and multi-project workflows.
 
-| Feature | IDE Agents | ExoFrame |
-| :--- | :---: | :---: |
-| **Workflow** | Real-time / Interactive | Asynchronous / Daemon-based |
-| **Audit Trail** | ❌ None | ✅ Full Trace ID linking |
-| **Approval Gates** | ⚠️ Implicit | ✅ Explicit (Plans & Changesets) |
-| **Context** | Single Workspace | ✅ Multi-project Portals |
-| **Privacy** | ⚠️ Cloud Default | ✅ 100% Local (Ollama) |
-| **Execution** | Immediate | ✅ Reviewed & Audited |
+| Scenario | Tool |
+| :--- | :--- |
+| Quick code fix while coding | Use IDE agent (Copilot/Cursor) |
+| Interactive feature development | Use IDE agent |
+| **Overnight batch processing** | **ExoFrame** |
+| **Audit/compliance requirements** | **ExoFrame** |
+| **Multi-project refactoring** | **ExoFrame** |
+| **Air-gapped environments** | **ExoFrame** |
+
+ExoFrame is not competing with IDE agents for real-time assistance. It provides a robust, sandboxed environment for agents to work autonomously on complex tasks while you maintain full control through explicit approval gates.
 
 ---
 

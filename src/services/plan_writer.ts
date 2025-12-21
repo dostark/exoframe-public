@@ -33,6 +33,9 @@ export interface RequestMetadata {
 
   /** Warnings from context loading (truncation, etc.) */
   contextWarnings: string[];
+
+  /** Optional: Model override for this request */
+  model?: string;
 }
 
 /**
@@ -212,15 +215,21 @@ export class PlanWriter {
    * Generate YAML frontmatter
    */
   private generateFrontmatter(metadata: RequestMetadata): string {
-    return [
+    const lines = [
       "---",
       `trace_id: "${metadata.traceId}"`,
       `request_id: "${metadata.requestId}"`,
       `status: review`,
       `created_at: ${metadata.createdAt.toISOString()}`,
-      "---",
-      "",
-    ].join("\n");
+    ];
+
+    if (metadata.model) {
+      lines.push(`model: "${metadata.model}"`);
+    }
+
+    lines.push("---");
+    lines.push("");
+    return lines.join("\n");
   }
 
   /**

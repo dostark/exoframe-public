@@ -18,5 +18,17 @@ debounce_ms = 200
 stability_check = true
 
 [agents]
-default_model = "gpt-5.2-pro"
+default_model = "default"
 timeout_sec = 60
+
+[models.default]
+provider = "mock"
+model = "mock-model"
+
+[models.fast]
+provider = "mock"
+model = "mock-fast"
+
+[models.local]
+provider = "ollama"
+model = "llama3.2"

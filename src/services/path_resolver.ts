@@ -83,8 +83,15 @@ export class PathResolver {
         return join(system.root, paths.system);
       case "@Blueprints":
         return join(system.root, paths.blueprints);
-      default:
+      default: {
+        // Check for user-defined portals
+        const portalAlias = alias.startsWith("@") ? alias.substring(1) : alias;
+        const portal = this.config.portals.find((p) => p.alias === portalAlias);
+        if (portal) {
+          return portal.target_path;
+        }
         throw new Error(`Unknown portal alias: ${alias}`);
+      }
     }
   }
 

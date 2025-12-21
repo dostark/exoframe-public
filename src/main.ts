@@ -43,13 +43,15 @@ if (import.meta.main) {
     logger.info("database.connected", "journal.db", { mode: "WAL" });
 
     // Initialize LLM Provider
-    const providerInfo = ProviderFactory.getProviderInfo(config);
-    const llmProvider = ProviderFactory.create(config);
+    const defaultModelName = config.agents.default_model;
+    const providerInfo = ProviderFactory.getProviderInfoByName(config, defaultModelName);
+    const llmProvider = ProviderFactory.createByName(config, defaultModelName);
 
     logger.info("llm.provider.initialized", providerInfo.id, {
       type: providerInfo.type,
       model: providerInfo.model,
       source: providerInfo.source,
+      named_model: defaultModelName,
     });
 
     // Ensure required directories exist
@@ -212,7 +214,24 @@ if (import.meta.main) {
 
           // Step 5.12.3: Execute plan
           const { PlanExecutor } = await import("./services/plan_executor.ts");
-          const planExecutor = new PlanExecutor(config, llmProvider, dbService);
+
+          // Use model override if specified in plan frontmatter
+          let currentProvider = llmProvider;
+          if (frontmatter.model) {
+            try {
+              currentProvider = ProviderFactory.createByName(config, frontmatter.model as string);
+              watcherLogger.info("plan.model_override", frontmatter.model, {
+                trace_id: frontmatter.trace_id,
+              });
+            } catch (error) {
+              watcherLogger.warn("plan.model_override_failed", frontmatter.model, {
+                error: error instanceof Error ? error.message : String(error),
+                fallback: "using default provider",
+              });
+            }
+          }
+
+          const planExecutor = new PlanExecutor(config, currentProvider, dbService);
 
           const changesetId = await planExecutor.execute(event.path, {
             trace_id: frontmatter.trace_id as string,

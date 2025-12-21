@@ -21,6 +21,7 @@ export interface RequestOptions {
   agent?: string;
   priority?: RequestPriority;
   portal?: string;
+  model?: string;
 }
 
 /**
@@ -39,6 +40,7 @@ export interface RequestMetadata {
   priority: RequestPriority;
   agent: string;
   portal?: string;
+  model?: string;
   created: string;
   created_by: string;
   source: RequestSource;
@@ -55,6 +57,7 @@ export interface RequestEntry {
   priority: string;
   agent: string;
   portal?: string;
+  model?: string;
   created: string;
   created_by: string;
   source: string;
@@ -138,6 +141,10 @@ export class RequestCommands extends BaseCommand {
       frontmatterFields.portal = portal;
     }
 
+    if (options.model) {
+      frontmatterFields.model = options.model;
+    }
+
     // Build file content with YAML frontmatter
     const frontmatter = this.serializeFrontmatter(frontmatterFields);
     const content = `${frontmatter}\n\n# Request\n\n${trimmedDescription}\n`;
@@ -155,6 +162,7 @@ export class RequestCommands extends BaseCommand {
       priority,
       agent,
       portal: portal || null,
+      model: options.model || null,
       source,
       created_by,
       description_length: trimmedDescription.length,
@@ -170,6 +178,7 @@ export class RequestCommands extends BaseCommand {
       priority,
       agent,
       portal,
+      model: options.model,
       created,
       created_by,
       source,
@@ -240,6 +249,7 @@ export class RequestCommands extends BaseCommand {
         priority: frontmatter.priority || "normal",
         agent: frontmatter.agent || "default",
         portal: frontmatter.portal,
+        model: frontmatter.model,
         created: frontmatter.created || "",
         created_by: frontmatter.created_by || "unknown",
         source: frontmatter.source || "unknown",
@@ -325,6 +335,7 @@ export class RequestCommands extends BaseCommand {
         priority: matchingFrontmatter.priority || "normal",
         agent: matchingFrontmatter.agent || "default",
         portal: matchingFrontmatter.portal,
+        model: matchingFrontmatter.model,
         created: matchingFrontmatter.created || "",
         created_by: matchingFrontmatter.created_by || "unknown",
         source: matchingFrontmatter.source || "unknown",

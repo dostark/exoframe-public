@@ -16,6 +16,7 @@ export const ProviderTypeSchema = z.enum([
   "ollama",
   "anthropic",
   "openai",
+  "google",
 ]);
 
 export type ProviderType = z.infer<typeof ProviderTypeSchema>;
@@ -98,4 +99,5 @@ export const DEFAULT_MODELS: Record<ProviderType, string> = {
   ollama: "llama3.2",
   anthropic: "claude-opus-4.5",
   openai: "gpt-5.2-pro",
+  google: "gemini-3-pro",
 };

@@ -55,7 +55,7 @@ function createTestConfig(aiConfig?: Partial<AiConfig>): Config {
       stability_check: true,
     },
     agents: {
-      default_model: "gpt-5.2-pro",
+      default_model: "default",
       timeout_sec: 60,
     },
     portals: [],
@@ -66,6 +66,11 @@ function createTestConfig(aiConfig?: Partial<AiConfig>): Config {
       version: "1.0.0",
     },
     ai: parsedAi,
+    models: {
+      default: AiConfigSchema.parse({ provider: "openai", model: "gpt-5.2-pro" }),
+      fast: AiConfigSchema.parse({ provider: "openai", model: "gpt-5.2-pro-mini" }),
+      local: AiConfigSchema.parse({ provider: "ollama", model: "llama3.2" }),
+    },
   };
 }
 
@@ -523,4 +528,44 @@ Deno.test("getProviderForModel: handles regular ollama models", () => {
 
   assertExists(provider);
   assertStringIncludes(provider.id, "llama3.2");
+});
+
+// ============================================================================
+// Named Model Tests
+// ============================================================================
+
+Deno.test("ProviderFactory: createByName creates correct named provider", () => {
+  const config = createTestConfig();
+  // Override models for testing
+  config.models = {
+    default: AiConfigSchema.parse({ provider: "mock", model: "default-mock" }),
+    fast: AiConfigSchema.parse({ provider: "mock", model: "fast-mock" }),
+  };
+
+  const fastProvider = ProviderFactory.createByName(config, "fast");
+  assertStringIncludes(fastProvider.id, "fast-mock");
+
+  const defaultProvider = ProviderFactory.createByName(config, "default");
+  assertStringIncludes(defaultProvider.id, "default-mock");
+});
+
+Deno.test("ProviderFactory: createByName falls back to default for unknown name", () => {
+  const config = createTestConfig();
+  config.models = {
+    default: AiConfigSchema.parse({ provider: "mock", model: "default-mock" }),
+  };
+
+  const unknownProvider = ProviderFactory.createByName(config, "unknown");
+  assertStringIncludes(unknownProvider.id, "default-mock");
+});
+
+Deno.test("ProviderFactory: getProviderInfoByName returns named provider details", () => {
+  const config = createTestConfig();
+  config.models = {
+    fast: AiConfigSchema.parse({ provider: "mock", model: "fast-mock" }),
+  };
+
+  const info = ProviderFactory.getProviderInfoByName(config, "fast");
+  assertEquals(info.model, "fast-mock");
+  assertEquals(info.type, "mock");
 });

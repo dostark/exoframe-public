@@ -33,9 +33,14 @@ export function createMockConfig(root: string, overrides: Partial<Config> = {}):
       ...overrides.watcher,
     },
     agents: {
-      default_model: "gpt-5.2-pro",
+      default_model: "default",
       timeout_sec: 60,
       ...overrides.agents,
+    },
+    models: overrides.models || {
+      default: { provider: "mock", model: "gpt-5.2-pro", timeout_ms: 30000 },
+      fast: { provider: "mock", model: "gpt-5.2-pro-mini", timeout_ms: 30000 },
+      local: { provider: "ollama", model: "llama3.2", timeout_ms: 30000 },
     },
     portals: overrides.portals || [],
     mcp: overrides.mcp || {
@@ -72,8 +77,20 @@ debounce_ms = 200
 stability_check = true
 
 [agents]
-default_model = "gpt-5.2-pro"
+default_model = "default"
 timeout_sec = 60
+
+[models.default]
+provider = "mock"
+model = "gpt-5.2-pro"
+
+[models.fast]
+provider = "mock"
+model = "gpt-5.2-pro-mini"
+
+[models.local]
+provider = "ollama"
+model = "llama3.2"
 `;
 
   await Deno.writeTextFile(configPath, configContent);
