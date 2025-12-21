@@ -680,7 +680,7 @@ await new Promise(() => {}); // Run forever
   it("logDaemonActivity() should handle logging errors gracefully", async () => {
     // Mock the EventLogger to throw an error
     const originalGetActionLogger = (daemonCommands as any).getActionLogger;
-    (daemonCommands as any).getActionLogger = async () => {
+    (daemonCommands as any).getActionLogger = () => {
       throw new Error("Database connection failed");
     };
 
