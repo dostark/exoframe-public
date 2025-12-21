@@ -1,7 +1,7 @@
 ---
 agent_id: "security-auditor"
 name: "security-auditor"
-model: "anthropic:claude-3-5-sonnet-20241022"
+model: "anthropic:claude-opus-4.5"
 capabilities: ["read_file", "list_directory", "git_status"]
 created: "2025-12-20T22:37:31Z"
 created_by: "system"

@@ -138,7 +138,7 @@ created_at: "2025-01-01T00:00:00Z"
 ```markdown
 ---
 name: "code-reviewer"
-model: "anthropic:claude-3-5-sonnet-20241022"
+model: "anthropic:claude-opus-4.5"
 capabilities: ["read_file", "write_file", "list_directory"]
 ---
 
@@ -163,7 +163,7 @@ Deno.test("BlueprintService: loads example agents from Step 6.10", async () => {
   const codeReviewer = await blueprintService.loadBlueprint("code-reviewer");
   assertExists(codeReviewer);
   assertEquals(codeReviewer.name, "code-reviewer");
-  assertEquals(codeReviewer.model, "anthropic:claude-3-5-sonnet-20241022");
+  assertEquals(codeReviewer.model, "anthropic:claude-opus-4.5");
   assert(codeReviewer.capabilities.includes("read_file"));
 });
 

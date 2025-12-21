@@ -832,7 +832,7 @@ exoctl flow validate research-pipeline
 | `reviewer`   | openai:gpt-4            | Code review and quality           |
 | `architect`  | anthropic:claude-opus   | System design and architecture    |
 | `researcher` | openai:gpt-4-turbo      | Research and analysis             |
-| `gemini`     | google:gemini-2.0-flash | Multimodal AI with fast responses |
+| `gemini`     | google:gemini-3-flash | Multimodal AI with fast responses |
 | `mock`       | mock:test-model         | Testing and CI/CD                 |
 
 **Blueprint File Structure:**

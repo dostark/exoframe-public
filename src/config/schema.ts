@@ -29,10 +29,10 @@ export const ConfigSchema = z.object({
     stability_check: true,
   }),
   agents: z.object({
-    default_model: z.string().default("gpt-4o"),
+    default_model: z.string().default("gpt-5.2-pro"),
     timeout_sec: z.number().min(1).max(300).default(60),
   }).default({
-    default_model: "gpt-4o",
+    default_model: "gpt-5.2-pro",
     timeout_sec: 60,
   }),
   portals: z.array(z.object({

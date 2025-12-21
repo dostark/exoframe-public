@@ -95,7 +95,7 @@ export class ToolRegistry {
       paths: { inbox: "Inbox", knowledge: "Knowledge", system: "System", blueprints: "Blueprints" },
       database: { batch_flush_ms: 100, batch_max_size: 100 },
       watcher: { debounce_ms: 200, stability_check: true },
-      agents: { default_model: "gpt-4o", timeout_sec: 60 },
+      agents: { default_model: "gpt-5.2-pro", timeout_sec: 60 },
       portals: [],
       mcp: { enabled: true, transport: "stdio", server_name: "exoframe", version: "1.0.0" },
     };

@@ -213,7 +213,7 @@ Research findings and insights
 `,
   },
   gemini: {
-    model: "google:gemini-2.0-flash",
+    model: "google:gemini-3-flash",
     capabilities: ["general", "multimodal", "reasoning"],
     systemPrompt: `# Google Gemini Agent
 

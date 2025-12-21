@@ -44,9 +44,9 @@
 | Phase 5  | 1 week  | CLI scaffold merged                   | Obsidian vault validated                             |
 | Phase 6  | 2 weeks | Phase 5 complete + portal system      | Plan execution via MCP working end-to-end            |
 | Phase 7  | 1 week  | All prior phases code-complete        | Flow orchestration working                           |
-| Phase 8  | 2 days  | Testing complete                      | Testing strategy documented                          |
+| Phase 8  | 1 week  | System stable with Ollama             | Cloud LLM providers (Anthropic/OpenAI/Google Gemini) |
 | Phase 9  | 1 week  | Core functionality stable             | UX improvements + UI evaluation done                 |
-| Phase 10 | 1 week  | System stable with Ollama             | Cloud LLM providers (Anthropic/OpenAI/Google Gemini) |
+| Phase 10 | 2 days  | Testing complete                      | Testing strategy documented                          |
 
 Each step lists **Dependencies**, **Rollback/Contingency**, and updated success metrics.
 
@@ -4237,7 +4237,7 @@ Implement a `LlamaProvider` that:
 ```markdown
 ---
 name: code-reviewer
-model: claude-3-5-sonnet-20241022
+model: claude-opus-4.5
 capabilities: [read_file, write_file, list_directory, git_status]
 system_prompt: |
   You are an expert code reviewer with 10+ years of experience in software development.
@@ -4279,7 +4279,7 @@ This agent specializes in comprehensive code review across multiple dimensions:
 ```markdown
 ---
 name: feature-developer
-model: gpt-4o
+model: gpt-5.2-pro
 capabilities: [read_file, write_file, list_directory, git_create_branch, git_commit, git_status]
 system_prompt: |
   You are a senior full-stack developer specializing in feature implementation.
@@ -4323,7 +4323,7 @@ This agent handles complete feature development lifecycles:
 ```markdown
 ---
 name: api-documenter
-model: claude-3-5-sonnet-20241022
+model: claude-opus-4.5
 capabilities: [read_file, list_directory]
 system_prompt: |
   You are a technical writer specializing in API documentation.
@@ -4366,7 +4366,7 @@ This agent specializes in creating and maintaining API documentation:
 ```markdown
 ---
 name: security-auditor
-model: gpt-4o
+model: gpt-5.2-pro
 capabilities: [read_file, list_directory, git_status]
 system_prompt: |
   You are a cybersecurity expert specializing in application security.
@@ -4409,7 +4409,7 @@ This agent performs comprehensive security assessments:
 ```markdown
 ---
 name: research-synthesizer
-model: claude-3-5-sonnet-20241022
+model: claude-opus-4.5
 capabilities: [read_file, write_file, list_directory]
 system_prompt: |
   You are a research analyst specializing in information synthesis.
@@ -5543,67 +5543,342 @@ flows/examples/
 
 ---
 
-### Phase 7 Exit Criteria
+## Phase 8: Third-Party LLM Providers
 
-- [x] `FlowSchema` validates flow definitions
-- [x] `DependencyResolver` correctly orders steps and detects cycles
-- [x] `FlowRunner` executes parallel and sequential flows
-- [x] CLI commands (`flow list/show/run/plan/validate`) working
-- [x] Requests can specify `flow:` instead of `agent:`
-- [x] Inter-step data passing works via transforms
-- [x] Flow reports generated with step details
-- [x] Example flows demonstrate all patterns
-- [x] All tests pass: `deno test tests/flows/`
-- [x] Documentation updated with Flow usage guide
+### Target Integration Models
+
+For the initial integration, the following models have been selected as the primary targets for each provider:
+
+1.  **Anthropic: `claude-opus-4.5`**
+    *   **Why:** Tops agentic coding and reasoning benchmarks. It achieves near 0% code edit errors and supports 30+ hour autonomy, making it superior for complex Plan-Execute loops.
+2.  **OpenAI: `gpt-5.2-pro`**
+    *   **Why:** Optimized for professional agentic tasks. It excels in multi-step workflows, complex tool-chaining, and managing long-running agents.
+3.  **Google: `gemini-3-pro`**
+    *   **Why:** Combines a massive context window (1M+) with high performance (78% on SWE-Bench). It rivals GPT-5.2 in speed and cost for large-scale codebase ingestion.
+
+---
+---
+
+### Step 8.1: Anthropic Provider
+
+- **Dependencies:** Step 3.1 (IModelProvider interface)
+- **Rollback:** Fall back to Ollama/Mock
+- **Action:** Implement `AnthropicProvider` class
+- **Location:** `src/ai/providers/anthropic.ts`
+
+```typescript
+export class AnthropicProvider implements IModelProvider {
+  public readonly id: string;
+  private readonly apiKey: string;
+  private readonly model: string;
+  private readonly baseUrl = "https://api.anthropic.com/v1/messages";
+
+  constructor(options: { apiKey: string; model?: string; id?: string }) {
+    this.apiKey = options.apiKey;
+    this.model = options.model ?? "claude-opus-4.5";
+    this.id = options.id ?? `anthropic-${this.model}`;
+  }
+
+  async generate(prompt: string, options?: ModelOptions): Promise<string> {
+    const response = await fetch(this.baseUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": this.apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: this.model,
+        max_tokens: options?.max_tokens ?? 4096,
+        messages: [{ role: "user", content: prompt }],
+        temperature: options?.temperature,
+        top_p: options?.top_p,
+        stop_sequences: options?.stop,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new ProviderError(this.id, error.error?.message ?? response.statusText);
+    }
+
+    const data = await response.json();
+    return data.content[0].text;
+  }
+}
+```
+
+**Success Criteria:**
+
+- [ ] Sends correct headers (`x-api-key`, `anthropic-version`)
+- [ ] Formats messages array correctly
+- [ ] Handles rate limit (429) with retry
+- [ ] Reports token usage from response
 
 ---
 
-## Phase 8: Testing & Quality Assurance
+### Step 8.2: OpenAI Provider
 
-> **Status:** ✅ IN PROGRESS\
-> **Prerequisites:** Phases 1–7 (Runtime, Events, Intelligence, Tools, Obsidian, Portal, Flows)\
-> **Goal:** Validate single-agent and multi-agent workflows end-to-end before adding cloud providers.
+- **Dependencies:** Step 3.1 (IModelProvider interface)
+- **Rollback:** Fall back to Ollama/Mock
+- **Action:** Implement `OpenAIProvider` class
+- **Location:** `src/ai/providers/openai.ts`
 
-📄 **Full Documentation:** [`ExoFrame_Testing_Strategy.md`](./ExoFrame_Testing_Strategy.md)
+```typescript
+export class OpenAIProvider implements IModelProvider {
+  public readonly id: string;
+  private readonly apiKey: string;
+  private readonly model: string;
+  private readonly baseUrl: string;
 
-### Overview
+  constructor(options: {
+    apiKey: string;
+    model?: string;
+    baseUrl?: string; // For Azure OpenAI or proxies
+    id?: string;
+  }) {
+    this.apiKey = options.apiKey;
+    this.model = options.model ?? "gpt-5.2-pro";
+    this.baseUrl = options.baseUrl ?? "https://api.openai.com/v1/chat/completions";
+    this.id = options.id ?? `openai-${this.model}`;
+  }
 
-Phase 8 establishes the testing infrastructure needed to confidently ship ExoFrame with Flow orchestration. The comprehensive testing strategy is documented in a dedicated document that covers:
+  async generate(prompt: string, options?: ModelOptions): Promise<string> {
+    const response = await fetch(this.baseUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.model,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: options?.max_tokens,
+        temperature: options?.temperature,
+        top_p: options?.top_p,
+        stop: options?.stop,
+      }),
+    });
 
-- **Testing Pyramid** — Unit, Integration, Security, Performance, Manual QA
-- **Mock LLM Infrastructure** — Deterministic testing without API costs
-- **v1.0 Testing Scope** — What's included and excluded from initial release
-- **Pre-Release Checklist** — Sign-off template for each major release
+    if (!response.ok) {
+      const error = await response.json();
+      throw new ProviderError(this.id, error.error?.message ?? response.statusText);
+    }
 
-### Steps Summary
+    const data = await response.json();
+    return data.choices[0].message.content;
+  }
+}
+```
 
-| Step | Description                   | Location             | Status      |
-| ---- | ----------------------------- | -------------------- | ----------- |
-| 8.1  | Unit Tests (Core Services)    | `tests/*_test.ts`    | ✅ Complete |
-| 8.2  | Obsidian Integration Tests    | `tests/obsidian/`    | ✅ Complete |
-| 8.3  | CLI Command Tests             | `tests/cli/`         | ✅ Complete |
-| 8.4  | Integration Test Scenarios    | `tests/integration/` | ✅ Complete |
-| 8.5  | Documentation Structure Tests | `tests/docs/`        | ✅ Complete |
-| 8.6  | Flow Execution Tests          | `tests/flows/`       | 🔲 Planned  |
-| 8.7  | Security Validation Tests     | `tests/security/`    | 🔲 Planned  |
-| 8.8  | Performance Benchmarks        | `tests/benchmarks/`  | 🔲 Planned  |
-| 8.9  | Manual QA Checklist           | Testing Strategy §4  | 🔲 Planned  |
+**Success Criteria:**
 
-**Note:** Lease management is integrated into `src/services/execution_loop.ts` (not a separate service).
-Tests for lease acquisition/release are in `tests/execution_loop_test.ts`.
+- [ ] Sends correct Authorization header
+- [ ] Supports custom baseUrl for Azure OpenAI
+- [ ] Handles rate limit (429) with retry
+- [ ] Reports token usage from response
 
-### Exit Criteria
+---
 
-- [x] Unit tests cover all core services (16 modules, see Testing Strategy §2.1)
-- [x] Obsidian integration verified (Dataview queries work)
-- [x] All 10 integration scenarios pass (44 tests, 77 steps)
-- [x] Documentation tests prevent doc drift
-- [ ] Flow execution tests validate multi-agent orchestration
-- [ ] Security tests verify Deno permission enforcement
-- [ ] Performance benchmarks meet targets
-- [x] Mock LLM enables deterministic testing (30 tests, 5 strategies)
-- [ ] Manual QA passes on all target platforms
-- [ ] All tests run automatically on PR in CI/CD
+### Step 8.3: Google Provider (Gemini)
+
+- **Dependencies:** Step 3.1 (IModelProvider interface)
+- **Rollback:** Fall back to Ollama/Mock
+- **Action:** Implement `GoogleProvider` class
+- **Location:** `src/ai/providers/google.ts`
+
+```typescript
+export class GoogleProvider implements IModelProvider {
+  public readonly id: string;
+  private readonly apiKey: string;
+  private readonly model: string;
+  private readonly baseUrl = "https://generativelanguage.googleapis.com/v1beta/models";
+
+  constructor(options: { apiKey: string; model?: string; id?: string }) {
+    this.apiKey = options.apiKey;
+    this.model = options.model ?? "gemini-3-pro";
+    this.id = options.id ?? `google-${this.model}`;
+  }
+
+  async generate(prompt: string, options?: ModelOptions): Promise<string> {
+    const url = `${this.baseUrl}/${this.model}:generateContent?key=${this.apiKey}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: options?.max_tokens,
+          temperature: options?.temperature,
+          topP: options?.top_p,
+          stopSequences: options?.stop,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new ProviderError(this.id, error.error?.message ?? response.statusText);
+    }
+
+    const data = await response.json();
+    return data.candidates[0].content.parts[0].text;
+  }
+}
+```
+
+**Success Criteria:**
+
+- [ ] Sends API key in URL query parameter
+- [ ] Formats contents/parts structure correctly
+- [ ] Handles rate limit (429) with retry
+- [ ] Reports token usage from response
+
+---
+
+### Step 8.4: Common Infrastructure
+
+- **Dependencies:** Step 7.9 (Example Flows)
+- **Rollback:** N/A
+- **Action:** Implement shared error handling, retry logic, and token tracking
+- **Location:** `src/ai/providers/common.ts`
+
+#### Error Types
+
+| Error Type            | Cause                 | Retry?                |
+| --------------------- | --------------------- | --------------------- |
+| `AuthenticationError` | Invalid API key       | No                    |
+| `RateLimitError`      | Too many requests     | Yes (with backoff)    |
+| `QuotaExceededError`  | Billing limit reached | No                    |
+| `ModelNotFoundError`  | Invalid model name    | No                    |
+| `ContextLengthError`  | Prompt too long       | No (truncate context) |
+| `ConnectionError`     | Network failure       | Yes                   |
+| `TimeoutError`        | Request timeout       | Yes                   |
+
+#### Retry Logic
+
+```typescript
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: { maxRetries: number; baseDelayMs: number },
+): Promise<T> {
+  let lastError: Error;
+  for (let i = 0; i < options.maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (!isRetryable(error)) throw error;
+      lastError = error;
+      await sleep(options.baseDelayMs * Math.pow(2, i));
+    }
+  }
+  throw lastError!;
+}
+```
+
+#### Token Usage Tracking
+
+```typescript
+export interface GenerateResult {
+  content: string;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  model: string;
+  provider: string;
+}
+```
+
+**Success Criteria:**
+
+- [ ] Retry logic uses exponential backoff
+- [ ] Rate limit errors trigger retry
+- [ ] Auth/quota errors do not retry
+- [ ] Token usage logged to Activity Journal
+
+---
+
+### Step 8.5: Configuration & Factory Updates
+
+- **Dependencies:** Steps 8.1–8.4
+- **Rollback:** Revert config schema changes
+- **Action:** Update config schema and ModelFactory
+- **Location:** `src/config/schema.ts`, `src/ai/providers.ts`
+
+#### Configuration Schema
+
+```toml
+[models.default]
+provider = "anthropic"           # "anthropic" | "openai" | "google" | "ollama"
+model = "claude-opus-4.5"
+
+[models.fast]
+provider = "openai"
+model = "gpt-5.2-pro-mini"
+
+[models.local]
+provider = "ollama"
+model = "llama3.2"
+
+# API keys loaded from environment variables:
+# ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY
+```
+
+#### Updated ModelFactory
+
+```typescript
+export class ModelFactory {
+  static create(config: ModelConfig): IModelProvider {
+    switch (config.provider) {
+      case "mock":
+        return new MockProvider(config.response ?? "Mock response");
+      case "ollama":
+        return new OllamaProvider({ model: config.model, baseUrl: config.baseUrl });
+      case "anthropic":
+        return new AnthropicProvider({
+          apiKey: Deno.env.get("ANTHROPIC_API_KEY") ?? config.apiKey,
+          model: config.model,
+        });
+      case "openai":
+        return new OpenAIProvider({
+          apiKey: Deno.env.get("OPENAI_API_KEY") ?? config.apiKey,
+          model: config.model,
+          baseUrl: config.baseUrl,
+        });
+      case "google":
+        return new GoogleProvider({
+          apiKey: Deno.env.get("GOOGLE_API_KEY") ?? config.apiKey,
+          model: config.model,
+        });
+      default:
+        throw new Error(`Unknown provider: ${config.provider}`);
+    }
+  }
+}
+```
+
+**Success Criteria:**
+
+- [ ] Config schema validates provider/model combinations
+- [ ] ModelFactory creates correct provider from config
+- [ ] Missing API key throws `AuthenticationError`
+- [ ] Environment variables take precedence over config file
+
+---
+
+### Phase 8 Exit Criteria
+
+- [ ] `AnthropicProvider` implemented with all models
+- [ ] `OpenAIProvider` implemented with all models (+ Azure support)
+- [ ] `GoogleProvider` implemented with Gemini 2.0 models
+- [ ] Retry logic with exponential backoff for rate limits
+- [ ] Token usage tracking logged to Activity Journal
+- [ ] Config schema supports multi-provider selection
+- [ ] Integration tests for each provider (with mocked HTTP)
+- [ ] Documentation updated with provider setup instructions
 
 ---
 
@@ -5833,352 +6108,56 @@ It's an **auditable agent orchestration platform** for async workflows.
 
 ---
 
-## Phase 10: Third-Party LLM Providers
+## Phase 10: Testing & Quality Assurance
 
-| Model         | Context Window | Use Case                          |
-| ------------- | -------------- | --------------------------------- |
-| `gpt-4o`      | 128K           | Default multimodal                |
-| `gpt-4o-mini` | 128K           | Fast, cost-effective              |
-| `gpt-4-turbo` | 128K           | Previous generation               |
-| `o1`          | 200K           | Advanced reasoning                |
-| `o1-mini`     | 128K           | Fast reasoning                    |
-| `o3-mini`     | 200K           | Latest reasoning (when available) |
+> **Status:** 🔲 PLANNED\
+> **Prerequisites:** Phases 1–9 (Runtime, Events, Intelligence, Tools, Obsidian, Portal, Flows, LLM Providers, UX)\
+> **Goal:** Validate single-agent and multi-agent workflows end-to-end with both local and cloud providers.
 
-#### Google (Gemini)
+📄 **Full Documentation:** [`ExoFrame_Testing_Strategy.md`](./ExoFrame_Testing_Strategy.md)
 
-| Model                   | Context Window | Use Case             |
-| ----------------------- | -------------- | -------------------- |
-| `gemini-2.0-flash`      | 1M             | Fast, multimodal     |
-| `gemini-2.0-flash-lite` | 1M             | Fastest, lowest cost |
-| `gemini-1.5-pro`        | 2M             | Largest context      |
-| `gemini-1.5-flash`      | 1M             | Balanced             |
+### Overview
 
----
+Phase 10 establishes the testing infrastructure needed to confidently ship ExoFrame with Flow orchestration and multi-provider support. The comprehensive testing strategy is documented in a dedicated document that covers:
 
-### Step 10.1: Anthropic Provider
+- **Testing Pyramid** — Unit, Integration, Security, Performance, Manual QA
+- **Mock LLM Infrastructure** — Deterministic testing without API costs
+- **v1.0 Testing Scope** — What's included and excluded from initial release
+- **Pre-Release Checklist** — Sign-off template for each major release
 
-- **Dependencies:** Step 3.1 (IModelProvider interface)
-- **Rollback:** Fall back to Ollama/Mock
-- **Action:** Implement `AnthropicProvider` class
-- **Location:** `src/ai/providers/anthropic.ts`
+### Steps Summary
 
-```typescript
-export class AnthropicProvider implements IModelProvider {
-  public readonly id: string;
-  private readonly apiKey: string;
-  private readonly model: string;
-  private readonly baseUrl = "https://api.anthropic.com/v1/messages";
+| Step | Description                   | Location             | Status      |
+| ---- | ----------------------------- | -------------------- | ----------- |
+| 10.1 | Unit Tests (Core Services)    | `tests/*_test.ts`    | ✅ Complete |
+| 10.2 | Obsidian Integration Tests    | `tests/obsidian/`    | ✅ Complete |
+| 10.3 | CLI Command Tests             | `tests/cli/`         | ✅ Complete |
+| 10.4 | Integration Test Scenarios    | `tests/integration/` | ✅ Complete |
+| 10.5 | Documentation Structure Tests | `tests/docs/`        | ✅ Complete |
+| 10.6 | Flow Execution Tests          | `tests/flows/`       | 🔲 Planned  |
+| 10.7 | Security Validation Tests     | `tests/security/`    | 🔲 Planned  |
+| 10.8 | Performance Benchmarks        | `tests/benchmarks/`  | 🔲 Planned  |
+| 10.9 | Manual QA Checklist           | Testing Strategy §4  | 🔲 Planned  |
 
-  constructor(options: { apiKey: string; model?: string; id?: string }) {
-    this.apiKey = options.apiKey;
-    this.model = options.model ?? "claude-sonnet-4-20250514";
-    this.id = options.id ?? `anthropic-${this.model}`;
-  }
+**Note:** Lease management is integrated into `src/services/execution_loop.ts` (not a separate service).
+Tests for lease acquisition/release are in `tests/execution_loop_test.ts`.
 
-  async generate(prompt: string, options?: ModelOptions): Promise<string> {
-    const response = await fetch(this.baseUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": this.apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: this.model,
-        max_tokens: options?.max_tokens ?? 4096,
-        messages: [{ role: "user", content: prompt }],
-        temperature: options?.temperature,
-        top_p: options?.top_p,
-        stop_sequences: options?.stop,
-      }),
-    });
+### Exit Criteria
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new ProviderError(this.id, error.error?.message ?? response.statusText);
-    }
-
-    const data = await response.json();
-    return data.content[0].text;
-  }
-}
-```
-
-**Success Criteria:**
-
-- [ ] Sends correct headers (`x-api-key`, `anthropic-version`)
-- [ ] Formats messages array correctly
-- [ ] Handles rate limit (429) with retry
-- [ ] Reports token usage from response
+- [x] Unit tests cover all core services (16 modules, see Testing Strategy §2.1)
+- [x] Obsidian integration verified (Dataview queries work)
+- [x] All 10 integration scenarios pass (44 tests, 77 steps)
+- [x] Documentation tests prevent doc drift
+- [ ] Flow execution tests validate multi-agent orchestration
+- [ ] Security tests verify Deno permission enforcement
+- [ ] Performance benchmarks meet targets
+- [x] Mock LLM enables deterministic testing (30 tests, 5 strategies)
+- [ ] Manual QA passes on all target platforms
+- [ ] All tests run automatically on PR in CI/CD
 
 ---
 
-### Step 10.2: OpenAI Provider
-
-- **Dependencies:** Step 3.1 (IModelProvider interface)
-- **Rollback:** Fall back to Ollama/Mock
-- **Action:** Implement `OpenAIProvider` class
-- **Location:** `src/ai/providers/openai.ts`
-
-```typescript
-export class OpenAIProvider implements IModelProvider {
-  public readonly id: string;
-  private readonly apiKey: string;
-  private readonly model: string;
-  private readonly baseUrl: string;
-
-  constructor(options: {
-    apiKey: string;
-    model?: string;
-    baseUrl?: string; // For Azure OpenAI or proxies
-    id?: string;
-  }) {
-    this.apiKey = options.apiKey;
-    this.model = options.model ?? "gpt-4o";
-    this.baseUrl = options.baseUrl ?? "https://api.openai.com/v1/chat/completions";
-    this.id = options.id ?? `openai-${this.model}`;
-  }
-
-  async generate(prompt: string, options?: ModelOptions): Promise<string> {
-    const response = await fetch(this.baseUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: options?.max_tokens,
-        temperature: options?.temperature,
-        top_p: options?.top_p,
-        stop: options?.stop,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new ProviderError(this.id, error.error?.message ?? response.statusText);
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
-  }
-}
-```
-
-**Success Criteria:**
-
-- [ ] Sends correct Authorization header
-- [ ] Supports custom baseUrl for Azure OpenAI
-- [ ] Handles rate limit (429) with retry
-- [ ] Reports token usage from response
-
----
-
-### Step 10.3: Google Provider (Gemini)
-
-- **Dependencies:** Step 3.1 (IModelProvider interface)
-- **Rollback:** Fall back to Ollama/Mock
-- **Action:** Implement `GoogleProvider` class
-- **Location:** `src/ai/providers/google.ts`
-
-```typescript
-export class GoogleProvider implements IModelProvider {
-  public readonly id: string;
-  private readonly apiKey: string;
-  private readonly model: string;
-  private readonly baseUrl = "https://generativelanguage.googleapis.com/v1beta/models";
-
-  constructor(options: { apiKey: string; model?: string; id?: string }) {
-    this.apiKey = options.apiKey;
-    this.model = options.model ?? "gemini-2.0-flash";
-    this.id = options.id ?? `google-${this.model}`;
-  }
-
-  async generate(prompt: string, options?: ModelOptions): Promise<string> {
-    const url = `${this.baseUrl}/${this.model}:generateContent?key=${this.apiKey}`;
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          maxOutputTokens: options?.max_tokens,
-          temperature: options?.temperature,
-          topP: options?.top_p,
-          stopSequences: options?.stop,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new ProviderError(this.id, error.error?.message ?? response.statusText);
-    }
-
-    const data = await response.json();
-    return data.candidates[0].content.parts[0].text;
-  }
-}
-```
-
-**Success Criteria:**
-
-- [ ] Sends API key in URL query parameter
-- [ ] Formats contents/parts structure correctly
-- [ ] Handles rate limit (429) with retry
-- [ ] Reports token usage from response
-
----
-
-### Step 10.4: Common Infrastructure
-
-- **Dependencies:** Steps 9.1–9.3
-- **Rollback:** N/A
-- **Action:** Implement shared error handling, retry logic, and token tracking
-- **Location:** `src/ai/providers/common.ts`
-
-#### Error Types
-
-| Error Type            | Cause                 | Retry?                |
-| --------------------- | --------------------- | --------------------- |
-| `AuthenticationError` | Invalid API key       | No                    |
-| `RateLimitError`      | Too many requests     | Yes (with backoff)    |
-| `QuotaExceededError`  | Billing limit reached | No                    |
-| `ModelNotFoundError`  | Invalid model name    | No                    |
-| `ContextLengthError`  | Prompt too long       | No (truncate context) |
-| `ConnectionError`     | Network failure       | Yes                   |
-| `TimeoutError`        | Request timeout       | Yes                   |
-
-#### Retry Logic
-
-```typescript
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  options: { maxRetries: number; baseDelayMs: number },
-): Promise<T> {
-  let lastError: Error;
-  for (let i = 0; i < options.maxRetries; i++) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (!isRetryable(error)) throw error;
-      lastError = error;
-      await sleep(options.baseDelayMs * Math.pow(2, i));
-    }
-  }
-  throw lastError!;
-}
-```
-
-#### Token Usage Tracking
-
-```typescript
-export interface GenerateResult {
-  content: string;
-  usage: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
-  model: string;
-  provider: string;
-}
-```
-
-**Success Criteria:**
-
-- [ ] Retry logic uses exponential backoff
-- [ ] Rate limit errors trigger retry
-- [ ] Auth/quota errors do not retry
-- [ ] Token usage logged to Activity Journal
-
----
-
-### Step 10.5: Configuration & Factory Updates
-
-- **Dependencies:** Steps 9.1–9.4
-- **Rollback:** Revert config schema changes
-- **Action:** Update config schema and ModelFactory
-- **Location:** `src/config/schema.ts`, `src/ai/providers.ts`
-
-#### Configuration Schema
-
-```toml
-[models.default]
-provider = "anthropic"           # "anthropic" | "openai" | "google" | "ollama"
-model = "claude-sonnet-4-20250514"
-
-[models.fast]
-provider = "openai"
-model = "gpt-4o-mini"
-
-[models.local]
-provider = "ollama"
-model = "llama3.2"
-
-# API keys loaded from environment variables:
-# ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY
-```
-
-#### Updated ModelFactory
-
-```typescript
-export class ModelFactory {
-  static create(config: ModelConfig): IModelProvider {
-    switch (config.provider) {
-      case "mock":
-        return new MockProvider(config.response ?? "Mock response");
-      case "ollama":
-        return new OllamaProvider({ model: config.model, baseUrl: config.baseUrl });
-      case "anthropic":
-        return new AnthropicProvider({
-          apiKey: Deno.env.get("ANTHROPIC_API_KEY") ?? config.apiKey,
-          model: config.model,
-        });
-      case "openai":
-        return new OpenAIProvider({
-          apiKey: Deno.env.get("OPENAI_API_KEY") ?? config.apiKey,
-          model: config.model,
-          baseUrl: config.baseUrl,
-        });
-      case "google":
-        return new GoogleProvider({
-          apiKey: Deno.env.get("GOOGLE_API_KEY") ?? config.apiKey,
-          model: config.model,
-        });
-      default:
-        throw new Error(`Unknown provider: ${config.provider}`);
-    }
-  }
-}
-```
-
-**Success Criteria:**
-
-- [ ] Config schema validates provider/model combinations
-- [ ] ModelFactory creates correct provider from config
-- [ ] Missing API key throws `AuthenticationError`
-- [ ] Environment variables take precedence over config file
-
----
-
-### Phase 10 Exit Criteria
-
-- [ ] `AnthropicProvider` implemented with all models
-- [ ] `OpenAIProvider` implemented with all models (+ Azure support)
-- [ ] `GoogleProvider` implemented with Gemini 2.0 models
-- [ ] Retry logic with exponential backoff for rate limits
-- [ ] Token usage tracking logged to Activity Journal
-- [ ] Config schema supports multi-provider selection
-- [ ] Integration tests for each provider (with mocked HTTP)
-- [ ] Documentation updated with provider setup instructions
-
----
-
-_End of Implementation Plan_
+## Phase 11: Model Context Protocol (MCP) Server
 
 **Duration:** 1-2 weeks\
 **Prerequisites:** Phases 1–10 (All core features complete)\
@@ -6463,7 +6442,7 @@ Deno.test("MCP Server - list plans tool", async () => {
 4. [ ] Architecture diagram updated
 5. [ ] Example repository with MCP configurations
 
-### Phase 10 Benefits
+### Phase 11 Benefits
 
 **For Users:**
 
@@ -6484,7 +6463,7 @@ Deno.test("MCP Server - list plans tool", async () => {
 - Works with any MCP client (Claude, Cline, etc.)
 - Positions ExoFrame as infrastructure layer
 
-### Phase 10 Exit Criteria
+### Phase 11 Exit Criteria
 
 - [ ] MCP server implemented with stdio transport
 - [ ] All core tools implemented (create, list, approve, query)

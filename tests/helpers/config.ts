@@ -33,7 +33,7 @@ export function createMockConfig(root: string, overrides: Partial<Config> = {}):
       ...overrides.watcher,
     },
     agents: {
-      default_model: "gpt-4o",
+      default_model: "gpt-5.2-pro",
       timeout_sec: 60,
       ...overrides.agents,
     },
@@ -72,7 +72,7 @@ debounce_ms = 200
 stability_check = true
 
 [agents]
-default_model = "gpt-4o"
+default_model = "gpt-5.2-pro"
 timeout_sec = 60
 `;
 

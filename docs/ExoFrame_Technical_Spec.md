@@ -64,20 +64,45 @@ permission governance across CLI, daemon, and agents.
 ExoFrame uses a provider-agnostic architecture via the `IModelProvider` interface. All providers implement the same
 contract, enabling seamless switching between local and cloud models.
 
-| Provider           | Status         | Models                                                                       | Context Window  |
-| ------------------ | -------------- | ---------------------------------------------------------------------------- | --------------- |
-| **Ollama** (Local) | ✅ Implemented | llama3.2, mistral, codellama, etc.                                           | Varies by model |
-| **Mock** (Testing) | ✅ Implemented | N/A                                                                          | N/A             |
-| **Anthropic**      | 📋 Planned     | claude-sonnet-4-20250514, claude-3-5-sonnet, claude-3-5-haiku, claude-3-opus | 200K            |
-| **OpenAI**         | 📋 Planned     | gpt-4o, gpt-4o-mini, gpt-4-turbo, o1, o1-mini, o3-mini                       | 128K–200K       |
-| **Google**         | 📋 Planned     | gemini-2.0-flash, gemini-2.0-flash-lite, gemini-1.5-pro, gemini-1.5-flash    | 1M–2M           |
+#### Anthropic (Claude)
+
+| Model             | Context Window | Use Case                                                              |
+| ----------------- | -------------- | --------------------------------------------------------------------- |
+| `claude-opus-4.5` | 200K           | Tops agentic coding/reasoning; superior Plan-Execute loops (Default)  |
+| `claude-3.5-sonnet` | 200K           | Previous best-in-class for coding and reasoning                     |
+| `claude-3.5-haiku`  | 200K           | Fast, cost-effective                                                |
+
+#### OpenAI (GPT)
+
+| Model         | Context Window | Use Case                                                              |
+| ------------- | -------------- | --------------------------------------------------------------------- |
+| `gpt-5.2-pro` | 200K           | Best for pro/agentic tasks; excels in multi-step workflows (Default)  |
+| `gpt-4o`      | 128K           | Previous generation default multimodal                                |
+| `gpt-4o-mini` | 128K           | Fast, cost-effective                                                  |
+| `o1`          | 200K           | Advanced reasoning                                                    |
+
+#### Google (Gemini)
+
+| Model              | Context Window | Use Case                                                              |
+| ------------------ | -------------- | --------------------------------------------------------------------- |
+| `gemini-3-pro`     | 2M             | Massive context (2M+), 78% SWE-Bench; rivals GPT-5.2 speed (Default) |
+| `gemini-3-flash`   | 1M             | Fastest, lowest cost for codebase ingestion                           |
+| `gemini-2.0-flash` | 1M             | Previous generation balanced model                                    |
+
+#### Ollama (Local)
+
+| Model       | Context Window | Use Case                    |
+| ----------- | -------------- | --------------------------- |
+| `llama3.2`  | Varies         | General purpose local model |
+| `mistral`   | Varies         | Balanced local model        |
+| `codellama` | Varies         | Specialized for coding      |
 
 **Provider Selection (exo.config.toml):**
 
 ```toml
 [models.default]
 provider = "anthropic"
-model = "claude-sonnet-4-20250514"
+model = "claude-opus-4.5"
 
 [models.fast]
 provider = "openai"
@@ -95,6 +120,14 @@ model = "llama3.2"
 | `ANTHROPIC_API_KEY` | Anthropic (Claude) |
 | `OPENAI_API_KEY`    | OpenAI (GPT)       |
 | `GOOGLE_API_KEY`    | Google (Gemini)    |
+
+### 2.0.2 Provider Cost Comparison
+
+| Provider  | Previous Model             | New Model       | Input Cost (per 1M)     | Output Cost (per 1M)       | Total ~Ratio |
+| --------- | -------------------------- | --------------- | ----------------------- | -------------------------- | ------------ |
+| Anthropic | claude-3-5-sonnet-20241022 | claude-opus-4.5 | $3 → $5-7.50 (+67-150%) | $15 → $25-37.50 (+67-150%) | 1.7-2.5x     |
+| OpenAI    | gpt-4o                     | gpt-5.2 (chat)  | $2.50 → $1.75 (-30%)    | $10 → $14 (+40%)           | ~0.9x        |
+| Google    | gemini-2.0-flash           | gemini-3-flash  | $0.30 → $0.50 (+67%)    | $2.50 → $3 (+20%)          | 1.3-1.7x     |
 
 ---
 

@@ -748,7 +748,7 @@ Blueprints define AI agents with specific capabilities, models, and system promp
 
 1. **name**: Lowercase alphanumeric + hyphens only (e.g., `code-reviewer`)
 2. **Reserved names**: Cannot use `system`, `default`, `test`
-3. **Model format**: `provider:model-name` (e.g., `anthropic:claude-3-5-sonnet-20241022`)
+3. **Model format**: `provider:model-name` (e.g., `anthropic:claude-opus-4.5`)
 4. **System prompt**: Must include clear role definition, capabilities, and output format instructions
 5. **Capabilities**: Array of MCP tool names the agent can use
 

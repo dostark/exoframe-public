@@ -61,7 +61,7 @@ Deno.test("ConfigSchema applies defaults for missing agents section", () => {
   };
 
   const result = ConfigSchema.parse(configWithoutAgents);
-  assertEquals(result.agents.default_model, "gpt-4o");
+  assertEquals(result.agents.default_model, "gpt-5.2-pro");
   assertEquals(result.agents.timeout_sec, 60);
 });
 

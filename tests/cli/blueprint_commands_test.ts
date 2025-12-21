@@ -513,7 +513,7 @@ Deno.test("[blueprint] template - gemini template", async () => {
       template: "gemini",
     });
 
-    assertEquals(result.model, "google:gemini-2.0-flash");
+    assertEquals(result.model, "google:gemini-3-flash");
     assertEquals(result.capabilities?.includes("multimodal"), true);
   } finally {
     await teardownTest();

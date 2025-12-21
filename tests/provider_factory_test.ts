@@ -55,7 +55,7 @@ function createTestConfig(aiConfig?: Partial<AiConfig>): Config {
       stability_check: true,
     },
     agents: {
-      default_model: "gpt-4o",
+      default_model: "gpt-5.2-pro",
       timeout_sec: 60,
     },
     portals: [],
