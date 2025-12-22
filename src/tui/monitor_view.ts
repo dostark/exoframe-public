@@ -1,4 +1,4 @@
-import { DatabaseService } from "../../services/db.ts";
+import { DatabaseService } from "../../src/services/db.ts";
 
 export interface LogFilter {
   agent?: string;

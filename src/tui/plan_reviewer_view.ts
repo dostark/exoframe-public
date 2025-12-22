@@ -1,3 +1,77 @@
+// --- TUI Session for Plan Reviewer ---
+export class PlanReviewerTuiSession {
+  private selectedIndex = 0;
+  private statusMessage = "";
+  constructor(private plans: any[], private service: any) {}
+
+  getSelectedIndex() {
+    return this.selectedIndex;
+  }
+
+  setSelectedIndex(idx: number) {
+    if (idx < 0 || idx >= this.plans.length) {
+      this.selectedIndex = 0;
+    } else {
+      this.selectedIndex = idx;
+    }
+  }
+
+  handleKey(key: string) {
+    if (this.plans.length === 0) return;
+    switch (key) {
+      case "down":
+        this.selectedIndex = Math.min(this.selectedIndex + 1, this.plans.length - 1);
+        break;
+      case "up":
+        this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
+        break;
+      case "end":
+        this.selectedIndex = this.plans.length - 1;
+        break;
+      case "home":
+        this.selectedIndex = 0;
+        break;
+      case "a":
+        this.#triggerAction("approve");
+        break;
+      case "r":
+        this.#triggerAction("reject");
+        break;
+    }
+    if (this.selectedIndex >= this.plans.length) {
+      this.selectedIndex = Math.max(0, this.plans.length - 1);
+    }
+  }
+
+  #triggerAction(action: "approve" | "reject") {
+    const plan = this.plans[this.selectedIndex];
+    if (!plan) {
+      this.statusMessage = `Error: No plan selected`;
+      return;
+    }
+    try {
+      switch (action) {
+        case "approve":
+          this.service.approve(plan.id, "reviewer");
+          break;
+        case "reject":
+          this.service.reject(plan.id, "reviewer", "TUI reject");
+          break;
+      }
+      this.statusMessage = "";
+    } catch (e) {
+      if (e && typeof e === "object" && "message" in e) {
+        this.statusMessage = `Error: ${(e as Error).message}`;
+      } else {
+        this.statusMessage = `Error: ${String(e)}`;
+      }
+    }
+  }
+
+  getStatusMessage() {
+    return this.statusMessage;
+  }
+}
 export type Plan = {
   id: string;
   title: string;
@@ -13,6 +87,11 @@ export class PlanReviewerView {
   constructor(service?: any) {
     // store optional injected service for tests or runtime
     this.service = service;
+  }
+
+  // TUI: Expose a TUI session interface for tests or integration
+  createTuiSession(plans: any[]) {
+    return new PlanReviewerTuiSession(plans, this.service);
   }
 
   private isPlanCommands(obj: any): obj is PlanCommands {
@@ -84,7 +163,7 @@ export class PlanReviewerView {
       });
       return true;
     }
-    if (!reason) throw new Error("Rejection reason required when using PlanCommands");
+    if (!reason) throw new Error("Rejection reason is required");
     const cmd = await this.ensurePlanCommands();
     await cmd.reject(planId, reason);
     return true;

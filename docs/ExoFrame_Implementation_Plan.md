@@ -6186,20 +6186,20 @@ Design and implement the Monitor panel for real-time log streaming, filtering, a
 
 **Test Description:**
 
-- [x] Automated tests: Simulate Activity Journal events and verify correct display, filtering, and color-coding in the TUI.
-- [ ] Manual tests: User can pause/resume, search, and export logs; verify correct behavior with real data.
-- [x] Edge cases: Large log volumes, rapid updates, empty logs, invalid filters.
+[x] Automated tests: Simulate Activity Journal events and verify correct display, filtering, and color-coding in the TUI.
+[ ] Manual tests: User can pause/resume, search, and export logs; verify correct behavior with real data.
+[x] Edge cases: Large log volumes, rapid updates, empty logs, invalid filters.
 
 **Success Criteria:**
 
-- [x] All log events are displayed in real time with correct filtering and color.
-- [x] Pause/resume and export work as expected.
-- [x] No crashes or UI glitches with large or empty logs.
+[x] All log events are displayed in real time with correct filtering and color.
+[x] Pause/resume and export work as expected.
+[x] No crashes or UI glitches with large or empty logs.
 
-[ ] Design the Monitor panel layout for real-time log streaming.
-[ ] Integrate with Activity Journal to stream and filter logs (by agent, trace_id, severity, time window).
-[ ] Implement controls for pause/resume, search/filter, and export logs.
-[ ] Add color-coded log levels and clear status indicators.
+[x] Design the Monitor panel layout for real-time log streaming.
+[x] Integrate with Activity Journal to stream and filter logs (by agent, trace_id, severity, time window).
+[x] Implement controls for pause/resume, search/filter, and export logs.
+[x] Add color-coded log levels and clear status indicators.
 [ ] Test with simulated and real Activity Journal data.
 
 ### Step 9.5: Implement Plan Reviewer View
@@ -6233,22 +6233,93 @@ Build the Portal Manager view to display all active portals, their status, and h
 
 **Test Description:**
 
-[ ] Automated tests: Simulate portal state changes and verify correct display and action handling.
+[x] Automated tests: Simulate portal state changes and verify correct display and action handling.
 [ ] Manual tests: User can perform all portal actions and see immediate feedback/status.
 [ ] Edge cases: Portal errors, unavailable targets, rapid portal changes.
 
 **Success Criteria:**
 
-[ ] All portal actions work and update status in real time.
-[ ] Errors are clearly shown; no orphaned or inconsistent portal states.
+[x] All portal actions work and update status in real time.
+[x] Errors are clearly shown; no orphaned or inconsistent portal states.
 
-[ ] Display all active portals with status, target, and health indicators.
-[ ] Implement portal actions: open, close, refresh, create, edit, remove, sync.
-[ ] Add quick-jump to portal directory in shell.
-[ ] Integrate with portal management APIs/filesystem.
-[ ] Show portal activity and errors in context.
+[x] Display all active portals with status, target, and health indicators.
+[x] Implement portal actions: open, close, refresh, create, edit, remove, sync.
+[x] Add quick-jump to portal directory in shell.
+[x] Integrate with portal management APIs/filesystem.
+[x] Show portal activity and errors in context.
 
-### Step 9.7: Implement Daemon Control View
+### Step 9.7: Interactive Controls: Requirements & Technical Plan
+
+**Test Description:**
+
+- [ ] Automated tests: Simulate user navigation, selection, and action triggers (open, refresh, remove) in the TUI. Verify correct state updates, error display, and accessibility (keyboard-only operation).
+- [ ] Manual tests: User can navigate portals, trigger actions, and see immediate feedback/status. All controls are accessible without a mouse.
+- [ ] Edge cases: Rapid portal changes, error conditions, unavailable targets, and invalid actions.
+
+**Success Criteria:**
+
+- [ ] All portal actions (open, refresh, remove) are accessible and functional via keyboard controls.
+- [ ] Navigation and selection work smoothly for any number of portals.
+- [ ] Portal details and available actions are always accurate and up to date.
+- [ ] Error messages are clearly shown and do not block further interaction.
+- [ ] No orphaned or inconsistent portal states after any action or error.
+- [ ] All controls are accessible without a mouse (keyboard-only operation).
+- [ ] Automated and manual tests for navigation, actions, and error handling pass.
+
+**Goal:**
+Enable interactive terminal-based controls (TUI) in the Portal Manager View, allowing users to navigate, select, and perform actions on portals directly from the terminal interface.
+
+**Requirements:**
+
+- Users can navigate the list of portals using keyboard (e.g., arrow keys, j/k, etc.)
+- Selecting a portal displays its details and available actions (e.g., open, refresh, remove)
+- Actions are triggered via keyboard shortcuts or on-screen buttons
+- Error messages and state changes are reflected in real time
+- Accessibility: Controls must be usable without a mouse
+
+**Technical Approach:**
+
+1. **TUI Library Selection**
+
+- Evaluate Deno-compatible TUI libraries (e.g., cliffy, deno_tui, or custom minimal rendering)
+- Integrate chosen library into the project
+
+2. **Portal List Navigation**
+
+- Render portal list as selectable items
+- Implement keyboard navigation (up/down, page up/down, home/end)
+- Highlight the currently selected portal
+
+3. **Portal Details & Actions**
+
+- On selection, display portal details in a side panel or modal
+- Render action buttons (e.g., [Open], [Refresh], [Remove])
+- Map keyboard shortcuts to actions (e.g., Enter=open, r=refresh, d=delete)
+
+4. **Action Handling & State Updates**
+
+- Invoke backend logic for portal actions
+- Update UI state and re-render on success/error
+- Display error messages inline or in a status bar
+
+5. **Testing & Accessibility**
+
+- Write tests for navigation, selection, and action triggers
+- Ensure all controls are accessible via keyboard
+
+**Implementation Steps:**
+
+1. Add TUI library dependency and basic setup
+2. Refactor PortalManagerView to support interactive rendering
+3. Implement navigation and selection logic
+4. Add portal details panel and action controls
+5. Wire up action handlers and error display
+6. Write tests for all interactive features
+7. Document usage and keyboard shortcuts in README
+
+---
+
+### Step 9.8: Implement Daemon Control View
 
 **Description:**
 Create the Daemon Control view to show daemon status, uptime, and errors. Provide controls to start/stop/restart the daemon, display/manage logs, and ensure safe lifecycle handling.
@@ -6304,7 +6375,7 @@ Develop the Agent Status view to list all registered agents, show their health, 
 [ ] All views work together seamlessly; navigation and notifications are reliable.
 [ ] Theming and accessibility meet requirements; documentation is complete and accurate.
 
-### Step 9.10: Implement Split View (Multi-Pane) Functionality
+### Step 9.9: Implement Split View (Multi-Pane) Functionality
 
 **Description:**
 Add the ability to split the TUI into two or more panes, each displaying a different view (e.g., Monitor and Plan Reviewer). Support dynamic resizing, focus switching, preset layouts, and visual indicators for active/inactive panes. Enable actions in one pane to update/filter content in another.
@@ -6725,3 +6796,5 @@ Deno.test("MCP Server - list plans tool", async () => {
 ---
 
 _End of Implementation Plan_
+
+---

@@ -1,3 +1,60 @@
+// Additional coverage for MonitorView rendering and color helpers
+Deno.test("MonitorView - getLogColor covers all cases", () => {
+  const mockDb = new MockDatabaseService();
+  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
+  assertEquals(monitorView.getLogColor("request_created"), "green");
+  assertEquals(monitorView.getLogColor("plan_approved"), "blue");
+  assertEquals(monitorView.getLogColor("execution_started"), "yellow");
+  assertEquals(monitorView.getLogColor("execution_completed"), "green");
+  assertEquals(monitorView.getLogColor("error"), "red");
+  assertEquals(monitorView.getLogColor("unknown_type"), "white");
+});
+
+Deno.test("MonitorView - getAnsiColorCode covers all cases", () => {
+  const mockDb = new MockDatabaseService();
+  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
+  assertEquals(monitorView["getAnsiColorCode"]("red"), 31);
+  assertEquals(monitorView["getAnsiColorCode"]("green"), 32);
+  assertEquals(monitorView["getAnsiColorCode"]("yellow"), 33);
+  assertEquals(monitorView["getAnsiColorCode"]("blue"), 34);
+  assertEquals(monitorView["getAnsiColorCode"]("white"), 37);
+  assertEquals(monitorView["getAnsiColorCode"]("unknown"), 37);
+});
+
+Deno.test("MonitorView - renderLogs outputs ANSI and handles empty", () => {
+  const logs = [
+    {
+      id: "1",
+      trace_id: "t1",
+      actor: "user",
+      agent_id: "a1",
+      action_type: "error",
+      target: "target.md",
+      payload: {},
+      timestamp: "2025-12-22T10:00:00Z",
+    },
+    {
+      id: "2",
+      trace_id: "t2",
+      actor: "user",
+      agent_id: "a2",
+      action_type: "unknown_type",
+      target: "target2.md",
+      payload: {},
+      timestamp: "2025-12-22T10:01:00Z",
+    },
+  ];
+  const mockDb = new MockDatabaseService(logs);
+  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
+  monitorView.setFilter({});
+  const output = monitorView.renderLogs();
+  assert(output.includes("\x1b[31m")); // red for error
+  assert(output.includes("\x1b[37m")); // white for unknown
+  // Empty logs
+  const emptyDb = new MockDatabaseService([]);
+  const emptyView = new MonitorView(emptyDb as unknown as DatabaseService);
+  assertEquals(emptyView.renderLogs(), "");
+});
 import { assert, assertEquals, assertExists } from "jsr:@std/assert@1";
 import { LogEntry, MonitorView } from "../../src/tui/monitor_view.ts";
 import { DatabaseService } from "../../src/services/db.ts";

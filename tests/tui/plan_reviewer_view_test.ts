@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "https://deno.land/std@0.192.0/testing/asserts.ts";
-import { PlanReviewerView } from "../../src/tui/plan_reviewer_view.ts";
+import { PlanReviewerTuiSession, PlanReviewerView } from "../../src/tui/plan_reviewer_view.ts";
 import { PlanCommands } from "../../src/cli/plan_commands.ts";
 
 function yamlFrontmatter(obj: Record<string, string>): string {
@@ -101,4 +101,87 @@ Deno.test("handles very large plan content via PlanCommands", async () => {
   const diff = await view.getDiff(planId);
   assertEquals(diff.length, large.length);
   await Deno.remove(root, { recursive: true });
+});
+
+Deno.test("PlanReviewerTuiSession: error handling in #triggerAction (service throws)", () => {
+  let called = false;
+  const plans = [{ id: "p1", title: "T1" }];
+  const service = {
+    approve() {
+      called = true;
+      throw new Error("fail-approve");
+    },
+    reject() {
+      throw new Error("fail-reject");
+    },
+  };
+  const session = new PlanReviewerTuiSession(plans, service);
+  session.setSelectedIndex(0);
+  session.handleKey("a");
+  assertEquals(session.getStatusMessage(), "Error: fail-approve");
+  session.handleKey("r");
+  assertEquals(session.getStatusMessage(), "Error: fail-reject");
+  assert(called);
+});
+
+Deno.test("PlanReviewerView: reject throws if reason missing", async () => {
+  // Do not provide getPendingPlans so PlanCommands path is used
+  const view = new PlanReviewerView({
+    updatePlanStatus: async () => {},
+    logActivity: async () => {},
+  });
+  let threw = false;
+  try {
+    await view.reject("pid", "reviewer");
+  } catch (e) {
+    threw = true;
+    if (e instanceof Error) {
+      assertEquals(e.message, "Rejection reason is required");
+    } else {
+      throw e;
+    }
+  }
+  assert(threw);
+});
+
+Deno.test("PlanReviewerView: renderPlanList and renderDiff", () => {
+  const view = new PlanReviewerView();
+  const plans = [
+    { id: "p1", title: "T1", status: "pending" },
+    { id: "p2", title: "T2", status: "approved" },
+  ];
+  const list = view.renderPlanList(plans);
+  assert(list.includes("p1 T1 [pending]"));
+  assert(list.includes("p2 T2 [approved]"));
+  const diff = view.renderDiff("SOME_DIFF");
+  assertEquals(diff, "SOME_DIFF");
+});
+
+Deno.test("PlanReviewerTuiSession: edge cases (no plans, invalid selection)", () => {
+  const session = new PlanReviewerTuiSession([], {});
+  session.handleKey("down"); // should not throw
+  session.setSelectedIndex(-1);
+  assertEquals(session.getSelectedIndex(), 0);
+});
+
+Deno.test("PlanReviewerView: works with DB-like service", async () => {
+  let updated = false, logged = false;
+  const dbLike = {
+    getPendingPlans: async () => [{ id: "p", title: "T" }],
+    getPlanDiff: async (id: string) => `diff-${id}`,
+    updatePlanStatus: async () => {
+      updated = true;
+    },
+    logActivity: async () => {
+      logged = true;
+    },
+  };
+  const view = new PlanReviewerView(dbLike);
+  const pending = await view.listPending();
+  assertEquals(pending.length, 1);
+  const diff = await view.getDiff("p");
+  assertEquals(diff, "diff-p");
+  await view.approve("p", "r");
+  await view.reject("p", "r", "reason");
+  assert(updated && logged);
 });
