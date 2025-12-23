@@ -1,3 +1,8 @@
+import { assert, assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
+import { MonitorView } from "../../src/tui/monitor_view.ts";
+import type { LogEntry } from "../../src/tui/monitor_view.ts";
+import { DatabaseService } from "../../src/services/db.ts";
+
 // Additional coverage for MonitorView rendering and color helpers
 Deno.test("MonitorView - getLogColor covers all cases", () => {
   const mockDb = new MockDatabaseService();
@@ -55,9 +60,6 @@ Deno.test("MonitorView - renderLogs outputs ANSI and handles empty", () => {
   const emptyView = new MonitorView(emptyDb as unknown as DatabaseService);
   assertEquals(emptyView.renderLogs(), "");
 });
-import { assert, assertEquals, assertExists } from "jsr:@std/assert@1";
-import { LogEntry, MonitorView } from "../../src/tui/monitor_view.ts";
-import { DatabaseService } from "../../src/services/db.ts";
 
 // Mock DatabaseService for testing
 class MockDatabaseService {
@@ -216,6 +218,46 @@ Deno.test("MonitorView - should pause and resume log streaming", () => {
   // Resume streaming
   monitorView.resume();
   assertEquals(monitorView.isStreaming(), true);
+});
+
+Deno.test("MonitorView - does not fetch when paused", () => {
+  const calls: string[] = [];
+  class CountingDb extends MockDatabaseService {
+    override getRecentActivity(limit?: number) {
+      calls.push(`get:${limit}`);
+      return super.getRecentActivity(limit);
+    }
+  }
+  const db = new CountingDb([
+    {
+      id: "1",
+      trace_id: "trace-1",
+      actor: "agent",
+      agent_id: "dev",
+      action_type: "plan.approved",
+      target: "Inbox/Plans/test.md",
+      payload: {},
+      timestamp: "2025-12-21T10:00:00Z",
+    },
+  ]);
+  const monitorView = new MonitorView(db as unknown as DatabaseService);
+  calls.length = 0;
+  monitorView.pause();
+  monitorView.getLogs(); // should not trigger fetch while paused
+  assertEquals(calls.length, 0);
+  monitorView.resume();
+  monitorView.getLogs();
+  assertEquals(calls.length, 2);
+});
+
+Deno.test("MonitorView - maps Activity Journal action names to colors", () => {
+  const mockDb = new MockDatabaseService();
+  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
+  assertEquals(monitorView.getLogColor("plan.approved"), "blue");
+  assertEquals(monitorView.getLogColor("plan.rejected"), "red");
+  assertEquals(monitorView.getLogColor("execution.failed"), "red");
+  assertEquals(monitorView.getLogColor("execution.started"), "yellow");
+  assertEquals(monitorView.getLogColor("execution.completed"), "green");
 });
 
 Deno.test("MonitorView - should export logs to file", () => {

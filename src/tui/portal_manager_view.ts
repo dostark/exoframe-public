@@ -100,7 +100,16 @@ export class PortalManagerView {
   }
   // TDD: Expose a TUI session interface for tests
   createTuiSession() {
-    return new PortalManagerTuiSession(this.service?.portals || [], this.service);
+    let portals: any[] = [];
+    if (this.service && typeof this.service.listPortals === "function") {
+      const result = this.service.listPortals();
+      if (Array.isArray(result)) {
+        portals = result;
+      }
+    } else if (Array.isArray(this.service?.portals)) {
+      portals = this.service.portals;
+    }
+    return new PortalManagerTuiSession(portals, this.service);
   }
 
   private isPortalCommands(obj: any): obj is PortalCommands {

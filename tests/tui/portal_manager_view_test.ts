@@ -1,3 +1,6 @@
+import { assert, assertEquals } from "https://deno.land/std@0.192.0/testing/asserts.ts";
+import { PortalManagerView } from "../../src/tui/portal_manager_view.ts";
+
 // Additional coverage for error branches and rendering helpers
 Deno.test("throws if PortalCommands and global context missing", async () => {
   const view = new PortalManagerView();
@@ -29,12 +32,23 @@ Deno.test("throws for openPortal and closePortal in CLI mode", async () => {
   assert(openError && closeError);
 });
 
-
 Deno.test("renderPortalList shows error for non-active status", () => {
   const view = new PortalManagerView();
   const portals = [
-    { alias: "Main", status: "active" as const, targetPath: "/Portals/Main", symlinkPath: "/symlink/Main", contextCardPath: "/card/Main.md" },
-    { alias: "Docs", status: "broken" as const, targetPath: "/Portals/Docs", symlinkPath: "/symlink/Docs", contextCardPath: "/card/Docs.md" },
+    {
+      alias: "Main",
+      status: "active" as const,
+      targetPath: "/Portals/Main",
+      symlinkPath: "/symlink/Main",
+      contextCardPath: "/card/Main.md",
+    },
+    {
+      alias: "Docs",
+      status: "broken" as const,
+      targetPath: "/Portals/Docs",
+      symlinkPath: "/symlink/Docs",
+      contextCardPath: "/card/Docs.md",
+    },
   ];
   const output = view.renderPortalList(portals);
   assert(output.includes("Main [active]"));
@@ -42,18 +56,15 @@ Deno.test("renderPortalList shows error for non-active status", () => {
   assert(output.includes("ERROR: broken"));
 });
 
-
 Deno.test("renderPortalList handles empty and malformed portal list", () => {
   const view = new PortalManagerView();
   const output = view.renderPortalList([]);
   assertEquals(output, "");
   // Malformed: missing status/targetPath, fill with empty strings
-  const portals = [ { alias: "X", status: "active" as const, targetPath: "", symlinkPath: "", contextCardPath: "" } ];
+  const portals = [{ alias: "X", status: "active" as const, targetPath: "", symlinkPath: "", contextCardPath: "" }];
   const out2 = view.renderPortalList(portals);
   assert(out2.includes("X"));
 });
-import { assert, assertEquals } from "https://deno.land/std@0.192.0/testing/asserts.ts";
-import { PortalManagerView } from "../../src/tui/portal_manager_view.ts";
 
 // Mock PortalService for TDD
 class MockPortalService {
@@ -131,6 +142,24 @@ Deno.test("TUI: keyboard navigation and selection", () => {
   assertEquals(tui.getSelectedIndex(), 2, "End key jumps to last");
   tui.handleKey("home");
   assertEquals(tui.getSelectedIndex(), 0, "Home key jumps to first");
+});
+
+Deno.test("TUI session hydrates from listPortals when available", () => {
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+    { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
+  ]);
+  // Ensure listPortals is used instead of static property
+  const view = new PortalManagerView({
+    portals: [], // misleading static property
+    listPortals: () => service.listPortals(),
+    openPortal: service.openPortal.bind(service),
+    refreshPortal: service.refreshPortal.bind(service),
+    removePortal: service.removePortal.bind(service),
+  });
+  const tui = view.createTuiSession();
+  tui.handleKey("end");
+  assertEquals(tui.getSelectedIndex(), 1);
 });
 
 Deno.test("TUI: action triggers and state update", () => {

@@ -143,6 +143,7 @@ export class PlanReviewerView {
       await this.service.logActivity({
         action_type: "plan.approve",
         plan_id: planId,
+        reviewer: _reviewer,
         timestamp: new Date().toISOString(),
       });
       return true;
@@ -159,6 +160,7 @@ export class PlanReviewerView {
         action_type: "plan.reject",
         plan_id: planId,
         reason: reason ?? null,
+        reviewer: _reviewer,
         timestamp: new Date().toISOString(),
       });
       return true;

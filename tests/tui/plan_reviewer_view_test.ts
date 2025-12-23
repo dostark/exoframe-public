@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "https://deno.land/std@0.192.0/testing/asserts.ts";
+import { assert, assertEquals } from "jsr:@std/assert@^1.0.0";
 import { PlanReviewerTuiSession, PlanReviewerView } from "../../src/tui/plan_reviewer_view.ts";
 import { PlanCommands } from "../../src/cli/plan_commands.ts";
 
@@ -70,6 +70,25 @@ Deno.test("approve moves plan and logs activity via PlanCommands", async () => {
   } finally {
     await Deno.remove(root, { recursive: true });
   }
+});
+
+Deno.test("DB-like path logs reviewer and reason", async () => {
+  const logs: any[] = [];
+  const dbLike = {
+    getPendingPlans: () => [{ id: "p", title: "T" }],
+    getPlanDiff: () => "diff",
+    updatePlanStatus: (_id: string, _status: string) => {},
+    logActivity: (evt: Record<string, unknown>) => {
+      logs.push(evt);
+    },
+  };
+  const view = new PlanReviewerView(dbLike);
+  await view.approve("p", "alice@example.com");
+  await view.reject("p", "alice@example.com", "too risky");
+  const approveLog = logs.find((l) => l.action_type === "plan.approve");
+  const rejectLog = logs.find((l) => l.action_type === "plan.reject");
+  assert(approveLog && approveLog.reviewer === "alice@example.com");
+  assert(rejectLog && rejectLog.reviewer === "alice@example.com" && rejectLog.reason === "too risky");
 });
 
 Deno.test("reject moves plan to Inbox/Rejected and logs reason via PlanCommands", async () => {
@@ -167,12 +186,12 @@ Deno.test("PlanReviewerTuiSession: edge cases (no plans, invalid selection)", ()
 Deno.test("PlanReviewerView: works with DB-like service", async () => {
   let updated = false, logged = false;
   const dbLike = {
-    getPendingPlans: async () => [{ id: "p", title: "T" }],
-    getPlanDiff: async (id: string) => `diff-${id}`,
-    updatePlanStatus: async () => {
+    getPendingPlans: () => [{ id: "p", title: "T" }],
+    getPlanDiff: (id: string) => `diff-${id}`,
+    updatePlanStatus: () => {
       updated = true;
     },
-    logActivity: async () => {
+    logActivity: () => {
       logged = true;
     },
   };

@@ -118,13 +118,22 @@ export class MonitorView {
   getLogColor(actionType: string): string {
     switch (actionType) {
       case "request_created":
+      case "request.created":
         return "green";
       case "plan_approved":
+      case "plan.approved":
         return "blue";
+      case "plan.rejected":
+        return "red";
       case "execution_started":
+      case "execution.started":
         return "yellow";
       case "execution_completed":
+      case "execution.completed":
         return "green";
+      case "execution_failed":
+      case "execution.failed":
+        return "red";
       case "error":
         return "red";
       default:
