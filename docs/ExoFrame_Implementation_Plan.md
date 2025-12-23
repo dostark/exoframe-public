@@ -6357,7 +6357,8 @@ Implement a unified, interactive TUI dashboard integrating all major ExoFrame vi
 
 **Test Description:**
 
-- [x] Automated tests: End-to-end flows across all views, including Agent Status, keyboard navigation, notifications, theming, accessibility, and error handling (see `tests/tui/tui_dashboard_test.ts` - 8 tests passing)
+Automated tests: End-to-end flows across all views, including Agent Status, keyboard navigation, notifications, theming, accessibility, and error handling (see `tests/tui/tui_dashboard_test.ts` - 8 tests passing)
+
 - [x] Manual tests: User can switch views, view agent details/logs, customize settings, and receive alerts; accessibility and theming work
 - [x] Edge cases: No agents, all agents down, rapid status changes, simultaneous events, conflicting actions, unusual terminal sizes, empty/error states
 
@@ -6371,33 +6372,32 @@ Implement a unified, interactive TUI dashboard integrating all major ExoFrame vi
 - [x] Documentation and user guide are updated with usage, troubleshooting, and examples
 - [x] Manual and automated tests for all dashboard features pass
 
-
-### Step 9.10: TUI Integration, Testing, and UX Polish
+### Step 9.10: TUI Integration, Testing, and UX Polish ✅ COMPLETED
 
 **Test Description:**
 
-[ ] Automated tests: End-to-end flows across all views, keyboard navigation, and notification triggers.
-[ ] Manual tests: User can switch views, customize settings, and receive alerts; accessibility and theming work.
-[ ] Edge cases: Simultaneous events, conflicting actions, unusual terminal sizes.
+- [x] Automated tests: End-to-end flows across all views, keyboard navigation, and notification triggers.
+- [x] Manual tests: User can switch views, customize settings, and receive alerts; accessibility and theming work.
+- [x] Edge cases: Simultaneous events, conflicting actions, unusual terminal sizes.
 
 **Success Criteria:**
 
-[ ] All views work together seamlessly; navigation and notifications are reliable.
-[ ] Scaffold a minimal TUI entrypoint (e.g., tui_portal_manager.ts) to launch PortalManagerView in the terminal.
-  [ ] Integrate with the deno-tui library for terminal UI rendering and event handling.
-  [ ] Rationale: deno-tui provides robust terminal UI primitives, keyboard event support, and is actively maintained for Deno projects.
-[ ] Wire up keyboard event handling to TUI session methods (navigation, actions, focus).
-[ ] Render portal list, details panel, action buttons, and status bar in the terminal UI.
-[ ] Update the UI in real time as portal state changes (after actions or external events).
-[ ] Ensure accessibility and usability (focus management, keyboard-only operation).
-[ ] Add automated and manual tests for end-to-end TUI flows, notifications, and accessibility.
-[ ] Provide documentation and usage examples for the integrated TUI dashboard.
-[ ] Integrate all views into a unified, keyboard-navigable dashboard.
-[ ] Implement notifications/alerts for errors and approvals.
-[ ] Add theming, accessibility, and keybinding customization.
-[ ] Conduct user testing and gather feedback for improvements.
-[ ] Update documentation and provide usage examples/screenshots.
-[ ] Theming and accessibility meet requirements; documentation is complete and accurate.
+- [x] All views work together seamlessly; navigation and notifications are reliable.
+- [x] Scaffold a minimal TUI entrypoint (e.g., tui_portal_manager.ts) to launch PortalManagerView in the terminal.
+- [x] Integrate with the deno-tui library for terminal UI rendering and event handling.
+- [x] Rationale: deno-tui provides robust terminal UI primitives, keyboard event support, and is actively maintained for Deno projects.
+- [x] Wire up keyboard event handling to TUI session methods (navigation, actions, focus).
+- [x] Render portal list, details panel, action buttons, and status bar in the terminal UI.
+- [x] Update the UI in real time as portal state changes (after actions or external events).
+- [x] Ensure accessibility and usability (focus management, keyboard-only operation).
+- [x] Add automated and manual tests for end-to-end TUI flows, notifications, and accessibility.
+- [x] Provide documentation and usage examples for the integrated TUI dashboard.
+- [x] Integrate all views into a unified, keyboard-navigable dashboard.
+- [x] Implement notifications/alerts for errors and approvals.
+- [x] Add theming, accessibility, and keybinding customization.
+- [ ] Conduct user testing and gather feedback for improvements.
+- [x] Update documentation and provide usage examples/screenshots.
+- [x] Theming and accessibility meet requirements; documentation is complete and accurate.
 
 ### Step 9.11: Implement Split View (Multi-Pane) Functionality
 
@@ -6406,15 +6406,15 @@ Add the ability to split the TUI into two or more panes, each displaying a diffe
 
 **Test Description:**
 
-[ ] Automated tests: Simulate opening, closing, and resizing multiple panes; verify each pane remains interactive and updates independently.
-[ ] Manual tests: User can split, resize, and switch focus between panes; actions in one pane update content in another.
-[ ] Edge cases: Minimum/maximum pane sizes, rapid layout changes, simultaneous actions in both panes.
+- [ ] Automated tests: Simulate opening, closing, and resizing multiple panes; verify each pane remains interactive and updates independently.
+- [ ] Manual tests: User can split, resize, and switch focus between panes; actions in one pane update content in another.
+- [ ] Edge cases: Minimum/maximum pane sizes, rapid layout changes, simultaneous actions in both panes.
 
 **Success Criteria:**
 
-[ ] User can view and interact with multiple panels at once.
-[ ] No UI glitches or crashes when resizing or switching panes.
-[ ] Actions in one pane can update/filter content in another as expected.
+- [ ] User can view and interact with multiple panels at once.
+- [ ] No UI glitches or crashes when resizing or switching panes.
+- [ ] Actions in one pane can update/filter content in another as expected.
 
 ### Step 9.12: Save and Restore Preferred Dashboard Views
 
@@ -6423,15 +6423,15 @@ Implement persistent storage of user’s preferred dashboard layout and active v
 
 **Test Description:**
 
-[ ] Automated tests: Simulate saving and restoring layouts, verify correct restoration after relaunch.
-[ ] Manual tests: User customizes layout, closes dashboard, and sees the same layout/views on next launch.
-[ ] Edge cases: Corrupted config, terminal size changes, upgrades.
+- [ ] Automated tests: Simulate saving and restoring layouts, verify correct restoration after relaunch.
+- [ ] Manual tests: User customizes layout, closes dashboard, and sees the same layout/views on next launch.
+- [ ] Edge cases: Corrupted config, terminal size changes, upgrades.
 
 **Success Criteria:**
 
-[ ] User’s preferred dashboard layout and views are restored on every session.
-[ ] No data loss or crashes if config is missing or corrupted.
-[ ] Reset to default works as expected.
+- [ ] User’s preferred dashboard layout and views are restored on every session.
+- [ ] No data loss or crashes if config is missing or corrupted.
+- [ ] Reset to default works as expected.
 
 ### Phase 9 Exit Criteria
 
@@ -6440,7 +6440,7 @@ Implement persistent storage of user’s preferred dashboard layout and active v
 [x] Obsidian dashboard templates in `Knowledge/`
 [x] Documentation updated with clear positioning
 [x] User Guide includes quick request examples
-[x] TUI Dashboard (`exoctl dashboard`) implemented:
+[ ] TUI Dashboard (`exoctl dashboard`) implemented:
 [x] All core views (Monitor, Plan Reviewer, Portal Manager, Daemon Control, Agent Status) are accessible and functional
 [ ] Split view (multi-pane) functionality works with dynamic resizing, focus switching, and preset layouts
 [ ] User’s preferred layout and views are saved and restored between sessions
