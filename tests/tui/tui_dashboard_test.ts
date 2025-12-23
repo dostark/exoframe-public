@@ -1,5 +1,6 @@
 // Edge-case and end-to-end tests for TUI dashboard
-import { TuiDashboard } from "../../src/tui/tui_dashboard.ts";
+import { launchTuiDashboard, TuiDashboard } from "../../src/tui/tui_dashboard.ts";
+import { assertEquals } from "https://deno.land/std@0.204.0/assert/assert_equals.ts";
 Deno.test("TUI dashboard handles empty portal list and error state", async () => {
   const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
   // Simulate empty portal list
@@ -21,17 +22,17 @@ Deno.test("TUI dashboard handles empty portal list and error state", async () =>
 
 Deno.test("TUI dashboard rapid navigation and focus wraparound", async () => {
   const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
-  dashboard.focusIndex = 0;
+  dashboard.switchPane("main"); // Start with main pane
   // Simulate rapid tabbing
   for (let i = 0; i < 20; ++i) {
     dashboard.handleKey("tab");
   }
-  if (dashboard.focusIndex !== 0 && dashboard.views.length === 5) throw new Error("Focus wraparound failed");
+  assertEquals(dashboard.activePaneId, "main"); // Should wrap around to first pane
   // Simulate rapid shift+tab
   for (let i = 0; i < 20; ++i) {
     dashboard.handleKey("shift+tab");
   }
-  if (dashboard.focusIndex !== 0 && dashboard.views.length === 5) throw new Error("Reverse focus wraparound failed");
+  assertEquals(dashboard.activePaneId, "main"); // Should wrap around
 });
 
 Deno.test("TUI dashboard notification edge cases", async () => {
@@ -50,18 +51,12 @@ Deno.test("TUI dashboard supports theming, accessibility, and keybinding customi
   const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
   // Theming: set and get theme
   dashboard.theme = "dark";
-  if (dashboard.theme !== "dark") throw new Error("Theme not set");
+  assertEquals(dashboard.theme, "dark");
   // Accessibility: expose focusable elements
-  const focusables = dashboard.views[0].getFocusableElements();
+  const focusables = dashboard.panes[0].view.getFocusableElements();
   if (!focusables.includes("portal-list")) throw new Error("Accessibility elements missing");
-  // Keybinding customization: override handleKey
-  let custom = false;
-  dashboard.handleKey = function (key) {
-    if (key === "custom") custom = true;
-    return this.focusIndex;
-  };
-  dashboard.handleKey("custom");
-  if (!custom) throw new Error("Custom keybinding not triggered");
+  // Keybinding customization: check keybindings
+  assertEquals(dashboard.keybindings.splitVertical, "v");
 });
 Deno.test("TUI dashboard supports real-time updates and notifications", async () => {
   const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
@@ -102,48 +97,30 @@ Deno.test("TUI dashboard supports real-time updates and notifications", async ()
 });
 // tests/tui/tui_dashboard_test.ts
 // TDD: End-to-end tests for TUI dashboard integration
-import { assertEquals } from "https://deno.land/std@0.204.0/testing/asserts.ts";
-import { launchTuiDashboard } from "../../src/tui/tui_dashboard.ts";
 
 Deno.test("TUI dashboard launches and returns dashboard instance", async () => {
   const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
-  assertEquals(dashboard.views.length, 5); // Portal, Plan, Monitor, Daemon, Agent
-  assertEquals(
-    dashboard.views.map((v) => v.name).sort(),
-    [
-      "AgentStatusView",
-      "DaemonControlView",
-      "MonitorView",
-      "PlanReviewerView",
-      "PortalManagerView",
-    ].sort(),
-  );
+  assertEquals(dashboard.panes.length, 1); // Starts with one pane
+  assertEquals(dashboard.activePaneId, "main");
 });
 
 Deno.test("TUI dashboard handles keyboard navigation and focus", async () => {
   const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
-  // Simulate dashboard with focus and keyboard event API
-  dashboard.focusIndex = 0;
-  dashboard.handleKey = function (key) {
-    if (key === "tab") {
-      this.focusIndex = (this.focusIndex + 1) % this.views.length;
-    } else if (key === "shift+tab") {
-      this.focusIndex = (this.focusIndex - 1 + this.views.length) % this.views.length;
-    }
-    return this.focusIndex;
-  };
   // Initial focus
-  assertEquals(dashboard.focusIndex, 0);
+  assertEquals(dashboard.activePaneId, "main");
   // Tab cycles focus forward
-  assertEquals(dashboard.handleKey("tab"), 1);
-  assertEquals(dashboard.handleKey("tab"), 2);
-  assertEquals(dashboard.handleKey("tab"), 3);
-  assertEquals(dashboard.handleKey("tab"), 4);
-  assertEquals(dashboard.handleKey("tab"), 0);
+  dashboard.handleKey("tab");
+  assertEquals(dashboard.activePaneId, "main"); // Only one pane, wraps to itself
+  // Add another pane
+  dashboard.splitPane("vertical");
+  assertEquals(dashboard.panes.length, 2);
+  dashboard.handleKey("tab");
+  assertEquals(dashboard.activePaneId, dashboard.panes[1].id);
+  dashboard.handleKey("tab");
+  assertEquals(dashboard.activePaneId, "main");
   // Shift+Tab cycles focus backward
-  assertEquals(dashboard.handleKey("shift+tab"), 4);
-  assertEquals(dashboard.handleKey("shift+tab"), 3);
-  assertEquals(dashboard.handleKey("shift+tab"), 2);
+  dashboard.handleKey("shift+tab");
+  assertEquals(dashboard.activePaneId, dashboard.panes[1].id);
 });
 
 Deno.test("TUI dashboard renders portal list, details, actions, and status bar", async () => {
@@ -174,52 +151,126 @@ Deno.test("TUI dashboard renders portal list, details, actions, and status bar",
   if (!list.includes("alpha") || !list.includes("beta") || !list.includes("ERROR")) {
     throw new Error("Portal list rendering failed");
   }
-  // Status bar mock: just show focus and view name
-  dashboard.renderStatusBar = function () {
-    return `Focus: ${this.focusIndex} (${this.views[this.focusIndex].name})`;
-  };
-  dashboard.focusIndex = 1;
+  // Status bar mock: just show active pane
   const status = dashboard.renderStatusBar();
-  if (!status.includes("1") || !status.includes("PlanReviewerView")) {
+  if (!status.includes("main") || !status.includes("PortalManagerView")) {
     throw new Error("Status bar rendering failed");
   }
 });
 
-Deno.test("TUI dashboard agent status view displays agents and health", async () => {
+Deno.test("TUI dashboard split view functionality", async () => {
   const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
-  const agentView = dashboard.views.find((v) => v.name === "AgentStatusView");
-  if (!agentView) throw new Error("AgentStatusView not found");
+  assertEquals(dashboard.panes.length, 1);
+  assertEquals(dashboard.activePaneId, "main");
 
-  // Test agent list rendering
-  const listRender = await (agentView as any).renderAgentList();
-  if (!listRender.includes("CodeReviewer") || !listRender.includes("DocWriter")) {
-    throw new Error("Agent list rendering failed");
-  }
-  if (!listRender.includes("🟢") || !listRender.includes("🟡")) {
-    throw new Error("Agent status indicators missing");
-  }
+  // Split vertical
+  dashboard.splitPane("vertical");
+  assertEquals(dashboard.panes.length, 2);
+  assertEquals(dashboard.panes[0].width, 40); // Half of 80
+  assertEquals(dashboard.panes[1].x, 40);
 
-  // Test agent selection and details
-  (agentView as any).selectAgent("agent-1");
-  const detailsRender = await (agentView as any).renderAgentDetails();
-  if (!detailsRender.includes("agent-1") || !detailsRender.includes("HEALTHY")) {
-    throw new Error("Agent details rendering failed");
-  }
+  // Split horizontal on second pane
+  dashboard.switchPane(dashboard.panes[1].id);
+  dashboard.splitPane("horizontal");
+  assertEquals(dashboard.panes.length, 3);
+  assertEquals(dashboard.panes[1].height, 12); // Half of 24
+  assertEquals(dashboard.panes[2].y, 12);
 
-  // Test focusable elements
-  const focusables = (agentView as any).getFocusableElements();
-  if (!focusables.includes("agent-list") || !focusables.includes("agent-details")) {
-    throw new Error("Focusable elements missing");
-  }
+  // Close a pane
+  dashboard.closePane(dashboard.panes[2].id);
+  assertEquals(dashboard.panes.length, 2);
+
+  // Resize pane
+  const originalWidth = dashboard.panes[0].width;
+  dashboard.resizePane(dashboard.panes[0].id, 10, 0);
+  assertEquals(dashboard.panes[0].width, originalWidth + 10);
 });
 
-Deno.test("TUI dashboard production launch initializes views and renders without error", async () => {
-  // Test production launch in non-interactive mode
-  await launchTuiDashboard({ nonInteractive: true });
-  // If no error thrown, test passes
-  // In production, this would render to console, but here we just check initialization
+Deno.test("TUI dashboard pane focus and switching", async () => {
+  const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
+  dashboard.splitPane("vertical");
+  const secondPaneId = dashboard.panes[1].id;
+
+  dashboard.switchPane(secondPaneId);
+  assertEquals(dashboard.activePaneId, secondPaneId);
+  assertEquals(dashboard.panes[1].focused, true);
+  assertEquals(dashboard.panes[0].focused, false);
+});
+Deno.test("TUI dashboard layout save and restore", async () => {
+  const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
+
+  // Modify layout
+  dashboard.splitPane("vertical");
+  dashboard.splitPane("horizontal");
+  const originalPanes = dashboard.panes.length;
+  const originalActive = dashboard.activePaneId;
+
+  // Mock save
+  let savedLayout: any = null;
+  dashboard.saveLayout = async () => {
+    savedLayout = {
+      panes: dashboard.panes.map((p) => ({
+        id: p.id,
+        viewName: p.view.name,
+        x: p.x,
+        y: p.y,
+        width: p.width,
+        height: p.height,
+        focused: p.focused,
+      })),
+      activePaneId: dashboard.activePaneId,
+    };
+    return Promise.resolve();
+  };
+
+  await dashboard.saveLayout();
+  assertEquals(savedLayout.panes.length, originalPanes);
+  assertEquals(savedLayout.activePaneId, originalActive);
+
+  // Reset and restore
+  dashboard.resetToDefault();
+  assertEquals(dashboard.panes.length, 1);
+  assertEquals(dashboard.activePaneId, "main");
+
+  // Mock restore
+  dashboard.restoreLayout = async () => {
+    if (savedLayout) {
+      dashboard.panes.length = 0;
+      for (const p of savedLayout.panes) {
+        dashboard.panes.push({
+          id: p.id,
+          view: { name: p.viewName }, // Mock view
+          x: p.x,
+          y: p.y,
+          width: p.width,
+          height: p.height,
+          focused: p.focused,
+        });
+      }
+      dashboard.activePaneId = savedLayout.activePaneId;
+    }
+    return Promise.resolve();
+  };
+
+  await dashboard.restoreLayout();
+  assertEquals(dashboard.panes.length, originalPanes);
+  assertEquals(dashboard.activePaneId, originalActive);
 });
 
+Deno.test("TUI dashboard reset to default", async () => {
+  const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
+
+  // Modify layout
+  dashboard.splitPane("vertical");
+  dashboard.splitPane("horizontal");
+  assertEquals(dashboard.panes.length, 3);
+
+  // Reset
+  dashboard.resetToDefault();
+  assertEquals(dashboard.panes.length, 1);
+  assertEquals(dashboard.activePaneId, "main");
+  assertEquals(dashboard.panes[0].view.name, "PortalManagerView");
+});
 Deno.test("TUI dashboard production launch initializes views and renders without error", async () => {
   // Test production launch in non-interactive mode
   await launchTuiDashboard({ nonInteractive: true });

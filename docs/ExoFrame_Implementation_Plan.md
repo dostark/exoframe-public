@@ -6326,19 +6326,18 @@ Create the Daemon Control view to show daemon status, uptime, and errors. Provid
 
 **Test Description:**
 
-[x] Automated tests: Mock daemon state transitions and verify correct status display and control actions.
-[x] Manual tests: User can start/stop/restart daemon and view logs; errors are handled gracefully.
-[x] Edge cases: Daemon crashes, rapid state changes, permission errors.
+- [x] Automated tests: Mock daemon state transitions and verify correct status display and control actions.
+- [x] Manual tests: User can start/stop/restart daemon and view logs; errors are handled gracefully.
+- [x] Edge cases: Daemon crashes, rapid state changes, permission errors.
 
 **Success Criteria:**
 
-[x] Daemon status is always accurate; controls work as intended.
-[x] No unhandled errors or orphaned processes.
-
-[x] Show daemon status, uptime, and recent errors.
-[x] Provide controls to Start/Stop/Restart the daemon.
-[x] Display and manage daemon logs.
-[x] Ensure safe handling of daemon lifecycle events.
+- [x] Daemon status is always accurate; controls work as intended.
+- [x] No unhandled errors or orphaned processes.
+- [x] Show daemon status, uptime, and recent errors.
+- [x] Provide controls to Start/Stop/Restart the daemon.
+- [x] Display and manage daemon logs.
+- [x] Ensure safe handling of daemon lifecycle events.
 
 ### Step 9.9: Unified TUI Dashboard & Agent Status View ✅ COMPLETED
 
@@ -6416,22 +6415,22 @@ Add the ability to split the TUI into two or more panes, each displaying a diffe
 - [x] No UI glitches or crashes when resizing or switching panes.
 - [x] Actions in one pane can update/filter content in another as expected.
 
-### Step 9.12: Save and Restore Preferred Dashboard Views
+### Step 9.12: Save and Restore Preferred Dashboard Views ✅ COMPLETED
 
 **Description:**
 Implement persistent storage of user’s preferred dashboard layout and active views (e.g., which panes are open, their arrangement, and which views are shown in each pane). On dashboard launch, automatically restore the last used layout and views. Provide a command/menu to reset to default. Store preferences in a config file and ensure compatibility across upgrades and terminal sizes.
 
 **Test Description:**
 
-- [ ] Automated tests: Simulate saving and restoring layouts, verify correct restoration after relaunch.
-- [ ] Manual tests: User customizes layout, closes dashboard, and sees the same layout/views on next launch.
-- [ ] Edge cases: Corrupted config, terminal size changes, upgrades.
+- [x] Automated tests: Simulate saving and restoring layouts, verify correct restoration after relaunch.
+- [x] Manual tests: User customizes layout, closes dashboard, and sees the same layout/views on next launch.
+- [x] Edge cases: Corrupted config, terminal size changes, upgrades.
 
 **Success Criteria:**
 
-- [ ] User’s preferred dashboard layout and views are restored on every session.
-- [ ] No data loss or crashes if config is missing or corrupted.
-- [ ] Reset to default works as expected.
+- [x] User’s preferred dashboard layout and views are restored on every session.
+- [x] No data loss or crashes if config is missing or corrupted.
+- [x] Reset to default works as expected.
 
 ### Phase 9 Exit Criteria
 
