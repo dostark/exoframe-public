@@ -13,7 +13,7 @@ Deno.test("FlowLoader: loads flow files from directory", async () => {
   try {
     // Create a mock flow file
     const mockFlowContent = `
-import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
+  import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
 
 export default defineFlow({
   id: "test-flow",
@@ -67,7 +67,7 @@ Deno.test("FlowLoader: loads specific flow by ID", async () => {
   try {
     // Create multiple mock flow files
     const flow1Content = `
-import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
+  import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
 
 export default defineFlow({
   id: "flow1",
@@ -79,7 +79,7 @@ export default defineFlow({
 `;
 
     const flow2Content = `
-import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
+  import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
 
 export default defineFlow({
   id: "flow2",
@@ -126,7 +126,7 @@ Deno.test("FlowLoader: ignores non-flow files and invalid files", async () => {
   try {
     // Create valid flow file
     const _validFlow = `
-import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
+  import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
 
 export default defineFlow({
   id: "valid-flow",
@@ -183,7 +183,7 @@ export default defineFlow({
 
     // Valid naming
     const namingTestFlow = `
-import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
+  import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
 
 export default defineFlow({
   id: "my-flow",
@@ -248,7 +248,7 @@ Deno.test("FlowLoader: checks if flow exists", async () => {
 
     // Create a flow file
     const flowContent = `
-import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
+  import { defineFlow } from "../../src/flows/define_flow.ts";
 
 export default defineFlow({
   id: "existing-flow",
@@ -286,7 +286,7 @@ Deno.test("FlowLoader: lists available flow IDs", async () => {
 
     // Create flow files
     const flow1Content = `
-import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
+  import { defineFlow } from "../../src/flows/define_flow.ts";
 
 export default defineFlow({
   id: "flow-one",
@@ -298,7 +298,7 @@ export default defineFlow({
 `;
 
     const flow2Content = `
-import { defineFlow } from "file:///home/dkasymov/git/ExoFrame/src/flows/define_flow.ts";
+import { defineFlow } from "../../src/flows/define_flow.ts";
 
 export default defineFlow({
   id: "flow-two",

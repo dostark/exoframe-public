@@ -76,11 +76,11 @@ export class RequestCommandsServiceAdapter implements RequestService {
     };
   }
 
-  async updateRequestStatus(requestId: string, status: string): Promise<boolean> {
+  updateRequestStatus(requestId: string, status: string): Promise<boolean> {
     // RequestCommands doesn't have update status method, so we'll need to implement this
     // For now, return true as a placeholder
     console.warn(`updateRequestStatus not implemented for ${requestId} -> ${status}`);
-    return true;
+    return Promise.resolve(true);
   }
 }
 
@@ -163,25 +163,28 @@ export class RequestManagerTuiSession {
   async #triggerAction(action: "create" | "view" | "delete") {
     try {
       switch (action) {
-        case "create":
+        case "create": {
           const newRequest = await this.service.createRequest("New request from TUI", { priority: "normal" });
           this.statusMessage = `Created request: ${newRequest.trace_id.slice(0, 8)}`;
           break;
-        case "view":
+        }
+        case "view": {
           const request = this.requests[this.selectedIndex];
           if (request) {
-            const content = await this.service.getRequestContent(request.trace_id);
+            const _content = await this.service.getRequestContent(request.trace_id);
             this.statusMessage = `Viewing: ${request.trace_id.slice(0, 8)}`;
             // In a real implementation, this would open a detail view
           }
           break;
-        case "delete":
+        }
+        case "delete": {
           const delRequest = this.requests[this.selectedIndex];
           if (delRequest) {
             await this.service.updateRequestStatus(delRequest.trace_id, "cancelled");
             this.statusMessage = `Cancelled request: ${delRequest.trace_id.slice(0, 8)}`;
           }
           break;
+        }
       }
     } catch (e) {
       if (e && typeof e === "object" && "message" in e) {

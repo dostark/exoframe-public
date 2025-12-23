@@ -204,6 +204,8 @@ This plan will accomplish the requested task.
     let content = await Deno.readTextFile(planPath);
     content = content.replace(/status: review/, "status: approved");
 
+    // Ensure active directory exists (some tests may remove/recreate dirs)
+    await ensureDir(join(this.tempDir, "System", "Active"));
     await Deno.writeTextFile(activePath, content);
     await Deno.remove(planPath);
 

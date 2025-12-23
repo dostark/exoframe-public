@@ -17,7 +17,7 @@ class MockRequestService implements RequestService {
     const request = this.requests.find((r) => r.trace_id === id);
     return Promise.resolve(request ? `Content for ${id}` : "");
   }
-  createRequest(description: string, options?: any) {
+  createRequest(_description: string, options?: any) {
     const newRequest = {
       trace_id: `test-${Date.now()}`,
       filename: `request-test.md`,
@@ -256,9 +256,9 @@ Deno.test("RequestManagerTuiSession - keyboard actions", async () => {
   let deletedRequest = false;
 
   const mockService = new MinimalRequestServiceMock();
-  mockService.createRequest = async () => {
+  mockService.createRequest = () => {
     createdRequest = true;
-    return {
+    return Promise.resolve({
       trace_id: "new-req",
       filename: "request-new.md",
       title: "New Request",
@@ -268,15 +268,15 @@ Deno.test("RequestManagerTuiSession - keyboard actions", async () => {
       created: new Date().toISOString(),
       created_by: "test@example.com",
       source: "tui",
-    };
+    });
   };
-  mockService.getRequestContent = async () => {
+  mockService.getRequestContent = () => {
     viewedRequest = true;
-    return "Request content";
+    return Promise.resolve("Request content");
   };
-  mockService.updateRequestStatus = async () => {
+  mockService.updateRequestStatus = () => {
     deletedRequest = true;
-    return true;
+    return Promise.resolve(true);
   };
 
   const requests = [
@@ -326,9 +326,7 @@ Deno.test("RequestManagerTuiSession - handles empty request list", async () => {
 
 Deno.test("RequestManagerTuiSession - error handling", async () => {
   const mockService = new MinimalRequestServiceMock();
-  mockService.createRequest = async () => {
-    throw new Error("Failed to create request");
-  };
+  mockService.createRequest = () => Promise.reject(new Error("Failed to create request"));
 
   const requests = [
     {

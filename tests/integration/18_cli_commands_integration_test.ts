@@ -148,3 +148,82 @@ Deno.test("CLI: dashboard launches without error (smoke test)", async () => {
     await env.cleanup();
   }
 });
+
+Deno.test("CLI: request create with missing description fails", async () => {
+  const env = await TestEnvironment.create();
+  try {
+    const result = await runExoctl(["request"], env.tempDir);
+    // Should fail with exit code 1 and error message
+    assert(result.code === 1);
+    assertStringIncludes(result.stderr, "Description required");
+  } finally {
+    await env.cleanup();
+  }
+});
+
+Deno.test("CLI: plan approve/reject/revise error handling", async () => {
+  const env = await TestEnvironment.create();
+  try {
+    // Approve non-existent plan
+    let result = await runExoctl(["plan", "approve", "nonexistent"], env.tempDir);
+    assert(result.code === 1);
+    assertStringIncludes(result.stderr, "plan approve");
+    // Reject non-existent plan
+    result = await runExoctl(["plan", "reject", "nonexistent", "-r", "bad plan"], env.tempDir);
+    assert(result.code === 1);
+    assertStringIncludes(result.stderr, "plan reject");
+    // Revise non-existent plan
+    result = await runExoctl(["plan", "revise", "nonexistent", "-c", "needs work"], env.tempDir);
+    assert(result.code === 1);
+    assertStringIncludes(result.stderr, "plan revise");
+  } finally {
+    await env.cleanup();
+  }
+});
+
+Deno.test("CLI: blueprint create/list/show/remove/validate edge cases", async () => {
+  const env = await TestEnvironment.create();
+  try {
+    // Create blueprint with missing required options
+    let result = await runExoctl(["blueprint", "create", "test-agent"], env.tempDir);
+    assert(result.code === 1);
+    assertStringIncludes(result.stderr, "blueprint create");
+    // List blueprints (should be empty)
+    result = await runExoctl(["blueprint", "list"], env.tempDir);
+    assert(result.code === 0);
+    assertStringIncludes(result.stdout, "count: 0");
+    // Show non-existent blueprint
+    result = await runExoctl(["blueprint", "show", "notfound"], env.tempDir);
+    assert(result.code === 1);
+    assertStringIncludes(result.stderr, "blueprint show");
+    // Remove non-existent blueprint
+    result = await runExoctl(["blueprint", "remove", "notfound"], env.tempDir);
+    assert(result.code === 1);
+    assertStringIncludes(result.stderr, "blueprint remove");
+    // Validate non-existent blueprint
+    result = await runExoctl(["blueprint", "validate", "notfound"], env.tempDir);
+    assert(result.code === 1);
+    assertStringIncludes(result.stderr, "blueprint.invalid");
+  } finally {
+    await env.cleanup();
+  }
+});
+
+Deno.test("CLI: daemon start/stop/restart/status/logs error handling", async () => {
+  const env = await TestEnvironment.create();
+  try {
+    // These may fail if daemon is not configured, but should not crash
+    let result = await runExoctl(["daemon", "start"], env.tempDir);
+    assert(result.code === 0 || result.code === 1);
+    result = await runExoctl(["daemon", "stop"], env.tempDir);
+    assert(result.code === 0 || result.code === 1);
+    result = await runExoctl(["daemon", "restart"], env.tempDir);
+    assert(result.code === 0 || result.code === 1);
+    result = await runExoctl(["daemon", "status"], env.tempDir);
+    assert(result.code === 0 || result.code === 1);
+    result = await runExoctl(["daemon", "logs"], env.tempDir);
+    assert(result.code === 0 || result.code === 1);
+  } finally {
+    await env.cleanup();
+  }
+});

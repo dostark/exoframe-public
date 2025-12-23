@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "https://deno.land/std@0.192.0/testing/asserts.ts";
-import { DaemonControlView } from "../../src/tui/daemon_control_view.ts";
+import { CLIDaemonService, DaemonControlView } from "../../src/tui/daemon_control_view.ts";
 
 // Mock CLI Daemon Service for testing (no real process spawn)
 class MockCLIDaemonService {
@@ -64,4 +64,19 @@ Deno.test("DaemonControlView: handles rapid state changes and recovers", async (
   await view.stop();
   await view.start();
   assertEquals(await service.getStatus(), "running");
+});
+
+Deno.test("CLIDaemonService: start, stop, restart, getStatus, getLogs, getErrors", async () => {
+  const service = new CLIDaemonService();
+  // These will actually run CLI commands; in CI, may need to mock Deno.Command
+  await service.start();
+  await service.stop();
+  await service.restart();
+  const status = await service.getStatus();
+  const logs = await service.getLogs();
+  const errors = await service.getErrors();
+  // Just check types and basic expectations
+  assert(typeof status === "string");
+  assert(Array.isArray(logs));
+  assert(Array.isArray(errors));
 });

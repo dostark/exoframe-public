@@ -1,8 +1,7 @@
 import { Flow, FlowSchema } from "../schemas/flow.ts";
 
 /**
- * Helper function to define a flow with full TypeScript type safety.
- * Provides autocomplete, compile-time validation, and applies sensible defaults.
+ * Helper to construct a Flow with sensible defaults and schema validation.
  */
 export function defineFlow(config: {
   id: string;
@@ -17,8 +16,9 @@ export function defineFlow(config: {
     input?: {
       source?: "request" | "step" | "aggregate";
       stepId?: string;
-      from?: string[]; // For aggregate source
+      from?: string[];
       transform?: string;
+      transformArgs?: unknown;
     };
     condition?: string;
     timeout?: number;
@@ -27,17 +27,21 @@ export function defineFlow(config: {
       backoffMs?: number;
     };
   }>;
-  output: {
-    from: string | string[];
-    format?: "markdown" | "json" | "concat";
-  };
-  settings?: {
-    maxParallelism?: number;
-    failFast?: boolean;
-    timeout?: number;
-  };
+  output: { from: string | string[]; format?: "markdown" | "json" | "concat" };
+  settings?: { maxParallelism?: number; failFast?: boolean; timeout?: number };
 }): Flow {
-  // Apply defaults and create the flow object
+  // Basic validation for required top-level fields
+  if (!config.id || config.id.trim() === "") throw new Error("Flow ID cannot be empty");
+  if (!config.name || config.name.trim() === "") throw new Error("Flow name cannot be empty");
+  if (!config.description || config.description.trim() === "") throw new Error("Flow description cannot be empty");
+  if (!config.steps || config.steps.length === 0) throw new Error("Flow must have at least one step");
+
+  // Validate each step basic constraints before applying defaults
+  for (const s of config.steps) {
+    if (!s.id || s.id.trim() === "") throw new Error("Step ID cannot be empty");
+    if (!s.name || s.name.trim() === "") throw new Error("Step name cannot be empty");
+  }
+
   const flow: Flow = {
     id: config.id,
     name: config.name,
@@ -53,6 +57,7 @@ export function defineFlow(config: {
         stepId: step.input?.stepId,
         from: step.input?.from,
         transform: step.input?.transform ?? "passthrough",
+        transformArgs: step.input?.transformArgs,
       },
       condition: step.condition,
       timeout: step.timeout,
@@ -61,10 +66,7 @@ export function defineFlow(config: {
         backoffMs: step.retry?.backoffMs ?? 1000,
       },
     })),
-    output: {
-      from: config.output.from,
-      format: config.output.format ?? "markdown",
-    },
+    output: { from: config.output.from, format: config.output.format ?? "markdown" },
     settings: {
       maxParallelism: config.settings?.maxParallelism ?? 3,
       failFast: config.settings?.failFast ?? true,
@@ -72,6 +74,7 @@ export function defineFlow(config: {
     },
   };
 
-  // Validate the flow against the schema
-  return FlowSchema.parse(flow);
+  // Validate against schema to surface numeric/range and structural errors
+  const parsed = FlowSchema.parse(flow);
+  return parsed;
 }
