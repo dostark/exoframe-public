@@ -45,7 +45,7 @@ ExoFrame is not competing with IDE agents for real-time assistance. It provides 
 - **Portals**: Securely link multiple external repositories into a single agent context.
 - **Deno-Powered Security**: Leverages Deno's granular permission system to sandbox agent operations (no unauthorized network or filesystem access).
 - **Files-as-API**: Interact with the system by dropping Markdown files into folders or using the `exoctl` CLI.
-- **Obsidian Integration**: The `Knowledge/` directory is a ready-to-use Obsidian vault with live dashboards.
+- **Obsidian Integration (Optional)**: The `Knowledge/` directory can be used as an Obsidian vault with live dashboards for users who want knowledge management and historical auditability. Obsidian is not required for ExoFrame operation; the TUI dashboard and CLI are the primary interfaces.
 
 ---
 
@@ -94,7 +94,7 @@ ExoFrame is built on a "Files-as-API" philosophy:
 
 - **`Inbox/`**: Where new **Requests** and AI-generated **Plans** live.
 - **`Portals/`**: Symlinks to your actual project repositories.
-- **`Knowledge/`**: An Obsidian-compatible vault containing project context, agent reports, and the **Activity Journal** dashboard.
+- **`Knowledge/`**: A directory containing project context, agent reports, and the **Activity Journal** dashboard. It is compatible with Obsidian for users who want an optional knowledge management UI, but Obsidian is not required.
 - **`System/`**: Internal state, SQLite database, and active task tracking.
 
 ---

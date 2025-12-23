@@ -1378,9 +1378,9 @@ TOML was technically superior for our use case:
 
 But YAML won because:
 
-- Obsidian Dataview only speaks YAML
-- The Dashboard is the primary UI
-- A working UI beats theoretical efficiency
+- Obsidian Dataview only speaks YAML (for those using Obsidian)
+- The Dashboard (when used in Obsidian) is only functional with YAML
+- A working UI (for Obsidian users) beats theoretical efficiency
 
 **The Rule**: When choosing formats, consider the entire ecosystem—not just your code.
 
@@ -2896,6 +2896,7 @@ Every feature needs tests for:
 ## Part XVI: The Multi-Provider & Observability Era (December 2025)
 
 ### The Scaling Challenge
+
 As ExoFrame moved from a prototype to a multi-provider system, we hit a new level of complexity. We weren't just talking to one model anymore; we were talking to three different clouds (Anthropic, OpenAI, Google) and local models (Ollama). This required a shift from "hardcoded models" to "named abstractions."
 
 ### Pattern 29: Named Model Abstraction
@@ -2918,11 +2919,12 @@ model = "gpt-4o-mini"
 ```
 
 **The Implementation**:
+
 - `ProviderFactory.createByName(name)` resolves the configuration.
 - `exoctl request --model fast` allows per-request overrides.
 - Request frontmatter can specify `model: local` to force local execution.
 
-**The Lesson**: Decouple the *intent* (e.g., "I want a fast response") from the *implementation* (e.g., "Use GPT-4o-mini"). This makes the system resilient to model deprecations and provider outages.
+**The Lesson**: Decouple the _intent_ (e.g., "I want a fast response") from the _implementation_ (e.g., "Use GPT-4o-mini"). This makes the system resilient to model deprecations and provider outages.
 
 ### Pattern 30: Multi-Provider Resilience
 
@@ -2933,6 +2935,7 @@ Every LLM provider has different error codes, rate limits, and retry requirement
 Extract a shared provider infrastructure (`common.ts`) that handles the "boring" parts of distributed systems.
 
 **What We Built**:
+
 - **Standardized Errors**: `RateLimitError`, `AuthenticationError`, `ProviderError`.
 - **Exponential Backoff**: A shared `withRetry` utility that all providers use.
 - **Token Tracking**: Standardized logging of input/output tokens to the Activity Journal.
@@ -2963,14 +2966,15 @@ await Deno.writeTextFile("System/activity_export.md", markdown);
 ExoFrame started with fixed portals (@blueprints, @inbox). But users needed to define their own project boundaries (e.g., `@MyProject`). This opened a massive security hole: how do we prevent an agent from using a user-defined portal to escape the sandbox?
 
 **The Pattern**:
-"Security-First Extension." When adding a feature that extends system boundaries, the security tests must be implemented *before* the feature is exposed.
+"Security-First Extension." When adding a feature that extends system boundaries, the security tests must be implemented _before_ the feature is exposed.
 
 **The Implementation**:
+
 - `PathResolver` was updated to resolve user-defined aliases from `exo.config.toml`.
 - **Mandatory Security Tests**:
-    - Path traversal: `@MyProject/../../etc/passwd` → Blocked.
-    - Symlink escape: `@MyProject/link_to_outside` → Blocked.
-    - Absolute path injection: `/etc/passwd` → Blocked.
+  - Path traversal: `@MyProject/../../etc/passwd` → Blocked.
+  - Symlink escape: `@MyProject/link_to_outside` → Blocked.
+  - Absolute path injection: `/etc/passwd` → Blocked.
 
 **The Lesson**: Flexibility (user-defined portals) must never come at the cost of security. If you can't prove it's safe with a test, don't ship the feature.
 
@@ -2980,12 +2984,11 @@ ExoFrame started with fixed portals (@blueprints, @inbox). But users needed to d
 During the implementation of Phase 9, we realized that ExoFrame isn't a competitor to "IDE Agents" (like Cursor or GitHub Copilot). It's an **orchestrator**.
 
 - **IDE Agents**: Great for interactive, line-by-line coding.
-- **ExoFrame**: Great for batch processing, multi-project coordination, and maintaining a permanent audit trail of *why* decisions were made.
+- **ExoFrame**: Great for batch processing, multi-project coordination, and maintaining a permanent audit trail of _why_ decisions were made.
 
 **The Pattern**: "Complementary Positioning." Don't try to build a better version of an existing tool. Build the tool that handles what the existing ones can't (e.g., long-running background tasks, cross-repository refactoring, and structured activity logging).
 
 ---
-
 
 ## Part IX: The Human Skills That Matter
 

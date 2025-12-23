@@ -78,7 +78,7 @@ ExoFrame follows a **test pyramid** approach:
 | Context card generator  | `tests/context_card_test.ts`       | P2       | ✅ Complete |
 | Model adapter           | `tests/model_adapter_test.ts`      | P2       | ✅ Complete |
 | CLI commands            | `tests/cli/*_test.ts`              | P2       | ✅ Complete |
-| Obsidian integration    | `tests/obsidian/*_test.ts`         | P2       | ✅ Complete |
+| Obsidian integration (optional) | `tests/obsidian/*_test.ts`         | P2       | ✅ Complete |
 
 **Running Unit Tests:**
 

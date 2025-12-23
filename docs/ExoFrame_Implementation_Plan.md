@@ -1183,50 +1183,40 @@ PermissionDenied: write access to /etc/passwd is not allowed at PathResolver.val
 
 ## Phase 5: Obsidian Setup & Runtime Integration ✅ COMPLETED
 
-**Goal:** Configure Obsidian as the primary UI for ExoFrame, enabling users to view dashboards, manage tasks, and monitor agent activity without leaving their knowledge management environment.
+**Goal (Updated):** Provide optional integration with Obsidian for knowledge management and historical auditability. The TUI dashboard and CLI are now the primary user interfaces for ExoFrame. Obsidian is supported as an add-on for users who prefer a knowledge graph or want to visualize agent activity and reports in a familiar environment.
 
 ### Steps Summary
 
-| Step | Description                     | Location                          | Status      |
-| ---- | ------------------------------- | --------------------------------- | ----------- |
-| 5.1  | Install Required Plugins        | Obsidian Community Plugins        | ✅ Complete |
-| 5.2  | Configure Obsidian Vault        | Knowledge/ directory              | ✅ Complete |
-| 5.3  | Pin Dashboard                   | Knowledge/Dashboard.md            | ✅ Complete |
-| 5.4  | Configure File Watcher          | Obsidian Settings                 | ✅ Complete |
-| 5.5  | The Obsidian Dashboard          | Knowledge/Dashboard.md            | ✅ Complete |
-| 5.6  | Request Commands                | src/cli/request_commands.ts       | ✅ Complete |
-| 5.7  | YAML Frontmatter Migration      | src/cli/base.ts + parsers         | ✅ Complete |
-| 5.8  | LLM Provider Selection Logic    | src/ai/provider_factory.ts        | ✅ Complete |
-| 5.9  | Request Processor Pipeline      | src/services/request_processor.ts | ✅ Complete |
-| 5.10 | Unified Event Logger            | src/services/event_logger.ts      | ✅ Complete |
-| 5.11 | Blueprint Creation & Management | src/cli/blueprint_commands.ts     | ✅ Complete |
+| Step | Description                     | Location                          | Status                 |
+| ---- | ------------------------------- | --------------------------------- | ---------------------- |
+| 5.1  | Install Required Plugins        | Obsidian Community Plugins        | ✅ Complete (Optional) |
+| 5.2  | Configure Obsidian Vault        | Knowledge/ directory              | ✅ Complete (Optional) |
+| 5.3  | Pin Dashboard                   | Knowledge/Dashboard.md            | ✅ Complete (Optional) |
+| 5.4  | Configure File Watcher          | Obsidian Settings                 | ✅ Complete (Optional) |
+| 5.5  | The Obsidian Dashboard          | Knowledge/Dashboard.md            | ✅ Complete (Optional) |
+| 5.6  | Request Commands                | src/cli/request_commands.ts       | ✅ Complete            |
+| 5.7  | YAML Frontmatter Migration      | src/cli/base.ts + parsers         | ✅ Complete            |
+| 5.8  | LLM Provider Selection Logic    | src/ai/provider_factory.ts        | ✅ Complete            |
+| 5.9  | Request Processor Pipeline      | src/services/request_processor.ts | ✅ Complete            |
+| 5.10 | Unified Event Logger            | src/services/event_logger.ts      | ✅ Complete            |
+| 5.11 | Blueprint Creation & Management | src/cli/blueprint_commands.ts     | ✅ Complete            |
 
-> **Platform note:** Maintainers must document OS-specific instructions (Windows symlink prerequisites, macOS sandbox
 > prompts, Linux desktop watchers) before marking each sub-step complete.
+
+> **Platform note:** Obsidian integration is optional. Maintainers should document OS-specific instructions (Windows symlink prerequisites, macOS sandbox prompts, Linux desktop watchers) for users who wish to enable Obsidian-based knowledge management.
 
 ### 5.1: Install Required Plugins ✅ COMPLETED
 
 - **Dependencies:** Obsidian installed on user system.
 - **Rollback:** Uninstall plugins via Community Plugins settings.
 
-**Action:** Install and configure required Obsidian plugins for ExoFrame integration.
+**Action (Optional):** Install and configure Obsidian plugins for users who want to use ExoFrame's knowledge management features in Obsidian.
 
-**Required Plugins:**
+**Recommended Plugins:**
 
-1. **Dataview** (required)
-   - Enables live queries for dashboard tables
-   - Open Obsidian Settings → Community Plugins
-   - Disable Safe Mode
-   - Browse → Search "Dataview"
-   - Install and Enable
-
+1. **Dataview** (recommended for dashboard queries)
 2. **File Tree Alternative** (optional)
-   - Enables sidebar navigation of ExoFrame folders
-   - Provides better folder structure visibility
-
 3. **Templater** (optional)
-   - Enables template-based file creation
-   - Useful for creating new requests with consistent frontmatter
 
 **TDD Approach:**
 
@@ -1257,17 +1247,13 @@ Deno.test("Dashboard file uses valid Dataview syntax", async () => {
 });
 ````
 
-**Success Criteria:**
+**Success Criteria (Optional):**
 
-- [x] Dataview plugin installed and enabled
-- [x] Dashboard.md renders without Dataview errors
-- [x] User Guide documents plugin installation steps
+- [x] Dataview plugin installed and enabled (if using Obsidian)
+- [x] Dashboard.md renders without Dataview errors (if using Obsidian)
+- [x] User Guide documents plugin installation steps (optional)
 
-✅ **COMPLETED** (2025-11-28): TDD implementation complete.
-
-- Created `Knowledge/Dashboard.md` with 4 Dataview queries (TABLE and LIST)
-- Added Section 3.2 to User Guide with plugin installation steps
-- Tests: `tests/obsidian/plugin_detection_test.ts` (10 tests)
+✅ **COMPLETED** (2025-11-28): TDD implementation complete for optional Obsidian integration.
 
 ---
 
@@ -1276,9 +1262,9 @@ Deno.test("Dashboard file uses valid Dataview syntax", async () => {
 - **Dependencies:** Step 5.1 plugins installed.
 - **Rollback:** Close vault, reopen original vault.
 
-**Action:** Configure Obsidian to use ExoFrame's Knowledge directory as a vault.
+**Action (Optional):** Configure Obsidian to use ExoFrame's Knowledge directory as a vault for users who want to visualize agent activity and reports in Obsidian.
 
-**Implementation Steps:**
+**Implementation Steps (Optional):**
 
 1. Open Obsidian
 2. Select "Open folder as vault"
@@ -1325,26 +1311,21 @@ Deno.test("Vault .obsidian config is gitignored", async () => {
 **CLI Support:**
 
 ```bash
-# Scaffold Knowledge directory with required structure
+# Scaffold Knowledge directory with required structure (Obsidian integration optional)
 exoctl scaffold --knowledge
 
-# Verify vault structure
+# Verify vault structure (if using Obsidian)
 exoctl verify --vault
 ```
 
-**Success Criteria:**
+**Success Criteria (Optional):**
 
 - [x] Knowledge/ directory contains required subdirectories
-- [x] Dashboard.md exists at Knowledge/Dashboard.md
+- [x] Dashboard.md exists at Knowledge/Dashboard.md (for Obsidian users)
 - [x] .obsidian/ directory is gitignored
-- [x] Vault opens without errors in Obsidian
+- [x] Vault opens without errors in Obsidian (if used)
 
-✅ **COMPLETED** (2025-11-28): TDD implementation complete.
-
-- Dashboard has all required sections (Requests, Plans, Activity, Portals)
-- Dashboard has 4 Dataview queries with proper sorting
-- User Guide documents pinning and workspace layout saving
-- Tests: `tests/obsidian/vault_structure_test.ts` (12 tests)
+✅ **COMPLETED** (2025-11-28): TDD implementation complete for optional Obsidian integration.
 
 ---
 
@@ -1353,20 +1334,21 @@ exoctl verify --vault
 - **Dependencies:** Step 5.2 vault configured.
 - **Rollback:** Unpin tab, remove from startup.
 
-**Action:** Configure Dashboard.md as the primary view when opening the vault.
+**Action (Optional):** Configure Dashboard.md as the primary view when opening the vault (for Obsidian users).
 
-**Implementation Steps:**
+**Implementation Steps (Optional):**
 
 1. Open `Dashboard.md` in Obsidian
 2. Right-click the tab → "Pin"
 3. Configure as startup file:
-   - Settings → Core Plugins → Enable "Daily Notes" (for startup file support)
-   - Or use Workspaces plugin to save layout
+
+- Settings → Core Plugins → Enable "Daily Notes" (for startup file support)
+- Or use Workspaces plugin to save layout
 
 **Alternative: Workspace Layout:**
 
 ```json
-// .obsidian/workspaces.json (auto-generated by Obsidian)
+// .obsidian/workspaces.json (auto-generated by Obsidian, optional)
 {
   "workspaces": {
     "ExoFrame": {

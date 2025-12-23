@@ -174,7 +174,7 @@ All example flows automatically generate detailed execution reports when run, in
 - Performance metrics and timing
 - Dependency graphs (Mermaid format)
 - Success/failure analysis
-- Dataview-compatible metadata for Obsidian integration
+- Dataview-compatible metadata for optional Obsidian integration
 
 Reports are saved to `Knowledge/Reports/` with filenames like:
 `flow_code-review_run-abc123_2025-12-20T10-30-00.md`

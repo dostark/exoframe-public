@@ -6,7 +6,7 @@ contributors to run the daemon, tests and benchmarks locally.
 
 ### Goals
 
-- Install required tools (Git, Deno, SQLite, Obsidian, optional: VS Code)
+- Install required tools (Git, Deno, SQLite; Obsidian is optional for knowledge management; VS Code is also optional)
 - Create a local repository and initial configuration
 - Initialize the Activity Journal and Knowledge vault
 - Run the daemon in development mode and execute the test suite
@@ -15,7 +15,7 @@ contributors to run the daemon, tests and benchmarks locally.
 
 - Ensure you have at least 8GB RAM and 20GB free disk space.
 - Create a user account for development with normal privileges.
-- Recommended editor: VS Code or Obsidian for the Knowledge vault.
+- Recommended editor: VS Code (recommended) or Obsidian (optional, for knowledge management features).
 
 ### 1. Ubuntu (tested baseline)
 
@@ -77,7 +77,10 @@ ollama run llama3.2 "Hello, world!"
 - Without GPU, stick to smaller models (3b or 7b parameter variants)
 - Ollama uses ~2-4GB base memory plus model size
 
-4. Install Obsidian (optional GUI)
+
+4. (Optional) Install Obsidian (GUI knowledge management)
+
+Obsidian is not required for ExoFrame operation. Install only if you want to use the knowledge graph, dashboards, or Dataview features.
 
 Download from Obsidian site or install via Snap:
 
@@ -126,21 +129,23 @@ deno test --allow-read --allow-write --allow-run
 deno run --watch --allow-read --allow-write --allow-run src/main.ts
 ```
 
-6. Initialize Obsidian vault
+
+6. (Optional) Initialize Obsidian vault
 
 ```bash
-# Point Obsidian to the Knowledge folder
+# If using Obsidian, point it to the Knowledge folder
 # In Obsidian: "Open folder as vault" -> ~/ExoFrame/Knowledge
 
 # Verify the Activity Journal (SQLite) was initialized correctly
 deno test --allow-read --allow-write --allow-run tests/setup_db_test.ts
 ```
 
-7. Configure Obsidian for ExoFrame compatibility
 
-The following Obsidian settings are **required** for ExoFrame tests to pass and for proper integration:
+7. (Optional) Configure Obsidian for ExoFrame compatibility
 
-**Required Plugin:**
+If you want to use Obsidian for knowledge management, configure the following:
+
+**Recommended Plugin:**
 
 1. Open Obsidian Settings (gear icon)
 2. Go to **Community Plugins**
@@ -148,19 +153,19 @@ The following Obsidian settings are **required** for ExoFrame tests to pass and 
 4. Click **Browse** → Search "Dataview"
 5. Click **Install** then **Enable**
 
-**Required Settings:**
+**Recommended Settings:**
 
 1. Go to **Settings → Files & Links**:
-   - ☑ **Automatically update internal links** — enables wikilinks like `[[Dashboard]]` to auto-update when files are renamed
-   - ☑ **Show all file types** — makes `.toml`, `.json` files visible in the sidebar
+  - ☑ **Automatically update internal links** — enables wikilinks like `[[Dashboard]]` to auto-update when files are renamed
+  - ☑ **Show all file types** — makes `.toml`, `.json` files visible in the sidebar
 
 2. (Optional) Go to **Settings → Editor**:
-   - ☑ Auto pair markdown syntax
+  - ☑ Auto pair markdown syntax
 
-**Verify Configuration:**
+**Verify Configuration (Optional):**
 
 ```bash
-# Run Obsidian integration tests
+# Run Obsidian integration tests (if using Obsidian)
 deno test --allow-all tests/obsidian/
 
 # Expected: All tests pass, including:
@@ -189,10 +194,11 @@ Prerequisite on Windows host:
 Notes specific to WSL2:
 
 - Ensure Git on Windows and Git inside WSL are consistent. Use the WSL-side git for repository work inside `~/ExoFrame`.
+
 - For Obsidian UI on Windows: point Obsidian to the WSL mount (e.g.,
   `\\wsl$\\Ubuntu-22.04\\home\\<user>\\ExoFrame\\Knowledge`) or use the Windows-side Obsidian and open vault via the WSL
-  path.
-- **Important:** Configure Obsidian with the same settings as step 7 above (Dataview plugin, "Automatically update internal links", "Show all file types").
+  path (optional, only if using Obsidian).
+- **If using Obsidian:** Configure with the same settings as step 7 above (Dataview plugin, "Automatically update internal links", "Show all file types").
 
 2. Symlink behavior
 
@@ -201,7 +207,8 @@ Notes specific to WSL2:
 
 3. Windows-side utilities (optional convenience)
 
-- Install Obsidian on Windows and open the WSL vault via `\\wsl$` share.
+
+- (Optional) Install Obsidian on Windows and open the WSL vault via `\\wsl$` share.
 - If you expect to run UI workflows from Windows, install the Windows Git client and ensure `core.autocrlf` matches your
   team policy.
 
@@ -216,7 +223,8 @@ Notes specific to WSL2:
 ```bash
 exoctl portal add ~/Dev/MyProject MyProject
 echo "# Test Request" > ~/ExoFrame/Inbox/Requests/test.md
-# Observe daemon logs / Obsidian Dashboard
+
+# Observe daemon logs (or, if using Obsidian, view in Dashboard)
 ```
 
 ### 4. File Format Standards (Developer Reference)
@@ -227,7 +235,7 @@ ExoFrame uses a **hybrid format strategy**:
 | ------------------------ | -------- | --------------------------------- |
 | System config            | TOML     | Token-efficient for LLM context   |
 | Agent blueprints         | TOML     | Complex nested structures         |
-| **Markdown frontmatter** | **YAML** | **Dataview plugin compatibility** |
+| **Markdown frontmatter** | **YAML** | **Dataview plugin compatibility (Obsidian users only)** |
 | Deno config              | JSON     | Runtime requirement               |
 
 #### YAML Frontmatter (Requests, Plans, Reports)
@@ -250,7 +258,7 @@ created_by: user@example.com
 
 **Why YAML for frontmatter?**
 
-- Obsidian's **Dataview plugin only parses YAML** frontmatter natively
+* Obsidian's **Dataview plugin only parses YAML** frontmatter natively (relevant only if using Obsidian)
 - Standard Dataview `TABLE` queries work without custom JavaScript
 - Dashboard shows proper field values (not `-` placeholders)
 

@@ -300,7 +300,7 @@ deno test --allow-all tests/setup_db_test.ts
 2. **Add Agent ID to Blueprints:** Extend Blueprint interface to include agent identifier
 3. **Human Action Logging:** Create CLI commands or file watcher hooks to log human review actions
    (approve/reject/revise)
-4. **Analytics Dashboard:** Build Obsidian dashboard with Dataview queries showing agent performance metrics
+4. **Analytics Dashboard (Optional):** Build Obsidian dashboard with Dataview queries showing agent performance metrics (for users who enable Obsidian integration)
 
 ## Documentation Updates
 

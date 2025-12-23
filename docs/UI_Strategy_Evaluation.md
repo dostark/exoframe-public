@@ -7,7 +7,7 @@ The current ExoFrame workflow relies on manual file manipulation in the `Inbox/R
 
 | Option | Pros | Cons | Effort |
 | :--- | :--- | :--- | :--- |
-| **A. Obsidian + Dataview** | Already integrated, no new dependencies, fits "Files-as-API" philosophy. | Static (requires refresh), no interactivity (buttons), requires Obsidian. | Low |
+| **A. Obsidian + Dataview (Optional)** | Already integrated (optional), no new dependencies, fits "Files-as-API" philosophy. | Static (requires refresh), no interactivity (buttons), requires Obsidian (optional). | Low |
 | **B. Obsidian Plugin** | Native integration, familiar UI, can add custom buttons/ribbons. | Requires Obsidian, plugin maintenance, TypeScript/React overhead. | Medium |
 | **C. Web Dashboard (Deno/Fresh)** | Full interactivity, real-time updates, browser-accessible. | New dependency, deployment complexity, security overhead. | High |
 | **D. TUI (Terminal UI)** | No browser needed, fits developer workflow, fast. | Limited visualization (diffs), learning curve for TUI libraries. | Medium |
@@ -17,12 +17,12 @@ The current ExoFrame workflow relies on manual file manipulation in the `Inbox/R
 
 ### Rationale:
 1. **Developer Workflow**: Developers spend most of their time in the terminal. A TUI provides a "cockpit" that feels native to the existing `exoctl` workflow.
-2. **Interactivity**: Unlike Obsidian/Dataview (which is read-only), a TUI can provide interactive plan approval, log streaming, and portal management without leaving the shell.
+2. **Interactivity**: Unlike Obsidian/Dataview (which is read-only and optional), a TUI can provide interactive plan approval, log streaming, and portal management without leaving the shell.
 3. **No External Dependencies**: Does not require users to install or configure Obsidian to get a high-level view of the system.
 4. **Performance**: TUIs are extremely fast and lightweight, fitting the "Iron Skeleton" philosophy of ExoFrame.
 
 ### Future Path:
-- **Option A (Obsidian)** will remain the primary tool for **Knowledge Management** and long-term auditability (viewing historical plans and activity logs).
+- **Option A (Obsidian, Optional)** will remain an add-on for **Knowledge Management** and long-term auditability (viewing historical plans and activity logs for users who enable it).
 - **Option C (Web Dashboard)** will be considered for v2.0 if multi-user or remote monitoring becomes a requirement.
 
 ## 4. Implementation Plan (Phase 9 & 10)
