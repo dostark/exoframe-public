@@ -1,8 +1,6 @@
 /**
  * ProviderFactory - LLM Provider Selection Logic
  *
- * Step 5.8: LLM Provider Selection Logic
- *
  * Creates the appropriate LLM provider based on:
  * 1. Environment variables (highest priority)
  * 2. Config file [ai] section (medium priority)
@@ -75,7 +73,8 @@ export class ProviderFactoryError extends Error {
 // ============================================================================
 
 /**
- * Factory for creating LLM providers based on environment and configuration
+ * Factory for creating LLM providers based on environment and configuration.
+ * Provides static methods for provider instantiation and info.
  */
 export class ProviderFactory {
   /**
@@ -87,6 +86,11 @@ export class ProviderFactory {
    * 3. Defaults (MockLLMProvider)
    *
    * @param config - ExoFrame configuration
+   * @returns An IModelProvider instance
+   */
+  /**
+   * Create an LLM provider based on environment and configuration.
+   * @param config ExoFrame configuration
    * @returns An IModelProvider instance
    */
   static create(config: Config): IModelProvider {
@@ -101,6 +105,12 @@ export class ProviderFactory {
    * @param name - Name of the model configuration (e.g., "default", "fast")
    * @returns An IModelProvider instance
    */
+  /**
+   * Create an LLM provider by name from the models configuration.
+   * @param config ExoFrame configuration
+   * @param name Name of the model configuration (e.g., "default", "fast")
+   * @returns An IModelProvider instance
+   */
   static createByName(config: Config, name: string): IModelProvider {
     const options = this.resolveOptionsByName(config, name);
     return this.createProvider(options);
@@ -112,10 +122,14 @@ export class ProviderFactory {
    * @param config - ExoFrame configuration
    * @returns Provider information for logging
    */
+  /**
+   * Get information about what provider would be created.
+   * @param config ExoFrame configuration
+   * @returns Provider information for logging
+   */
   static getProviderInfo(config: Config): ProviderInfo {
     const options = this.resolveOptions(config);
     const source = this.determineSource();
-
     return {
       type: options.provider,
       id: this.generateProviderId(options),
@@ -131,10 +145,15 @@ export class ProviderFactory {
    * @param name - Name of the model configuration
    * @returns Provider information for logging
    */
+  /**
+   * Get information about what provider would be created by name.
+   * @param config ExoFrame configuration
+   * @param name Name of the model configuration
+   * @returns Provider information for logging
+   */
   static getProviderInfoByName(config: Config, name: string): ProviderInfo {
     const options = this.resolveOptionsByName(config, name);
     const source = this.determineSource();
-
     return {
       type: options.provider,
       id: this.generateProviderId(options),
@@ -149,6 +168,9 @@ export class ProviderFactory {
 
   /**
    * Resolve provider options from environment and config
+   */
+  /**
+   * Resolve provider options from environment and config.
    */
   private static resolveOptions(config: Config, overrideAiConfig?: AiConfig): ResolvedProviderOptions {
     // Read environment variables
@@ -201,6 +223,9 @@ export class ProviderFactory {
   /**
    * Resolve provider options by name
    */
+  /**
+   * Resolve provider options by name.
+   */
   private static resolveOptionsByName(config: Config, name: string): ResolvedProviderOptions {
     const modelConfig = config.models?.[name] ?? config.models?.["default"] ?? config.ai;
     return this.resolveOptions(config, modelConfig);
@@ -208,6 +233,9 @@ export class ProviderFactory {
 
   /**
    * Determine the source of configuration
+   */
+  /**
+   * Determine the source of configuration.
    */
   private static determineSource(): "env" | "config" | "default" {
     if (Deno.env.get("EXO_LLM_PROVIDER")) {
@@ -219,6 +247,9 @@ export class ProviderFactory {
 
   /**
    * Create the appropriate provider based on resolved options
+   */
+  /**
+   * Create the appropriate provider based on resolved options.
    */
   private static createProvider(options: ResolvedProviderOptions): IModelProvider {
     // Llama/Ollama model routing
@@ -250,6 +281,9 @@ export class ProviderFactory {
   /**
    * Create a MockLLMProvider
    */
+  /**
+   * Create a MockLLMProvider.
+   */
   private static createMockProvider(options: ResolvedProviderOptions): MockLLMProvider {
     const strategy = options.mockStrategy ?? "recorded";
 
@@ -262,6 +296,9 @@ export class ProviderFactory {
   /**
    * Create an OllamaProvider
    */
+  /**
+   * Create an OllamaProvider.
+   */
   private static createOllamaProvider(options: ResolvedProviderOptions): OllamaProvider {
     return new OllamaProvider({
       id: this.generateProviderId(options),
@@ -273,6 +310,9 @@ export class ProviderFactory {
 
   /**
    * Create an Anthropic provider
+   */
+  /**
+   * Create an Anthropic provider.
    */
   private static createAnthropicProvider(options: ResolvedProviderOptions): IModelProvider {
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
@@ -293,6 +333,9 @@ export class ProviderFactory {
   /**
    * Create an OpenAI provider (stub - throws if no API key)
    */
+  /**
+   * Create an OpenAI provider (throws if no API key).
+   */
   private static createOpenAIProvider(options: ResolvedProviderOptions): IModelProvider {
     const apiKey = Deno.env.get("OPENAI_API_KEY");
     if (!apiKey) {
@@ -311,6 +354,9 @@ export class ProviderFactory {
 
   /**
    * Generate a unique provider ID
+   */
+  /**
+   * Generate a unique provider ID.
    */
   private static generateProviderId(options: ResolvedProviderOptions): string {
     switch (options.provider) {
@@ -332,6 +378,9 @@ export class ProviderFactory {
   /**
    * Create a Google provider
    */
+  /**
+   * Create a Google provider.
+   */
   private static createGoogleProvider(options: ResolvedProviderOptions): IModelProvider {
     const apiKey = Deno.env.get("GOOGLE_API_KEY");
     if (!apiKey) {
@@ -349,6 +398,9 @@ export class ProviderFactory {
 }
 
 // Helper for tests: get provider by model name
+/**
+ * Helper for tests: get provider by model name.
+ */
 export function getProviderForModel(model: string) {
   // Minimal mock config for test
   const config = {

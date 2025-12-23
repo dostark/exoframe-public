@@ -1,7 +1,10 @@
 import { IModelProvider, ModelOptions, ModelProviderError } from "../providers.ts";
 import { EventLogger } from "../../services/event_logger.ts";
-import { withRetry, RateLimitError, AuthenticationError } from "./common.ts";
+import { AuthenticationError, RateLimitError, withRetry } from "./common.ts";
 
+/**
+ * OpenAIProvider implements IModelProvider for OpenAI's chat models.
+ */
 export class OpenAIProvider implements IModelProvider {
   public readonly id: string;
   private readonly apiKey: string;
@@ -10,6 +13,14 @@ export class OpenAIProvider implements IModelProvider {
   private readonly logger?: EventLogger;
   private readonly retryDelayMs: number;
 
+  /**
+   * @param options.apiKey OpenAI API key
+   * @param options.model Model name (default: gpt-5.2-pro)
+   * @param options.baseUrl API endpoint (default: OpenAI v1 completions)
+   * @param options.id Optional provider id
+   * @param options.logger Optional event logger
+   * @param options.retryDelayMs Optional retry delay in ms
+   */
   constructor(options: {
     apiKey: string;
     model?: string;
@@ -26,13 +37,19 @@ export class OpenAIProvider implements IModelProvider {
     this.retryDelayMs = options.retryDelayMs ?? 1000;
   }
 
+  /**
+   * Generate a completion from the model.
+   */
   async generate(prompt: string, options?: ModelOptions): Promise<string> {
     return await withRetry(
       () => this.attemptGenerate(prompt, options),
-      { maxRetries: 3, baseDelayMs: this.retryDelayMs }
+      { maxRetries: 3, baseDelayMs: this.retryDelayMs },
     );
   }
 
+  /**
+   * Internal: attempt a single completion call.
+   */
   private async attemptGenerate(prompt: string, options?: ModelOptions): Promise<string> {
     const response = await fetch(this.baseUrl, {
       method: "POST",
@@ -51,9 +68,11 @@ export class OpenAIProvider implements IModelProvider {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      const message = error.error?.message ?? response.statusText;
-
+      let message = response.statusText;
+      try {
+        const error = await response.json();
+        message = error.error?.message ?? message;
+      } catch {}
       if (response.status === 401) {
         throw new AuthenticationError(this.id, message);
       }
@@ -63,13 +82,12 @@ export class OpenAIProvider implements IModelProvider {
       if (response.status >= 500) {
         throw new ModelProviderError(`Server error: ${message}`, this.id);
       }
-
       throw new ModelProviderError(message, this.id);
     }
 
     const data = await response.json();
 
-    // Report token usage
+    // Report token usage if logger is present
     if (this.logger && data.usage) {
       this.logger.debug("llm.usage", this.id, {
         prompt_tokens: data.usage.prompt_tokens,
@@ -79,6 +97,6 @@ export class OpenAIProvider implements IModelProvider {
       });
     }
 
-    return data.choices[0].message.content;
+    return data.choices?.[0]?.message?.content ?? "";
   }
 }

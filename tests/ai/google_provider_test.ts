@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { spy, stub } from "https://deno.land/std@0.203.0/testing/mock.ts";
-import { GoogleProvider } from "../src/ai/providers/google_provider.ts";
-import { ModelProviderError } from "../src/ai/providers.ts";
+import { GoogleProvider } from "../../src/ai/providers/google_provider.ts";
+import { ModelProviderError } from "../../src/ai/providers.ts";
 
 Deno.test("GoogleProvider - initialization", () => {
   const provider = new GoogleProvider({ apiKey: "test-key" });
@@ -10,7 +10,7 @@ Deno.test("GoogleProvider - initialization", () => {
   const customProvider = new GoogleProvider({
     apiKey: "test-key",
     model: "gemini-3-flash",
-    id: "custom-id"
+    id: "custom-id",
   });
   assertEquals(customProvider.id, "custom-id");
 });
@@ -20,11 +20,13 @@ Deno.test("GoogleProvider - generate success", async () => {
 
   const mockResponse = {
     candidates: [{ content: { parts: [{ text: "Hello from Gemini" }] } }],
-    usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 20 }
+    usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 20 },
   };
 
-  const fetchStub = stub(globalThis, "fetch", () =>
-    Promise.resolve(new Response(JSON.stringify(mockResponse), { status: 200 }))
+  const fetchStub = stub(
+    globalThis,
+    "fetch",
+    () => Promise.resolve(new Response(JSON.stringify(mockResponse), { status: 200 })),
   );
 
   try {
@@ -39,7 +41,9 @@ Deno.test("GoogleProvider - generate URL", async () => {
   const provider = new GoogleProvider({ apiKey: "test-key", model: "gemini-3-pro" });
 
   const fetchSpy = spy(() =>
-    Promise.resolve(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "ok" }] } }] }), { status: 200 }))
+    Promise.resolve(
+      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "ok" }] } }] }), { status: 200 }),
+    )
   );
 
   const originalFetch = globalThis.fetch;
@@ -61,15 +65,17 @@ Deno.test("GoogleProvider - generate URL", async () => {
 Deno.test("GoogleProvider - generate error handling", async () => {
   const provider = new GoogleProvider({ apiKey: "test-key" });
 
-  const fetchStub = stub(globalThis, "fetch", () =>
-    Promise.resolve(new Response(JSON.stringify({ error: { message: "Invalid API key" } }), { status: 400 }))
+  const fetchStub = stub(
+    globalThis,
+    "fetch",
+    () => Promise.resolve(new Response(JSON.stringify({ error: { message: "Invalid API key" } }), { status: 400 })),
   );
 
   try {
     await assertRejects(
       () => provider.generate("Hi"),
       ModelProviderError,
-      "Invalid API key"
+      "Invalid API key",
     );
   } finally {
     fetchStub.restore();
@@ -80,7 +86,9 @@ Deno.test("GoogleProvider - options mapping", async () => {
   const provider = new GoogleProvider({ apiKey: "test-key" });
 
   const fetchSpy = spy(() =>
-    Promise.resolve(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "ok" }] } }] }), { status: 200 }))
+    Promise.resolve(
+      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "ok" }] } }] }), { status: 200 }),
+    )
   );
 
   const originalFetch = globalThis.fetch;
@@ -92,7 +100,7 @@ Deno.test("GoogleProvider - options mapping", async () => {
       temperature: 0.5,
       max_tokens: 100,
       top_p: 0.9,
-      stop: ["STOP"]
+      stop: ["STOP"],
     });
 
     const call = fetchSpy.calls[0];
@@ -108,7 +116,7 @@ Deno.test("GoogleProvider - options mapping", async () => {
 });
 
 Deno.test("GoogleProvider - token usage reporting", async () => {
-  const { EventLogger } = await import("../src/services/event_logger.ts");
+  const { EventLogger } = await import("../../src/services/event_logger.ts");
   const logger = new EventLogger({ prefix: "[Test]" });
   const logSpy = spy(logger, "log");
 
@@ -116,11 +124,13 @@ Deno.test("GoogleProvider - token usage reporting", async () => {
 
   const mockResponse = {
     candidates: [{ content: { parts: [{ text: "Hello" }] } }],
-    usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 20 }
+    usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 20 },
   };
 
-  const fetchStub = stub(globalThis, "fetch", () =>
-    Promise.resolve(new Response(JSON.stringify(mockResponse), { status: 200 }))
+  const fetchStub = stub(
+    globalThis,
+    "fetch",
+    () => Promise.resolve(new Response(JSON.stringify(mockResponse), { status: 200 })),
   );
 
   try {
@@ -143,7 +153,11 @@ Deno.test("GoogleProvider - retry on 429", async () => {
     if (callCount === 1) {
       return Promise.resolve(new Response(JSON.stringify({ error: { message: "Rate limit" } }), { status: 429 }));
     }
-    return Promise.resolve(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "Success after retry" }] } }] }), { status: 200 }));
+    return Promise.resolve(
+      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "Success after retry" }] } }] }), {
+        status: 200,
+      }),
+    );
   });
 
   try {

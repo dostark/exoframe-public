@@ -1,6 +1,6 @@
 /**
- * Model Adapter - Provides a unified interface for interacting with various LLM providers
- * Implements Step 3.1 of the ExoFrame Implementation Plan
+ * Model Adapter - Provides a unified interface for interacting with various LLM providers.
+ * Implements Step 3.1 of the ExoFrame Implementation Plan.
  */
 
 // ============================================================================
@@ -8,7 +8,7 @@
 // ============================================================================
 
 /**
- * Options for model generation requests
+ * Options for model generation requests.
  */
 export interface ModelOptions {
   temperature?: number;
@@ -19,16 +19,16 @@ export interface ModelOptions {
 }
 
 /**
- * Standard interface that all model providers must implement
+ * Standard interface that all model providers must implement.
  */
 export interface IModelProvider {
-  /** Unique identifier for this provider instance */
+  /** Unique identifier for this provider instance. */
   id: string;
 
   /**
-   * Generate a response from the model
-   * @param prompt - The input prompt to send to the model
-   * @param options - Optional generation parameters
+   * Generate a response from the model.
+   * @param prompt The input prompt to send to the model
+   * @param options Optional generation parameters
    * @returns The generated text response
    */
   generate(prompt: string, options?: ModelOptions): Promise<string>;
@@ -39,32 +39,35 @@ export interface IModelProvider {
 // ============================================================================
 
 /**
- * Base error class for model provider errors
+ * Base error class for model provider errors.
  */
 export class ModelProviderError extends Error {
   constructor(message: string, public readonly provider: string) {
     super(message);
     this.name = "ModelProviderError";
+    Object.setPrototypeOf(this, ModelProviderError.prototype);
   }
 }
 
 /**
- * Error thrown when connection to the model provider fails
+ * Error thrown when connection to the model provider fails.
  */
 export class ConnectionError extends ModelProviderError {
   constructor(provider: string, message: string) {
     super(`Connection failed for provider '${provider}': ${message}`, provider);
     this.name = "ConnectionError";
+    Object.setPrototypeOf(this, ConnectionError.prototype);
   }
 }
 
 /**
- * Error thrown when a request times out
+ * Error thrown when a request times out.
  */
 export class TimeoutError extends ModelProviderError {
   constructor(provider: string, timeoutMs: number) {
     super(`Request timed out after ${timeoutMs}ms for provider '${provider}'`, provider);
     this.name = "TimeoutError";
+    Object.setPrototypeOf(this, TimeoutError.prototype);
   }
 }
 
@@ -73,8 +76,8 @@ export class TimeoutError extends ModelProviderError {
 // ============================================================================
 
 /**
- * Mock provider that returns a predictable, configurable response
- * Used for unit testing and development
+ * Mock provider that returns a predictable, configurable response.
+ * Used for unit testing and development.
  */
 export class MockProvider implements IModelProvider {
   public readonly id: string;
@@ -98,8 +101,8 @@ export class MockProvider implements IModelProvider {
 // ============================================================================
 
 /**
- * Provider for Ollama local LLM inference
- * Communicates with Ollama API at localhost:11434
+ * Provider for Ollama local LLM inference.
+ * Communicates with Ollama API at localhost:11434.
  */
 export class OllamaProvider implements IModelProvider {
   public readonly id: string;
@@ -195,13 +198,13 @@ export class OllamaProvider implements IModelProvider {
 // ============================================================================
 
 /**
- * Factory for creating model provider instances based on configuration
+ * Factory for creating model provider instances based on configuration.
  */
 export class ModelFactory {
   /**
-   * Create a model provider instance
-   * @param providerType - Type of provider ("mock", "ollama", etc.)
-   * @param config - Provider-specific configuration
+   * Create a model provider instance.
+   * @param providerType Type of provider ("mock", "ollama", etc.)
+   * @param config Provider-specific configuration
    * @returns An instance implementing IModelProvider
    */
   static create(

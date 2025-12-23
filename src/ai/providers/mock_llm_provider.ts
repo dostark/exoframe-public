@@ -6,91 +6,25 @@
  * Provides multiple strategies for mocking LLM responses without making actual API calls.
  * Each strategy serves a specific testing purpose:
  *
- * ## Strategy Details
+
+/**
+ * MockLLMProvider - Deterministic LLM responses for testing.
  *
- * ### recorded
- * **Purpose:** Replay real LLM responses captured from previous API calls
- * **How it works:**
- *   - Hashes the prompt to create a unique fingerprint
- *   - Looks up response by hash (exact match → preview match → pattern fallback)
- *   - Can load recordings from fixture directory (.json files)
- *   - Auto-falls back to pattern matching if no recording found
- * **Use in testing:** Integration tests requiring realistic responses without API costs
- * **Example:** Testing plan generation with actual Claude/GPT responses
+ * Provides multiple strategies for mocking LLM responses without making actual API calls.
  *
- * ### scripted
- * **Purpose:** Return predefined responses in a fixed sequence
- * **How it works:**
- *   - Maintains an index into a responses array
- *   - Returns responses in order, cycling back to first when exhausted
- *   - Deterministic and predictable for every test run
- * **Use in testing:** Multi-step workflows where order matters (e.g., conversation flows)
- * **Example:** Testing request → plan → approval → execution sequence
+ * Strategies:
+ * - "recorded": Replay real LLM responses captured from previous API calls.
+ * - "scripted": Return predefined responses in a fixed sequence.
+ * - "pattern": Generate dynamic responses based on prompt content.
+ * - "failing": Simulate API failures and network errors.
+ * - "slow": Simulate network latency and slow API responses.
  *
- * ### pattern
- * **Purpose:** Generate dynamic responses based on prompt content
- * **How it works:**
- *   - Matches prompts against regex patterns
- *   - Returns static string or calls function to generate dynamic response
- *   - Uses first matching pattern in the list
- * **Use in testing:** Flexible testing of various request types without pre-recording
- * **Example:** Testing "implement", "fix", "add" requests with appropriate plan formats
- *
- * ### failing
- * **Purpose:** Simulate API failures and network errors
- * **How it works:**
- *   - Always throws MockLLMError on every generate() call
- *   - Still tracks call count and history for assertions
- *   - Supports custom error messages
- * **Use in testing:** Error handling, retry logic, graceful degradation
- * **Example:** Testing daemon recovery when LLM provider is unavailable
- *
- * ### slow
- * **Purpose:** Simulate network latency and slow API responses
- * **How it works:**
- *   - Adds configurable delay (default 500ms) before returning response
- *   - Cycles through responses like scripted strategy after delay
- * **Use in testing:** Timeout behavior, loading states, race conditions
- * **Example:** Testing request timeout handling or concurrent request processing
- *
- * ## Helper Functions
- *
- * - `createPlanGeneratorMock()` - Pattern-based mock with common plan formats
- * - `createFailingMock(message?)` - Failing mock with custom error message
- * - `createSlowMock(delayMs?)` - Slow mock with configurable delay
- *
- * ## Usage Examples
- *
- * ```typescript
- * // Test with recorded real responses
- * const recorded = new MockLLMProvider("recorded", {
- *   fixtureDir: "./tests/fixtures/llm_responses"
- * });
- *
- * // Test multi-step conversation
- * const scripted = new MockLLMProvider("scripted", {
- *   responses: ["Hello", "How can I help?", "Goodbye"]
- * });
- *
- * // Test dynamic request types
- * const pattern = new MockLLMProvider("pattern", {
- *   patterns: [
- *     { pattern: /implement/i, response: "Implementation plan..." },
- *     { pattern: /fix/i, response: "Bug fix plan..." }
- *   ]
- * });
- *
- * // Test error handling
- * const failing = new MockLLMProvider("failing", {
- *   errorMessage: "API rate limit exceeded"
- * });
- *
- * // Test timeout behavior
- * const slow = new MockLLMProvider("slow", {
- *   delayMs: 5000
- * });
- * ```
+ * Helper functions:
+ * - createPlanGeneratorMock(): Pattern-based mock with common plan formats.
+ * - createFailingMock(message?): Failing mock with custom error message.
+ * - createSlowMock(delayMs?): Slow mock with configurable delay.
  */
+
 
 import { IModelProvider, ModelOptions } from "../providers.ts";
 
@@ -194,7 +128,8 @@ export class MockLLMError extends Error {
 // ============================================================================
 
 /**
- * Mock LLM provider for deterministic testing
+ * Mock LLM provider for deterministic testing.
+ * Implements IModelProvider for use in tests.
  */
 export class MockLLMProvider implements IModelProvider {
   public readonly id: string;
@@ -212,6 +147,10 @@ export class MockLLMProvider implements IModelProvider {
   private _callHistory: CallRecord[] = [];
   private _totalTokens: TokenCount = { input: 0, output: 0 };
 
+  /**
+   * @param strategy Mock strategy to use
+   * @param options Configuration options for the mock provider
+   */
   constructor(strategy: MockStrategy, options: MockLLMProviderOptions = {}) {
     this.id = options.id ?? "mock-llm-provider";
     this.strategy = strategy;
@@ -233,7 +172,7 @@ export class MockLLMProvider implements IModelProvider {
       strategy === "recorded" &&
       this.recordings.length === 0 &&
       this.patterns.length === 0 &&
-      !("patterns" in options) // Check if patterns key was explicitly set
+      !("patterns" in options)
     ) {
       console.warn(
         "MockLLMProvider: 'recorded' strategy specified but no recordings available. " +
@@ -248,10 +187,11 @@ export class MockLLMProvider implements IModelProvider {
   // ============================================================================
 
   /**
-   * Generate a response based on the configured strategy
+   * Generate a response based on the configured strategy.
+   * @param prompt The prompt to generate a response for
+   * @param options Optional model options
    */
   async generate(prompt: string, options?: ModelOptions): Promise<string> {
-    // For failing strategy, track call before throwing
     if (this.strategy === "failing") {
       this._callCount++;
       this._callHistory.push({
@@ -264,7 +204,6 @@ export class MockLLMProvider implements IModelProvider {
     }
 
     let response: string;
-
     switch (this.strategy) {
       case "recorded":
         response = await this.generateRecorded(prompt);
@@ -282,7 +221,6 @@ export class MockLLMProvider implements IModelProvider {
         throw new MockLLMError(`Unknown strategy: ${this.strategy}`);
     }
 
-    // Track the call
     this._callCount++;
     this._callHistory.push({
       prompt,
@@ -290,11 +228,8 @@ export class MockLLMProvider implements IModelProvider {
       response,
       timestamp: new Date(),
     });
-
-    // Track tokens
     this._totalTokens.input += this.tokensPerResponse.input;
     this._totalTokens.output += this.tokensPerResponse.output;
-
     return response;
   }
 
@@ -655,9 +590,8 @@ I will create a plan to address this request.
 // ============================================================================
 
 /**
- * Create a MockLLMProvider with common plan generation responses
- *
- * Updated for Step 6.7: Plans use JSON format validated by PlanSchema
+ * Create a MockLLMProvider with common plan generation responses.
+ * Pattern-based mock for plan/bugfix/execution flows.
  */
 export function createPlanGeneratorMock(): MockLLMProvider {
   return new MockLLMProvider("pattern", {
@@ -782,7 +716,8 @@ ${
 }
 
 /**
- * Create a MockLLMProvider that simulates API failures
+ * Create a MockLLMProvider that simulates API failures.
+ * @param errorMessage Optional custom error message
  */
 export function createFailingMock(errorMessage?: string): MockLLMProvider {
   return new MockLLMProvider("failing", {
@@ -791,7 +726,8 @@ export function createFailingMock(errorMessage?: string): MockLLMProvider {
 }
 
 /**
- * Create a MockLLMProvider that simulates slow responses
+ * Create a MockLLMProvider that simulates slow responses.
+ * @param delayMs Delay in milliseconds (default: 5000)
  */
 export function createSlowMock(delayMs: number = 5000): MockLLMProvider {
   return new MockLLMProvider("slow", {

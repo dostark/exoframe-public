@@ -1,11 +1,6 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@^1.0.0";
 import { spy, stub } from "https://deno.land/std@0.203.0/testing/mock.ts";
-import {
-  withRetry,
-  RateLimitError,
-  AuthenticationError,
-  isRetryable
-} from "../src/ai/providers/common.ts";
+import { AuthenticationError, isRetryable, RateLimitError, withRetry } from "../../src/ai/providers/common.ts";
 
 Deno.test("isRetryable - identifies retryable errors", () => {
   assertEquals(isRetryable(new RateLimitError("openai", "Too many requests")), true);
@@ -38,7 +33,7 @@ Deno.test("withRetry - fails after max retries", async () => {
   await assertRejects(
     () => withRetry(fn, { maxRetries: 3, baseDelayMs: 1 }),
     RateLimitError,
-    "Rate limit"
+    "Rate limit",
   );
   assertEquals(callCount, 3);
 });
@@ -53,7 +48,7 @@ Deno.test("withRetry - does not retry on non-retryable errors", async () => {
   await assertRejects(
     () => withRetry(fn, { maxRetries: 3, baseDelayMs: 1 }),
     AuthenticationError,
-    "Invalid key"
+    "Invalid key",
   );
   assertEquals(callCount, 1);
 });

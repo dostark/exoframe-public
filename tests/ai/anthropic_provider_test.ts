@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@^1.0.0";
 import { spy, stub } from "https://deno.land/std@0.203.0/testing/mock.ts";
-import { AnthropicProvider } from "../src/ai/providers/anthropic_provider.ts";
-import { ModelProviderError } from "../src/ai/providers.ts";
+import { AnthropicProvider } from "../../src/ai/providers/anthropic_provider.ts";
+import { ModelProviderError } from "../../src/ai/providers.ts";
 
 Deno.test("AnthropicProvider - initialization", () => {
   const provider = new AnthropicProvider({ apiKey: "test-key" });
@@ -10,7 +10,7 @@ Deno.test("AnthropicProvider - initialization", () => {
   const customProvider = new AnthropicProvider({
     apiKey: "test-key",
     model: "claude-3-5-sonnet",
-    id: "custom-id"
+    id: "custom-id",
   });
   assertEquals(customProvider.id, "custom-id");
 });
@@ -20,11 +20,13 @@ Deno.test("AnthropicProvider - generate success", async () => {
 
   const mockResponse = {
     content: [{ text: "Hello from Claude" }],
-    usage: { input_tokens: 10, output_tokens: 20 }
+    usage: { input_tokens: 10, output_tokens: 20 },
   };
 
-  const fetchStub = stub(globalThis, "fetch", () =>
-    Promise.resolve(new Response(JSON.stringify(mockResponse), { status: 200 }))
+  const fetchStub = stub(
+    globalThis,
+    "fetch",
+    () => Promise.resolve(new Response(JSON.stringify(mockResponse), { status: 200 })),
   );
 
   try {
@@ -61,15 +63,17 @@ Deno.test("AnthropicProvider - generate headers", async () => {
 Deno.test("AnthropicProvider - generate error handling", async () => {
   const provider = new AnthropicProvider({ apiKey: "test-key" });
 
-  const fetchStub = stub(globalThis, "fetch", () =>
-    Promise.resolve(new Response(JSON.stringify({ error: { message: "Invalid key" } }), { status: 401 }))
+  const fetchStub = stub(
+    globalThis,
+    "fetch",
+    () => Promise.resolve(new Response(JSON.stringify({ error: { message: "Invalid key" } }), { status: 401 })),
   );
 
   try {
     await assertRejects(
       () => provider.generate("Hi"),
       ModelProviderError,
-      "Invalid key"
+      "Invalid key",
     );
   } finally {
     fetchStub.restore();
@@ -92,7 +96,7 @@ Deno.test("AnthropicProvider - options mapping", async () => {
       temperature: 0.5,
       max_tokens: 100,
       top_p: 0.9,
-      stop: ["STOP"]
+      stop: ["STOP"],
     });
 
     const call = fetchSpy.calls[0];
@@ -108,7 +112,7 @@ Deno.test("AnthropicProvider - options mapping", async () => {
 });
 
 Deno.test("AnthropicProvider - token usage reporting", async () => {
-  const { EventLogger } = await import("../src/services/event_logger.ts");
+  const { EventLogger } = await import("../../src/services/event_logger.ts");
   const logger = new EventLogger({ prefix: "[Test]" });
   const logSpy = spy(logger, "log");
 
@@ -116,11 +120,13 @@ Deno.test("AnthropicProvider - token usage reporting", async () => {
 
   const mockResponse = {
     content: [{ text: "Hello" }],
-    usage: { input_tokens: 10, output_tokens: 20 }
+    usage: { input_tokens: 10, output_tokens: 20 },
   };
 
-  const fetchStub = stub(globalThis, "fetch", () =>
-    Promise.resolve(new Response(JSON.stringify(mockResponse), { status: 200 }))
+  const fetchStub = stub(
+    globalThis,
+    "fetch",
+    () => Promise.resolve(new Response(JSON.stringify(mockResponse), { status: 200 })),
   );
 
   try {
@@ -143,7 +149,9 @@ Deno.test("AnthropicProvider - retry on 429", async () => {
     if (callCount === 1) {
       return Promise.resolve(new Response(JSON.stringify({ error: { message: "Rate limit" } }), { status: 429 }));
     }
-    return Promise.resolve(new Response(JSON.stringify({ content: [{ text: "Success after retry" }] }), { status: 200 }));
+    return Promise.resolve(
+      new Response(JSON.stringify({ content: [{ text: "Success after retry" }] }), { status: 200 }),
+    );
   });
 
   try {

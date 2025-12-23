@@ -17,10 +17,10 @@
  */
 
 import { assertEquals, assertExists, assertStringIncludes, assertThrows } from "jsr:@std/assert@^1.0.0";
-import { getProviderForModel, ProviderFactory, ProviderFactoryError } from "../src/ai/provider_factory.ts";
+import { getProviderForModel, ProviderFactory, ProviderFactoryError } from "../../src/ai/provider_factory.ts";
 
-import { AiConfig, AiConfigSchema } from "../src/config/ai_config.ts";
-import { Config } from "../src/config/schema.ts";
+import { AiConfig, AiConfigSchema } from "../../src/config/ai_config.ts";
+import { Config } from "../../src/config/schema.ts";
 
 // ============================================================================
 // Test Fixtures

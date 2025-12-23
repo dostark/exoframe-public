@@ -1,6 +1,6 @@
 import { assertEquals, assertRejects, assertThrows } from "https://deno.land/std@0.203.0/testing/asserts.ts";
-import { PlanSchema } from "../src/schemas/plan_schema.ts";
-import { LlamaProvider } from "../src/ai/providers/llama_provider.ts";
+import { PlanSchema } from "../../src/schemas/plan_schema.ts";
+import { LlamaProvider } from "../../src/ai/providers/llama_provider.ts";
 
 // Check if LlamaProvider tests should run
 const shouldRunLlamaTests = Deno.env.get("EXO_RUN_LLAMA_TESTS") === "true";
@@ -56,13 +56,7 @@ llamaTest("LlamaProvider generates valid plan for simple prompt (with senior-cod
   const promptStart = blueprint.indexOf("+++", 3);
   const systemPrompt = promptStart !== -1 ? blueprint.slice(promptStart + 3).trim() : blueprint.trim();
   const userPrompt =
-    `Design and implement a real-time notification system for a collaborative document editor with the following requirements:
-  - Backend must support event-driven notifications for document edits, comments, and mentions
-  - Use WebSocket for real-time delivery to connected clients
-  - Database schema must store notifications, read status, and user references
-  - Frontend must display notifications in a bell icon, dropdown panel, and toast alerts
-  - Include authentication and permission checks for notification delivery
-  Output a step-by-step implementation plan in strict JSON format only, matching the schema in the system prompt. Do not include any explanation or markdown, only the JSON object.`;
+    `Design and implement a real-time notification system for a collaborative document editor with the following requirements:\n  - Backend must support event-driven notifications for document edits, comments, and mentions\n  - Use WebSocket for real-time delivery to connected clients\n  - Database schema must store notifications, read status, and user references\n  - Frontend must display notifications in a bell icon, dropdown panel, and toast alerts\n  - Include authentication and permission checks for notification delivery\n  Output a step-by-step implementation plan in strict JSON format only, matching the schema in the system prompt. Do not include any explanation or markdown, only the JSON object.`;
   const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
   console.log("[DEBUG] Using prompt for LlamaProvider:\n", fullPrompt);
   const provider = new LlamaProvider({ model: "llama3.2:1b" });
@@ -101,7 +95,7 @@ llamaTest("LlamaProvider rejects invalid model names (constructor)", () => {
   );
 });
 // NOTE: To run all tests, use:
-// deno test --allow-net --allow-env tests/llama_provider_test.ts
+// deno test --allow-net --allow-env tests/ai/llama_provider_test.ts
 
 llamaTest("LlamaProvider returns error for invalid JSON output", async () => {
   // This test assumes you can mock the Ollama response to return invalid JSON
@@ -126,7 +120,7 @@ llamaTest("LlamaProvider returns error for invalid JSON output", async () => {
 
 llamaTest("Provider selection logic routes Llama models to LlamaProvider", async () => {
   // This test assumes a provider factory exists
-  const { getProviderForModel } = await import("../src/ai/provider_factory.ts");
+  const { getProviderForModel } = await import("../../src/ai/provider_factory.ts");
   const provider = getProviderForModel("llama3.2:1b");
-  assertEquals(provider instanceof (await import("../src/ai/providers/llama_provider.ts")).LlamaProvider, true);
+  assertEquals(provider instanceof (await import("../../src/ai/providers/llama_provider.ts")).LlamaProvider, true);
 });

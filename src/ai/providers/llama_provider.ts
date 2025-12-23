@@ -1,17 +1,27 @@
-// src/ai/providers/llama_provider.ts
 import { IModelProvider, ModelOptions } from "../providers.ts";
 
+/**
+ * Options for LlamaProvider.
+ */
 export interface LlamaProviderOptions {
   model: string;
   endpoint?: string;
   id?: string;
 }
 
+/**
+ * LlamaProvider implements IModelProvider for Llama and CodeLlama models (Ollama API).
+ */
 export class LlamaProvider implements IModelProvider {
   readonly id: string;
   readonly model: string;
   readonly endpoint: string;
 
+  /**
+   * @param options.model Model name (must start with codellama: or llamaX:)
+   * @param options.endpoint Ollama API endpoint (default: http://localhost:11434/api/generate)
+   * @param options.id Optional provider id
+   */
   constructor(options: LlamaProviderOptions) {
     if (!/^codellama:|^llama[0-9.]*:/.test(options.model)) {
       throw new Error("Unsupported model");
@@ -21,6 +31,9 @@ export class LlamaProvider implements IModelProvider {
     this.id = options.id || `llama-${this.model}`;
   }
 
+  /**
+   * Generate a completion from the model.
+   */
   async generate(prompt: string, _options?: ModelOptions): Promise<string> {
     const body = {
       model: this.model,

@@ -1,7 +1,7 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@^1.0.0";
 import { spy, stub } from "https://deno.land/std@0.203.0/testing/mock.ts";
-import { OpenAIProvider } from "../src/ai/providers/openai_provider.ts";
-import { ModelProviderError } from "../src/ai/providers.ts";
+import { OpenAIProvider } from "../../src/ai/providers/openai_provider.ts";
+import { ModelProviderError } from "../../src/ai/providers.ts";
 
 Deno.test("OpenAIProvider - initialization", () => {
   const provider = new OpenAIProvider({ apiKey: "test-key" });
@@ -10,7 +10,7 @@ Deno.test("OpenAIProvider - initialization", () => {
   const customProvider = new OpenAIProvider({
     apiKey: "test-key",
     model: "gpt-4",
-    id: "custom-id"
+    id: "custom-id",
   });
   assertEquals(customProvider.id, "custom-id");
 });
@@ -20,11 +20,13 @@ Deno.test("OpenAIProvider - generate success", async () => {
 
   const mockResponse = {
     choices: [{ message: { content: "Hello from OpenAI" } }],
-    usage: { prompt_tokens: 10, completion_tokens: 20 }
+    usage: { prompt_tokens: 10, completion_tokens: 20 },
   };
 
-  const fetchStub = stub(globalThis, "fetch", () =>
-    Promise.resolve(new Response(JSON.stringify(mockResponse), { status: 200 }))
+  const fetchStub = stub(
+    globalThis,
+    "fetch",
+    () => Promise.resolve(new Response(JSON.stringify(mockResponse), { status: 200 })),
   );
 
   try {
@@ -82,15 +84,17 @@ Deno.test("OpenAIProvider - custom baseUrl", async () => {
 Deno.test("OpenAIProvider - generate error handling", async () => {
   const provider = new OpenAIProvider({ apiKey: "test-key" });
 
-  const fetchStub = stub(globalThis, "fetch", () =>
-    Promise.resolve(new Response(JSON.stringify({ error: { message: "Invalid key" } }), { status: 401 }))
+  const fetchStub = stub(
+    globalThis,
+    "fetch",
+    () => Promise.resolve(new Response(JSON.stringify({ error: { message: "Invalid key" } }), { status: 401 })),
   );
 
   try {
     await assertRejects(
       () => provider.generate("Hi"),
       ModelProviderError,
-      "Invalid key"
+      "Invalid key",
     );
   } finally {
     fetchStub.restore();
@@ -113,7 +117,7 @@ Deno.test("OpenAIProvider - options mapping", async () => {
       temperature: 0.5,
       max_tokens: 100,
       top_p: 0.9,
-      stop: ["STOP"]
+      stop: ["STOP"],
     });
 
     const call = fetchSpy.calls[0];
@@ -129,7 +133,7 @@ Deno.test("OpenAIProvider - options mapping", async () => {
 });
 
 Deno.test("OpenAIProvider - token usage reporting", async () => {
-  const { EventLogger } = await import("../src/services/event_logger.ts");
+  const { EventLogger } = await import("../../src/services/event_logger.ts");
   const logger = new EventLogger({ prefix: "[Test]" });
   const logSpy = spy(logger, "log");
 
@@ -137,11 +141,13 @@ Deno.test("OpenAIProvider - token usage reporting", async () => {
 
   const mockResponse = {
     choices: [{ message: { content: "Hello" } }],
-    usage: { prompt_tokens: 10, completion_tokens: 20 }
+    usage: { prompt_tokens: 10, completion_tokens: 20 },
   };
 
-  const fetchStub = stub(globalThis, "fetch", () =>
-    Promise.resolve(new Response(JSON.stringify(mockResponse), { status: 200 }))
+  const fetchStub = stub(
+    globalThis,
+    "fetch",
+    () => Promise.resolve(new Response(JSON.stringify(mockResponse), { status: 200 })),
   );
 
   try {
@@ -164,7 +170,9 @@ Deno.test("OpenAIProvider - retry on 429", async () => {
     if (callCount === 1) {
       return Promise.resolve(new Response(JSON.stringify({ error: { message: "Rate limit" } }), { status: 429 }));
     }
-    return Promise.resolve(new Response(JSON.stringify({ choices: [{ message: { content: "Success after retry" } }] }), { status: 200 }));
+    return Promise.resolve(
+      new Response(JSON.stringify({ choices: [{ message: { content: "Success after retry" } }] }), { status: 200 }),
+    );
   });
 
   try {

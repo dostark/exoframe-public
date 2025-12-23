@@ -1,7 +1,10 @@
 import { IModelProvider, ModelOptions, ModelProviderError } from "../providers.ts";
 import { EventLogger } from "../../services/event_logger.ts";
-import { withRetry, RateLimitError, AuthenticationError } from "./common.ts";
+import { AuthenticationError, RateLimitError, withRetry } from "./common.ts";
 
+/**
+ * AnthropicProvider implements IModelProvider for Anthropic's Claude models.
+ */
 export class AnthropicProvider implements IModelProvider {
   public readonly id: string;
   private readonly apiKey: string;
@@ -10,6 +13,13 @@ export class AnthropicProvider implements IModelProvider {
   private readonly logger?: EventLogger;
   private readonly retryDelayMs: number;
 
+  /**
+   * @param options.apiKey Anthropic API key
+   * @param options.model Model name (default: claude-opus-4.5)
+   * @param options.id Optional provider id
+   * @param options.logger Optional event logger
+   * @param options.retryDelayMs Optional retry delay in ms
+   */
   constructor(options: { apiKey: string; model?: string; id?: string; logger?: EventLogger; retryDelayMs?: number }) {
     this.apiKey = options.apiKey;
     this.model = options.model ?? "claude-opus-4.5";
@@ -18,13 +28,19 @@ export class AnthropicProvider implements IModelProvider {
     this.retryDelayMs = options.retryDelayMs ?? 1000;
   }
 
+  /**
+   * Generate a completion from the model.
+   */
   async generate(prompt: string, options?: ModelOptions): Promise<string> {
     return await withRetry(
       () => this.attemptGenerate(prompt, options),
-      { maxRetries: 3, baseDelayMs: this.retryDelayMs }
+      { maxRetries: 3, baseDelayMs: this.retryDelayMs },
     );
   }
 
+  /**
+   * Internal: attempt a single completion call.
+   */
   private async attemptGenerate(prompt: string, options?: ModelOptions): Promise<string> {
     const response = await fetch(this.baseUrl, {
       method: "POST",
@@ -44,9 +60,11 @@ export class AnthropicProvider implements IModelProvider {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      const message = error.error?.message ?? response.statusText;
-
+      let message = response.statusText;
+      try {
+        const error = await response.json();
+        message = error.error?.message ?? message;
+      } catch {}
       if (response.status === 401) {
         throw new AuthenticationError(this.id, message);
       }
@@ -56,13 +74,12 @@ export class AnthropicProvider implements IModelProvider {
       if (response.status >= 500) {
         throw new ModelProviderError(`Server error: ${message}`, this.id);
       }
-
       throw new ModelProviderError(message, this.id);
     }
 
     const data = await response.json();
 
-    // Report token usage
+    // Report token usage if logger is present
     if (this.logger && data.usage) {
       this.logger.debug("llm.usage", this.id, {
         prompt_tokens: data.usage.input_tokens,
@@ -72,6 +89,6 @@ export class AnthropicProvider implements IModelProvider {
       });
     }
 
-    return data.content[0].text;
+    return data.content?.[0]?.text ?? "";
   }
 }
