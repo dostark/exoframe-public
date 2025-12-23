@@ -1,6 +1,7 @@
 // Edge-case and end-to-end tests for TUI dashboard
+import { TuiDashboard } from "../../src/tui/tui_dashboard.ts";
 Deno.test("TUI dashboard handles empty portal list and error state", async () => {
-  const dashboard = await launchTuiDashboard({ testMode: true });
+  const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
   // Simulate empty portal list
   dashboard.portalManager.service.listPortals = () => Promise.resolve([]);
   const portals = await dashboard.portalManager.service.listPortals();
@@ -19,7 +20,7 @@ Deno.test("TUI dashboard handles empty portal list and error state", async () =>
 });
 
 Deno.test("TUI dashboard rapid navigation and focus wraparound", async () => {
-  const dashboard = await launchTuiDashboard({ testMode: true });
+  const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
   dashboard.focusIndex = 0;
   // Simulate rapid tabbing
   for (let i = 0; i < 20; ++i) {
@@ -34,7 +35,7 @@ Deno.test("TUI dashboard rapid navigation and focus wraparound", async () => {
 });
 
 Deno.test("TUI dashboard notification edge cases", async () => {
-  const dashboard = await launchTuiDashboard({ testMode: true });
+  const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
   let notified = false;
   dashboard.notify = (_msg: string) => {
     notified = true;
@@ -46,7 +47,7 @@ Deno.test("TUI dashboard notification edge cases", async () => {
   if (!notified) throw new Error("Notification with null not handled");
 });
 Deno.test("TUI dashboard supports theming, accessibility, and keybinding customization", async () => {
-  const dashboard = await launchTuiDashboard({ testMode: true });
+  const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
   // Theming: set and get theme
   dashboard.theme = "dark";
   if (dashboard.theme !== "dark") throw new Error("Theme not set");
@@ -63,7 +64,7 @@ Deno.test("TUI dashboard supports theming, accessibility, and keybinding customi
   if (!custom) throw new Error("Custom keybinding not triggered");
 });
 Deno.test("TUI dashboard supports real-time updates and notifications", async () => {
-  const dashboard = await launchTuiDashboard({ testMode: true });
+  const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
   let notification = "";
   dashboard.notify = (msg: string) => {
     notification = msg;
@@ -105,7 +106,7 @@ import { assertEquals } from "https://deno.land/std@0.204.0/testing/asserts.ts";
 import { launchTuiDashboard } from "../../src/tui/tui_dashboard.ts";
 
 Deno.test("TUI dashboard launches and returns dashboard instance", async () => {
-  const dashboard = await launchTuiDashboard({ testMode: true });
+  const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
   assertEquals(dashboard.views.length, 4); // Portal, Plan, Monitor, Daemon
   assertEquals(
     dashboard.views.map((v) => v.name).sort(),
@@ -119,7 +120,7 @@ Deno.test("TUI dashboard launches and returns dashboard instance", async () => {
 });
 
 Deno.test("TUI dashboard handles keyboard navigation and focus", async () => {
-  const dashboard = await launchTuiDashboard({ testMode: true });
+  const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
   // Simulate dashboard with focus and keyboard event API
   dashboard.focusIndex = 0;
   dashboard.handleKey = function (key) {
@@ -143,7 +144,7 @@ Deno.test("TUI dashboard handles keyboard navigation and focus", async () => {
 });
 
 Deno.test("TUI dashboard renders portal list, details, actions, and status bar", async () => {
-  const dashboard = await launchTuiDashboard({ testMode: true });
+  const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
   // Add mock portals for rendering
   dashboard.portalManager.service.listPortals = () =>
     Promise.resolve([
@@ -179,4 +180,18 @@ Deno.test("TUI dashboard renders portal list, details, actions, and status bar",
   if (!status.includes("1") || !status.includes("PlanReviewerView")) {
     throw new Error("Status bar rendering failed");
   }
+});
+
+Deno.test("TUI dashboard production launch initializes views and renders without error", async () => {
+  // Test production launch in non-interactive mode
+  await launchTuiDashboard({ nonInteractive: true });
+  // If no error thrown, test passes
+  // In production, this would render to console, but here we just check initialization
+});
+
+Deno.test("TUI dashboard production launch initializes views and renders without error", async () => {
+  // Test production launch in non-interactive mode
+  await launchTuiDashboard({ nonInteractive: true });
+  // If no error thrown, test passes
+  // In production, this would render to console, but here we just check initialization
 });

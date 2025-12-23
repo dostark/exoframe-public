@@ -7,8 +7,33 @@ import { MonitorView } from "./monitor_view.ts";
 import { DaemonControlView } from "./daemon_control_view.ts";
 import { MockDaemonService, MockLogService, MockPlanService, MockPortalService } from "./tui_dashboard_mocks.ts";
 // import { denoTui } from "deno-tui"; // Uncomment and configure as needed
+import { Table } from "https://deno.land/x/cliffy@v0.25.7/mod.ts";
 
-export function launchTuiDashboard(options: { testMode?: boolean } = {}) {
+export interface TuiDashboard {
+  views: any[];
+  focusIndex: number;
+  handleKey(key: string): number;
+  renderStatusBar(): string;
+  portalManager: {
+    service: any;
+    renderPortalList: (portals: any[]) => string;
+  };
+  notify(msg: string): void;
+  theme: string;
+  accessibility: {
+    highContrast: boolean;
+    screenReader: boolean;
+  };
+  keybindings: {
+    nextView: string;
+    prevView: string;
+    notify: string;
+  };
+}
+
+export async function launchTuiDashboard(
+  options: { testMode?: boolean; nonInteractive?: boolean } = {},
+): Promise<TuiDashboard | undefined> {
   // Minimal idiomatic dashboard object for TDD
   const portalService = new MockPortalService();
   const planService = new MockPlanService();
@@ -65,13 +90,42 @@ export function launchTuiDashboard(options: { testMode?: boolean } = {}) {
         prevView: "Shift+Tab",
         notify: "n",
       },
-    };
+    } as TuiDashboard;
   }
-  // TODO: Integrate deno-tui and all views into a unified dashboard for production
-  // Example: const tui = new denoTui(...);
-  // views.forEach(v => tui.addView(v));
-  // tui.run();
-  throw new Error("TUI dashboard integration not yet implemented");
+  // Production TUI integration using console-based rendering
+  // TODO: Replace with full deno-tui integration when available
+  console.clear();
+  console.log("ExoFrame TUI Dashboard");
+  console.log("======================");
+
+  const portalView = views[0];
+  const portals = await portalView.service.listPortals();
+
+  if (portals.length > 0) {
+    const table = new Table();
+    table.header(["Alias", "Target Path", "Status", "Permissions"]);
+    for (const p of portals) {
+      table.push([p.alias, p.targetPath, p.status, p.permissions]);
+    }
+    table.render();
+  } else {
+    console.log("No portals configured.");
+  }
+
+  console.log("\nStatus: Ready");
+  console.log("Navigation: Tab to switch views (not implemented in console mode)");
+  console.log("Actions: Portal actions available via CLI (exoctl portal)");
+  console.log("Press Enter to exit...");
+
+  if (!options.nonInteractive) {
+    // Wait for enter to exit
+    for await (const chunk of Deno.stdin.readable) {
+      const input = new TextDecoder().decode(chunk);
+      if (input.includes("\n")) break;
+    }
+  }
+
+  console.log("Exiting dashboard.");
 }
 
 if (import.meta.main) {
