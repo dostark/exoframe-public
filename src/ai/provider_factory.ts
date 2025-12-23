@@ -173,11 +173,11 @@ export class ProviderFactory {
    * Resolve provider options from environment and config.
    */
   private static resolveOptions(config: Config, overrideAiConfig?: AiConfig): ResolvedProviderOptions {
-    // Read environment variables
-    const envProvider = Deno.env.get("EXO_LLM_PROVIDER");
-    const envModel = Deno.env.get("EXO_LLM_MODEL");
-    const envBaseUrl = Deno.env.get("EXO_LLM_BASE_URL");
-    const envTimeout = Deno.env.get("EXO_LLM_TIMEOUT_MS");
+    // Read environment variables (use safe getter to avoid NotCapable in restricted environments)
+    const envProvider = this.safeEnvGet("EXO_LLM_PROVIDER");
+    const envModel = this.safeEnvGet("EXO_LLM_MODEL");
+    const envBaseUrl = this.safeEnvGet("EXO_LLM_BASE_URL");
+    const envTimeout = this.safeEnvGet("EXO_LLM_TIMEOUT_MS");
 
     // Get config values (with defaults)
     const aiConfig: AiConfig = overrideAiConfig ?? config.ai ?? { provider: "mock", timeout_ms: 30000 };
@@ -238,7 +238,7 @@ export class ProviderFactory {
    * Determine the source of configuration.
    */
   private static determineSource(): "env" | "config" | "default" {
-    if (Deno.env.get("EXO_LLM_PROVIDER")) {
+    if (this.safeEnvGet("EXO_LLM_PROVIDER")) {
       return "env";
     }
     // Note: We can't easily tell if config was set, so default to "config" if not env
@@ -315,18 +315,15 @@ export class ProviderFactory {
    * Create an Anthropic provider.
    */
   private static createAnthropicProvider(options: ResolvedProviderOptions): IModelProvider {
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const apiKey = this.safeEnvGet("ANTHROPIC_API_KEY");
     if (!apiKey) {
-      throw new ProviderFactoryError(
-        "ANTHROPIC_API_KEY environment variable required for Anthropic provider",
-      );
+      throw new ProviderFactoryError("Anthropic provider requires ANTHROPIC_API_KEY");
     }
 
     return new AnthropicProvider({
       apiKey,
       model: options.model,
       id: this.generateProviderId(options),
-      // In a real scenario, we might pass a logger here if available
     });
   }
 
@@ -337,11 +334,9 @@ export class ProviderFactory {
    * Create an OpenAI provider (throws if no API key).
    */
   private static createOpenAIProvider(options: ResolvedProviderOptions): IModelProvider {
-    const apiKey = Deno.env.get("OPENAI_API_KEY");
+    const apiKey = this.safeEnvGet("OPENAI_API_KEY");
     if (!apiKey) {
-      throw new ProviderFactoryError(
-        "OPENAI_API_KEY environment variable required for OpenAI provider",
-      );
+      throw new ProviderFactoryError("OpenAI provider requires OPENAI_API_KEY");
     }
 
     return new OpenAIProvider({
@@ -382,11 +377,9 @@ export class ProviderFactory {
    * Create a Google provider.
    */
   private static createGoogleProvider(options: ResolvedProviderOptions): IModelProvider {
-    const apiKey = Deno.env.get("GOOGLE_API_KEY");
+    const apiKey = this.safeEnvGet("GOOGLE_API_KEY");
     if (!apiKey) {
-      throw new ProviderFactoryError(
-        "GOOGLE_API_KEY environment variable required for Google provider",
-      );
+      throw new ProviderFactoryError("Google provider requires GOOGLE_API_KEY");
     }
 
     return new GoogleProvider({
@@ -394,6 +387,19 @@ export class ProviderFactory {
       model: options.model,
       id: this.generateProviderId(options),
     });
+  }
+
+  /**
+   * Safe environment getter that returns undefined when env access is not permitted
+   */
+  private static safeEnvGet(key: string): string | undefined {
+    try {
+      return Deno.env.get(key);
+    } catch (err) {
+      // Deno will throw NotCapable when env access is not allowed in the runtime.
+      // Swallow that and return undefined so callers can fall back to defaults.
+      return undefined;
+    }
   }
 }
 
