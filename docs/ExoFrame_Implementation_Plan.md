@@ -6340,7 +6340,7 @@ Create the Daemon Control view to show daemon status, uptime, and errors. Provid
 [x] Display and manage daemon logs.
 [x] Ensure safe handling of daemon lifecycle events.
 
-### Step 9.8: Implement Agent Status View
+### Step 9.9: Implement Agent Status View
 
 **Description:**
 Develop the Agent Status view to list all registered agents, show their health, last activity, and agent-specific logs/errors. Add clear indicators for agent availability and issues.
@@ -6356,7 +6356,7 @@ Develop the Agent Status view to list all registered agents, show their health, 
 [ ] Agent list is always up to date; health and issues are clearly shown.
 [ ] No missing or stale agent data.
 
-### Step 9.9: TUI Integration, Testing, and UX Polish
+### Step 9.10: TUI Integration, Testing, and UX Polish
 
 - Scaffold a minimal TUI entrypoint (e.g., tui_portal_manager.ts) to launch PortalManagerView in the terminal.
   - Integrate with the deno-tui library for terminal UI rendering and event handling.
@@ -6384,7 +6384,7 @@ Develop the Agent Status view to list all registered agents, show their health, 
 [ ] All views work together seamlessly; navigation and notifications are reliable.
 [ ] Theming and accessibility meet requirements; documentation is complete and accurate.
 
-### Step 9.9: Implement Split View (Multi-Pane) Functionality
+### Step 9.11: Implement Split View (Multi-Pane) Functionality
 
 **Description:**
 Add the ability to split the TUI into two or more panes, each displaying a different view (e.g., Monitor and Plan Reviewer). Support dynamic resizing, focus switching, preset layouts, and visual indicators for active/inactive panes. Enable actions in one pane to update/filter content in another.
@@ -6401,7 +6401,7 @@ Add the ability to split the TUI into two or more panes, each displaying a diffe
 [ ] No UI glitches or crashes when resizing or switching panes.
 [ ] Actions in one pane can update/filter content in another as expected.
 
-### Step 9.11: Save and Restore Preferred Dashboard Views
+### Step 9.12: Save and Restore Preferred Dashboard Views
 
 **Description:**
 Implement persistent storage of user’s preferred dashboard layout and active views (e.g., which panes are open, their arrangement, and which views are shown in each pane). On dashboard launch, automatically restore the last used layout and views. Provide a command/menu to reset to default. Store preferences in a config file and ensure compatibility across upgrades and terminal sizes.
