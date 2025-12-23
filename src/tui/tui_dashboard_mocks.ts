@@ -116,3 +116,57 @@ export class MockDaemonService {
     return Promise.resolve([]);
   }
 }
+
+/**
+ * MockAgentService
+ * Mock implementation of the AgentService interface for TDD and dashboard wiring tests.
+ * Returns static agent data for testing.
+ */
+export class MockAgentService {
+  /** Returns a list of mock agents. */
+  listAgents() {
+    return Promise.resolve([
+      {
+        id: "agent-1",
+        name: "CodeReviewer",
+        model: "gpt-4",
+        status: "active" as const,
+        lastActivity: new Date().toISOString(),
+        capabilities: ["code-review", "testing"],
+      },
+      {
+        id: "agent-2",
+        name: "DocWriter",
+        model: "claude-3",
+        status: "inactive" as const,
+        lastActivity: new Date(Date.now() - 3600000).toISOString(),
+        capabilities: ["documentation"],
+      },
+    ]);
+  }
+
+  /** Returns mock health for an agent. */
+  getAgentHealth(agentId: string) {
+    return Promise.resolve({
+      status: agentId === "agent-1" ? "healthy" as const : "warning" as const,
+      issues: agentId === "agent-1" ? [] : ["High memory usage"],
+      uptime: 86400, // 1 day
+    });
+  }
+
+  /** Returns mock logs for an agent. */
+  getAgentLogs(agentId: string, limit = 50) {
+    return Promise.resolve([
+      {
+        timestamp: new Date().toISOString(),
+        level: "info" as const,
+        message: `Agent ${agentId} processed request`,
+      },
+      {
+        timestamp: new Date(Date.now() - 60000).toISOString(),
+        level: "warn" as const,
+        message: `Agent ${agentId} encountered minor issue`,
+      },
+    ]);
+  }
+}

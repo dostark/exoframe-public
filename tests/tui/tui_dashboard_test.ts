@@ -26,12 +26,12 @@ Deno.test("TUI dashboard rapid navigation and focus wraparound", async () => {
   for (let i = 0; i < 20; ++i) {
     dashboard.handleKey("tab");
   }
-  if (dashboard.focusIndex !== 0 && dashboard.views.length === 4) throw new Error("Focus wraparound failed");
+  if (dashboard.focusIndex !== 0 && dashboard.views.length === 5) throw new Error("Focus wraparound failed");
   // Simulate rapid shift+tab
   for (let i = 0; i < 20; ++i) {
     dashboard.handleKey("shift+tab");
   }
-  if (dashboard.focusIndex !== 0 && dashboard.views.length === 4) throw new Error("Reverse focus wraparound failed");
+  if (dashboard.focusIndex !== 0 && dashboard.views.length === 5) throw new Error("Reverse focus wraparound failed");
 });
 
 Deno.test("TUI dashboard notification edge cases", async () => {
@@ -107,10 +107,11 @@ import { launchTuiDashboard } from "../../src/tui/tui_dashboard.ts";
 
 Deno.test("TUI dashboard launches and returns dashboard instance", async () => {
   const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
-  assertEquals(dashboard.views.length, 4); // Portal, Plan, Monitor, Daemon
+  assertEquals(dashboard.views.length, 5); // Portal, Plan, Monitor, Daemon, Agent
   assertEquals(
     dashboard.views.map((v) => v.name).sort(),
     [
+      "AgentStatusView",
       "DaemonControlView",
       "MonitorView",
       "PlanReviewerView",
@@ -137,8 +138,10 @@ Deno.test("TUI dashboard handles keyboard navigation and focus", async () => {
   assertEquals(dashboard.handleKey("tab"), 1);
   assertEquals(dashboard.handleKey("tab"), 2);
   assertEquals(dashboard.handleKey("tab"), 3);
+  assertEquals(dashboard.handleKey("tab"), 4);
   assertEquals(dashboard.handleKey("tab"), 0);
   // Shift+Tab cycles focus backward
+  assertEquals(dashboard.handleKey("shift+tab"), 4);
   assertEquals(dashboard.handleKey("shift+tab"), 3);
   assertEquals(dashboard.handleKey("shift+tab"), 2);
 });
@@ -179,6 +182,34 @@ Deno.test("TUI dashboard renders portal list, details, actions, and status bar",
   const status = dashboard.renderStatusBar();
   if (!status.includes("1") || !status.includes("PlanReviewerView")) {
     throw new Error("Status bar rendering failed");
+  }
+});
+
+Deno.test("TUI dashboard agent status view displays agents and health", async () => {
+  const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
+  const agentView = dashboard.views.find((v) => v.name === "AgentStatusView");
+  if (!agentView) throw new Error("AgentStatusView not found");
+
+  // Test agent list rendering
+  const listRender = await (agentView as any).renderAgentList();
+  if (!listRender.includes("CodeReviewer") || !listRender.includes("DocWriter")) {
+    throw new Error("Agent list rendering failed");
+  }
+  if (!listRender.includes("🟢") || !listRender.includes("🟡")) {
+    throw new Error("Agent status indicators missing");
+  }
+
+  // Test agent selection and details
+  (agentView as any).selectAgent("agent-1");
+  const detailsRender = await (agentView as any).renderAgentDetails();
+  if (!detailsRender.includes("agent-1") || !detailsRender.includes("HEALTHY")) {
+    throw new Error("Agent details rendering failed");
+  }
+
+  // Test focusable elements
+  const focusables = (agentView as any).getFocusableElements();
+  if (!focusables.includes("agent-list") || !focusables.includes("agent-details")) {
+    throw new Error("Focusable elements missing");
   }
 });
 

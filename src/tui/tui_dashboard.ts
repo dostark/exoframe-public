@@ -5,7 +5,14 @@ import { PortalManagerView } from "./portal_manager_view.ts";
 import { PlanReviewerView } from "./plan_reviewer_view.ts";
 import { MonitorView } from "./monitor_view.ts";
 import { DaemonControlView } from "./daemon_control_view.ts";
-import { MockDaemonService, MockLogService, MockPlanService, MockPortalService } from "./tui_dashboard_mocks.ts";
+import { AgentStatusView } from "./agent_status_view.ts";
+import {
+  MockAgentService,
+  MockDaemonService,
+  MockLogService,
+  MockPlanService,
+  MockPortalService,
+} from "./tui_dashboard_mocks.ts";
 // import { denoTui } from "deno-tui"; // Uncomment and configure as needed
 import { Table } from "https://deno.land/x/cliffy@v0.25.7/mod.ts";
 
@@ -39,11 +46,13 @@ export async function launchTuiDashboard(
   const planService = new MockPlanService();
   const logService = new MockLogService();
   const daemonService = new MockDaemonService();
+  const agentService = new MockAgentService();
   const views = [
     Object.assign(new PortalManagerView(portalService), { name: "PortalManagerView" }),
     Object.assign(new PlanReviewerView(planService), { name: "PlanReviewerView" }),
     Object.assign(new MonitorView(logService), { name: "MonitorView" }),
     Object.assign(new DaemonControlView(daemonService), { name: "DaemonControlView" }),
+    Object.assign(new AgentStatusView(agentService), { name: "AgentStatusView" }),
   ].map((view) => {
     const v: any = view;
     if (typeof v.getFocusableElements !== "function") {
