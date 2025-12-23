@@ -6,12 +6,14 @@ import { PlanReviewerView } from "./plan_reviewer_view.ts";
 import { MonitorView } from "./monitor_view.ts";
 import { DaemonControlView } from "./daemon_control_view.ts";
 import { AgentStatusView } from "./agent_status_view.ts";
+import { RequestManagerView } from "./request_manager_view.ts";
 import {
   MockAgentService,
   MockDaemonService,
   MockLogService,
   MockPlanService,
   MockPortalService,
+  MockRequestService,
 } from "./tui_dashboard_mocks.ts";
 // import { denoTui } from "deno-tui"; // Uncomment and configure as needed
 import { Table } from "https://deno.land/x/cliffy@v0.25.7/mod.ts";
@@ -29,6 +31,7 @@ export interface Pane {
 export interface TuiDashboard {
   panes: Pane[];
   activePaneId: string;
+  views: any[]; // Add views for test mode splitting
   handleKey(key: string): number;
   renderStatusBar(): string;
   portalManager: {
@@ -67,12 +70,14 @@ export async function launchTuiDashboard(
   const logService = new MockLogService();
   const daemonService = new MockDaemonService();
   const agentService = new MockAgentService();
+  const requestService = new MockRequestService();
   const views = [
     Object.assign(new PortalManagerView(portalService), { name: "PortalManagerView" }),
     Object.assign(new PlanReviewerView(planService), { name: "PlanReviewerView" }),
     Object.assign(new MonitorView(logService), { name: "MonitorView" }),
     Object.assign(new DaemonControlView(daemonService), { name: "DaemonControlView" }),
     Object.assign(new AgentStatusView(agentService), { name: "AgentStatusView" }),
+    Object.assign(new RequestManagerView(requestService), { name: "RequestManagerView" }),
   ].map((view) => {
     const v: any = view;
     if (typeof v.getFocusableElements !== "function") {
@@ -104,6 +109,7 @@ export async function launchTuiDashboard(
     return {
       panes,
       activePaneId,
+      views, // Add views for splitting logic
       handleKey(key: string) {
         if (key === "tab") {
           const currentIndex = panes.findIndex((p) => p.id === this.activePaneId);
@@ -117,6 +123,55 @@ export async function launchTuiDashboard(
           this.activePaneId = panes[prevIndex].id;
           panes.forEach((p) => p.focused = false);
           panes[prevIndex].focused = true;
+        } else if (key === "v") { // Split vertical
+          const activePane = panes.find((p) => p.id === this.activePaneId);
+          if (activePane && panes.length < 4) {
+            const newId = `pane-${panes.length}`;
+            const halfWidth = Math.floor(activePane.width / 2);
+            activePane.width = halfWidth;
+            const newPane: Pane = {
+              id: newId,
+              view: this.views[panes.length % this.views.length],
+              x: activePane.x + halfWidth,
+              y: activePane.y,
+              width: activePane.width,
+              height: activePane.height,
+              focused: false,
+            };
+            panes.push(newPane);
+          }
+        } else if (key === "h") { // Split horizontal
+          const activePane = panes.find((p) => p.id === this.activePaneId);
+          if (activePane && panes.length < 4) {
+            const newId = `pane-${panes.length}`;
+            const halfHeight = Math.floor(activePane.height / 2);
+            activePane.height = halfHeight;
+            const newPane: Pane = {
+              id: newId,
+              view: this.views[panes.length % this.views.length],
+              x: activePane.x,
+              y: activePane.y + halfHeight,
+              width: activePane.width,
+              height: activePane.height,
+              focused: false,
+            };
+            panes.push(newPane);
+          }
+        } else if (key === "c") { // Close pane
+          if (panes.length > 1) {
+            const index = panes.findIndex((p) => p.id === this.activePaneId);
+            panes.splice(index, 1);
+            this.activePaneId = panes[0].id;
+            panes[0].focused = true;
+          }
+        } else if (key === "enter") { // Enter
+          // No-op for test
+        } else if (key === "s") { // Save layout
+          if (this.saveLayout) this.saveLayout();
+        } else if (key === "r") { // Restore layout
+          if (this.restoreLayout) this.restoreLayout();
+        } else if (key === "d") { // Reset to default
+          if (this.resetToDefault) this.resetToDefault();
         }
         return panes.findIndex((p) => p.id === this.activePaneId);
       },
@@ -202,12 +257,12 @@ export async function launchTuiDashboard(
           this.activePaneId = paneId;
         }
       },
-      async saveLayout() {
+      saveLayout() {
         // Mock save - in production this would write to file
         // For testing, we can override this method
         return Promise.resolve();
       },
-      async restoreLayout() {
+      restoreLayout() {
         // Mock restore - in production this would read from file
         // For testing, we can override this method
         return Promise.resolve();
@@ -276,7 +331,7 @@ export async function launchTuiDashboard(
         }
         activePaneId = layout.activePaneId || panes[0]?.id || "main";
       }
-    } catch (error) {
+    } catch (_error) {
       // If restore fails, keep default layout
       console.log("Using default layout (restore failed)");
     }

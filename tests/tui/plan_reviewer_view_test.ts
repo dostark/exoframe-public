@@ -227,3 +227,179 @@ Deno.test("PlanReviewerView: works with DB-like service", async () => {
   await view.reject("p", "r", "reason");
   assert(updated && logged);
 });
+
+// PlanReviewerTuiSession keyboard interaction tests
+Deno.test("PlanReviewerTuiSession keyboard navigation - down arrow", async () => {
+  const plans = [
+    { id: "plan1", title: "Plan 1" },
+    { id: "plan2", title: "Plan 2" },
+    { id: "plan3", title: "Plan 3" },
+  ];
+  const session = new PlanReviewerTuiSession(plans, new MinimalPlanServiceMock());
+
+  // Start at index 0
+  assertEquals(session.getSelectedIndex(), 0);
+
+  // Press down - should go to index 1
+  await session.handleKey("down");
+  assertEquals(session.getSelectedIndex(), 1);
+
+  // Press down again - should go to index 2
+  await session.handleKey("down");
+  assertEquals(session.getSelectedIndex(), 2);
+
+  // Press down at end - should stay at index 2
+  await session.handleKey("down");
+  assertEquals(session.getSelectedIndex(), 2);
+});
+
+Deno.test("PlanReviewerTuiSession keyboard navigation - up arrow", async () => {
+  const plans = [
+    { id: "plan1", title: "Plan 1" },
+    { id: "plan2", title: "Plan 2" },
+    { id: "plan3", title: "Plan 3" },
+  ];
+  const session = new PlanReviewerTuiSession(plans, new MinimalPlanServiceMock());
+
+  // Start at index 2
+  session.setSelectedIndex(2);
+  assertEquals(session.getSelectedIndex(), 2);
+
+  // Press up - should go to index 1
+  await session.handleKey("up");
+  assertEquals(session.getSelectedIndex(), 1);
+
+  // Press up again - should go to index 0
+  await session.handleKey("up");
+  assertEquals(session.getSelectedIndex(), 0);
+
+  // Press up at beginning - should stay at index 0
+  await session.handleKey("up");
+  assertEquals(session.getSelectedIndex(), 0);
+});
+
+Deno.test("PlanReviewerTuiSession keyboard navigation - end key", async () => {
+  const plans = [
+    { id: "plan1", title: "Plan 1" },
+    { id: "plan2", title: "Plan 2" },
+    { id: "plan3", title: "Plan 3" },
+  ];
+  const session = new PlanReviewerTuiSession(plans, new MinimalPlanServiceMock());
+
+  // Start at index 0
+  assertEquals(session.getSelectedIndex(), 0);
+
+  // Press end - should go to last index (2)
+  await session.handleKey("end");
+  assertEquals(session.getSelectedIndex(), 2);
+});
+
+Deno.test("PlanReviewerTuiSession keyboard navigation - home key", async () => {
+  const plans = [
+    { id: "plan1", title: "Plan 1" },
+    { id: "plan2", title: "Plan 2" },
+    { id: "plan3", title: "Plan 3" },
+  ];
+  const session = new PlanReviewerTuiSession(plans, new MinimalPlanServiceMock());
+
+  // Start at index 2
+  session.setSelectedIndex(2);
+  assertEquals(session.getSelectedIndex(), 2);
+
+  // Press home - should go to index 0
+  await session.handleKey("home");
+  assertEquals(session.getSelectedIndex(), 0);
+});
+
+Deno.test("PlanReviewerTuiSession keyboard actions - a (approve plan)", async () => {
+  let approvedPlan = "";
+  const plans = [
+    { id: "plan1", title: "Plan 1" },
+    { id: "plan2", title: "Plan 2" },
+  ];
+  const mockService = new MinimalPlanServiceMock();
+  mockService.approve = (planId: string) => {
+    approvedPlan = planId;
+    return Promise.resolve(true);
+  };
+
+  const session = new PlanReviewerTuiSession(plans, mockService);
+
+  // Select first plan and press a
+  session.setSelectedIndex(0);
+  await session.handleKey("a");
+  assertEquals(approvedPlan, "plan1");
+
+  // Select second plan and press a
+  session.setSelectedIndex(1);
+  await session.handleKey("a");
+  assertEquals(approvedPlan, "plan2");
+});
+
+Deno.test("PlanReviewerTuiSession keyboard actions - r (reject plan)", async () => {
+  let rejectedPlan = "";
+  const plans = [
+    { id: "plan1", title: "Plan 1" },
+    { id: "plan2", title: "Plan 2" },
+  ];
+  const mockService = new MinimalPlanServiceMock();
+  mockService.reject = (planId: string) => {
+    rejectedPlan = planId;
+    return Promise.resolve(true);
+  };
+
+  const session = new PlanReviewerTuiSession(plans, mockService);
+
+  // Select first plan and press r
+  session.setSelectedIndex(0);
+  await session.handleKey("r");
+  assertEquals(rejectedPlan, "plan1");
+
+  // Select second plan and press r
+  session.setSelectedIndex(1);
+  await session.handleKey("r");
+  assertEquals(rejectedPlan, "plan2");
+});
+
+Deno.test("PlanReviewerTuiSession keyboard actions - error handling", async () => {
+  const plans = [{ id: "plan1", title: "Plan 1" }];
+  const mockService = new MinimalPlanServiceMock();
+  mockService.approve = () => {
+    throw new Error("Failed to approve plan");
+  };
+
+  const session = new PlanReviewerTuiSession(plans, mockService);
+
+  // Try to approve plan - should handle error gracefully
+  await session.handleKey("a");
+  assertEquals(session.getStatusMessage(), "Error: Failed to approve plan");
+});
+
+Deno.test("PlanReviewerTuiSession keyboard actions - no plans", async () => {
+  const session = new PlanReviewerTuiSession([], new MinimalPlanServiceMock());
+
+  // Keyboard actions should be ignored when no plans
+  await session.handleKey("down");
+  await session.handleKey("up");
+  await session.handleKey("a");
+  await session.handleKey("r");
+
+  // Should remain at index 0
+  assertEquals(session.getSelectedIndex(), 0);
+});
+
+Deno.test("PlanReviewerTuiSession keyboard actions - invalid keys ignored", async () => {
+  const plans = [{ id: "plan1", title: "Plan 1" }];
+  const session = new PlanReviewerTuiSession(plans, new MinimalPlanServiceMock());
+
+  const initialIndex = session.getSelectedIndex();
+
+  // Invalid keys should be ignored
+  await session.handleKey("invalid");
+  await session.handleKey("x");
+  await session.handleKey("y");
+  await session.handleKey("z");
+
+  // Selection should remain unchanged
+  assertEquals(session.getSelectedIndex(), initialIndex);
+});

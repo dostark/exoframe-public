@@ -14,7 +14,7 @@ Deno.test("TUI dashboard handles empty portal list and error state", async () =>
   let errorCaught = false;
   try {
     await dashboard.portalManager.service.listPortals();
-  } catch (e) {
+  } catch (_e) {
     errorCaught = true;
   }
   if (!errorCaught) throw new Error("Error state not handled");
@@ -207,7 +207,7 @@ Deno.test("TUI dashboard layout save and restore", async () => {
 
   // Mock save
   let savedLayout: any = null;
-  dashboard.saveLayout = async () => {
+  dashboard.saveLayout = () => {
     savedLayout = {
       panes: dashboard.panes.map((p) => ({
         id: p.id,
@@ -233,7 +233,7 @@ Deno.test("TUI dashboard layout save and restore", async () => {
   assertEquals(dashboard.activePaneId, "main");
 
   // Mock restore
-  dashboard.restoreLayout = async () => {
+  dashboard.restoreLayout = () => {
     if (savedLayout) {
       dashboard.panes.length = 0;
       for (const p of savedLayout.panes) {
@@ -271,6 +271,107 @@ Deno.test("TUI dashboard reset to default", async () => {
   assertEquals(dashboard.activePaneId, "main");
   assertEquals(dashboard.panes[0].view.name, "PortalManagerView");
 });
+
+Deno.test("TUI dashboard comprehensive keyboard actions test", async () => {
+  const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;
+
+  // Start with default single pane
+  assertEquals(dashboard.panes.length, 1);
+  assertEquals(dashboard.activePaneId, "main");
+
+  // Test Tab navigation (should wrap with single pane)
+  dashboard.handleKey("tab");
+  assertEquals(dashboard.activePaneId, "main");
+
+  // Test Shift+Tab navigation
+  dashboard.handleKey("shift+tab");
+  assertEquals(dashboard.activePaneId, "main");
+
+  // Test vertical split
+  dashboard.handleKey("v");
+  assertEquals(dashboard.panes.length, 2);
+  assertEquals(dashboard.panes[0].width, 40); // Half width
+  assertEquals(dashboard.panes[1].x, 40); // Offset by half width
+
+  // Test horizontal split on second pane
+  dashboard.switchPane(dashboard.panes[1].id);
+  dashboard.handleKey("h");
+  assertEquals(dashboard.panes.length, 3);
+  assertEquals(dashboard.panes[1].height, 12); // Half height
+  assertEquals(dashboard.panes[2].y, 12); // Offset by half height
+
+  // Test pane navigation with multiple panes
+  dashboard.switchPane("main");
+  dashboard.handleKey("tab"); // Should go to second pane
+  assertEquals(dashboard.activePaneId, dashboard.panes[1].id);
+  dashboard.handleKey("tab"); // Should go to third pane
+  assertEquals(dashboard.activePaneId, dashboard.panes[2].id);
+  dashboard.handleKey("tab"); // Should wrap to first pane
+  assertEquals(dashboard.activePaneId, "main");
+
+  // Test reverse navigation
+  dashboard.handleKey("shift+tab"); // Should go to third pane
+  assertEquals(dashboard.activePaneId, dashboard.panes[2].id);
+  dashboard.handleKey("shift+tab"); // Should go to second pane
+  assertEquals(dashboard.activePaneId, dashboard.panes[1].id);
+
+  // Test close pane (close third pane)
+  dashboard.switchPane(dashboard.panes[2].id);
+  dashboard.handleKey("c");
+  assertEquals(dashboard.panes.length, 2);
+  assertEquals(dashboard.activePaneId, dashboard.panes[0].id); // Should switch to first pane
+
+  // Test Enter key (no-op)
+  dashboard.handleKey("enter");
+  assertEquals(dashboard.panes.length, 2); // Should remain unchanged
+
+  // Test invalid key (should be ignored)
+  dashboard.handleKey("invalid");
+  assertEquals(dashboard.panes.length, 2); // Should remain unchanged
+
+  // Test save layout
+  let layoutSaved = false;
+  dashboard.saveLayout = () => {
+    layoutSaved = true;
+    return Promise.resolve();
+  };
+  dashboard.handleKey("s");
+  assertEquals(layoutSaved, true);
+
+  // Test restore layout
+  let layoutRestored = false;
+  dashboard.restoreLayout = () => {
+    layoutRestored = true;
+    return Promise.resolve();
+  };
+  dashboard.handleKey("r");
+  assertEquals(layoutRestored, true);
+
+  // Test reset to default
+  let layoutReset = false;
+  dashboard.resetToDefault = () => {
+    layoutReset = true;
+    // Actually reset the panes
+    dashboard.panes.length = 0;
+    dashboard.panes.push({
+      id: "main",
+      view: { name: "PortalManagerView" },
+      x: 0,
+      y: 0,
+      width: 80,
+      height: 24,
+      focused: true,
+    });
+    dashboard.activePaneId = "main";
+  };
+  dashboard.handleKey("d");
+  assertEquals(layoutReset, true);
+
+  // Test invalid key (should be ignored, no crash)
+  dashboard.handleKey("invalid");
+  assertEquals(dashboard.panes.length, 1); // Should remain unchanged
+});
+
 Deno.test("TUI dashboard production launch initializes views and renders without error", async () => {
   // Test production launch in non-interactive mode
   await launchTuiDashboard({ nonInteractive: true });

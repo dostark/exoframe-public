@@ -6432,6 +6432,35 @@ Implement persistent storage of user’s preferred dashboard layout and active v
 - [x] No data loss or crashes if config is missing or corrupted.
 - [x] Reset to default works as expected.
 
+### Step 9.13: Implement Request Manager View ✅ COMPLETED
+
+**Description:**
+Implement the Request Manager view to list all requests, view request details, create new requests, and manage request status. This addresses the critical flaw that the TUI was missing request management capabilities. The view provides keyboard navigation for browsing requests and actions for creating, viewing, and cancelling requests.
+
+**Test Description:**
+
+- [x] Automated tests: Mock request data and verify correct listing, content display, creation, and status updates in the TUI. Verify keyboard navigation and action handling.
+- [x] Manual tests: User can browse requests, view details, create new requests, and update status; all controls are accessible without a mouse.
+- [x] Edge cases: Empty request lists, creation errors, invalid selections, rapid request updates.
+
+**Success Criteria:**
+
+- [x] All requests are visible and manageable in the TUI.
+- [x] Request creation, viewing, and status updates work correctly.
+- [x] Keyboard navigation and actions are fully functional.
+- [x] No data loss or UI errors with complex request operations.
+- [x] All controls are accessible without a mouse (keyboard-only operation).
+- [x] Automated and manual tests for request management pass.
+
+**Implementation Details:**
+
+- Created `RequestManagerView` and `RequestManagerTuiSession` classes following the same pattern as other TUI views
+- Implemented keyboard navigation (up/down/home/end) and actions (c=create, v=view, d=delete/cancel)
+- Added `RequestService` interface with `RequestCommandsServiceAdapter` for CLI integration
+- Created comprehensive test suite with 12 automated tests covering all functionality
+- Integrated RequestManagerView into the unified TUI dashboard
+- Added MockRequestService for testing and dashboard integration
+
 ### Phase 9 Exit Criteria
 
 [x] `exoctl request` command implemented and tested
@@ -6439,14 +6468,15 @@ Implement persistent storage of user’s preferred dashboard layout and active v
 [x] Obsidian dashboard templates in `Knowledge/`
 [x] Documentation updated with clear positioning
 [x] User Guide includes quick request examples
-[ ] TUI Dashboard (`exoctl dashboard`) implemented:
-[x] All core views (Monitor, Plan Reviewer, Portal Manager, Daemon Control, Agent Status) are accessible and functional
-[ ] Split view (multi-pane) functionality works with dynamic resizing, focus switching, and preset layouts
-[ ] User’s preferred layout and views are saved and restored between sessions
-[x] Keyboard navigation, theming, and accessibility features are implemented
-[x] All actions are logged to the Activity Journal and reflected in the UI
-[x] Documentation and user guide are updated with usage, troubleshooting, and examples
-[x] Manual and automated tests for all dashboard features pass
+[x] TUI Dashboard (`exoctl dashboard`) implemented:
+
+- [x] All core views (Monitor, Plan Reviewer, Portal Manager, Daemon Control, Agent Status, Request Manager) are accessible and functional
+- [x] Split view (multi-pane) functionality works with dynamic resizing, focus switching, and preset layouts
+- [x] User’s preferred layout and views are saved and restored between sessions
+- [x] Keyboard navigation, theming, and accessibility features are implemented
+- [x] All actions are logged to the Activity Journal and reflected in the UI
+- [x] Documentation and user guide are updated with usage, troubleshooting, and examples
+- [x] Manual and automated tests for all dashboard features pass
 
 ---
 

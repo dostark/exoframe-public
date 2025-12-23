@@ -418,3 +418,210 @@ Deno.test("TUI: updates portal list and reflects state in real time", () => {
   // Should clamp selection to 0
   assertEquals(tui.getSelectedIndex(), 0);
 });
+
+// PortalManagerTuiSession keyboard interaction tests
+Deno.test("PortalManagerTuiSession keyboard navigation - down arrow", () => {
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+    { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
+    { alias: "API", status: "active", targetPath: "/Portals/API" },
+  ]);
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+
+  // Start at index 0
+  assertEquals(tui.getSelectedIndex(), 0);
+
+  // Press down - should go to index 1
+  tui.handleKey("down");
+  assertEquals(tui.getSelectedIndex(), 1);
+
+  // Press down again - should go to index 2
+  tui.handleKey("down");
+  assertEquals(tui.getSelectedIndex(), 2);
+
+  // Press down at end - should stay at index 2
+  tui.handleKey("down");
+  assertEquals(tui.getSelectedIndex(), 2);
+});
+
+Deno.test("PortalManagerTuiSession keyboard navigation - up arrow", () => {
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+    { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
+    { alias: "API", status: "active", targetPath: "/Portals/API" },
+  ]);
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+
+  // Start at index 0
+  tui.setSelectedIndex(2); // Set to end first
+  assertEquals(tui.getSelectedIndex(), 2);
+
+  // Press up - should go to index 1
+  tui.handleKey("up");
+  assertEquals(tui.getSelectedIndex(), 1);
+
+  // Press up again - should go to index 0
+  tui.handleKey("up");
+  assertEquals(tui.getSelectedIndex(), 0);
+
+  // Press up at beginning - should stay at index 0
+  tui.handleKey("up");
+  assertEquals(tui.getSelectedIndex(), 0);
+});
+
+Deno.test("PortalManagerTuiSession keyboard navigation - end key", () => {
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+    { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
+    { alias: "API", status: "active", targetPath: "/Portals/API" },
+  ]);
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+
+  // Start at index 0
+  assertEquals(tui.getSelectedIndex(), 0);
+
+  // Press end - should go to last index (2)
+  tui.handleKey("end");
+  assertEquals(tui.getSelectedIndex(), 2);
+});
+
+Deno.test("PortalManagerTuiSession keyboard navigation - home key", () => {
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+    { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
+    { alias: "API", status: "active", targetPath: "/Portals/API" },
+  ]);
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+
+  // Start at index 2
+  tui.setSelectedIndex(2);
+  assertEquals(tui.getSelectedIndex(), 2);
+
+  // Press home - should go to index 0
+  tui.handleKey("home");
+  assertEquals(tui.getSelectedIndex(), 0);
+});
+
+Deno.test("PortalManagerTuiSession keyboard actions - enter (open portal)", async () => {
+  let openedPortal = "";
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+    { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
+  ]);
+  service.openPortal = (alias: string) => {
+    openedPortal = alias;
+    return Promise.resolve(true);
+  };
+
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+
+  // Select first portal and press enter
+  tui.setSelectedIndex(0);
+  await tui.handleKey("enter");
+  assertEquals(openedPortal, "Main");
+
+  // Select second portal and press enter
+  tui.setSelectedIndex(1);
+  await tui.handleKey("enter");
+  assertEquals(openedPortal, "Docs");
+});
+
+Deno.test("PortalManagerTuiSession keyboard actions - r (refresh portal)", async () => {
+  let refreshedPortal = "";
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+    { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
+  ]);
+  service.refreshPortal = (alias: string) => {
+    refreshedPortal = alias;
+    return Promise.resolve(true);
+  };
+
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+
+  // Select first portal and press r
+  tui.setSelectedIndex(0);
+  await tui.handleKey("r");
+  assertEquals(refreshedPortal, "Main");
+
+  // Select second portal and press r
+  tui.setSelectedIndex(1);
+  await tui.handleKey("r");
+  assertEquals(refreshedPortal, "Docs");
+});
+
+Deno.test("PortalManagerTuiSession keyboard actions - d (remove portal)", async () => {
+  let removedPortal = "";
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+    { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
+  ]);
+  service.removePortal = (alias: string) => {
+    removedPortal = alias;
+    return Promise.resolve(true);
+  };
+
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+
+  // Select first portal and press d
+  tui.setSelectedIndex(0);
+  await tui.handleKey("d");
+  assertEquals(removedPortal, "Main");
+
+  // Select second portal and press d
+  tui.setSelectedIndex(1);
+  await tui.handleKey("d");
+  assertEquals(removedPortal, "Docs");
+});
+
+Deno.test("PortalManagerTuiSession keyboard actions - error handling", async () => {
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+  ]);
+  service.openPortal = () => {
+    throw new Error("Failed to open portal");
+  };
+
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+
+  // Try to open portal - should handle error gracefully
+  await tui.handleKey("enter");
+  assertEquals(tui.getStatusMessage(), "Error: Failed to open portal");
+});
+
+Deno.test("PortalManagerTuiSession keyboard actions - no portals", () => {
+  const service = new MockPortalService([]); // Empty list
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+
+  // Keyboard actions should be ignored when no portals
+  tui.handleKey("down");
+  tui.handleKey("up");
+  tui.handleKey("enter");
+  tui.handleKey("r");
+  tui.handleKey("d");
+
+  // Should remain at index 0
+  assertEquals(tui.getSelectedIndex(), 0);
+});
+
+Deno.test("PortalManagerTuiSession keyboard actions - invalid selection", async () => {
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+  ]);
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+
+  // Set invalid selection
+  tui.setSelectedIndex(-1);
+  await tui.handleKey("enter");
+  assertEquals(tui.getStatusMessage(), "Error: No portal selected");
+});

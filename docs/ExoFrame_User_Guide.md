@@ -1065,300 +1065,68 @@ exoctl daemon logs --lines 100           # Show last 100 lines
 exoctl daemon logs --follow              # Stream logs (like tail -f)
 ```
 
-#### **Obsidian Dashboard** - Visual Workspace Monitoring
+## 6. Working with the TUI Dashboard
 
-ExoFrame includes a pre-configured Obsidian Dashboard to monitor your workspace activity visually.
+The Terminal User Interface (TUI) dashboard in ExoFrame provides a powerful way to interact with your workspace directly from the terminal. This section explains how to launch, navigate, and utilize the TUI dashboard effectively.
 
-**Setup:**
+### 6.1 Launching the Dashboard
 
-1. Install the [Dataview](https://github.com/blacksmithgu/obsidian-dataview) plugin in Obsidian.
-2. Open `Knowledge/Dashboard.md` in your Obsidian vault.
-
-**Features:**
-
-- **Daemon Status:** Real-time check if the ExoFrame daemon is running.
-- **Pending Plans:** List of plans awaiting your review.
-- **Recent Activity:** Audit log of recent agent actions (requires activity export).
-- **Active Portals:** Overview of all connected external projects.
-
-**Updating Activity Log:**
-The activity log in the dashboard is populated from the SQLite journal. To update the markdown export, run:
+To start the TUI dashboard, use the following command:
 
 ```bash
-# Manually export activity log
-deno task export-activity
+exoctl dashboard
 ```
 
----
-
-**Example workflow:**
+You can also specify a workspace explicitly:
 
 ```bash
-# Check if daemon is running
-$ exoctl daemon status
-🔧 Daemon Status
-
-Version: 1.0.0
-Status: Running ✓
-PID: 12345
-Uptime: 2:15:30
-
-# View recent logs
-$ exoctl daemon logs --lines 20
-
-# Follow logs in real-time
-$ exoctl daemon logs --follow
-[2025-11-25 14:30:15] INFO: Daemon started
-[2025-11-25 14:30:16] INFO: Watching /Inbox/Requests
-[2025-11-25 14:32:45] INFO: New request detected: implement-auth
-...
+exoctl dashboard --workspace /path/to/ExoFrame
 ```
 
-### 4.3 Quick Reference
+### 6.2 Navigation and Keybindings
 
-**Most Common Operations:**
+The TUI dashboard is designed for keyboard navigation. Here are the keybindings to help you navigate and interact with the dashboard:
 
-```bash
-# Create requests quickly (instead of manual file creation)
-exoctl request "Add user authentication"    # Quick request
-exoctl request "Fix bug" --priority high    # With priority
-exoctl request -i                           # Interactive mode
+| Key         | Action                                   |
+|-------------|-----------------------------------------|
+| `Tab`       | Switch focus between panes              |
+| `Shift+Tab` | Switch focus in reverse order           |
+| `Ctrl+Arrow`| Resize the currently focused pane       |
+| `s`         | Split the current pane vertically       |
+| `h`         | Split the current pane horizontally     |
+| `c`         | Close the currently focused pane        |
+| `?`         | Open the help/settings panel            |
 
-# Human review workflow
-exoctl plan list                           # See pending plans
-exoctl plan show <id>                      # Review plan details
-exoctl plan approve <id>                   # Approve for execution
-exoctl plan reject <id> --reason "..."     # Reject with feedback
+### 6.3 Features
 
-# Code review workflow
-exoctl changeset list                      # See agent-created branches
-exoctl changeset show <id>                 # Review code changes
-exoctl changeset approve <id>              # Merge to main
-exoctl changeset reject <id> --reason "..."# Delete branch
+The TUI dashboard includes the following views:
 
-# Portal management
-exoctl portal add ~/Dev/MyProject MyProject  # Mount external project
-exoctl portal list                           # Show all portals
-exoctl portal show MyProject                 # Portal details
-exoctl portal remove MyProject               # Unmount portal
-exoctl portal verify                         # Check portal integrity
-exoctl portal refresh MyProject              # Update context card
+- **Monitor View:** Real-time log streaming and filtering.
+- **Plan Reviewer View:** Review and approve/reject plans with a diff view.
+- **Portal Manager View:** Add, remove, refresh, and view portal statuses.
+- **Daemon Control View:** Start, stop, restart, and check the status of the daemon.
+- **Agent Activity View:** Monitor agent health and recent activity.
 
-# Daemon management
-exoctl daemon start                        # Start background process
-exoctl daemon stop                         # Stop gracefully
-exoctl daemon status                       # Check health
-exoctl daemon logs --follow                # Watch logs
+### 6.4 Example Workflow
 
-# Git operations
-exoctl git branches                        # List all branches
-exoctl git status                          # Working tree status
-exoctl git log --trace <id>                # Find commits by trace
-```
+1. **Launch the dashboard:**
+   ```bash
+   exoctl dashboard
+   ```
+2. **Navigate between views:** Use `Tab` or `Shift+Tab` to switch between Monitor, Plans, Portals, Daemon, and Agents views.
+3. **Approve a plan:** From the Plan Reviewer view, select a plan and approve it.
+4. **Monitor logs:** Switch to the Monitor view to watch logs in real time.
+5. **Manage portals:** Add or refresh a portal in the Portal Manager view.
+6. **Control the daemon:** Start, stop, or restart the daemon from the Daemon Control view.
 
-### 4.4 Activity Logging
+### 6.5 Troubleshooting
 
-All human actions via CLI are automatically logged to the Activity Journal:
+If the dashboard fails to launch, ensure:
 
-- Plan approvals/rejections → `plan.approved`, `plan.rejected`
-- Changeset approvals/rejections → `changeset.approved`, `changeset.rejected`
-- All actions tagged with `actor='human'`, `via='cli'`
-- User identity captured from git config or OS username
+- Your terminal supports ANSI escape codes.
+- Your workspace is properly initialized.
 
-Query activity history:
-
-```bash
-# View activity database directly
-sqlite3 ~/ExoFrame/System/journal.db \
-  "SELECT * FROM activity WHERE actor='human' ORDER BY timestamp DESC LIMIT 10;"
-```
-
-### 4.5 Output Formatting
-
-All CLI commands output human-readable text by default. Future versions will support JSON output:
-
-```bash
-# Human-readable (default)
-exoctl plan list
-
-# Machine-readable (planned)
-exoctl plan list --json
-```
-
-### 4.6 File Format Reference
-
-ExoFrame uses **YAML frontmatter** for all markdown files (requests, plans, reports). This format is required for **Obsidian Dataview compatibility**.
-
-#### YAML Frontmatter Format
-
-Request, plan, and report files use `---` delimiters with YAML syntax:
-
-```markdown
----
-trace_id: "550e8400-e29b-41d4-a716-446655440000"
-created: 2025-11-28T10:30:00.000Z
-status: pending
-priority: normal
-agent: default
-source: cli
-created_by: user@example.com
-tags: [feature, api]
----
-
-# Request
-
-Implement user authentication for the API...
-```
-
-#### Why YAML Frontmatter?
-
-| Benefit                    | Description                                               |
-| -------------------------- | --------------------------------------------------------- |
-| **Dataview compatibility** | Obsidian's Dataview plugin only parses YAML frontmatter   |
-| **Dashboard queries work** | TABLE queries can filter/sort by status, priority, agent  |
-| **Standard format**        | Most markdown tools expect YAML (`---` delimiters)        |
-| **Auto-generated**         | `exoctl request` creates proper frontmatter automatically |
-
-#### Frontmatter Fields Reference
-
-**Request Files** (`Inbox/Requests/request-*.md`):
-
-| Field        | Type     | Required | Example                                  |
-| ------------ | -------- | -------- | ---------------------------------------- |
-| `trace_id`   | string   | ✓        | `"550e8400-e29b-41d4-a716-446655440000"` |
-| `created`    | datetime | ✓        | `2025-11-28T10:30:00.000Z`               |
-| `status`     | string   | ✓        | `pending`, `processing`, `completed`     |
-| `priority`   | string   | ✓        | `low`, `normal`, `high`, `critical`      |
-| `agent`      | string   | ✓        | `default`, `senior_coder`, `architect`   |
-| `source`     | string   | ✓        | `cli`, `file`, `interactive`             |
-| `created_by` | string   | ✓        | `user@example.com`                       |
-| `portal`     | string   |          | `MyProject` (optional project context)   |
-| `tags`       | array    |          | `[feature, api]` (optional tags)         |
-
-**Plan Files** (`Inbox/Plans/*.md`):
-
-| Field        | Type     | Required | Example                                  |
-| ------------ | -------- | -------- | ---------------------------------------- |
-| `trace_id`   | string   | ✓        | `"550e8400-e29b-41d4-a716-446655440000"` |
-| `request_id` | string   | ✓        | `"implement-auth"`                       |
-| `status`     | string   | ✓        | `review`, `approved`, `rejected`         |
-| `created_at` | datetime | ✓        | `2025-11-28T10:35:00.000Z`               |
-| `agent_id`   | string   | ✓        | `senior_coder`                           |
-
-**Report Files** (`Knowledge/Reports/*.md`):
-
-| Field          | Type     | Required | Example                                  |
-| -------------- | -------- | -------- | ---------------------------------------- |
-| `trace_id`     | string   | ✓        | `"550e8400-e29b-41d4-a716-446655440000"` |
-| `request_id`   | string   | ✓        | `"implement-auth"`                       |
-| `status`       | string   | ✓        | `completed`, `failed`                    |
-| `completed_at` | datetime | ✓        | `2025-11-28T11:00:00.000Z`               |
-| `agent_id`     | string   | ✓        | `senior_coder`                           |
-| `branch`       | string   |          | `feat/implement-auth-550e8400`           |
-
-#### YAML Syntax Quick Reference
-
-```yaml
-# Strings (quotes optional for simple values)
-status: pending
-agent: default
-
-# Strings with special characters (quotes required)
-trace_id: "550e8400-e29b-41d4-a716-446655440000"
-created_by: "user@example.com"
-
-# Dates (ISO 8601 format)
-created: 2025-11-28T10:30:00.000Z
-
-# Arrays (inline format)
-tags: [feature, api, urgent]
-
-# Booleans
-approved: true
-```
-
-> **💡 TIP:** Use `exoctl request` to create requests with proper frontmatter automatically. Manual file creation is error-prone.
-
-#### Dataview Dashboard Queries
-
-With YAML frontmatter, Dataview queries work natively:
-
-```dataview
-TABLE
-  status AS "Status",
-  priority AS "Priority",
-  agent AS "Agent",
-  created AS "Created"
-FROM "Inbox/Requests"
-WHERE status = "pending"
-SORT created DESC
-LIMIT 10
-```
-
-### 4.7 Bootstrap (Reference Implementation)
-
-```bash
-# 1. Clone or deploy workspace
-./scripts/deploy_workspace.sh ~/ExoFrame
-
-# 2. Navigate to workspace
-cd ~/ExoFrame
-
-# 3. Cache dependencies
-deno task cache
-
-# 4. Initialize database and system
-deno task setup
-
-# 5. Start daemon
-exoctl daemon start
-# or: deno task start
-
-# 6. Verify daemon is running
-exoctl daemon status
-```
-
-**Complete workflow example:**
-
-```bash
-# 1. Create a request (quick method - recommended)
-exoctl request "Implement user authentication for the API"
-# Output: ✓ Request created: request-a1b2c3d4.md
-
-# Alternative: Manual file creation (if you need custom frontmatter)
-# echo "Implement user authentication" > ~/ExoFrame/Inbox/Requests/auth.md
-
-# 2. Agent will generate a plan automatically
-# Wait a moment... (daemon watches Inbox/Requests)
-
-# 3. Review the plan
-exoctl plan list
-exoctl plan show implement-auth
-
-# 4. Approve the plan
-exoctl plan approve implement-auth
-
-# Note: Currently, plan approval moves the plan to System/Active/ where it is
-# detected and parsed. Agent-driven execution (Steps 5.12.3-5.12.6) is in
-# development. Agents will have direct portal access and create changesets.
-
-# 5. (Future) Review changesets created by agents
-# exoctl changeset list
-# exoctl changeset show implement-auth
-
-# 6. (Future) Approve the changeset to merge
-# exoctl changeset approve implement-auth
-
-# Current Status:
-# ✅ Request creation automated
-# ✅ Plan generation automated
-# ✅ Plan approval workflow complete
-# ✅ Plan detection and parsing implemented
-# 🚧 Agent-driven execution in development
-# 🚧 Portal-scoped tools for agents in development
-
-# All completed steps logged to Activity Journal with trace_id
-```
+For accessibility or theming issues, open the settings panel by pressing `?` in the TUI.
 
 ## 5. Operational Procedures
 
