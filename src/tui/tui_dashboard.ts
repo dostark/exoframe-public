@@ -99,29 +99,56 @@ export async function launchTuiDashboard(
   console.log("======================");
 
   const portalView = views[0];
-  const portals = await portalView.service.listPortals();
+  let focusIndex = 0;
 
-  if (portals.length > 0) {
-    const table = new Table();
-    table.header(["Alias", "Target Path", "Status", "Permissions"]);
-    for (const p of portals) {
-      table.push([p.alias, p.targetPath, p.status, p.permissions]);
+  const render = async () => {
+    console.clear();
+    console.log("ExoFrame TUI Dashboard");
+    console.log("======================");
+    console.log(`Focus: ${views[focusIndex].name}`);
+    console.log("");
+
+    const portals = await portalView.service.listPortals();
+
+    if (portals.length > 0) {
+      const table = new Table();
+      table.header(["Alias", "Target Path", "Status", "Permissions"]);
+      for (const p of portals) {
+        table.push([p.alias, p.targetPath, p.status, p.permissions]);
+      }
+      table.render();
+    } else {
+      console.log("No portals configured.");
     }
-    table.render();
-  } else {
-    console.log("No portals configured.");
-  }
 
-  console.log("\nStatus: Ready");
-  console.log("Navigation: Tab to switch views (not implemented in console mode)");
-  console.log("Actions: Portal actions available via CLI (exoctl portal)");
-  console.log("Press Enter to exit...");
+    console.log("\nStatus: Ready");
+    console.log("Navigation: Tab/Shift+Tab to switch views, Enter to select, Esc to exit");
+    console.log("Actions: Portal actions available via CLI (exoctl portal)");
+  };
+
+  await render();
 
   if (!options.nonInteractive) {
-    // Wait for enter to exit
+    // Interactive mode: handle keyboard input
+    const decoder = new TextDecoder();
     for await (const chunk of Deno.stdin.readable) {
-      const input = new TextDecoder().decode(chunk);
-      if (input.includes("\n")) break;
+      const input = decoder.decode(chunk);
+      const key = input.trim();
+
+      if (key === "\x1b") { // Esc
+        break;
+      } else if (key === "\t") { // Tab
+        focusIndex = (focusIndex + 1) % views.length;
+        await render();
+      } else if (key === "\x1b[Z") { // Shift+Tab (reverse)
+        focusIndex = (focusIndex - 1 + views.length) % views.length;
+        await render();
+      } else if (key === "\n") { // Enter
+        console.log(`Selected view: ${views[focusIndex].name}`);
+        // TODO: Implement view-specific actions
+        await render();
+      }
+      // Ignore other keys
     }
   }
 

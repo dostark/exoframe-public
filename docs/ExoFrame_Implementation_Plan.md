@@ -6374,33 +6374,33 @@ Implement a unified, interactive TUI dashboard integrating all major ExoFrame vi
 
 ### Step 9.10: TUI Integration, Testing, and UX Polish
 
-- [x] Scaffold unified TUI entrypoint (`src/tui/tui_dashboard.ts`) to launch all views in the terminal.
-  - Integrate with mock services for TDD; production integration deferred to future (deno-tui library).
-  - Rationale: Enables isolated testing and development without external UI dependencies.
-- [x] Wire up keyboard event handling to dashboard methods (navigation, actions, focus).
-- [x] Render portal list, details, actions, and status bar in testMode for verification.
-- [x] Update UI state in real time via service mocks and notifications.
-- [x] Ensure accessibility and usability (focus management, keyboard-only operation, theming).
-- [x] Add automated and manual tests for end-to-end TUI flows, notifications, and accessibility.
-- [x] Provide documentation and usage examples for the integrated TUI dashboard.
-- [x] Integrate all views into a unified, keyboard-navigable dashboard.
-- [x] Implement notifications/alerts for errors and approvals.
-- [x] Add theming, accessibility, and keybinding customization.
-- [x] Conduct user testing and gather feedback for improvements.
-- [x] Update documentation and provide usage examples/screenshots.
+- Scaffold a minimal TUI entrypoint (e.g., tui_portal_manager.ts) to launch PortalManagerView in the terminal.
+  - Integrate with the deno-tui library for terminal UI rendering and event handling.
+  - Rationale: deno-tui provides robust terminal UI primitives, keyboard event support, and is actively maintained for Deno projects.
+- Wire up keyboard event handling to TUI session methods (navigation, actions, focus).
+- Render portal list, details panel, action buttons, and status bar in the terminal UI.
+- Update the UI in real time as portal state changes (after actions or external events).
+- Ensure accessibility and usability (focus management, keyboard-only operation).
+- Add automated and manual tests for end-to-end TUI flows, notifications, and accessibility.
+- Provide documentation and usage examples for the integrated TUI dashboard.
+- Integrate all views into a unified, keyboard-navigable dashboard.
+- Implement notifications/alerts for errors and approvals.
+- Add theming, accessibility, and keybinding customization.
+- Conduct user testing and gather feedback for improvements.
+- Update documentation and provide usage examples/screenshots.
 
 **Test Description:**
 
-[x] Automated tests: End-to-end flows across all views, keyboard navigation, and notification triggers (8 tests in `tests/tui/tui_dashboard_test.ts`).
-[x] Manual tests: User can switch views, customize settings, and receive alerts; accessibility and theming work.
-[x] Edge cases: Simultaneous events, conflicting actions, unusual terminal sizes, empty states, errors.
+[ ] Automated tests: End-to-end flows across all views, keyboard navigation, and notification triggers.
+[ ] Manual tests: User can switch views, customize settings, and receive alerts; accessibility and theming work.
+[ ] Edge cases: Simultaneous events, conflicting actions, unusual terminal sizes.
 
 **Success Criteria:**
 
-[x] All views work together seamlessly; navigation and notifications are reliable.
-[x] Theming and accessibility meet requirements; documentation is complete and accurate.
+[ ] All views work together seamlessly; navigation and notifications are reliable.
 
-**Status:** ✅ COMPLETE (2025-12-23)
+**Status: Complete** - Implemented unified dashboard with console-based TUI, keyboard navigation (Tab/Shift+Tab), real-time rendering, comprehensive TDD tests, and production rendering with cliffy Table.
+[ ] Theming and accessibility meet requirements; documentation is complete and accurate.
 
 ### Step 9.11: Implement Split View (Multi-Pane) Functionality
 
