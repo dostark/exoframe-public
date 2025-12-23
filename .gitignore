@@ -11,6 +11,7 @@ report/
 # runtime / user data (do not commit runtime DBs or user content)
 /System/*.db*
 /System/activity_export.md
+/System/daemon.pid
 /Knowledge/
 /Inbox/
 /Portals/

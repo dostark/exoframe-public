@@ -20,6 +20,7 @@ import type { IModelProvider } from "../ai/providers.ts";
 import type { DatabaseService } from "./db.ts";
 import type { Config } from "../config/schema.ts";
 import { AgentRunner, type Blueprint, type ParsedRequest } from "./agent_runner.ts";
+import { buildParsedRequest, loadBlueprint as loadBlueprintFromCommon } from "./request_common.ts";
 import { PlanWriter, type RequestMetadata } from "./plan_writer.ts";
 import { EventLogger } from "./event_logger.ts";
 import { FlowValidatorImpl } from "./flow_validator.ts";
@@ -212,21 +213,12 @@ export class RequestProcessor {
           model: frontmatter.model,
         };
 
-        const planResult = await this.planWriter.writePlan(result, metadata);
-
-        // Step 6: Update request status to "planned"
-        await this.updateRequestStatus(filePath, parsed.rawContent, "planned");
-
-        // Log successful completion
-        traceLogger.info("request.planned", filePath, {
-          plan_path: planResult.planPath,
+        return await this.writePlanAndReturnPath(result, metadata, filePath, parsed.rawContent, traceLogger, {
           flow: frontmatter.flow,
         });
-
-        return planResult.planPath;
       } else {
         // Handle agent request (existing logic)
-        const blueprint = await this.loadBlueprint(frontmatter.agent!);
+        const blueprint = await loadBlueprintFromCommon(this.processorConfig.blueprintsPath, frontmatter.agent!);
         if (!blueprint) {
           traceLogger.error("blueprint.not_found", frontmatter.agent!, {
             request: filePath,
@@ -239,15 +231,7 @@ export class RequestProcessor {
         }
 
         // Step 3: Build the parsed request for AgentRunner
-        const request: ParsedRequest = {
-          userPrompt: body.trim(),
-          context: {
-            priority: frontmatter.priority,
-            source: frontmatter.source,
-          },
-          requestId,
-          traceId,
-        };
+        const request: ParsedRequest = buildParsedRequest(body, frontmatter, requestId, traceId) as ParsedRequest;
 
         // Step 4: Run the agent to generate plan content
         // Use model override if specified in request
@@ -281,17 +265,7 @@ export class RequestProcessor {
           model: frontmatter.model,
         };
 
-        const planResult = await this.planWriter.writePlan(result, metadata);
-
-        // Step 6: Update request status to "planned"
-        await this.updateRequestStatus(filePath, parsed.rawContent, "planned");
-
-        // Log successful completion
-        traceLogger.info("request.planned", filePath, {
-          plan_path: planResult.planPath,
-        });
-
-        return planResult.planPath;
+        return await this.writePlanAndReturnPath(result, metadata, filePath, parsed.rawContent, traceLogger);
       }
     } catch (error) {
       // Handle errors gracefully
@@ -303,6 +277,25 @@ export class RequestProcessor {
 
       return null;
     }
+  }
+
+  /**
+   * Helper to write a plan via PlanWriter, mark the request as planned, log, and return the plan path.
+   * Centralizes duplicated post-processing logic used for both flow and agent paths.
+   */
+  private async writePlanAndReturnPath(
+    result: any,
+    metadata: RequestMetadata,
+    filePath: string,
+    rawContent: string,
+    traceLogger: any,
+    extra?: Record<string, unknown>,
+  ): Promise<string> {
+    const planResult = await this.planWriter.writePlan(result, metadata);
+    await this.updateRequestStatus(filePath, rawContent, "planned");
+    const logObj: Record<string, unknown> = { plan_path: planResult.planPath, ...(extra ?? {}) };
+    traceLogger.info("request.planned", filePath, logObj);
+    return planResult.planPath;
   }
 
   /**

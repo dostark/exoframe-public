@@ -1,6 +1,7 @@
-import { IModelProvider, ModelOptions, ModelProviderError } from "../providers.ts";
+import { IModelProvider, ModelOptions } from "../providers.ts";
 import { EventLogger } from "../../services/event_logger.ts";
-import { AuthenticationError, RateLimitError, withRetry } from "./common.ts";
+import { withRetry } from "./common.ts";
+import { extractAnthropicContent, handleProviderResponse, tokenMapperAnthropic } from "../provider_common_utils.ts";
 
 /**
  * AnthropicProvider implements IModelProvider for Anthropic's Claude models.
@@ -58,37 +59,8 @@ export class AnthropicProvider implements IModelProvider {
         stop_sequences: options?.stop,
       }),
     });
+    const data = await handleProviderResponse(response, this.id, this.logger, tokenMapperAnthropic(this.model));
 
-    if (!response.ok) {
-      let message = response.statusText;
-      try {
-        const error = await response.json();
-        message = error.error?.message ?? message;
-      } catch {}
-      if (response.status === 401) {
-        throw new AuthenticationError(this.id, message);
-      }
-      if (response.status === 429) {
-        throw new RateLimitError(this.id, message);
-      }
-      if (response.status >= 500) {
-        throw new ModelProviderError(`Server error: ${message}`, this.id);
-      }
-      throw new ModelProviderError(message, this.id);
-    }
-
-    const data = await response.json();
-
-    // Report token usage if logger is present
-    if (this.logger && data.usage) {
-      this.logger.debug("llm.usage", this.id, {
-        prompt_tokens: data.usage.input_tokens,
-        completion_tokens: data.usage.output_tokens,
-        total_tokens: data.usage.input_tokens + data.usage.output_tokens,
-        model: this.model,
-      });
-    }
-
-    return data.content?.[0]?.text ?? "";
+    return extractAnthropicContent(data);
   }
 }

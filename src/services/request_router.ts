@@ -1,8 +1,6 @@
 import { FlowRunner } from "../flows/flow_runner.ts";
 import { AgentRunner, type Blueprint, type ParsedRequest } from "./agent_runner.ts";
 import { EventLogger } from "./event_logger.ts";
-import { join } from "jsr:@std/path@1";
-import { exists } from "jsr:@std/fs@1";
 
 /**
  * RequestRouter - Routes requests to appropriate execution engine
@@ -212,22 +210,8 @@ export class RequestRouter {
    * Load an agent blueprint from the blueprints directory
    */
   protected async loadBlueprint(agentId: string): Promise<Blueprint | null> {
-    const blueprintPath = join(this.blueprintsPath, `${agentId}.md`);
-
-    if (!await exists(blueprintPath)) {
-      return null;
-    }
-
-    try {
-      const content = await Deno.readTextFile(blueprintPath);
-      return {
-        systemPrompt: content,
-        agentId,
-      };
-    } catch (error) {
-      // Log error but don't throw - let caller handle null return
-      console.error(`Failed to load blueprint ${agentId}:`, error);
-      return null;
-    }
+    // Delegate to shared helper to keep loading logic consistent between modules
+    const { loadBlueprint } = await import("./request_common.ts");
+    return await loadBlueprint(this.blueprintsPath, agentId);
   }
 }

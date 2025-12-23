@@ -119,7 +119,12 @@ export class ChangesetCommands extends BaseCommand {
       });
     }
 
-    return changesets.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    return changesets.sort((a, b) => {
+      const ta = Number(new Date(a.created_at));
+      const tb = Number(new Date(b.created_at));
+      // Newer first
+      return (tb || 0) - (ta || 0);
+    });
   }
 
   /**

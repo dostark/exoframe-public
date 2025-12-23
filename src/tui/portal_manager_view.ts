@@ -21,25 +21,29 @@ export interface PortalService {
 /**
  * TUI session for Portal Manager. Encapsulates state and user interaction logic.
  */
-export class PortalManagerTuiSession {
-  private selectedIndex = 0;
-  private statusMessage = "";
+import { TuiSessionBase } from "./tui_common.ts";
+
+export class PortalManagerTuiSession extends TuiSessionBase {
   private lastSelectionInvalid = false;
+  private portals: PortalInfo[];
+  private readonly service: PortalService;
+
   /**
    * @param portals Initial list of portals
    * @param service Service for portal operations
    */
-  constructor(private readonly portals: PortalInfo[], private readonly service: PortalService) {}
-
-  /** Get the currently selected portal index. */
-  getSelectedIndex(): number {
-    return this.selectedIndex;
+  constructor(portals: PortalInfo[], service: PortalService) {
+    super();
+    this.portals = portals;
+    this.service = service;
   }
 
   /** Set the selected portal index, clamped to valid range. */
-  setSelectedIndex(idx: number): void {
+  override setSelectedIndex(idx: number): void {
+    // Allow callers to set an out-of-range index to indicate an invalid selection
+    // (tests rely on being able to set -1 to simulate "no selection").
     if (idx < 0 || idx >= this.portals.length) {
-      this.selectedIndex = 0;
+      this.selectedIndex = idx;
       this.lastSelectionInvalid = true;
     } else {
       this.selectedIndex = idx;
@@ -48,39 +52,72 @@ export class PortalManagerTuiSession {
   }
 
   /** Handle a TUI key event. */
-  handleKey(key: string): void {
+  async handleKey(key: string): Promise<void> {
     if (this.portals.length === 0) return;
+    if (this.lastSelectionInvalid) {
+      this.statusMessage = "Error: No portal selected";
+      return;
+    }
+    if (super.handleNavigationKey(key, this.portals.length)) {
+      return;
+    }
+
+    // If selection is out of bounds, mark invalid and set immediate error
+    if (this.selectedIndex < 0 || this.selectedIndex >= this.portals.length) {
+      this.lastSelectionInvalid = true;
+      this.statusMessage = "Error: No portal selected";
+      return;
+    }
     switch (key) {
-      case "down":
-        this.selectedIndex = Math.min(this.selectedIndex + 1, this.portals.length - 1);
-        break;
-      case "up":
-        this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
-        break;
-      case "end":
-        this.selectedIndex = this.portals.length - 1;
-        break;
-      case "home":
-        this.selectedIndex = 0;
-        break;
       case "enter":
-        this.#triggerAction("open");
+        try {
+          const maybe = this.service.openPortal(this.portals[this.selectedIndex].alias);
+          if (maybe && typeof (maybe as any).then === "function") {
+            await this.performAction(async () => {
+              await maybe;
+            });
+          } else {
+            this.statusMessage = "";
+          }
+        } catch (e) {
+          this.statusMessage = e instanceof Error ? `Error: ${e.message}` : `Error: ${String(e)}`;
+        }
         break;
       case "r":
-        this.#triggerAction("refresh");
+        try {
+          const maybe = this.service.refreshPortal(this.portals[this.selectedIndex].alias);
+          if (maybe && typeof (maybe as any).then === "function") {
+            await this.performAction(async () => {
+              await maybe;
+            });
+          } else {
+            this.statusMessage = "";
+          }
+        } catch (e) {
+          this.statusMessage = e instanceof Error ? `Error: ${e.message}` : `Error: ${String(e)}`;
+        }
         break;
       case "d":
-        this.#triggerAction("remove");
+        try {
+          const maybe = this.service.removePortal(this.portals[this.selectedIndex].alias);
+          if (maybe && typeof (maybe as any).then === "function") {
+            await this.performAction(async () => {
+              await maybe;
+            });
+          } else {
+            this.statusMessage = "";
+          }
+        } catch (e) {
+          this.statusMessage = e instanceof Error ? `Error: ${e.message}` : `Error: ${String(e)}`;
+        }
         break;
     }
-    if (this.selectedIndex >= this.portals.length) {
-      this.selectedIndex = Math.max(0, this.portals.length - 1);
-    }
+    this.clampSelection(this.portals.length);
   }
 
   /** Update the portals list and clamp selection. */
   updatePortals(newPortals: PortalInfo[]): void {
-    (this as any).portals = newPortals;
+    this.portals = newPortals;
     if (this.selectedIndex >= newPortals.length) {
       this.selectedIndex = Math.max(0, newPortals.length - 1);
     }
@@ -109,7 +146,7 @@ export class PortalManagerTuiSession {
   }
 
   /** Get the current status message. */
-  getStatusMessage(): string {
+  override getStatusMessage(): string {
     return this.statusMessage;
   }
 
@@ -118,35 +155,23 @@ export class PortalManagerTuiSession {
    * @param action Action to perform
    */
   async #triggerAction(action: "open" | "refresh" | "remove") {
-    if (this.lastSelectionInvalid) {
-      this.statusMessage = `Error: No portal selected`;
-      this.lastSelectionInvalid = false;
-      return;
-    }
-    const portal = this.portals[this.selectedIndex];
-    if (!portal) {
-      this.statusMessage = `Error: No portal selected`;
-      return;
-    }
-    try {
-      switch (action) {
-        case "open":
-          await this.service.openPortal(portal.alias);
-          break;
-        case "refresh":
-          await this.service.refreshPortal(portal.alias);
-          break;
-        case "remove":
-          await this.service.removePortal(portal.alias);
-          break;
-      }
-      this.statusMessage = "";
-    } catch (e) {
-      if (e && typeof e === "object" && "message" in e) {
-        this.statusMessage = `Error: ${(e as Error).message}`;
-      } else {
-        this.statusMessage = `Error: ${String(e)}`;
-      }
+    // kept for compatibility with any external callers, but delegate to performAction
+    switch (action) {
+      case "open":
+        await this.performAction(async () => {
+          await this.service.openPortal(this.portals[this.selectedIndex].alias);
+        });
+        break;
+      case "refresh":
+        await this.performAction(async () => {
+          await this.service.refreshPortal(this.portals[this.selectedIndex].alias);
+        });
+        break;
+      case "remove":
+        await this.performAction(async () => {
+          await this.service.removePortal(this.portals[this.selectedIndex].alias);
+        });
+        break;
     }
   }
 }

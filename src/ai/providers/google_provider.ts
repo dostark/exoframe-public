@@ -1,6 +1,7 @@
-import { IModelProvider, ModelOptions, ModelProviderError } from "../providers.ts";
+import { IModelProvider, ModelOptions } from "../providers.ts";
 import { EventLogger } from "../../services/event_logger.ts";
-import { AuthenticationError, RateLimitError, withRetry } from "./common.ts";
+import { withRetry } from "./common.ts";
+import { extractGoogleContent, handleProviderResponse, tokenMapperGoogle } from "../provider_common_utils.ts";
 
 /**
  * GoogleProvider implements IModelProvider for Gemini and other Google models.
@@ -62,39 +63,8 @@ export class GoogleProvider implements IModelProvider {
         },
       }),
     });
+    const data = await handleProviderResponse(response, this.id, this.logger, tokenMapperGoogle(this.model));
 
-    if (!response.ok) {
-      let message = response.statusText;
-      try {
-        const error = await response.json();
-        message = error.error?.message ?? message;
-      } catch { /* ignore JSON parse error, fallback to statusText */ }
-      // Google API uses 400 for invalid keys sometimes, or 403
-      if (response.status === 401 || response.status === 403) {
-        throw new AuthenticationError(this.id, message);
-      }
-      if (response.status === 429) {
-        throw new RateLimitError(this.id, message);
-      }
-      if (response.status >= 500) {
-        throw new ModelProviderError(`Server error: ${message}`, this.id);
-      }
-      throw new ModelProviderError(message, this.id);
-    }
-
-    const data = await response.json();
-
-    // Report token usage if logger is present
-    if (this.logger && data.usageMetadata) {
-      this.logger.debug("llm.usage", this.id, {
-        prompt_tokens: data.usageMetadata.promptTokenCount,
-        completion_tokens: data.usageMetadata.candidatesTokenCount,
-        total_tokens: data.usageMetadata.totalTokenCount ??
-          (data.usageMetadata.promptTokenCount + data.usageMetadata.candidatesTokenCount),
-        model: this.model,
-      });
-    }
-
-    return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    return extractGoogleContent(data);
   }
 }
