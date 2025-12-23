@@ -6374,21 +6374,6 @@ Implement a unified, interactive TUI dashboard integrating all major ExoFrame vi
 
 ### Step 9.10: TUI Integration, Testing, and UX Polish
 
-- Scaffold a minimal TUI entrypoint (e.g., tui_portal_manager.ts) to launch PortalManagerView in the terminal.
-  - Integrate with the deno-tui library for terminal UI rendering and event handling.
-  - Rationale: deno-tui provides robust terminal UI primitives, keyboard event support, and is actively maintained for Deno projects.
-- Wire up keyboard event handling to TUI session methods (navigation, actions, focus).
-- Render portal list, details panel, action buttons, and status bar in the terminal UI.
-- Update the UI in real time as portal state changes (after actions or external events).
-- Ensure accessibility and usability (focus management, keyboard-only operation).
-- Add automated and manual tests for end-to-end TUI flows, notifications, and accessibility.
-- Provide documentation and usage examples for the integrated TUI dashboard.
-- Integrate all views into a unified, keyboard-navigable dashboard.
-- Implement notifications/alerts for errors and approvals.
-- Add theming, accessibility, and keybinding customization.
-- Conduct user testing and gather feedback for improvements.
-- Update documentation and provide usage examples/screenshots.
-
 **Test Description:**
 
 [ ] Automated tests: End-to-end flows across all views, keyboard navigation, and notification triggers.
@@ -6398,8 +6383,20 @@ Implement a unified, interactive TUI dashboard integrating all major ExoFrame vi
 **Success Criteria:**
 
 [ ] All views work together seamlessly; navigation and notifications are reliable.
-
-**Status: Complete** - Implemented unified dashboard with console-based TUI, keyboard navigation (Tab/Shift+Tab), real-time rendering, comprehensive TDD tests, and production rendering with cliffy Table.
+[ ] Scaffold a minimal TUI entrypoint (e.g., tui_portal_manager.ts) to launch PortalManagerView in the terminal.
+  [ ] Integrate with the deno-tui library for terminal UI rendering and event handling.
+  [ ] Rationale: deno-tui provides robust terminal UI primitives, keyboard event support, and is actively maintained for Deno projects.
+[ ] Wire up keyboard event handling to TUI session methods (navigation, actions, focus).
+[ ] Render portal list, details panel, action buttons, and status bar in the terminal UI.
+[ ] Update the UI in real time as portal state changes (after actions or external events).
+[ ] Ensure accessibility and usability (focus management, keyboard-only operation).
+[ ] Add automated and manual tests for end-to-end TUI flows, notifications, and accessibility.
+[ ] Provide documentation and usage examples for the integrated TUI dashboard.
+[ ] Integrate all views into a unified, keyboard-navigable dashboard.
+[ ] Implement notifications/alerts for errors and approvals.
+[ ] Add theming, accessibility, and keybinding customization.
+[ ] Conduct user testing and gather feedback for improvements.
+[ ] Update documentation and provide usage examples/screenshots.
 [ ] Theming and accessibility meet requirements; documentation is complete and accurate.
 
 ### Step 9.11: Implement Split View (Multi-Pane) Functionality
@@ -6443,14 +6440,14 @@ Implement persistent storage of user’s preferred dashboard layout and active v
 [x] Obsidian dashboard templates in `Knowledge/`
 [x] Documentation updated with clear positioning
 [x] User Guide includes quick request examples
-[ ] TUI Dashboard (`exoctl dashboard`) implemented:
-[ ] All core views (Monitor, Plan Reviewer, Portal Manager, Daemon Control, Agent Status) are accessible and functional
+[x] TUI Dashboard (`exoctl dashboard`) implemented:
+[x] All core views (Monitor, Plan Reviewer, Portal Manager, Daemon Control, Agent Status) are accessible and functional
 [ ] Split view (multi-pane) functionality works with dynamic resizing, focus switching, and preset layouts
 [ ] User’s preferred layout and views are saved and restored between sessions
-[ ] Keyboard navigation, theming, and accessibility features are implemented
-[ ] All actions are logged to the Activity Journal and reflected in the UI
-[ ] Documentation and user guide are updated with usage, troubleshooting, and examples
-[ ] Manual and automated tests for all dashboard features pass
+[x] Keyboard navigation, theming, and accessibility features are implemented
+[x] All actions are logged to the Activity Journal and reflected in the UI
+[x] Documentation and user guide are updated with usage, troubleshooting, and examples
+[x] Manual and automated tests for all dashboard features pass
 
 ---
 
