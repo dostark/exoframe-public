@@ -6399,22 +6399,22 @@ Automated tests: End-to-end flows across all views, including Agent Status, keyb
 - [x] Update documentation and provide usage examples/screenshots.
 - [x] Theming and accessibility meet requirements; documentation is complete and accurate.
 
-### Step 9.11: Implement Split View (Multi-Pane) Functionality
+### Step 9.11: Implement Split View (Multi-Pane) Functionality ✅ COMPLETED
 
 **Description:**
 Add the ability to split the TUI into two or more panes, each displaying a different view (e.g., Monitor and Plan Reviewer). Support dynamic resizing, focus switching, preset layouts, and visual indicators for active/inactive panes. Enable actions in one pane to update/filter content in another.
 
 **Test Description:**
 
-- [ ] Automated tests: Simulate opening, closing, and resizing multiple panes; verify each pane remains interactive and updates independently.
-- [ ] Manual tests: User can split, resize, and switch focus between panes; actions in one pane update content in another.
-- [ ] Edge cases: Minimum/maximum pane sizes, rapid layout changes, simultaneous actions in both panes.
+- [x] Automated tests: Simulate opening, closing, and resizing multiple panes; verify each pane remains interactive and updates independently.
+- [x] Manual tests: User can split, resize, and switch focus between panes; actions in one pane update content in another.
+- [x] Edge cases: Minimum/maximum pane sizes, rapid layout changes, simultaneous actions in both panes.
 
 **Success Criteria:**
 
-- [ ] User can view and interact with multiple panels at once.
-- [ ] No UI glitches or crashes when resizing or switching panes.
-- [ ] Actions in one pane can update/filter content in another as expected.
+- [x] User can view and interact with multiple panels at once.
+- [x] No UI glitches or crashes when resizing or switching panes.
+- [x] Actions in one pane can update/filter content in another as expected.
 
 ### Step 9.12: Save and Restore Preferred Dashboard Views
 
