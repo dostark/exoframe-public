@@ -3194,3 +3194,39 @@ _The recursion continues. The patterns emerge. The meta-framework takes shape._
 - "Which operations are read-only and should use display-only logger?"
 - "What actor should be used for this log event?"
 - "Is trace_id being propagated through child loggers?"
+
+## Recent Patterns and Observations
+
+The repository underwent an intensive implementation and QA cycle between 2025-12-21 and 2025-12-23. The following patterns and engineering observations emerged and are recommended to be included in this guide so future contributors and integrators benefit from them.
+
+- **TUI-first cockpit architecture**: The primary human interface is a keyboard-first TUI dashboard (split panes, saved layouts, multiple views). See the unified dashboard implementation and layout features in [src/tui/tui_dashboard.ts](src/tui/tui_dashboard.ts). The design favors fast, scriptable interactions and accessibility over a web-based control panel.
+
+- **Centralize small, orthogonal helpers to reduce duplication**: Multiple modules were refactored to extract tiny shared utilities rather than copy-pasting logic across providers and views. Notable examples:
+  - `TuiSessionBase` centralizes selection, navigation handling, status messages, and an async `performAction` wrapper used by views (see [src/tui/tui_common.ts](src/tui/tui_common.ts)).
+  - `provider_common_utils.ts` centralizes HTTP response handling, token mapping, and content extraction so each provider focuses on request shaping only (see [src/ai/provider_common_utils.ts](src/ai/provider_common_utils.ts)).
+  - `request_common.ts` provides blueprint loading and parsed-request construction to avoid duplicated file I/O and parsing logic (see [src/services/request_common.ts](src/services/request_common.ts)).
+
+- **Guarded async error handling pattern in TUI sessions**: TUI handlers now use a guarded `performAction` helper which awaits the action and maps thrown errors to a consistent `statusMessage` string. This prevents subtle timing issues where tests (or users) might not observe status updates because an async operation wasn't awaited.
+
+- **Make invalid selection explicit (testability + clarity)**: Instead of silently clamping selection indices, the TUI sessions allow an out-of-range sentinel (e.g. `-1`) to represent "no selection"; code sets an immediate status message for invalid selections. This pattern improves testability and avoids surprising behavior when callers need to simulate an empty selection. See [src/tui/portal_manager_view.ts](src/tui/portal_manager_view.ts) and [src/tui/plan_reviewer_view.ts](src/tui/plan_reviewer_view.ts).
+
+- **Provider robustness: standardized error classification & token mapping**: Provider HTTP responses are now parsed through shared helpers that map status codes to a small set of domain errors (authentication, rate-limit, server error, generic provider error) and optionally emit token-usage debug events. This makes metrics/logging and retry behaviour consistent across providers. See [src/ai/provider_common_utils.ts](src/ai/provider_common_utils.ts) and provider adaptations in [src/ai/providers/](src/ai/providers/).
+
+- **Deferred/native initialization and safe env access**: To make tooling robust under restricted runtime environments (CI / limited Deno permissions), native bindings (e.g. sqlite) and environment reads have been deferred or wrapped in safe getters. This reduces import-time failures in test runs and during CLI invocation.
+
+- **DRY post-processing for plan generation**: The RequestProcessor consolidates post-plan logic (write plan, mark request planned, log activity) into a helper to guarantee consistent logging and state transitions regardless of plan origin (flow vs agent). See [src/services/request_processor.ts](src/services/request_processor.ts).
+
+- **Chronological sorting must be numeric (timestamps)**: When sorting items by creation time, prefer numeric Date comparisons rather than string localeCompare to avoid incorrect ordering across formats/locales. Example fix: [src/cli/changeset_commands.ts](src/cli/changeset_commands.ts).
+
+- **Test-first and broad TDD coverage**: A large set of unit and integration tests were added/expanded (TUI, providers, CLI, integration flows). The team made tests the primary verification method before merging UI/UX changes. Look at `tests/tui/` and `tests/ai/` for representative examples.
+
+- **Activity Journal (logging) integration**: Many flows and CLI commands log structured events to the Activity Journal. Standardize log keys and payload shapes (e.g., `changeset.created`, `plan.approved`). Search `src/services/event_logger.ts` and tests under `tests/` to see expectations.
+
+- **Housekeeping: ignore runtime artifacts**: CI and local runs generate runtime artifacts (e.g., `System/daemon.pid`); these should be ignored in `.gitignore` to avoid spurious commits. See the `.gitignore` updates performed recently.
+
+How to use these patterns when extending ExoFrame
+
+- Prefer small, well-named helpers for cross-cutting concerns (parsing, error classification, logging) rather than copying code between providers/views.
+- When adding TUI commands that invoke async side-effects, use `performAction` or similar wrappers so errors map to user-visible status messages and tests can assert on them deterministically.
+- When writing new providers, rely on `provider_common_utils` for HTTP/error/token handling and implement only request shaping and model-specific response mapping.
+- Add tests for both success and failure modes — the test-suite includes many examples of how to mock providers and DB-like services.
