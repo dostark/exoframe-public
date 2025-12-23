@@ -1,14 +1,108 @@
+// --- Adapter: PlanCommands as PlanService ---
+import type { PlanCommands } from "../cli/plan_commands.ts";
+
+/**
+ * Adapter: PlanCommands as PlanService
+ */
+export class PlanCommandsServiceAdapter implements PlanService {
+  constructor(private readonly cmd: PlanCommands) {}
+  async listPending() {
+    const rows = await this.cmd.list("pending");
+    return rows.map((r: any) => ({
+      id: r.id,
+      title: (r as any).title ?? r.id,
+      author: r.agent_id ?? r.reviewed_by,
+      status: r.status,
+    }));
+  }
+  async getDiff(planId: string) {
+    const details = await this.cmd.show(planId);
+    return details.content ?? "";
+  }
+  async approve(planId: string, _reviewer: string) {
+    await this.cmd.approve(planId);
+    return true;
+  }
+  async reject(planId: string, _reviewer: string, reason?: string) {
+    if (!reason) throw new Error("Rejection reason is required");
+    await this.cmd.reject(planId, reason);
+    return true;
+  }
+}
+
+// --- Adapter: DB-like mock as PlanService ---
+/**
+ * Adapter: DB-like mock as PlanService
+ */
+export class DbLikePlanServiceAdapter implements PlanService {
+  constructor(private readonly dbLike: any) {}
+  listPending() {
+    return this.dbLike.getPendingPlans();
+  }
+  getDiff(planId: string) {
+    return this.dbLike.getPlanDiff(planId);
+  }
+  async approve(planId: string, reviewer: string) {
+    await this.dbLike.updatePlanStatus(planId, "approved");
+    await this.dbLike.logActivity({
+      action_type: "plan.approve",
+      plan_id: planId,
+      reviewer,
+      timestamp: new Date().toISOString(),
+    });
+    return true;
+  }
+  async reject(planId: string, reviewer: string, reason?: string) {
+    await this.dbLike.updatePlanStatus(planId, "rejected");
+    await this.dbLike.logActivity({
+      action_type: "plan.reject",
+      plan_id: planId,
+      reason: reason ?? null,
+      reviewer,
+      timestamp: new Date().toISOString(),
+    });
+    return true;
+  }
+}
+
+// --- Minimal PlanService mock for TUI session tests ---
+/**
+ * Minimal PlanService mock for TUI session tests.
+ */
+export class MinimalPlanServiceMock implements PlanService {
+  listPending = () => Promise.resolve([]);
+  getDiff = (_: string) => Promise.resolve("");
+  approve = (_: string, _r: string) => Promise.resolve(true);
+  reject = (_: string, _r: string, _reason?: string) => Promise.resolve(true);
+}
+// --- Service interface for Plan Reviewer ---
+export interface PlanService {
+  listPending(): Promise<Plan[]>;
+  getDiff(planId: string): Promise<string>;
+  approve(planId: string, reviewer: string): Promise<boolean>;
+  reject(planId: string, reviewer: string, reason?: string): Promise<boolean>;
+}
+
 // --- TUI Session for Plan Reviewer ---
+/**
+ * TUI session for Plan Reviewer. Encapsulates state and user interaction logic.
+ */
 export class PlanReviewerTuiSession {
   private selectedIndex = 0;
   private statusMessage = "";
-  constructor(private plans: any[], private service: any) {}
+  /**
+   * @param plans Initial list of plans
+   * @param service Service for plan operations
+   */
+  constructor(private readonly plans: Plan[], private readonly service: PlanService) {}
 
-  getSelectedIndex() {
+  /** Get the currently selected plan index. */
+  getSelectedIndex(): number {
     return this.selectedIndex;
   }
 
-  setSelectedIndex(idx: number) {
+  /** Set the selected plan index, clamped to valid range. */
+  setSelectedIndex(idx: number): void {
     if (idx < 0 || idx >= this.plans.length) {
       this.selectedIndex = 0;
     } else {
@@ -16,7 +110,8 @@ export class PlanReviewerTuiSession {
     }
   }
 
-  handleKey(key: string) {
+  /** Handle a TUI key event. */
+  async handleKey(key: string): Promise<void> {
     if (this.plans.length === 0) return;
     switch (key) {
       case "down":
@@ -32,10 +127,10 @@ export class PlanReviewerTuiSession {
         this.selectedIndex = 0;
         break;
       case "a":
-        this.#triggerAction("approve");
+        await this.#triggerAction("approve");
         break;
       case "r":
-        this.#triggerAction("reject");
+        await this.#triggerAction("reject");
         break;
     }
     if (this.selectedIndex >= this.plans.length) {
@@ -43,7 +138,11 @@ export class PlanReviewerTuiSession {
     }
   }
 
-  #triggerAction(action: "approve" | "reject") {
+  /**
+   * Trigger a plan action and update status.
+   * @param action Action to perform
+   */
+  async #triggerAction(action: "approve" | "reject") {
     const plan = this.plans[this.selectedIndex];
     if (!plan) {
       this.statusMessage = `Error: No plan selected`;
@@ -52,10 +151,10 @@ export class PlanReviewerTuiSession {
     try {
       switch (action) {
         case "approve":
-          this.service.approve(plan.id, "reviewer");
+          await this.service.approve(plan.id, "reviewer");
           break;
         case "reject":
-          this.service.reject(plan.id, "reviewer", "TUI reject");
+          await this.service.reject(plan.id, "reviewer", "TUI reject");
           break;
       }
       this.statusMessage = "";
@@ -68,7 +167,8 @@ export class PlanReviewerTuiSession {
     }
   }
 
-  getStatusMessage() {
+  /** Get the current status message. */
+  getStatusMessage(): string {
     return this.statusMessage;
   }
 }
@@ -80,104 +180,36 @@ export type Plan = {
   created_at?: string;
 };
 
-import { PlanCommands } from "../cli/plan_commands.ts";
+/**
+ * View/controller for Plan Reviewer. Delegates to injected PlanService.
+ */
+export class PlanReviewerView implements PlanService {
+  constructor(public readonly service: PlanService) {}
 
-export class PlanReviewerView {
-  service: any;
-  constructor(service?: any) {
-    // store optional injected service for tests or runtime
-    this.service = service;
-  }
-
-  // TUI: Expose a TUI session interface for tests or integration
-  createTuiSession(plans: any[]) {
+  /** Create a new TUI session for the given plans. */
+  createTuiSession(plans: Plan[]): PlanReviewerTuiSession {
     return new PlanReviewerTuiSession(plans, this.service);
   }
 
-  private isPlanCommands(obj: any): obj is PlanCommands {
-    return obj && typeof obj.list === "function" && typeof obj.approve === "function";
+  listPending(): Promise<Plan[]> {
+    return this.service.listPending();
+  }
+  getDiff(planId: string): Promise<string> {
+    return this.service.getDiff(planId);
+  }
+  approve(planId: string, reviewer: string): Promise<boolean> {
+    return this.service.approve(planId, reviewer);
+  }
+  reject(planId: string, reviewer: string, reason?: string): Promise<boolean> {
+    return this.service.reject(planId, reviewer, reason);
   }
 
-  private isDbLike(obj: any): boolean {
-    return obj && typeof obj.getPendingPlans === "function";
-  }
-
-  private ensurePlanCommands(): PlanCommands {
-    if (this.isPlanCommands(this.service)) return this.service;
-    if ((globalThis as any).CLIContext && (globalThis as any).WORKSPACE_ROOT) {
-      return new PlanCommands((globalThis as any).CLIContext, (globalThis as any).WORKSPACE_ROOT);
-    }
-    throw new Error("PlanCommands instance not provided and global CLI context missing");
-  }
-
-  async listPending(): Promise<Plan[]> {
-    // If a DB-like service was injected (tests), use it directly
-    if (this.isDbLike(this.service)) {
-      return await this.service.getPendingPlans();
-    }
-
-    const cmd = await this.ensurePlanCommands();
-    const rows = await cmd.list("pending");
-    // Map PlanMetadata -> Plan
-    return rows.map((r: any) => ({
-      id: r.id,
-      title: (r as any).title ?? r.id,
-      author: r.agent_id ?? r.reviewed_by,
-      status: r.status,
-    }));
-  }
-
-  async getDiff(planId: string): Promise<string> {
-    if (this.isDbLike(this.service)) {
-      return await this.service.getPlanDiff(planId);
-    }
-    const cmd = await this.ensurePlanCommands();
-    const details = await cmd.show(planId);
-    // PlanCommands.show returns the plan body; return it as the diff/content for TUI
-    return details.content ?? "";
-  }
-
-  async approve(planId: string, _reviewer: string): Promise<boolean> {
-    if (this.isDbLike(this.service)) {
-      await this.service.updatePlanStatus(planId, "approved");
-      await this.service.logActivity({
-        action_type: "plan.approve",
-        plan_id: planId,
-        reviewer: _reviewer,
-        timestamp: new Date().toISOString(),
-      });
-      return true;
-    }
-    const cmd = await this.ensurePlanCommands();
-    await cmd.approve(planId);
-    return true;
-  }
-
-  async reject(planId: string, _reviewer: string, reason?: string): Promise<boolean> {
-    if (this.isDbLike(this.service)) {
-      await this.service.updatePlanStatus(planId, "rejected");
-      await this.service.logActivity({
-        action_type: "plan.reject",
-        plan_id: planId,
-        reason: reason ?? null,
-        reviewer: _reviewer,
-        timestamp: new Date().toISOString(),
-      });
-      return true;
-    }
-    if (!reason) throw new Error("Rejection reason is required");
-    const cmd = await this.ensurePlanCommands();
-    await cmd.reject(planId, reason);
-    return true;
-  }
-
-  // Placeholder rendering helpers for TUI integration (to be expanded)
+  /** Render a list of plans for display. */
   renderPlanList(plans: Plan[]): string {
     return plans.map((p) => `${p.id} ${p.title} [${p.status ?? "unknown"}]`).join("\n");
   }
-
+  /** Render a diff for display. */
   renderDiff(diff: string): string {
-    // Very small helper; real TUI would colorize and paginate
     return diff;
   }
 }

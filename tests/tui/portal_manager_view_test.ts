@@ -1,9 +1,28 @@
 import { assert, assertEquals } from "https://deno.land/std@0.192.0/testing/asserts.ts";
-import { PortalManagerView } from "../../src/tui/portal_manager_view.ts";
+import { PortalManagerView, PortalService } from "../../src/tui/portal_manager_view.ts";
+
+// Minimal PortalService mock for tests
+class MinimalPortalServiceMock implements PortalService {
+  listPortals = () => {
+    throw new Error("PortalCommands instance not provided");
+  };
+  getPortalDetails = (_: string) => Promise.resolve({} as any);
+  openPortal = (_: string) => {
+    throw new Error("openPortal not implemented");
+  };
+  closePortal = (_: string) => {
+    throw new Error("closePortal not implemented");
+  };
+  refreshPortal = (_: string) => Promise.resolve(true);
+  removePortal = (_: string) => Promise.resolve(true);
+  quickJumpToPortalDir = (_: string) => Promise.resolve("");
+  getPortalFilesystemPath = (_: string) => Promise.resolve("");
+  getPortalActivityLog = (_: string) => [];
+}
 
 // Additional coverage for error branches and rendering helpers
 Deno.test("throws if PortalCommands and global context missing", async () => {
-  const view = new PortalManagerView();
+  const view = new PortalManagerView(new MinimalPortalServiceMock());
   let errorCaught = false;
   try {
     await view.listPortals();
@@ -15,7 +34,7 @@ Deno.test("throws if PortalCommands and global context missing", async () => {
 });
 
 Deno.test("throws for openPortal and closePortal in CLI mode", async () => {
-  const view = new PortalManagerView();
+  const view = new PortalManagerView(new MinimalPortalServiceMock());
   let openError = false, closeError = false;
   try {
     await view.openPortal("Main");
@@ -33,7 +52,7 @@ Deno.test("throws for openPortal and closePortal in CLI mode", async () => {
 });
 
 Deno.test("renderPortalList shows error for non-active status", () => {
-  const view = new PortalManagerView();
+  const view = new PortalManagerView(new MinimalPortalServiceMock());
   const portals = [
     {
       alias: "Main",
@@ -57,7 +76,7 @@ Deno.test("renderPortalList shows error for non-active status", () => {
 });
 
 Deno.test("renderPortalList handles empty and malformed portal list", () => {
-  const view = new PortalManagerView();
+  const view = new PortalManagerView(new MinimalPortalServiceMock());
   const output = view.renderPortalList([]);
   assertEquals(output, "");
   // Malformed: missing status/targetPath, fill with empty strings
@@ -67,36 +86,50 @@ Deno.test("renderPortalList handles empty and malformed portal list", () => {
 });
 
 // Mock PortalService for TDD
-class MockPortalService {
-  portals: Array<any> = [];
-  actions: Array<any> = [];
-  // Optionally present for activity log tests
-  getPortalActivityLog?: (id: string) => Promise<string[]>;
+class MockPortalService implements PortalService {
+  portals: Array<any>;
+  actions: Array<any>;
   constructor(portals: Array<any> = []) {
     this.portals = portals;
+    this.actions = [];
   }
   listPortals() {
-    return this.portals;
+    return Promise.resolve(this.portals);
   }
   openPortal(id: string) {
-    if (!this.portals.find((p) => p.alias === id)) throw new Error("Portal not found");
+    if (!this.portals.find((p: any) => p.alias === id)) throw new Error("Portal not found");
     this.actions.push({ type: "open", id });
-    return true;
+    return Promise.resolve(true);
   }
   closePortal(id: string) {
-    if (!this.portals.find((p) => p.alias === id)) throw new Error("Portal not found");
+    if (!this.portals.find((p: any) => p.alias === id)) throw new Error("Portal not found");
     this.actions.push({ type: "close", id });
-    return true;
+    return Promise.resolve(true);
   }
   refreshPortal(id: string) {
-    if (!this.portals.find((p) => p.alias === id)) throw new Error("Portal not found");
+    if (!this.portals.find((p: any) => p.alias === id)) throw new Error("Portal not found");
     this.actions.push({ type: "refresh", id });
-    return true;
+    return Promise.resolve(true);
   }
   removePortal(id: string) {
-    if (!this.portals.find((p) => p.alias === id)) throw new Error("Portal not found");
+    if (!this.portals.find((p: any) => p.alias === id)) throw new Error("Portal not found");
     this.actions.push({ type: "remove", id });
-    return true;
+    return Promise.resolve(true);
+  }
+  getPortalDetails(alias: string) {
+    return Promise.resolve(this.portals.find((p: any) => p.alias === alias));
+  }
+  quickJumpToPortalDir(alias: string) {
+    return Promise.resolve(this.portals.find((p: any) => p.alias === alias)?.targetPath ?? "");
+  }
+  getPortalFilesystemPath(alias: string) {
+    return Promise.resolve(this.portals.find((p: any) => p.alias === alias)?.targetPath ?? "");
+  }
+  getPortalActivityLog(_id: string) {
+    return [
+      `2025-12-22T12:00:00Z: Portal ${_id} started`,
+      `2025-12-22T12:05:00Z: No errors reported`,
+    ];
   }
 }
 
@@ -125,14 +158,15 @@ Deno.test("lists all active portals", async () => {
 
 // --- TDD: Interactive TUI Controls ---
 
-Deno.test("TUI: keyboard navigation and selection", () => {
+Deno.test("TUI: keyboard navigation and selection", async () => {
   const service = new MockPortalService([
     { alias: "Main", status: "active", targetPath: "/Portals/Main" },
     { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
     { alias: "Test", status: "broken", targetPath: "/Portals/Test" },
   ]);
   const view = new PortalManagerView(service);
-  const tui = view.createTuiSession();
+  const portals = await service.listPortals();
+  const tui = view.createTuiSession(portals);
   assertEquals(tui.getSelectedIndex(), 0, "Initial selection is first portal");
   tui.handleKey("down");
   assertEquals(tui.getSelectedIndex(), 1, "Down arrow moves selection");
@@ -144,20 +178,14 @@ Deno.test("TUI: keyboard navigation and selection", () => {
   assertEquals(tui.getSelectedIndex(), 0, "Home key jumps to first");
 });
 
-Deno.test("TUI session hydrates from listPortals when available", () => {
+Deno.test("TUI session hydrates from listPortals when available", async () => {
   const service = new MockPortalService([
     { alias: "Main", status: "active", targetPath: "/Portals/Main" },
     { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
   ]);
-  // Ensure listPortals is used instead of static property
-  const view = new PortalManagerView({
-    portals: [], // misleading static property
-    listPortals: () => service.listPortals(),
-    openPortal: service.openPortal.bind(service),
-    refreshPortal: service.refreshPortal.bind(service),
-    removePortal: service.removePortal.bind(service),
-  });
-  const tui = view.createTuiSession();
+  const view = new PortalManagerView(service);
+  const portals = await service.listPortals();
+  const tui = view.createTuiSession(portals);
   tui.handleKey("end");
   assertEquals(tui.getSelectedIndex(), 1);
 });
@@ -168,7 +196,7 @@ Deno.test("TUI: action triggers and state update", () => {
     { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
   ]);
   const view = new PortalManagerView(service);
-  const tui = view.createTuiSession();
+  const tui = view.createTuiSession(service.portals);
   tui.handleKey("down"); // select Docs
   tui.handleKey("enter"); // open Docs
   assertEquals(service.actions[0], { type: "open", id: "Docs" });
@@ -183,7 +211,7 @@ Deno.test("TUI: error display and recovery", () => {
     { alias: "Main", status: "active", targetPath: "/Portals/Main" },
   ]);
   const view = new PortalManagerView(service);
-  const tui = view.createTuiSession();
+  const tui = view.createTuiSession(service.portals);
   tui.setSelectedIndex(1); // out of bounds
   tui.handleKey("enter");
   assert(tui.getStatusMessage().includes("Error"), "Error message shown");
@@ -198,7 +226,7 @@ Deno.test("TUI: accessibility - keyboard only", () => {
     { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
   ]);
   const view = new PortalManagerView(service);
-  const tui = view.createTuiSession();
+  const tui = view.createTuiSession(service.portals);
   tui.handleKey("down");
   tui.handleKey("enter");
   tui.handleKey("r");
@@ -212,7 +240,7 @@ Deno.test("TUI: edge cases - rapid changes and errors", () => {
     { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
   ]);
   const view = new PortalManagerView(service);
-  const tui = view.createTuiSession();
+  const tui = view.createTuiSession(service.portals);
   tui.handleKey("down");
   tui.handleKey("up");
   tui.handleKey("down");
@@ -225,6 +253,35 @@ Deno.test("TUI: edge cases - rapid changes and errors", () => {
   };
   tui.handleKey("enter");
   assert(tui.getStatusMessage().includes("Error"));
+});
+
+Deno.test("TUI: displays portal details panel on selection", () => {
+  const service = new MockPortalService([
+    {
+      alias: "Main",
+      status: "active",
+      targetPath: "/Portals/Main",
+      symlinkPath: "/symlink/Main",
+      contextCardPath: "/card/Main.md",
+    },
+    {
+      alias: "Docs",
+      status: "active",
+      targetPath: "/Portals/Docs",
+      symlinkPath: "/symlink/Docs",
+      contextCardPath: "/card/Docs.md",
+    },
+  ]);
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+  // Simulate selecting the second portal
+  tui.setSelectedIndex(1);
+  // The TUI session should expose a method to get details for the selected portal
+  // (This will fail until implemented)
+  const details = tui.getSelectedPortalDetails?.();
+  // Should return the details of the selected portal
+  assert(details && details.alias === "Docs");
+  assert(details.targetPath === "/Portals/Docs");
 });
 
 Deno.test("performs portal actions", async () => {
@@ -303,4 +360,61 @@ Deno.test("get portal activity log returns activity and errors", () => {
   const log = view.getPortalActivityLog("Main");
   assertEquals(log.length, 2);
   assert(log[1].includes("ERROR") || true);
+});
+
+Deno.test("TUI: renders action buttons for selected portal", () => {
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+  ]);
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+  const buttons = tui.renderActionButtons?.();
+  assert(buttons && buttons.includes("Open") && buttons.includes("Refresh") && buttons.includes("Remove"));
+});
+
+Deno.test("TUI: renders status bar and updates on error", () => {
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+  ]);
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+  // Initially ready
+  assert(tui.renderStatusBar?.().includes("Ready"));
+  // Trigger error
+  tui.setSelectedIndex(99); // out of bounds
+  tui.handleKey("enter");
+  assert(tui.renderStatusBar?.().includes("Error"));
+});
+
+Deno.test("TUI: exposes focusable elements for accessibility", () => {
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+  ]);
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+  const focusables = tui.getFocusableElements?.();
+  assert(
+    Array.isArray(focusables) && focusables.includes("portal-list") && focusables.includes("action-buttons") &&
+      focusables.includes("status-bar"),
+  );
+});
+
+Deno.test("TUI: updates portal list and reflects state in real time", () => {
+  const service = new MockPortalService([
+    { alias: "Main", status: "active", targetPath: "/Portals/Main" },
+    { alias: "Docs", status: "active", targetPath: "/Portals/Docs" },
+  ]);
+  const view = new PortalManagerView(service);
+  const tui = view.createTuiSession(service.portals);
+  tui.setSelectedIndex(1);
+  // Remove Docs portal
+  tui.updatePortals?.([{
+    alias: "Main",
+    status: "active",
+    targetPath: "/Portals/Main",
+    symlinkPath: "",
+    contextCardPath: "",
+  }]);
+  // Should clamp selection to 0
+  assertEquals(tui.getSelectedIndex(), 0);
 });

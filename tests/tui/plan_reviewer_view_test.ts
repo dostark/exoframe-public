@@ -1,5 +1,11 @@
 import { assert, assertEquals } from "jsr:@std/assert@^1.0.0";
-import { PlanReviewerTuiSession, PlanReviewerView } from "../../src/tui/plan_reviewer_view.ts";
+import {
+  DbLikePlanServiceAdapter,
+  MinimalPlanServiceMock,
+  PlanCommandsServiceAdapter,
+  PlanReviewerTuiSession,
+  PlanReviewerView,
+} from "../../src/tui/plan_reviewer_view.ts";
 import { PlanCommands } from "../../src/cli/plan_commands.ts";
 
 function yamlFrontmatter(obj: Record<string, string>): string {
@@ -33,7 +39,7 @@ Deno.test("lists pending plans via PlanCommands", async () => {
   const db = new MockDB();
   const context: any = { config: {} as any, db };
   const cmd = new PlanCommands(context, root);
-  const view = new PlanReviewerView(cmd);
+  const view = new PlanReviewerView(new PlanCommandsServiceAdapter(cmd));
   const pending = await view.listPending();
   assertEquals(pending.length, 1);
   // Cleanup
@@ -47,7 +53,7 @@ Deno.test("returns plan content as diff via PlanCommands", async () => {
   const db = new MockDB();
   const context: any = { config: {} as any, db };
   const cmd = new PlanCommands(context, root);
-  const view = new PlanReviewerView(cmd);
+  const view = new PlanReviewerView(new PlanCommandsServiceAdapter(cmd));
   const diff = await view.getDiff(planId);
   assertEquals(diff.includes("+ new"), true);
   await Deno.remove(root, { recursive: true });
@@ -59,7 +65,7 @@ Deno.test("approve moves plan and logs activity via PlanCommands", async () => {
   const db = new MockDB();
   const context: any = { config: {} as any, db };
   const cmd = new PlanCommands(context, root);
-  const view = new PlanReviewerView(cmd);
+  const view = new PlanReviewerView(new PlanCommandsServiceAdapter(cmd));
   const ok = await view.approve(planId, "reviewer-1");
   assert(ok);
   // Check that plan file moved to System/Active
@@ -82,7 +88,7 @@ Deno.test("DB-like path logs reviewer and reason", async () => {
       logs.push(evt);
     },
   };
-  const view = new PlanReviewerView(dbLike);
+  const view = new PlanReviewerView(new DbLikePlanServiceAdapter(dbLike));
   await view.approve("p", "alice@example.com");
   await view.reject("p", "alice@example.com", "too risky");
   const approveLog = logs.find((l) => l.action_type === "plan.approve");
@@ -97,7 +103,7 @@ Deno.test("reject moves plan to Inbox/Rejected and logs reason via PlanCommands"
   const db = new MockDB();
   const context: any = { config: {} as any, db };
   const cmd = new PlanCommands(context, root);
-  const view = new PlanReviewerView(cmd);
+  const view = new PlanReviewerView(new PlanCommandsServiceAdapter(cmd));
   const ok = await view.reject(planId, "reviewer-2", "needs changes");
   assert(ok);
   try {
@@ -116,7 +122,7 @@ Deno.test("handles very large plan content via PlanCommands", async () => {
   const db = new MockDB();
   const context: any = { config: {} as any, db };
   const cmd = new PlanCommands(context, root);
-  const view = new PlanReviewerView(cmd);
+  const view = new PlanReviewerView(new PlanCommandsServiceAdapter(cmd));
   const diff = await view.getDiff(planId);
   assertEquals(diff.length, large.length);
   await Deno.remove(root, { recursive: true });
@@ -125,16 +131,28 @@ Deno.test("handles very large plan content via PlanCommands", async () => {
 Deno.test("PlanReviewerTuiSession: error handling in #triggerAction (service throws)", () => {
   let called = false;
   const plans = [{ id: "p1", title: "T1" }];
-  const service = {
-    approve() {
+  const _service = {
+    listPending: () => [],
+    getDiff: () => "",
+    approve: () => {
       called = true;
       throw new Error("fail-approve");
     },
-    reject() {
+    reject: () => {
       throw new Error("fail-reject");
     },
   };
-  const session = new PlanReviewerTuiSession(plans, service);
+  const session = new PlanReviewerTuiSession(plans, {
+    listPending: () => Promise.resolve([]),
+    getDiff: () => Promise.resolve(""),
+    approve: () => {
+      called = true;
+      throw new Error("fail-approve");
+    },
+    reject: () => {
+      throw new Error("fail-reject");
+    },
+  });
   session.setSelectedIndex(0);
   session.handleKey("a");
   assertEquals(session.getStatusMessage(), "Error: fail-approve");
@@ -146,8 +164,13 @@ Deno.test("PlanReviewerTuiSession: error handling in #triggerAction (service thr
 Deno.test("PlanReviewerView: reject throws if reason missing", async () => {
   // Do not provide getPendingPlans so PlanCommands path is used
   const view = new PlanReviewerView({
-    updatePlanStatus: async () => {},
-    logActivity: async () => {},
+    listPending: () => Promise.resolve([]),
+    getDiff: () => Promise.resolve(""),
+    approve: () => Promise.resolve(true),
+    reject: (_id, _r, reason?: string) => {
+      if (!reason) return Promise.reject(new Error("Rejection reason is required"));
+      return Promise.resolve(true);
+    },
   });
   let threw = false;
   try {
@@ -164,7 +187,7 @@ Deno.test("PlanReviewerView: reject throws if reason missing", async () => {
 });
 
 Deno.test("PlanReviewerView: renderPlanList and renderDiff", () => {
-  const view = new PlanReviewerView();
+  const view = new PlanReviewerView(new MinimalPlanServiceMock());
   const plans = [
     { id: "p1", title: "T1", status: "pending" },
     { id: "p2", title: "T2", status: "approved" },
@@ -177,7 +200,7 @@ Deno.test("PlanReviewerView: renderPlanList and renderDiff", () => {
 });
 
 Deno.test("PlanReviewerTuiSession: edge cases (no plans, invalid selection)", () => {
-  const session = new PlanReviewerTuiSession([], {});
+  const session = new PlanReviewerTuiSession([], new MinimalPlanServiceMock());
   session.handleKey("down"); // should not throw
   session.setSelectedIndex(-1);
   assertEquals(session.getSelectedIndex(), 0);
@@ -195,7 +218,7 @@ Deno.test("PlanReviewerView: works with DB-like service", async () => {
       logged = true;
     },
   };
-  const view = new PlanReviewerView(dbLike);
+  const view = new PlanReviewerView(new DbLikePlanServiceAdapter(dbLike));
   const pending = await view.listPending();
   assertEquals(pending.length, 1);
   const diff = await view.getDiff("p");

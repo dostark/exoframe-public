@@ -1,4 +1,10 @@
-import { DatabaseService } from "../../src/services/db.ts";
+// --- Service interface for Monitor/Log access ---
+/**
+ * Service interface for log access.
+ */
+export interface LogService {
+  getRecentActivity(limit: number): LogEntry[];
+}
 
 export interface LogFilter {
   agent?: string;
@@ -18,86 +24,68 @@ export interface LogEntry {
   timestamp: string;
 }
 
+/**
+ * View/controller for monitoring logs. Delegates to injected LogService.
+ */
 export class MonitorView {
-  private db: DatabaseService;
   private filter: LogFilter = {};
   private isPaused = false;
   private logs: LogEntry[] = [];
 
-  constructor(db: DatabaseService) {
-    this.db = db;
+  constructor(private readonly logService: LogService) {
     this.refreshLogs();
   }
 
-  /**
-   * Refresh logs from the database
-   */
+  /** Refresh logs from the service. */
   refreshLogs(): void {
     if (!this.isPaused) {
-      this.logs = this.db.getRecentActivity(1000);
+      this.logs = this.logService.getRecentActivity(1000);
     }
   }
 
-  /**
-   * Get all current logs
-   */
+  /** Get all current logs. */
   getLogs(): LogEntry[] {
     this.refreshLogs();
     return [...this.logs];
   }
 
-  /**
-   * Set filter for logs
-   */
+  /** Set the filter for logs. */
   setFilter(filter: LogFilter): void {
     this.filter = { ...filter };
   }
 
-  /**
-   * Get filtered logs based on current filter
-   */
+  /** Get filtered logs based on current filter. */
   getFilteredLogs(): LogEntry[] {
     let filtered = this.getLogs();
-
     if (this.filter.agent) {
       filtered = filtered.filter((log) => log.agent_id === this.filter.agent);
     }
-
     if (this.filter.actionType) {
       filtered = filtered.filter((log) => log.action_type === this.filter.actionType);
     }
-
     if (this.filter.traceId) {
       filtered = filtered.filter((log) => log.trace_id === this.filter.traceId);
     }
-
     if (this.filter.timeWindow) {
       const now = new Date();
       const cutoff = new Date(now.getTime() - this.filter.timeWindow);
       filtered = filtered.filter((log) => new Date(log.timestamp) >= cutoff);
     }
-
     return filtered;
   }
 
-  /**
-   * Pause log streaming
-   */
+  /** Pause log streaming. */
   pause(): void {
     this.isPaused = true;
   }
 
-  /**
-   * Resume log streaming
-   */
+  /** Resume log streaming. */
   resume(): void {
     this.isPaused = false;
     this.refreshLogs();
   }
 
-  /**
-   * Check if streaming is active
-   */
+  /** Check if streaming is active. */
   isStreaming(): boolean {
     return !this.isPaused;
   }
