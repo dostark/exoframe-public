@@ -12,14 +12,12 @@ report/
 /System/*.db*
 /System/activity_export.md
 /System/daemon.pid
+/System/*.log
 /Knowledge/
 /Inbox/
 /Portals/
 *.log
 deno.lock
-
-# Test coverage reports
-/coverage/
 
 # Test artifacts
 test-*.toml

@@ -103,7 +103,7 @@ export class GitService {
     // Create .gitignore
     await Deno.writeTextFile(
       `${this.repoPath}/.gitignore`,
-      "System/journal.db\nSystem/journal.db-*\n*.tmp\n.DS_Store\n",
+      "System/journal.db\nSystem/journal.db-*\nSystem/daemon.*\ndeno.lock\n",
     );
 
     // Stage .gitignore
@@ -164,31 +164,66 @@ export class GitService {
     const startTime = Date.now();
 
     try {
+      // Ensure identity is configured before creating branch
+      await this.ensureIdentity();
+
       // Extract first 8 chars of traceId for branch name
       const shortTrace = options.traceId.substring(0, 8);
-      let branchName = `feat/${options.requestId}-${shortTrace}`;
+      const baseName = `feat/${options.requestId}-${shortTrace}`;
+      let branchName = baseName;
 
-      // Check if branch exists
-      const listResult = await this.runGitCommand(["branch", "--list", branchName], false);
+      // Retry loop for branch creation
+      const maxRetries = 5;
+      let lastError: Error | null = null;
 
-      if (listResult.output.trim()) {
-        // Branch exists, append timestamp
-        const timestamp = Date.now().toString(36);
-        branchName = `feat/${options.requestId}-${shortTrace}-${timestamp}`;
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          if (i === 0) {
+            // First try: check if base name exists
+            const listResult = await this.runGitCommand(["branch", "--list", branchName], false);
+            if (listResult.output.trim()) {
+              // Branch exists, try with timestamp first
+              const timestamp = Date.now().toString(36);
+              branchName = `${baseName}-${timestamp}`;
+            }
+          } else {
+            // For retries, append random suffix
+            const suffix = Math.random().toString(36).substring(2, 8);
+            branchName = `${baseName}-${suffix}`;
+          }
+
+          // Create and checkout branch
+          await this.runGitCommand(["checkout", "-b", branchName]);
+
+          this.logActivity("git.branch_created", {
+            success: true,
+            branch: branchName,
+            request_id: options.requestId,
+            trace_id: options.traceId,
+            duration_ms: Date.now() - startTime,
+            attempts: i + 1,
+          });
+
+          return branchName;
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          const errorMessage = lastError.message;
+
+          // Check if error is about existing reference
+          if (
+            errorMessage.includes("already exists") ||
+            errorMessage.includes("cannot lock ref")
+          ) {
+            // Continue to next iteration to try new name
+            continue;
+          }
+
+          // If other error, throw immediately
+          throw lastError;
+        }
       }
 
-      // Create and checkout branch
-      await this.runGitCommand(["checkout", "-b", branchName]);
-
-      this.logActivity("git.branch_created", {
-        success: true,
-        branch: branchName,
-        request_id: options.requestId,
-        trace_id: options.traceId,
-        duration_ms: Date.now() - startTime,
-      });
-
-      return branchName;
+      throw lastError || new Error("Failed to create branch after retries");
     } catch (error) {
       this.logActivity("git.branch_created", {
         success: false,

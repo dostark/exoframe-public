@@ -149,6 +149,14 @@ export class RequestProcessor {
       priority: frontmatter.priority,
     });
 
+    // Prevent re-processing of already planned/completed requests
+    if (["planned", "approved", "completed", "failed"].includes(frontmatter.status)) {
+      traceLogger.info("request.skipped", filePath, {
+        reason: `Request already has status '${frontmatter.status}'`,
+      });
+      return null;
+    }
+
     // Validate request has required fields
     if (hasFlow && hasAgent) {
       traceLogger.error("request.invalid", filePath, {

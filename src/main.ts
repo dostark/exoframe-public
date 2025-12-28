@@ -220,11 +220,11 @@ if (import.meta.main) {
           if (frontmatter.model) {
             try {
               currentProvider = ProviderFactory.createByName(config, frontmatter.model as string);
-              watcherLogger.info("plan.model_override", frontmatter.model, {
+              watcherLogger.info("plan.model_override", frontmatter.model as string, {
                 trace_id: frontmatter.trace_id,
               });
             } catch (error) {
-              watcherLogger.warn("plan.model_override_failed", frontmatter.model, {
+              watcherLogger.warn("plan.model_override_failed", frontmatter.model as string, {
                 error: error instanceof Error ? error.message : String(error),
                 fallback: "using default provider",
               });

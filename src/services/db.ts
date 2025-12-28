@@ -27,6 +27,8 @@ export class DatabaseService {
     // Enable WAL mode for concurrency
     this.db.exec("PRAGMA journal_mode = WAL;");
     this.db.exec("PRAGMA foreign_keys = ON;");
+    // Set busy timeout to 5000ms to handle concurrency
+    this.db.exec("PRAGMA busy_timeout = 5000;");
 
     // Load batch configuration
     this.FLUSH_INTERVAL_MS = config.database.batch_flush_ms;
@@ -106,39 +108,72 @@ export class DatabaseService {
   }
 
   /**
+   * Execute a function within a transaction with retry logic
+   */
+  private retryTransaction(fn: () => void, maxRetries = 5, baseDelay = 100): void {
+    let lastError: Error | null = null;
+
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        this.db.exec("BEGIN IMMEDIATE TRANSACTION");
+        fn();
+        this.db.exec("COMMIT");
+        return;
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // Rollback if transaction failed
+        try {
+          this.db.exec("ROLLBACK");
+        } catch {
+          // Ignore rollback errors (transaction might not have started)
+        }
+
+        // Check if error is database locked
+        if (lastError.message.includes("database is locked")) {
+          // Exponential backoff with jitter
+          const delay = baseDelay * Math.pow(2, i) + Math.random() * 50;
+
+          // Synchronous sleep since sqlite driver is synchronous
+          const start = Date.now();
+          while (Date.now() - start < delay) {
+            // Busy wait
+          }
+          continue;
+        }
+
+        throw lastError;
+      }
+    }
+    throw lastError;
+  }
+
+  /**
    * Execute batch insert with transaction handling
    * @private
    */
   private executeBatchInsert(batch: LogEntry[], context: string): void {
     try {
-      this.db.exec("BEGIN TRANSACTION");
-
-      for (const entry of batch) {
-        this.db.exec(
-          `INSERT INTO activity (id, trace_id, actor, agent_id, action_type, target, payload, timestamp)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            entry.activityId,
-            entry.traceId,
-            entry.actor,
-            entry.agentId,
-            entry.actionType,
-            entry.target,
-            entry.payload,
-            entry.timestamp,
-          ],
-        );
-      }
-
-      this.db.exec("COMMIT");
+      this.retryTransaction(() => {
+        for (const entry of batch) {
+          this.db.exec(
+            `INSERT INTO activity (id, trace_id, actor, agent_id, action_type, target, payload, timestamp)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              entry.activityId,
+              entry.traceId,
+              entry.actor,
+              entry.agentId,
+              entry.actionType,
+              entry.target,
+              entry.payload,
+              entry.timestamp,
+            ],
+          );
+        }
+      });
     } catch (error) {
       console.error(`Failed to flush ${batch.length} activity logs (${context}):`, error);
-      // Attempt rollback on error
-      try {
-        this.db.exec("ROLLBACK");
-      } catch (rollbackError) {
-        console.error("Failed to rollback transaction:", rollbackError);
-      }
     }
   }
 

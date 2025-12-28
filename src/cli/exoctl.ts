@@ -25,6 +25,7 @@ import { DaemonCommands } from "./daemon_commands.ts";
 import { PortalCommands } from "./portal_commands.ts";
 import { BlueprintCommands } from "./blueprint_commands.ts";
 import { FlowCommands } from "./flow_commands.ts";
+import { DashboardCommands } from "./dashboard_commands.ts";
 
 // Allow tests to run the CLI entrypoint without initializing heavy services
 let IN_TEST_MODE = false;
@@ -99,6 +100,7 @@ const daemonCommands = new DaemonCommands(context);
 const portalCommands = new PortalCommands({ config, db, configService });
 const blueprintCommands = new BlueprintCommands(context);
 const flowCommands = new FlowCommands(context);
+const dashboardCommands = new DashboardCommands(context);
 
 await new Command()
   .name("exoctl")
@@ -951,6 +953,14 @@ await new Command()
             await flowCommands.validateFlow(flowId, options);
           }),
       ),
+  )
+  .command(
+    "dashboard",
+    new Command()
+      .description("Launch the interactive dashboard")
+      .action(async () => {
+        await dashboardCommands.show();
+      }),
   )
   .parse(Deno.args);
 
