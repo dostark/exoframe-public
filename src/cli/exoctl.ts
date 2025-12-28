@@ -30,7 +30,7 @@ import { FlowCommands } from "./flow_commands.ts";
 let IN_TEST_MODE = false;
 try {
   IN_TEST_MODE = Deno.env.get("EXOCTL_TEST_MODE") === "1";
-} catch (err) {
+} catch (_err) {
   // Deno will throw NotCapable if env access isn't allowed; treat as not in test mode
   IN_TEST_MODE = false;
 }
@@ -63,7 +63,7 @@ if (!IN_TEST_MODE) {
 
     // Initialize command handlers
     context = { config, db, provider };
-  } catch (err) {
+  } catch (_err) {
     // Permission/read errors can occur when running the binary without
     // file system access (e.g., tests). Fall back to a minimal config
     // and stub services so lightweight commands (version/help) continue.

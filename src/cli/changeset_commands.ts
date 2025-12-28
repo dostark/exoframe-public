@@ -278,7 +278,7 @@ export class ChangesetCommands extends BaseCommand {
     const commitSha = new TextDecoder().decode(shaResult.stdout).trim();
 
     // Log approval with user identity
-    const userIdentity = await this.getUserIdentity();
+    const _userIdentity = await this.getUserIdentity();
     const actionLogger = await this.getActionLogger();
     actionLogger.info("changeset.approved", changeset.request_id, {
       commit_sha: commitSha,
@@ -319,7 +319,7 @@ export class ChangesetCommands extends BaseCommand {
     }
 
     // Log rejection with user identity
-    const userIdentity = await this.getUserIdentity();
+    const _userIdentity = await this.getUserIdentity();
     const actionLogger = await this.getActionLogger();
     actionLogger.info("changeset.rejected", changeset.request_id, {
       branch: changeset.branch,

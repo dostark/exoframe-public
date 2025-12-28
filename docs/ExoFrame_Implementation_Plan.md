@@ -3266,8 +3266,8 @@ The agent orchestration infrastructure is fully implemented and functional with 
 11. [x] MCP tool error types defined
 12. [x] Security violations detection via permission validation
 13. [x] 27 comprehensive tests, 27 passing (100%)
-14. [ ] Integration with AnthropicProvider (TODO: deferred)
-15. [ ] Integration with OpenAIProvider (TODO: deferred)
+14. [x] Integration with AnthropicProvider
+15. [x] Integration with OpenAIProvider
 16. [x] Integration with OllamaProvider
 17. [x] Integration with MockLLMProvider
 

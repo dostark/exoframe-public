@@ -395,7 +395,7 @@ export class ProviderFactory {
   private static safeEnvGet(key: string): string | undefined {
     try {
       return Deno.env.get(key);
-    } catch (err) {
+    } catch (_err) {
       // Deno will throw NotCapable when env access is not allowed in the runtime.
       // Swallow that and return undefined so callers can fall back to defaults.
       return undefined;
