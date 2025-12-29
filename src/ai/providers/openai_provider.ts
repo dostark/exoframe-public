@@ -1,7 +1,7 @@
 import { IModelProvider, ModelOptions } from "../providers.ts";
 import { EventLogger } from "../../services/event_logger.ts";
 import { withRetry } from "./common.ts";
-import { extractOpenAIContent, handleProviderResponse, tokenMapperOpenAI } from "../provider_common_utils.ts";
+import { extractOpenAIContent, performProviderCall, tokenMapperOpenAI } from "../provider_common_utils.ts";
 
 /**
  * OpenAIProvider implements IModelProvider for OpenAI's chat models.
@@ -53,7 +53,7 @@ export class OpenAIProvider implements IModelProvider {
    * Internal: attempt a single completion call.
    */
   private async attemptGenerate(prompt: string, options?: ModelOptions): Promise<string> {
-    const response = await fetch(this.baseUrl, {
+    const data = await performProviderCall(this.baseUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -67,9 +67,16 @@ export class OpenAIProvider implements IModelProvider {
         top_p: options?.top_p,
         stop: options?.stop,
       }),
+    }, {
+      id: this.id,
+      maxAttempts: 5,
+      backoffBaseMs: this.retryDelayMs,
+      timeoutMs: undefined,
+      logger: this.logger,
+      tokenMapper: tokenMapperOpenAI(this.model),
+      extractor: extractOpenAIContent,
     });
-    const data = await handleProviderResponse(response, this.id, this.logger, tokenMapperOpenAI(this.model));
 
-    return extractOpenAIContent(data);
+    return data;
   }
 }

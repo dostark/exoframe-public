@@ -1,7 +1,7 @@
 import { IModelProvider, ModelOptions } from "../providers.ts";
 import { EventLogger } from "../../services/event_logger.ts";
 import { withRetry } from "./common.ts";
-import { extractGoogleContent, handleProviderResponse, tokenMapperGoogle } from "../provider_common_utils.ts";
+import { extractGoogleContent, performProviderCall, tokenMapperGoogle } from "../provider_common_utils.ts";
 
 /**
  * GoogleProvider implements IModelProvider for Gemini and other Google models.
@@ -51,7 +51,7 @@ export class GoogleProvider implements IModelProvider {
    */
   private async attemptGenerate(prompt: string, options?: ModelOptions): Promise<string> {
     const url = `${this.baseUrl}/${this.model}:generateContent?key=${this.apiKey}`;
-    const response = await fetch(url, {
+    const data = await performProviderCall(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -63,9 +63,16 @@ export class GoogleProvider implements IModelProvider {
           stopSequences: options?.stop,
         },
       }),
+    }, {
+      id: this.id,
+      maxAttempts: 5,
+      backoffBaseMs: this.retryDelayMs,
+      timeoutMs: undefined,
+      logger: this.logger,
+      tokenMapper: tokenMapperGoogle(this.model),
+      extractor: extractGoogleContent,
     });
-    const data = await handleProviderResponse(response, this.id, this.logger, tokenMapperGoogle(this.model));
 
-    return extractGoogleContent(data);
+    return data;
   }
 }

@@ -2,11 +2,12 @@ import { assert, assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
 import { MonitorView } from "../../src/tui/monitor_view.ts";
 import type { LogEntry } from "../../src/tui/monitor_view.ts";
 import { DatabaseService } from "../../src/services/db.ts";
+import { createMockDatabaseService, createMonitorViewWithLogs } from "./helpers.ts";
 
 // Additional coverage for MonitorView rendering and color helpers
 Deno.test("MonitorView - getLogColor covers all cases", () => {
-  const mockDb = new MockDatabaseService();
-  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
+  const db = createMockDatabaseService();
+  const monitorView = new MonitorView(db as unknown as DatabaseService);
   assertEquals(monitorView.getLogColor("request_created"), "green");
   assertEquals(monitorView.getLogColor("plan_approved"), "blue");
   assertEquals(monitorView.getLogColor("execution_started"), "yellow");
@@ -16,8 +17,8 @@ Deno.test("MonitorView - getLogColor covers all cases", () => {
 });
 
 Deno.test("MonitorView - getAnsiColorCode covers all cases", () => {
-  const mockDb = new MockDatabaseService();
-  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
+  const db = createMockDatabaseService();
+  const monitorView = new MonitorView(db as unknown as DatabaseService);
   assertEquals(monitorView["getAnsiColorCode"]("red"), 31);
   assertEquals(monitorView["getAnsiColorCode"]("green"), 32);
   assertEquals(monitorView["getAnsiColorCode"]("yellow"), 33);
@@ -49,73 +50,20 @@ Deno.test("MonitorView - renderLogs outputs ANSI and handles empty", () => {
       timestamp: "2025-12-22T10:01:00Z",
     },
   ];
-  const mockDb = new MockDatabaseService(logs);
-  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
+  const { db, monitorView } = createMonitorViewWithLogs(logs);
   monitorView.setFilter({});
   const output = monitorView.renderLogs();
   assert(output.includes("\x1b[31m")); // red for error
   assert(output.includes("\x1b[37m")); // white for unknown
   // Empty logs
-  const emptyDb = new MockDatabaseService([]);
-  const emptyView = new MonitorView(emptyDb as unknown as DatabaseService);
+  const { db: emptyDb, monitorView: emptyView } = createMonitorViewWithLogs([]);
   assertEquals(emptyView.renderLogs(), "");
 });
 
-// Mock DatabaseService for testing
-class MockDatabaseService {
-  private logs: Array<{
-    id: string;
-    trace_id: string;
-    actor: string;
-    agent_id: string | null;
-    action_type: string;
-    target: string | null;
-    payload: Record<string, unknown>;
-    timestamp: string;
-  }> = [];
-
-  constructor(initialLogs: Array<{
-    id: string;
-    trace_id: string;
-    actor: string;
-    agent_id: string | null;
-    action_type: string;
-    target: string | null;
-    payload: Record<string, unknown>;
-    timestamp: string;
-  }> = []) {
-    this.logs = initialLogs;
-  }
-
-  getRecentActivity(limit: number = 100): Array<{
-    id: string;
-    trace_id: string;
-    actor: string;
-    agent_id: string | null;
-    action_type: string;
-    target: string | null;
-    payload: Record<string, unknown>;
-    timestamp: string;
-  }> {
-    return this.logs.slice(-limit).reverse();
-  }
-
-  addLog(log: {
-    id: string;
-    trace_id: string;
-    actor: string;
-    agent_id: string | null;
-    action_type: string;
-    target: string | null;
-    payload: Record<string, unknown>;
-    timestamp: string;
-  }) {
-    this.logs.push(log);
-  }
-}
+// Mock DatabaseService for testing - use `createMockDatabaseService` in `tests/tui/helpers.ts` instead
 
 Deno.test("MonitorView - should display real-time log streaming", () => {
-  const mockDb = new MockDatabaseService([
+  const { db, monitorView } = createMonitorViewWithLogs([
     {
       id: "1",
       trace_id: "trace-1",
@@ -127,8 +75,6 @@ Deno.test("MonitorView - should display real-time log streaming", () => {
       timestamp: "2025-12-21T10:00:00Z",
     },
   ]);
-
-  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
 
   // Test that it can retrieve logs
   const logs = monitorView.getLogs();
@@ -138,7 +84,7 @@ Deno.test("MonitorView - should display real-time log streaming", () => {
 });
 
 Deno.test("MonitorView - should filter logs by agent", () => {
-  const mockDb = new MockDatabaseService([
+  const { db, monitorView } = createMonitorViewWithLogs([
     {
       id: "1",
       trace_id: "trace-1",
@@ -160,8 +106,6 @@ Deno.test("MonitorView - should filter logs by agent", () => {
       timestamp: "2025-12-21T10:01:00Z",
     },
   ]);
-
-  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
 
   // Test filtering by agent
   monitorView.setFilter({ agent: "researcher" });
@@ -171,7 +115,7 @@ Deno.test("MonitorView - should filter logs by agent", () => {
 });
 
 Deno.test("MonitorView - should filter logs by action type", () => {
-  const mockDb = new MockDatabaseService([
+  const { db, monitorView } = createMonitorViewWithLogs([
     {
       id: "1",
       trace_id: "trace-1",
@@ -194,8 +138,6 @@ Deno.test("MonitorView - should filter logs by action type", () => {
     },
   ]);
 
-  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
-
   // Test filtering by action type
   monitorView.setFilter({ actionType: "plan_approved" });
   const filteredLogs = monitorView.getFilteredLogs();
@@ -204,9 +146,7 @@ Deno.test("MonitorView - should filter logs by action type", () => {
 });
 
 Deno.test("MonitorView - should pause and resume log streaming", () => {
-  const mockDb = new MockDatabaseService();
-
-  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
+  const { db, monitorView } = createMonitorViewWithLogs();
 
   // Initially streaming
   assertEquals(monitorView.isStreaming(), true);
@@ -222,10 +162,17 @@ Deno.test("MonitorView - should pause and resume log streaming", () => {
 
 Deno.test("MonitorView - does not fetch when paused", () => {
   const calls: string[] = [];
-  class CountingDb extends MockDatabaseService {
-    override getRecentActivity(limit?: number) {
+  class CountingDb {
+    private inner: any;
+    constructor(logs: any[] = []) {
+      this.inner = createMockDatabaseService(logs);
+    }
+    getRecentActivity(limit?: number) {
       calls.push(`get:${limit}`);
-      return super.getRecentActivity(limit);
+      return this.inner.getRecentActivity(limit);
+    }
+    addLog(log: any) {
+      return this.inner.addLog(log);
     }
   }
   const db = new CountingDb([
@@ -251,8 +198,8 @@ Deno.test("MonitorView - does not fetch when paused", () => {
 });
 
 Deno.test("MonitorView - maps Activity Journal action names to colors", () => {
-  const mockDb = new MockDatabaseService();
-  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
+  const db = createMockDatabaseService();
+  const monitorView = new MonitorView(db as unknown as DatabaseService);
   assertEquals(monitorView.getLogColor("plan.approved"), "blue");
   assertEquals(monitorView.getLogColor("plan.rejected"), "red");
   assertEquals(monitorView.getLogColor("execution.failed"), "red");
@@ -261,7 +208,7 @@ Deno.test("MonitorView - maps Activity Journal action names to colors", () => {
 });
 
 Deno.test("MonitorView - should export logs to file", () => {
-  const mockDb = new MockDatabaseService([
+  const { db, monitorView } = createMonitorViewWithLogs([
     {
       id: "1",
       trace_id: "trace-1",
@@ -273,8 +220,6 @@ Deno.test("MonitorView - should export logs to file", () => {
       timestamp: "2025-12-21T10:00:00Z",
     },
   ]);
-
-  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
 
   // Test export (this would normally write to a file)
   const exportData = monitorView.exportLogs();
@@ -295,9 +240,7 @@ Deno.test("MonitorView - should handle large log volumes without crashing", () =
     timestamp: new Date(Date.now() - i * 1000).toISOString(),
   }));
 
-  const mockDb = new MockDatabaseService(largeLogs);
-
-  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
+  const { db, monitorView } = createMonitorViewWithLogs(largeLogs);
 
   // Should handle large volumes
   const logs = monitorView.getLogs();
@@ -311,9 +254,7 @@ Deno.test("MonitorView - should handle large log volumes without crashing", () =
 });
 
 Deno.test("MonitorView - should handle empty logs gracefully", () => {
-  const mockDb = new MockDatabaseService([]);
-
-  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
+  const { db, monitorView } = createMonitorViewWithLogs([]);
 
   const logs = monitorView.getLogs();
   assertEquals(logs.length, 0);
@@ -330,7 +271,7 @@ Deno.test("MonitorView - should filter logs by time window", () => {
   const now = new Date();
   const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 
-  const mockDb = new MockDatabaseService([
+  const { db, monitorView } = createMonitorViewWithLogs([
     {
       id: "1",
       trace_id: "trace-1",
@@ -352,8 +293,6 @@ Deno.test("MonitorView - should filter logs by time window", () => {
       timestamp: twoHoursAgo.toISOString(),
     },
   ]);
-
-  const monitorView = new MonitorView(mockDb as unknown as DatabaseService);
 
   // Filter to last hour
   monitorView.setFilter({ timeWindow: 60 * 60 * 1000 }); // 1 hour in ms

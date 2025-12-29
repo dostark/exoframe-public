@@ -1,97 +1,34 @@
 import { assertEquals, assertRejects } from "jsr:@std/assert@1";
-import { RequestRouter, RoutingError } from "../../src/services/request_router.ts";
+import { RoutingError } from "../../src/services/request_router.ts";
 
-// Mock dependencies
-class MockFlowRunner {
-  executedFlows: Array<{ flow: any; request: any }> = [];
+import {
+  createMockAgentRunner,
+  createMockEventLogger,
+  createMockFlowRunner,
+  createMockFlowValidator,
+  createTestRequestRouter,
+  sampleRouterRequest,
+} from "./helpers.ts";
 
-  async execute(flow: any, request: any): Promise<any> {
-    this.executedFlows.push({ flow, request });
-    return await Promise.resolve({ success: true, flowId: flow.id, output: `Flow ${flow.id} executed` });
-  }
-}
-
-class MockAgentRunner {
-  executedAgents: Array<{ blueprint: any; request: any }> = [];
-
-  async run(blueprint: any, request: any): Promise<any> {
-    this.executedAgents.push({ blueprint, request });
-    return await Promise.resolve({
-      success: true,
-      agentId: blueprint.agentId,
-      output: `Agent ${blueprint.agentId} executed`,
-    });
-  }
-}
-
-class MockFlowValidator {
-  validFlows = new Set(["code-review", "deploy", "research"]);
-  invalidFlows = new Set(["broken-flow", "missing-deps"]);
-
-  async validateFlow(flowId: string): Promise<{ valid: boolean; error?: string }> {
-    if (this.validFlows.has(flowId)) {
-      return await Promise.resolve({ valid: true });
-    }
-    if (this.invalidFlows.has(flowId)) {
-      return await Promise.resolve({ valid: false, error: `Flow '${flowId}' has validation errors` });
-    }
-    return await Promise.resolve({ valid: false, error: `Flow '${flowId}' not found` });
-  }
-}
-
-class MockEventLogger {
-  events: Array<{ action: string; target: string; payload?: any; traceId?: string }> = [];
-
-  log(event: any) {
-    this.events.push(event);
-  }
-}
-
-// Test-specific RequestRouter that mocks blueprint loading
-class TestRequestRouter extends RequestRouter {
-  private mockBlueprints: Map<string, any> = new Map();
-
-  constructor(
-    flowRunner: any,
-    agentRunner: any,
-    flowValidator: any,
-    eventLogger: any,
-    defaultAgentId: string,
-    blueprintsPath: string,
-  ) {
-    super(flowRunner, agentRunner, flowValidator, eventLogger, defaultAgentId, blueprintsPath);
-    // Set up mock blueprints
-    this.mockBlueprints.set("senior-coder", { agentId: "senior-coder", name: "Senior Coder" });
-    this.mockBlueprints.set("default-agent", { agentId: "default-agent", name: "Default Agent" });
-  }
-
-  protected override async loadBlueprint(agentId: string): Promise<any> {
-    return await Promise.resolve(this.mockBlueprints.get(agentId) || null);
-  }
-}
+// Test-specific helpers are provided by tests/services/helpers.ts
 
 // Test RequestRouter class
 Deno.test("RequestRouter: routes flow requests to FlowRunner", async () => {
-  const mockFlowRunner = new MockFlowRunner();
-  const mockAgentRunner = new MockAgentRunner();
-  const mockFlowValidator = new MockFlowValidator();
-  const mockLogger = new MockEventLogger();
+  const mockFlowRunner = createMockFlowRunner();
+  const mockAgentRunner = createMockAgentRunner();
+  const mockFlowValidator = createMockFlowValidator();
+  const mockLogger = createMockEventLogger();
 
-  const router = new TestRequestRouter(
-    mockFlowRunner as any,
-    mockAgentRunner as any,
-    mockFlowValidator as any,
-    mockLogger as any,
-    "default-agent",
-    "/tmp/blueprints",
-  );
+  const router = createTestRequestRouter({
+    flowRunner: mockFlowRunner,
+    agentRunner: mockAgentRunner,
+    flowValidator: mockFlowValidator,
+    logger: mockLogger,
+    defaultAgent: "default-agent",
+    blueprintsPath: "/tmp/blueprints",
+  });
 
-  const request = {
-    traceId: "test-trace-123",
-    requestId: "req-123",
-    frontmatter: { flow: "code-review" },
-    body: "Test request body",
-  };
+  const request = sampleRouterRequest({ frontmatter: { flow: "code-review" } });
 
   const result = await router.route(request);
 
@@ -104,26 +41,21 @@ Deno.test("RequestRouter: routes flow requests to FlowRunner", async () => {
 });
 
 Deno.test("RequestRouter: routes agent requests to AgentRunner", async () => {
-  const mockFlowRunner = new MockFlowRunner();
-  const mockAgentRunner = new MockAgentRunner();
-  const mockFlowValidator = new MockFlowValidator();
-  const mockLogger = new MockEventLogger();
+  const mockFlowRunner = createMockFlowRunner();
+  const mockAgentRunner = createMockAgentRunner();
+  const mockFlowValidator = createMockFlowValidator();
+  const mockLogger = createMockEventLogger();
 
-  const router = new TestRequestRouter(
-    mockFlowRunner as any,
-    mockAgentRunner as any,
-    mockFlowValidator as any,
-    mockLogger as any,
-    "default-agent",
-    "/tmp/blueprints",
-  );
+  const router = createTestRequestRouter({
+    flowRunner: mockFlowRunner,
+    agentRunner: mockAgentRunner,
+    flowValidator: mockFlowValidator,
+    logger: mockLogger,
+    defaultAgent: "default-agent",
+    blueprintsPath: "/tmp/blueprints",
+  });
 
-  const request = {
-    traceId: "test-trace-123",
-    requestId: "req-123",
-    frontmatter: { agent: "senior-coder" },
-    body: "Test request body",
-  };
+  const request = sampleRouterRequest({ frontmatter: { agent: "senior-coder" } });
 
   const result = await router.route(request);
 
@@ -135,26 +67,21 @@ Deno.test("RequestRouter: routes agent requests to AgentRunner", async () => {
 });
 
 Deno.test("RequestRouter: routes requests without flow/agent to default agent", async () => {
-  const mockFlowRunner = new MockFlowRunner();
-  const mockAgentRunner = new MockAgentRunner();
-  const mockFlowValidator = new MockFlowValidator();
-  const mockLogger = new MockEventLogger();
+  const mockFlowRunner = createMockFlowRunner();
+  const mockAgentRunner = createMockAgentRunner();
+  const mockFlowValidator = createMockFlowValidator();
+  const mockLogger = createMockEventLogger();
 
-  const router = new TestRequestRouter(
-    mockFlowRunner as any,
-    mockAgentRunner as any,
-    mockFlowValidator as any,
-    mockLogger as any,
-    "default-agent",
-    "/tmp/blueprints",
-  );
+  const router = createTestRequestRouter({
+    flowRunner: mockFlowRunner,
+    agentRunner: mockAgentRunner,
+    flowValidator: mockFlowValidator,
+    logger: mockLogger,
+    defaultAgent: "default-agent",
+    blueprintsPath: "/tmp/blueprints",
+  });
 
-  const request = {
-    traceId: "test-trace-123",
-    requestId: "req-123",
-    frontmatter: {},
-    body: "Test request body",
-  };
+  const request = sampleRouterRequest({ frontmatter: {} });
 
   const result = await router.route(request);
 
@@ -166,26 +93,21 @@ Deno.test("RequestRouter: routes requests without flow/agent to default agent", 
 });
 
 Deno.test("RequestRouter: throws error for invalid flow ID", async () => {
-  const mockFlowRunner = new MockFlowRunner();
-  const mockAgentRunner = new MockAgentRunner();
-  const mockFlowValidator = new MockFlowValidator();
-  const mockLogger = new MockEventLogger();
+  const mockFlowRunner = createMockFlowRunner();
+  const mockAgentRunner = createMockAgentRunner();
+  const mockFlowValidator = createMockFlowValidator();
+  const mockLogger = createMockEventLogger();
 
-  const router = new TestRequestRouter(
-    mockFlowRunner as any,
-    mockAgentRunner as any,
-    mockFlowValidator as any,
-    mockLogger as any,
-    "default-agent",
-    "/tmp/blueprints",
-  );
+  const router = createTestRequestRouter({
+    flowRunner: mockFlowRunner,
+    agentRunner: mockAgentRunner,
+    flowValidator: mockFlowValidator,
+    logger: mockLogger,
+    defaultAgent: "default-agent",
+    blueprintsPath: "/tmp/blueprints",
+  });
 
-  const request = {
-    traceId: "test-trace-123",
-    requestId: "req-123",
-    frontmatter: { flow: "nonexistent-flow" },
-    body: "Test request body",
-  };
+  const request = sampleRouterRequest({ frontmatter: { flow: "nonexistent-flow" } });
 
   await assertRejects(
     () => router.route(request),
@@ -197,19 +119,19 @@ Deno.test("RequestRouter: throws error for invalid flow ID", async () => {
 });
 
 Deno.test("RequestRouter: throws error for conflicting flow and agent fields", async () => {
-  const mockFlowRunner = new MockFlowRunner();
-  const mockAgentRunner = new MockAgentRunner();
-  const mockFlowValidator = new MockFlowValidator();
-  const mockLogger = new MockEventLogger();
+  const mockFlowRunner = createMockFlowRunner();
+  const mockAgentRunner = createMockAgentRunner();
+  const mockFlowValidator = createMockFlowValidator();
+  const mockLogger = createMockEventLogger();
 
-  const router = new TestRequestRouter(
-    mockFlowRunner as any,
-    mockAgentRunner as any,
-    mockFlowValidator as any,
-    mockLogger as any,
-    "default-agent",
-    "/tmp/blueprints",
-  );
+  const router = createTestRequestRouter({
+    flowRunner: mockFlowRunner,
+    agentRunner: mockAgentRunner,
+    flowValidator: mockFlowValidator,
+    logger: mockLogger,
+    defaultAgent: "default-agent",
+    blueprintsPath: "/tmp/blueprints",
+  });
 
   const request = {
     traceId: "test-trace-123",
@@ -228,19 +150,19 @@ Deno.test("RequestRouter: throws error for conflicting flow and agent fields", a
 Deno.test("RequestRouter: flow takes priority over agent when both present (should not happen)", async () => {
   // This test verifies that if both fields are somehow present (bypassing validation),
   // flow takes priority. In practice, this should be prevented by the conflicting fields check.
-  const mockFlowRunner = new MockFlowRunner();
-  const mockAgentRunner = new MockAgentRunner();
-  const mockFlowValidator = new MockFlowValidator();
-  const mockLogger = new MockEventLogger();
+  const mockFlowRunner = createMockFlowRunner();
+  const mockAgentRunner = createMockAgentRunner();
+  const mockFlowValidator = createMockFlowValidator();
+  const mockLogger = createMockEventLogger();
 
-  const router = new TestRequestRouter(
-    mockFlowRunner as any,
-    mockAgentRunner as any,
-    mockFlowValidator as any,
-    mockLogger as any,
-    "default-agent",
-    "/tmp/blueprints",
-  );
+  const router = createTestRequestRouter({
+    flowRunner: mockFlowRunner,
+    agentRunner: mockAgentRunner,
+    flowValidator: mockFlowValidator,
+    logger: mockLogger,
+    defaultAgent: "default-agent",
+    blueprintsPath: "/tmp/blueprints",
+  });
 
   // Temporarily bypass the conflicting fields check for this test
   const _originalRoute = router.route.bind(router);
@@ -258,12 +180,7 @@ Deno.test("RequestRouter: flow takes priority over agent when both present (shou
     return await (router as any).routeToDefaultAgent.call(router, request);
   };
 
-  const request = {
-    traceId: "test-trace-123",
-    requestId: "req-123",
-    frontmatter: { flow: "code-review", agent: "senior-coder" },
-    body: "Test request body",
-  };
+  const request = sampleRouterRequest({ frontmatter: { flow: "code-review", agent: "senior-coder" } });
 
   const result = await router.route(request);
 

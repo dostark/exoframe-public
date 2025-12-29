@@ -6,6 +6,7 @@ import {
   PlanReviewerTuiSession,
   PlanReviewerView,
 } from "../../src/tui/plan_reviewer_view.ts";
+import { createPlanReviewerSession } from "./helpers.ts";
 import { PlanCommands } from "../../src/cli/plan_commands.ts";
 
 function yamlFrontmatter(obj: Record<string, string>): string {
@@ -200,7 +201,7 @@ Deno.test("PlanReviewerView: renderPlanList and renderDiff", () => {
 });
 
 Deno.test("PlanReviewerTuiSession: edge cases (no plans, invalid selection)", () => {
-  const session = new PlanReviewerTuiSession([], new MinimalPlanServiceMock());
+  const { session } = createPlanReviewerSession([]);
   session.handleKey("down"); // should not throw
   session.setSelectedIndex(-1);
   assertEquals(session.getSelectedIndex(), 0);
@@ -235,7 +236,7 @@ Deno.test("PlanReviewerTuiSession keyboard navigation - down arrow", async () =>
     { id: "plan2", title: "Plan 2" },
     { id: "plan3", title: "Plan 3" },
   ];
-  const session = new PlanReviewerTuiSession(plans, new MinimalPlanServiceMock());
+  const { session } = createPlanReviewerSession(plans);
 
   // Start at index 0
   assertEquals(session.getSelectedIndex(), 0);
@@ -259,7 +260,7 @@ Deno.test("PlanReviewerTuiSession keyboard navigation - up arrow", async () => {
     { id: "plan2", title: "Plan 2" },
     { id: "plan3", title: "Plan 3" },
   ];
-  const session = new PlanReviewerTuiSession(plans, new MinimalPlanServiceMock());
+  const { session } = createPlanReviewerSession(plans);
 
   // Start at index 2
   session.setSelectedIndex(2);
@@ -284,7 +285,7 @@ Deno.test("PlanReviewerTuiSession keyboard navigation - end key", async () => {
     { id: "plan2", title: "Plan 2" },
     { id: "plan3", title: "Plan 3" },
   ];
-  const session = new PlanReviewerTuiSession(plans, new MinimalPlanServiceMock());
+  const { session } = createPlanReviewerSession(plans);
 
   // Start at index 0
   assertEquals(session.getSelectedIndex(), 0);
@@ -300,7 +301,7 @@ Deno.test("PlanReviewerTuiSession keyboard navigation - home key", async () => {
     { id: "plan2", title: "Plan 2" },
     { id: "plan3", title: "Plan 3" },
   ];
-  const session = new PlanReviewerTuiSession(plans, new MinimalPlanServiceMock());
+  const { session } = createPlanReviewerSession(plans);
 
   // Start at index 2
   session.setSelectedIndex(2);

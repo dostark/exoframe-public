@@ -1,7 +1,7 @@
 import { IModelProvider, ModelOptions } from "../providers.ts";
 import { EventLogger } from "../../services/event_logger.ts";
 import { withRetry } from "./common.ts";
-import { extractAnthropicContent, handleProviderResponse, tokenMapperAnthropic } from "../provider_common_utils.ts";
+import { extractAnthropicContent, performProviderCall, tokenMapperAnthropic } from "../provider_common_utils.ts";
 
 /**
  * AnthropicProvider implements IModelProvider for Anthropic's Claude models.
@@ -44,7 +44,7 @@ export class AnthropicProvider implements IModelProvider {
    * Internal: attempt a single completion call.
    */
   private async attemptGenerate(prompt: string, options?: ModelOptions): Promise<string> {
-    const response = await fetch(this.baseUrl, {
+    const data = await performProviderCall(this.baseUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -59,9 +59,16 @@ export class AnthropicProvider implements IModelProvider {
         top_p: options?.top_p,
         stop_sequences: options?.stop,
       }),
+    }, {
+      id: this.id,
+      maxAttempts: 5,
+      backoffBaseMs: this.retryDelayMs,
+      timeoutMs: undefined,
+      logger: this.logger,
+      tokenMapper: tokenMapperAnthropic(this.model),
+      extractor: extractAnthropicContent,
     });
-    const data = await handleProviderResponse(response, this.id, this.logger, tokenMapperAnthropic(this.model));
 
-    return extractAnthropicContent(data);
+    return data;
   }
 }

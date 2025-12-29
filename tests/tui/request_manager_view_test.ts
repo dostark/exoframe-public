@@ -1,51 +1,19 @@
 import { assert, assertEquals } from "https://deno.land/std@0.192.0/testing/asserts.ts";
-import { MinimalRequestServiceMock, RequestManagerView, RequestService } from "../../src/tui/request_manager_view.ts";
-
-// Mock RequestService for tests
-class MockRequestService implements RequestService {
-  requests: any[];
-  constructor(requests: any[] = []) {
-    this.requests = requests;
-  }
-  listRequests(status?: string) {
-    if (status) {
-      return Promise.resolve(this.requests.filter((r) => r.status === status));
-    }
-    return Promise.resolve(this.requests);
-  }
-  getRequestContent(id: string) {
-    const request = this.requests.find((r) => r.trace_id === id);
-    return Promise.resolve(request ? `Content for ${id}` : "");
-  }
-  createRequest(_description: string, options?: any) {
-    const newRequest = {
-      trace_id: `test-${Date.now()}`,
-      filename: `request-test.md`,
-      title: `Request test`,
-      status: "pending",
-      priority: options?.priority || "normal",
-      agent: options?.agent || "default",
-      portal: options?.portal,
-      model: options?.model,
-      created: new Date().toISOString(),
-      created_by: "test@example.com",
-      source: "cli",
-    };
-    this.requests.push(newRequest);
-    return Promise.resolve(newRequest);
-  }
-  updateRequestStatus(id: string, status: string) {
-    const request = this.requests.find((r) => r.trace_id === id);
-    if (request) {
-      request.status = status;
-      return Promise.resolve(true);
-    }
-    return Promise.resolve(false);
-  }
-}
+import {
+  MinimalRequestServiceMock,
+  RequestManagerView,
+  RequestService as _RequestService,
+} from "../../src/tui/request_manager_view.ts";
+import {
+  createMockRequestService as _createMockRequestService,
+  createTuiWithRequests,
+  createViewWithRequests,
+  sampleRequest as _sampleRequest,
+  sampleRequests as _sampleRequests,
+} from "./helpers.ts";
 
 Deno.test("RequestManagerView - renders request list correctly", async () => {
-  const service = new MockRequestService([
+  const { service: _service, view } = createViewWithRequests([
     {
       trace_id: "12345678-abcd-1234-5678-123456789abc",
       filename: "request-12345678.md",
@@ -55,7 +23,6 @@ Deno.test("RequestManagerView - renders request list correctly", async () => {
       agent: "default",
       created: "2025-12-23T10:00:00Z",
       created_by: "test@example.com",
-      source: "cli",
     },
     {
       trace_id: "87654321-abcd-1234-5678-123456789abc",
@@ -66,11 +33,9 @@ Deno.test("RequestManagerView - renders request list correctly", async () => {
       agent: "code-reviewer",
       created: "2025-12-23T09:00:00Z",
       created_by: "user@example.com",
-      source: "cli",
     },
   ]);
-  const view = new RequestManagerView(service);
-  const requests = await service.listRequests();
+  const requests = await _service.listRequests();
   const output = view.renderRequestList(requests);
 
   assert(output.includes("Requests:"));
@@ -79,17 +44,16 @@ Deno.test("RequestManagerView - renders request list correctly", async () => {
 });
 
 Deno.test("RequestManagerView - handles empty request list", async () => {
-  const service = new MockRequestService([]);
-  const view = new RequestManagerView(service);
-  const requests = await service.listRequests();
+  const { service: _service, view } = createViewWithRequests([]);
+  const requests = await _service.listRequests();
   const output = view.renderRequestList(requests);
 
   assertEquals(output, "No requests found.");
 });
 
 Deno.test("RequestManagerView - renders request content", () => {
-  const service = new MinimalRequestServiceMock();
-  const view = new RequestManagerView(service);
+  const _service = new MinimalRequestServiceMock();
+  const view = new RequestManagerView(_service);
   const content = "Sample request content";
   const output = view.renderRequestContent(content);
 
@@ -97,28 +61,24 @@ Deno.test("RequestManagerView - renders request content", () => {
 });
 
 Deno.test("RequestManagerView - lists requests via service", async () => {
-  const service = new MockRequestService([
-    {
-      trace_id: "test-123",
-      filename: "request-test.md",
-      title: "Test Request",
-      status: "pending",
-      priority: "normal",
-      agent: "default",
-      created: "2025-12-23T10:00:00Z",
-      created_by: "test@example.com",
-      source: "cli",
-    },
-  ]);
-  const view = new RequestManagerView(service);
-  const requests = await view.listRequests();
+  const { service: _service } = createViewWithRequests([{
+    trace_id: "test-123",
+    filename: "request-test.md",
+    title: "Test Request",
+    status: "pending",
+    priority: "normal",
+    agent: "default",
+    created: "2025-12-23T10:00:00Z",
+    created_by: "test@example.com",
+  }]);
+  const requests = await _service.listRequests();
 
   assertEquals(requests.length, 1);
   assertEquals(requests[0].trace_id, "test-123");
 });
 
 Deno.test("RequestManagerView - filters requests by status", async () => {
-  const service = new MockRequestService([
+  const { service: _service, view } = createViewWithRequests([
     {
       trace_id: "test-1",
       filename: "request-1.md",
@@ -128,7 +88,6 @@ Deno.test("RequestManagerView - filters requests by status", async () => {
       agent: "default",
       created: "2025-12-23T10:00:00Z",
       created_by: "test@example.com",
-      source: "cli",
     },
     {
       trace_id: "test-2",
@@ -139,10 +98,8 @@ Deno.test("RequestManagerView - filters requests by status", async () => {
       agent: "default",
       created: "2025-12-23T11:00:00Z",
       created_by: "test@example.com",
-      source: "cli",
     },
   ]);
-  const view = new RequestManagerView(service);
   const pendingRequests = await view.listRequests("pending");
 
   assertEquals(pendingRequests.length, 1);
@@ -150,8 +107,7 @@ Deno.test("RequestManagerView - filters requests by status", async () => {
 });
 
 Deno.test("RequestManagerView - creates new request", async () => {
-  const service = new MockRequestService();
-  const view = new RequestManagerView(service);
+  const { service: _service, view } = createViewWithRequests();
   const newRequest = await view.createRequest("Test request", { priority: "high", agent: "test-agent" });
 
   assert(newRequest.trace_id);
@@ -161,7 +117,7 @@ Deno.test("RequestManagerView - creates new request", async () => {
 });
 
 Deno.test("RequestManagerView - gets request content", async () => {
-  const service = new MockRequestService([
+  const { service: _service, view } = createViewWithRequests([
     {
       trace_id: "test-123",
       filename: "request-test.md",
@@ -171,17 +127,15 @@ Deno.test("RequestManagerView - gets request content", async () => {
       agent: "default",
       created: "2025-12-23T10:00:00Z",
       created_by: "test@example.com",
-      source: "cli",
     },
   ]);
-  const view = new RequestManagerView(service);
   const content = await view.getRequestContent("test-123");
 
   assertEquals(content, "Content for test-123");
 });
 
 Deno.test("RequestManagerView - updates request status", async () => {
-  const service = new MockRequestService([
+  const { service: _service, view } = createViewWithRequests([
     {
       trace_id: "test-123",
       filename: "request-test.md",
@@ -191,10 +145,8 @@ Deno.test("RequestManagerView - updates request status", async () => {
       agent: "default",
       created: "2025-12-23T10:00:00Z",
       created_by: "test@example.com",
-      source: "cli",
     },
   ]);
-  const view = new RequestManagerView(service);
   const success = await view.updateRequestStatus("test-123", "completed");
 
   assertEquals(success, true);
@@ -202,7 +154,7 @@ Deno.test("RequestManagerView - updates request status", async () => {
 
 // TUI Session Tests
 Deno.test("RequestManagerTuiSession - keyboard navigation", async () => {
-  const service = new MinimalRequestServiceMock();
+  const _service = new MinimalRequestServiceMock();
   const requests = [
     {
       trace_id: "req-1",
@@ -227,8 +179,7 @@ Deno.test("RequestManagerTuiSession - keyboard navigation", async () => {
       source: "cli",
     },
   ];
-  const view = new RequestManagerView(service);
-  const tui = view.createTuiSession(requests);
+  const { view: _view, tui } = createTuiWithRequests(requests);
 
   // Initial selection
   assertEquals(tui.getSelectedIndex(), 0);
@@ -309,8 +260,8 @@ Deno.test("RequestManagerTuiSession - keyboard actions", async () => {
 });
 
 Deno.test("RequestManagerTuiSession - handles empty request list", async () => {
-  const service = new MinimalRequestServiceMock();
-  const view = new RequestManagerView(service);
+  const _service = new MinimalRequestServiceMock();
+  const view = new RequestManagerView(_service);
   const tui = view.createTuiSession([]);
 
   // Keyboard actions should be ignored when no requests
@@ -350,7 +301,7 @@ Deno.test("RequestManagerTuiSession - error handling", async () => {
 });
 
 Deno.test("RequestManagerTuiSession - get selected request", () => {
-  const service = new MinimalRequestServiceMock();
+  const _service = new MinimalRequestServiceMock();
   const requests = [
     {
       trace_id: "req-1",
@@ -375,7 +326,7 @@ Deno.test("RequestManagerTuiSession - get selected request", () => {
       source: "cli",
     },
   ];
-  const view = new RequestManagerView(service);
+  const view = new RequestManagerView(_service);
   const tui = view.createTuiSession(requests);
 
   // Initially selected first request

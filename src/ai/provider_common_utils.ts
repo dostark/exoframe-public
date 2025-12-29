@@ -154,3 +154,42 @@ export async function fetchJsonWithRetries(
   const { withRetry } = await import("./providers/common.ts");
   return withRetry(attemptFn, { maxRetries: maxAttempts, baseDelayMs: backoffBaseMs });
 }
+
+/**
+ * Perform a provider call: fetch JSON with retries, then extract textual content using the provided extractor.
+ * This centralizes the common provider pattern: fetch -> handleProviderResponse -> extract content.
+ */
+export async function performProviderCall(
+  url: string,
+  fetchOptions: RequestInit,
+  {
+    id,
+    maxAttempts = 3,
+    backoffBaseMs = 1000,
+    timeoutMs,
+    logger,
+    tokenMapper,
+    extractor,
+  }: {
+    id: string;
+    maxAttempts?: number;
+    backoffBaseMs?: number;
+    timeoutMs?: number;
+    logger?: EventLogger;
+    tokenMapper?: (d: any) => TokenMap | undefined;
+    extractor?: (d: any) => string;
+  },
+): Promise<string> {
+  const data = await fetchJsonWithRetries(url, fetchOptions, {
+    id,
+    maxAttempts,
+    backoffBaseMs,
+    timeoutMs,
+    logger,
+    tokenMapper,
+  });
+  const content = extractor
+    ? extractor(data)
+    : (data?.choices?.[0]?.message?.content ?? data?.choices?.[0]?.text ?? "");
+  return content ?? "";
+}
