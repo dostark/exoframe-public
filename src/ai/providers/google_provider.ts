@@ -32,7 +32,8 @@ export class GoogleProvider implements IModelProvider {
     this.model = options.model ?? "gemini-3-pro";
     this.id = options.id ?? `google-${this.model}`;
     this.logger = options.logger;
-    this.retryDelayMs = options.retryDelayMs ?? 1000;
+    // Longer backoff by default to avoid hitting short-term rate limits during manual runs
+    this.retryDelayMs = options.retryDelayMs ?? 2000;
   }
 
   /**
@@ -41,7 +42,7 @@ export class GoogleProvider implements IModelProvider {
   async generate(prompt: string, options?: ModelOptions): Promise<string> {
     return await withRetry(
       () => this.attemptGenerate(prompt, options),
-      { maxRetries: 3, baseDelayMs: this.retryDelayMs },
+      { maxRetries: 5, baseDelayMs: this.retryDelayMs },
     );
   }
 

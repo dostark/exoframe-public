@@ -51,6 +51,12 @@ export class LlamaProvider implements IModelProvider {
       throw new Error("Connection error");
     }
     if (!response.ok) {
+      // Ensure we consume the response body to avoid readable stream leaks
+      try {
+        await response.text();
+      } catch {
+        // ignore
+      }
       throw new Error(`Ollama error: ${response.status}`);
     }
     const data = await response.json();

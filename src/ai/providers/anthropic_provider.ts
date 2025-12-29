@@ -26,7 +26,8 @@ export class AnthropicProvider implements IModelProvider {
     this.model = options.model ?? "claude-opus-4.5";
     this.id = options.id ?? `anthropic-${this.model}`;
     this.logger = options.logger;
-    this.retryDelayMs = options.retryDelayMs ?? 1000;
+    // Longer default backoff to reduce transient rate-limits
+    this.retryDelayMs = options.retryDelayMs ?? 2000;
   }
 
   /**
@@ -35,7 +36,7 @@ export class AnthropicProvider implements IModelProvider {
   async generate(prompt: string, options?: ModelOptions): Promise<string> {
     return await withRetry(
       () => this.attemptGenerate(prompt, options),
-      { maxRetries: 3, baseDelayMs: this.retryDelayMs },
+      { maxRetries: 5, baseDelayMs: this.retryDelayMs },
     );
   }
 

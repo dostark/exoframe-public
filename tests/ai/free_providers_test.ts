@@ -1,17 +1,22 @@
 import { assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { ModelFactory } from "../../src/ai/providers.ts";
 import { OpenAIProvider } from "../../src/ai/providers/openai_provider.ts";
+import { getTestModel, getTestModelDisplay } from "./helpers/test_model.ts";
 
-Deno.test("ModelFactory creates OpenAIProvider for 'gpt-4.1' type", () => {
-  const provider = ModelFactory.create("gpt-4.1", { apiKey: "test-key", baseUrl: "https://api.test" });
+Deno.test("ModelFactory creates OpenAIProvider for default test model", () => {
+  const model = getTestModel();
+  const provider = ModelFactory.create(model, { apiKey: "test-key", baseUrl: "https://api.test" });
 
   assertExists(provider);
-  // The provider should be an OpenAIProvider with model gpt-4.1 reflected in id
-  assertStringIncludes(provider.id, "openai-gpt-4.1");
+  // The provider should be an OpenAIProvider with model reflected in id
+  assertStringIncludes(provider.id, `openai-${model}`);
   assertExists(provider.generate);
 });
 
-Deno.test("OpenAIProvider (gpt-4.1) sends correct payload and returns content", async () => {
+Deno.test("OpenAIProvider sends correct payload and returns content for default test model", async () => {
+  const model = getTestModel();
+  const modelDisplay = getTestModelDisplay();
+
   // Capture request
   let capturedUrl = "";
   let capturedBody: unknown = null;
@@ -22,7 +27,7 @@ Deno.test("OpenAIProvider (gpt-4.1) sends correct payload and returns content", 
     capturedBody = init?.body ? JSON.parse(init.body as string) : null;
 
     const body = JSON.stringify({
-      choices: [{ message: { content: "Hello from GPT-4.1" } }],
+      choices: [{ message: { content: `Hello from ${modelDisplay}` } }],
       usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 },
     });
 
@@ -30,26 +35,26 @@ Deno.test("OpenAIProvider (gpt-4.1) sends correct payload and returns content", 
   }) as typeof fetch;
 
   try {
-    const provider = new OpenAIProvider({ apiKey: "test-key", model: "gpt-4.1", baseUrl: "https://api.test" });
+    const provider = new OpenAIProvider({ apiKey: "test-key", model, baseUrl: "https://api.test" });
     const res = await provider.generate("Test prompt", { temperature: 0.1, max_tokens: 50 });
 
-    assertEquals(res, "Hello from GPT-4.1");
+    assertEquals(res, `Hello from ${modelDisplay}`);
     // OpenAIProvider uses the provided baseUrl verbatim (caller may provide full endpoint)
     assertEquals(capturedUrl, "https://api.test");
 
     assertExists(capturedBody);
     const bodyObj = capturedBody as Record<string, unknown>;
-    assertEquals(bodyObj.model, "gpt-4.1");
+    assertEquals(bodyObj.model, model);
     assertExists(bodyObj.messages);
   } finally {
     globalThis.fetch = originalFetch;
   }
 });
 
-Deno.test("ModelFactory creates provider for 'gpt-5mini' and 'gpt-4o' types", () => {
-  const p1 = ModelFactory.create("gpt-5mini", { apiKey: "k" });
+Deno.test("ModelFactory creates provider for 'gpt-5-mini' and 'gpt-4o' types", () => {
+  const p1 = ModelFactory.create("gpt-5-mini", { apiKey: "k" });
   const p2 = ModelFactory.create("gpt-4o", { apiKey: "k" });
 
-  assertStringIncludes(p1.id, "openai-gpt-5mini");
+  assertStringIncludes(p1.id, "openai-gpt-5-mini");
   assertStringIncludes(p2.id, "openai-gpt-4o");
 });

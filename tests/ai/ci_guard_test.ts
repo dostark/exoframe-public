@@ -11,7 +11,8 @@ Deno.test("ModelFactory falls back to mock provider in CI unless EXO_ENABLE_PAID
       Deno.env.set("CI", "1");
       Deno.env.delete("EXO_ENABLE_PAID_LLM");
 
-      const p = ModelFactory.create("gpt-4.1", { apiKey: "fake" });
+      const model = Deno.env.get("EXO_TEST_LLM_MODEL") ?? "gpt-5-mini";
+      const p = ModelFactory.create(model, { apiKey: "fake" });
       // In CI without opt-in, ModelFactory should protect against paid calls and return mock provider
       assertStringIncludes(p.id, "mock-provider");
     } finally {

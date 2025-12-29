@@ -35,7 +35,8 @@ export class OpenAIProvider implements IModelProvider {
     this.baseUrl = options.baseUrl ?? "https://api.openai.com/v1/chat/completions";
     this.id = options.id ?? `openai-${this.model}`;
     this.logger = options.logger;
-    this.retryDelayMs = options.retryDelayMs ?? 1000;
+    // Use longer default backoff to help avoid 429s during manual runs
+    this.retryDelayMs = options.retryDelayMs ?? 2000;
   }
 
   /**
@@ -44,7 +45,7 @@ export class OpenAIProvider implements IModelProvider {
   async generate(prompt: string, options?: ModelOptions): Promise<string> {
     return await withRetry(
       () => this.attemptGenerate(prompt, options),
-      { maxRetries: 3, baseDelayMs: this.retryDelayMs },
+      { maxRetries: 5, baseDelayMs: this.retryDelayMs },
     );
   }
 

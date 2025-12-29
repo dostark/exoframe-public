@@ -151,6 +151,13 @@ export class OllamaProvider implements IModelProvider {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+        // Consume the response body to avoid leaving readable streams open (prevents test leaks)
+        try {
+          await response.text();
+        } catch {
+          // Ignore errors consuming the body
+        }
+
         throw new ConnectionError(
           this.id,
           `HTTP ${response.status}: ${response.statusText}`,
@@ -227,28 +234,53 @@ class OpenAIShim implements IModelProvider {
 
   async generate(prompt: string, _options?: ModelOptions): Promise<string> {
     const url = `${this.baseUrl}/v1/chat/completions`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify({ model: this.model, messages: [{ role: "user", content: prompt }] }),
-    });
 
-    if (!response.ok) {
+    // Make retry parameters configurable via env for manual runs; defaults longer to reduce 429 frequency
+    const maxAttempts = Number(safeGetEnv("EXO_OPENAI_RETRY_MAX") ?? "6");
+    const backoffBaseMs = Number(safeGetEnv("EXO_OPENAI_RETRY_BACKOFF_MS") ?? "2000");
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({ model: this.model, messages: [{ role: "user", content: prompt }] }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Try extracting common OpenAI-style content
+        const content = (data?.choices?.[0]?.message?.content) ?? (data?.choices?.[0]?.text) ?? null;
+        if (!content) {
+          throw new ModelProviderError("Invalid response from OpenAI-compatible endpoint", this.id);
+        }
+        return content;
+      }
+
+      // Ensure we consume the response body to avoid leaking readable streams
+      try {
+        // Attempt to read and discard body
+        await response.text();
+      } catch {
+        // ignore any errors while consuming the body
+      }
+
+      // If rate limited or service unavailable, attempt retry with backoff
+      if ((response.status === 429 || response.status === 503) && attempt < maxAttempts) {
+        const delayMs = backoffBaseMs * (2 ** (attempt - 1));
+        // Be verbose in manual runs so logs help triage
+        console.warn(`${this.id}: received ${response.status} on attempt ${attempt}, retrying after ${delayMs}ms`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+
+      // Otherwise raise error immediately
       throw new ModelProviderError(`HTTP ${response.status}: ${response.statusText}`, this.id);
     }
 
-    const data = await response.json();
-
-    // Try extracting common OpenAI-style content
-    const content = (data?.choices?.[0]?.message?.content) ?? (data?.choices?.[0]?.text) ?? null;
-    if (!content) {
-      throw new ModelProviderError("Invalid response from OpenAI-compatible endpoint", this.id);
-    }
-
-    return content;
+    throw new ModelProviderError("Exhausted retries for OpenAI-compatible endpoint", this.id);
   }
 }
 
@@ -298,11 +330,26 @@ export class ModelFactory {
           baseUrl: config?.baseUrl as string | undefined,
           id: (config?.id as string) ?? `openai-${normalizedType}`,
         });
-
-      default:
-        throw new Error(
-          `Unknown provider type: '${providerType}'. Supported types: mock, ollama, gpt-4.1, gpt-4o, gpt-5mini`,
-        );
     }
+
+    // Accept arbitrary OpenAI-style model ids that start with 'gpt-'
+    if (normalizedType.startsWith("gpt-")) {
+      if (safeGetEnv("CI") && safeGetEnv("EXO_ENABLE_PAID_LLM") !== "1") {
+        return new MockProvider("CI-protected mock", (config?.id as string) ?? "mock-provider");
+      }
+
+      return new OpenAIShim({
+        apiKey: config?.apiKey as string ?? "",
+        // Use the original providerType (preserve exact model id) when contacting the API
+        model: providerType,
+        baseUrl: config?.baseUrl as string | undefined,
+        id: (config?.id as string) ?? `openai-${providerType}`,
+      });
+    }
+
+    // If we reach here, the provider type is unknown
+    throw new Error(
+      `Unknown provider type: '${providerType}'. Supported types: mock, ollama, or any gpt-* model id`,
+    );
   }
 }

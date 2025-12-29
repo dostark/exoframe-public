@@ -6472,29 +6472,30 @@ Implement the Request Manager view to list all requests, view request details, c
 
 Phase 10 collects finishing touches that improve user experience, reduce operational costs, and broaden accessibility. Activities in this phase are low-risk, high-impact improvements that make ExoFrame feel production-ready without changing core architecture.
 
-### Step 10.1: Add cost-free LLM providers 🔧 IN PROGRESS
+### Step 10.1: Add cost-free LLM providers 🔧 COMPLETED
 
-**Location:** `src/ai/providers.ts` (ModelFactory), `src/ai/providers/openai_provider.ts`, `tests/ai/`
+**Location:** `src/ai/providers.ts` (ModelFactory), `src/ai/providers/openai_provider.ts`, `tests/ai/`, `docs/CostFree_LLMs.md`
 
 **Goal:** Integrate and document support for cost-free and low-cost LLMs (e.g., GPT-4.1, GPT-4o, GPT-5mini), enabling local and CI-friendly testing with minimal API costs.
 
 **Success Criteria:**
 
-1. [x] Provider adapters supported via `ModelFactory` for `gpt-4.1`, `gpt-4o`, and `gpt-5mini` (shims returning OpenAI-compatible clients).
+1. [x] Provider adapters supported via `ModelFactory` for `gpt-4.1`, `gpt-4o`, and `gpt-5-mini` (shims returning OpenAI-compatible clients).
 2. [x] Default test configurations use `mock` provider to avoid billing during CI.
-3. [ ] Documentation updated with setup instructions and sample configs.
-4. [ ] Backward compatibility maintained with existing LLM provider interfaces.
+3. [x] Documentation updated with setup instructions and sample configs. (See `docs/CostFree_LLMs.md`)
+4. [x] Backward compatibility maintained with existing LLM provider interfaces.
 
 **Test Definitions:**
 
 - Unit tests: Adapter interface conformance tests for each provider (`tests/ai/free_providers_test.ts`). ✅ (added)
-- Integration tests: Flow runs using cost-free providers in a sandbox environment (tests/integration/llm_free_provider_test.ts).
-- CI behavior: Validate that default CI runs do not call paid endpoints unless explicitly opted-in. ✅ (config defaults to `mock`)
+- Integration tests: Flow runs using cost-free providers in a sandbox environment (tests/integration/llm_free_provider_test.ts) — **manual and opt-in**; runs only when `EXO_ENABLE_PAID_LLM=1` and appropriate API keys are set.
+- CI behavior: Default CI uses `mock` provider and will not call paid endpoints unless explicitly opted-in via `EXO_ENABLE_PAID_LLM=1`. ✅ (config defaults to `mock`)
 
 **Notes:**
 
 - Implemented a minimal `OpenAIShim` in `src/ai/providers.ts` to provide quick, low-coupling adapters for model-specific usage and to avoid circular imports with the full `OpenAIProvider` implementation.
-- Next steps: add documentation, add sandboxed integration tests, and add an explicit `EXO_ENABLE_PAID_LLM` opt-in guard for CI usage.
+- Added documentation at `docs/CostFree_LLMs.md` with setup instructions, a sample `exo.config` snippet, environment variables, and instructions for running the manual integration test.
+- The manual integration test is intentionally **ignored by default** and also guards on `EXO_ENABLE_PAID_LLM=1` and the appropriate API key to prevent accidental paid calls in CI or local runs.
 
 ### Step 10.2: UX polish and micro-optimizations 🔲 Planned
 

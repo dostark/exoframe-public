@@ -1,4 +1,4 @@
-import { join } from "jsr:@std/path@1";
+import { dirname, join, resolve } from "jsr:@std/path@1";
 import { Flow } from "../schemas/flow.ts";
 
 /**
@@ -59,8 +59,38 @@ export class FlowLoader {
     const filePath = join(this.flowsDir, fileName);
 
     try {
-      // Dynamically import the flow file
-      const module = await import(`file://${filePath}`);
+      // Read the original file content so we can rewrite imports that reference the project's src/
+      const originalContent = await Deno.readTextFile(filePath);
+
+      // Rewrite imports that reference "src/" so they resolve to the repository's src directory
+      let rewrittenContent = originalContent.replace(/from\s+(['"])([^'"\n]*src\/[^'"\n]+)\1/g, (m, q, spec) => {
+        const idx = spec.indexOf("src/");
+        const relAfterSrc = spec.slice(idx + 4); // path after src/
+        const absPath = join(Deno.cwd(), "src", relAfterSrc);
+        return `from ${q}file://${absPath}${q}`;
+      });
+
+      // Rewrite relative imports (./ or ../) to absolute file URLs so that they resolve from the temp file
+      const fileDir = dirname(filePath);
+      rewrittenContent = rewrittenContent.replace(/from\s+(['"])(\.\.?\/[^'"\n]+)\1/g, (m, q, spec) => {
+        const resolvedPath = resolve(fileDir, spec);
+        return `from ${q}file://${resolvedPath}${q}`;
+      });
+
+      // Write rewritten content to a temp file so that imports resolve correctly during dynamic import
+      const tempDir = await Deno.makeTempDir({ prefix: "exo-flow-" });
+      const tempFilePath = join(tempDir, fileName);
+      await Deno.writeTextFile(tempFilePath, rewrittenContent);
+
+      // Dynamically import the temp file
+      const module = await import(`file://${tempFilePath}`);
+
+      // Cleanup temp directory (best-effort)
+      try {
+        await Deno.remove(tempDir, { recursive: true });
+      } catch {
+        // ignore cleanup errors
+      }
 
       if (!module.default) {
         throw new Error(`Flow file ${fileName} does not export a default flow definition`);
@@ -76,8 +106,9 @@ export class FlowLoader {
 
       return flow;
     } catch (error) {
+      // Normalize error messages so callers can assert on the standard message format
       if (error instanceof Deno.errors.NotFound) {
-        throw new Error(`Flow not found: ${flowId}`);
+        throw new Error(`Failed to load flow '${flowId}': ${error instanceof Error ? error.message : String(error)}`);
       }
       throw new Error(`Failed to load flow '${flowId}': ${error instanceof Error ? error.message : String(error)}`);
     }
