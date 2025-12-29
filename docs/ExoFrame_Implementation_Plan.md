@@ -6462,10 +6462,54 @@ Implement the Request Manager view to list all requests, view request details, c
 
 ---
 
-## Phase 10: Testing & Quality Assurance
+## Phase 10: Polishing
 
-> **Status:** 🏗️ IN PROGRESS (Steps 10.1-10.7 ✅ COMPLETED)\
-> **Prerequisites:** Phases 1–9 (Runtime, Events, Intelligence, Tools, Obsidian, Portal, Flows, LLM Providers, UX)\
+> **Status:** 🔲 PLANNED\
+> **Prerequisites:** Phases 1–9 (All core features implemented)\
+> **Goal:** Finalize user-facing polish and low-effort quality improvements before wide release.
+
+### Overview
+
+Phase 10 collects finishing touches that improve user experience, reduce operational costs, and broaden accessibility. Activities in this phase are low-risk, high-impact improvements that make ExoFrame feel production-ready without changing core architecture.
+
+### Step 10.1: Add cost-free LLM providers 🔧 IN PROGRESS
+
+**Location:** `src/ai/providers.ts` (ModelFactory), `src/ai/providers/openai_provider.ts`, `tests/ai/`
+
+**Goal:** Integrate and document support for cost-free and low-cost LLMs (e.g., GPT-4.1, GPT-4o, GPT-5mini), enabling local and CI-friendly testing with minimal API costs.
+
+**Success Criteria:**
+
+1. [x] Provider adapters supported via `ModelFactory` for `gpt-4.1`, `gpt-4o`, and `gpt-5mini` (shims returning OpenAI-compatible clients).
+2. [x] Default test configurations use `mock` provider to avoid billing during CI.
+3. [ ] Documentation updated with setup instructions and sample configs.
+4. [ ] Backward compatibility maintained with existing LLM provider interfaces.
+
+**Test Definitions:**
+
+- Unit tests: Adapter interface conformance tests for each provider (`tests/ai/free_providers_test.ts`). ✅ (added)
+- Integration tests: Flow runs using cost-free providers in a sandbox environment (tests/integration/llm_free_provider_test.ts).
+- CI behavior: Validate that default CI runs do not call paid endpoints unless explicitly opted-in. ✅ (config defaults to `mock`)
+
+**Notes:**
+
+- Implemented a minimal `OpenAIShim` in `src/ai/providers.ts` to provide quick, low-coupling adapters for model-specific usage and to avoid circular imports with the full `OpenAIProvider` implementation.
+- Next steps: add documentation, add sandboxed integration tests, and add an explicit `EXO_ENABLE_PAID_LLM` opt-in guard for CI usage.
+
+### Step 10.2: UX polish and micro-optimizations 🔲 Planned
+
+- Minor UI/UX tweaks, accessibility labels, keyboard shortcuts review, and minor performance tunings.
+
+### Exit Criteria
+
+- [ ] Step 10.1 implemented and tested
+- [ ] UX polish tasks completed
+- [ ] Documentation for Polishing tasks added
+
+## Phase 11: Testing & Quality Assurance
+
+> **Status:** 🏗️ IN PROGRESS (Steps 11.1-11.9 ✅ COMPLETED)\
+> **Prerequisites:** Phases 1–10 (Runtime, Events, Intelligence, Tools, Obsidian, Portal, Flows, LLM Providers, UX, Polishing)\
 > **Goal:** Validate single-agent and multi-agent workflows end-to-end with both local and cloud providers.
 
 📄 **Full Documentation:** [`ExoFrame_Testing_Strategy.md`](./ExoFrame_Testing_Strategy.md)
@@ -6483,15 +6527,15 @@ Phase 10 establishes the testing infrastructure needed to confidently ship ExoFr
 
 | Step | Description                   | Location             | Status      |
 | ---- | ----------------------------- | -------------------- | ----------- |
-| 10.1 | Unit Tests (Core Services)    | `tests/*_test.ts`    | ✅ Complete |
-| 10.2 | Obsidian Integration Tests    | `tests/obsidian/`    | ✅ Complete |
-| 10.3 | CLI Command Tests             | `tests/cli/`         | ✅ Complete |
-| 10.4 | Integration Test Scenarios    | `tests/integration/` | ✅ Complete |
-| 10.5 | Documentation Structure Tests | `tests/docs/`        | ✅ Complete |
-| 10.6 | Flow Execution Tests          | `tests/flows/`       | ✅ Complete |
-| 10.7 | Security Validation Tests     | `tests/security/`    | ✅ Complete |
-| 10.8 | Performance Benchmarks        | `tests/benchmarks/`  | 🔲 Planned  |
-| 10.9 | Manual QA Checklist           | Testing Strategy §4  | 🔲 Planned  |
+| 11.1 | Unit Tests (Core Services)    | `tests/*_test.ts`    | ✅ Complete |
+| 11.2 | Obsidian Integration Tests    | `tests/obsidian/`    | ✅ Complete |
+| 11.3 | CLI Command Tests             | `tests/cli/`         | ✅ Complete |
+| 11.4 | Integration Test Scenarios    | `tests/integration/` | ✅ Complete |
+| 11.5 | Documentation Structure Tests | `tests/docs/`        | ✅ Complete |
+| 11.6 | Flow Execution Tests          | `tests/flows/`       | ✅ Complete |
+| 11.7 | Security Validation Tests     | `tests/security/`    | ✅ Complete |
+| 11.8 | Performance Benchmarks        | `tests/benchmarks/`  | 🔲 Planned  |
+| 11.9 | Manual QA Checklist           | Testing Strategy §4  | 🔲 Planned  |
 
 **Note:** Lease management is integrated into `src/services/execution_loop.ts` (not a separate service).
 Tests for lease acquisition/release are in `tests/execution_loop_test.ts`.
@@ -6511,17 +6555,17 @@ Tests for lease acquisition/release are in `tests/execution_loop_test.ts`.
 
 ---
 
-## Phase 11: Model Context Protocol (MCP) Server
+## Phase 12: Model Context Protocol (MCP) Server
 
 **Duration:** 1-2 weeks\
-**Prerequisites:** Phases 1–10 (All core features complete)\
+**Prerequisites:** Phases 1–11 (All core features complete, including Polishing)\
 **Goal:** Add Model Context Protocol (MCP) server interface for programmatic ExoFrame interaction
 
 ### Overview
 
 Implement an MCP server that exposes ExoFrame operations as standardized tools, enabling external AI assistants (Claude Desktop, Cline, IDE agents) to interact with ExoFrame programmatically while preserving the file-based core architecture.
 
-### Step 11.1: MCP Server Foundation ✅ COMPLETED
+### Step 12.1: MCP Server Foundation ✅ COMPLETED
 
 **Implementation:**
 
@@ -6639,7 +6683,7 @@ export class ExoFrameMCPServer {
 4. [ ] Server metadata includes name and version
 5. [ ] Graceful shutdown on SIGTERM
 
-### Step 11.2: Tool Implementations
+### Step 12.2: Tool Implementations
 
 **Request Creation Tool:**
 
@@ -6717,7 +6761,7 @@ private async queryJournal(args: any) {
 5. [ ] All operations logged to Activity Journal
 6. [ ] Error responses follow MCP error schema
 
-### Step 11.3: Client Integration Examples
+### Step 12.3: Client Integration Examples
 
 **Claude Desktop Configuration:**
 
@@ -6757,7 +6801,7 @@ private async queryJournal(args: any) {
 3. [ ] Example prompts for using MCP tools
 4. [ ] Troubleshooting guide for MCP connections
 
-### Step 11.4: Testing & Documentation
+### Step 12.4: Testing & Documentation
 
 **Test Coverage:**
 
@@ -6796,7 +6840,7 @@ Deno.test("MCP Server - list plans tool", async () => {
 4. [ ] Architecture diagram updated
 5. [ ] Example repository with MCP configurations
 
-### Phase 11 Benefits
+### Phase 12 Benefits
 
 **For Users:**
 
@@ -6817,7 +6861,7 @@ Deno.test("MCP Server - list plans tool", async () => {
 - Works with any MCP client (Claude, Cline, etc.)
 - Positions ExoFrame as infrastructure layer
 
-### Phase 11 Exit Criteria
+### Phase 12 Exit Criteria
 
 [ ] MCP server implemented with stdio transport
 [ ] All core tools implemented (create, list, approve, query)

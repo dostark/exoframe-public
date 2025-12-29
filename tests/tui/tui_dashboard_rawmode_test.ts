@@ -6,7 +6,7 @@ Deno.test("tryEnableRawMode enables raw mode when supported", () => {
   const origIsTerminal = stdinAny.isTerminal;
   const origSetRaw = stdinAny.setRaw;
 
-  let setRawCalls: Array<{ flag: boolean }> = [];
+  const setRawCalls: Array<{ flag: boolean }> = [];
 
   try {
     // Stub isTerminal to true and setRaw to record calls

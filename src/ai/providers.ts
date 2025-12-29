@@ -198,6 +198,61 @@ export class OllamaProvider implements IModelProvider {
 // ============================================================================
 
 /**
+ * Safe environment accessor that returns undefined if env access is not permitted in test environments.
+ */
+function safeGetEnv(key: string): string | undefined {
+  try {
+    return Deno.env.get(key);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Minimal OpenAI-compatible shim used by the factory to create quick model-specific adapters
+ * without importing the full `OpenAIProvider` implementation (avoids circular imports).
+ */
+class OpenAIShim implements IModelProvider {
+  public readonly id: string;
+  private readonly apiKey: string;
+  private readonly model: string;
+  private readonly baseUrl: string;
+
+  constructor(options: { apiKey?: string; model?: string; baseUrl?: string; id?: string }) {
+    this.apiKey = options.apiKey ?? "";
+    this.model = options.model ?? "gpt-4.1";
+    this.baseUrl = options.baseUrl ?? "https://api.openai.com";
+    this.id = options.id ?? `openai-${this.model}`;
+  }
+
+  async generate(prompt: string, _options?: ModelOptions): Promise<string> {
+    const url = `${this.baseUrl}/v1/chat/completions`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({ model: this.model, messages: [{ role: "user", content: prompt }] }),
+    });
+
+    if (!response.ok) {
+      throw new ModelProviderError(`HTTP ${response.status}: ${response.statusText}`, this.id);
+    }
+
+    const data = await response.json();
+
+    // Try extracting common OpenAI-style content
+    const content = (data?.choices?.[0]?.message?.content) ?? (data?.choices?.[0]?.text) ?? null;
+    if (!content) {
+      throw new ModelProviderError("Invalid response from OpenAI-compatible endpoint", this.id);
+    }
+
+    return content;
+  }
+}
+
+/**
  * Factory for creating model provider instances based on configuration.
  */
 export class ModelFactory {
@@ -228,9 +283,25 @@ export class ModelFactory {
           id: config?.id as string | undefined,
         });
 
+      // Convenience aliases for cost-friendly/open/free models that use OpenAI-compatible endpoints
+      case "gpt-4.1":
+      case "gpt-4o":
+      case "gpt-5mini":
+        // In CI, prevent accidental calls to paid endpoints unless explicitly opted-in
+        if (safeGetEnv("CI") && safeGetEnv("EXO_ENABLE_PAID_LLM") !== "1") {
+          return new MockProvider("CI-protected mock", (config?.id as string) ?? "mock-provider");
+        }
+
+        return new OpenAIShim({
+          apiKey: config?.apiKey as string ?? "",
+          model: normalizedType,
+          baseUrl: config?.baseUrl as string | undefined,
+          id: (config?.id as string) ?? `openai-${normalizedType}`,
+        });
+
       default:
         throw new Error(
-          `Unknown provider type: '${providerType}'. Supported types: mock, ollama`,
+          `Unknown provider type: '${providerType}'. Supported types: mock, ollama, gpt-4.1, gpt-4o, gpt-5mini`,
         );
     }
   }
