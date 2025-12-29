@@ -11,14 +11,14 @@ Deno.test("OpenAIShim retries on 429 and returns content", async () => {
   const originalFetch = globalThis.fetch;
 
   // First call returns 429, second returns a valid body
-  globalThis.fetch = async () => {
+  globalThis.fetch = () => {
     calls++;
     if (calls === 1) {
-      return new Response("", { status: 429, statusText: "Too Many Requests" });
+      return Promise.resolve(new Response("", { status: 429, statusText: "Too Many Requests" }));
     }
 
     const body = JSON.stringify({ choices: [{ message: { content: "ok-response" } }] });
-    return new Response(body, { status: 200, headers: { "content-type": "application/json" } });
+    return Promise.resolve(new Response(body, { status: 200, headers: { "content-type": "application/json" } }));
   };
 
   try {

@@ -105,3 +105,52 @@ export function tokenMapperAnthropic(model: string) {
 export function extractAnthropicContent(d: any): string {
   return d.content?.[0]?.text ?? "";
 }
+
+/**
+ * Perform fetch with retries/backoff and timeout, and handle provider responses.
+ * Centralizes abort handling, retry/backoff, and ensures bodies are consumed.
+ */
+export async function fetchJsonWithRetries(
+  url: string,
+  fetchOptions: RequestInit,
+  {
+    id,
+    maxAttempts = 3,
+    backoffBaseMs = 1000,
+    timeoutMs,
+    logger,
+    tokenMapper,
+  }: {
+    id: string;
+    maxAttempts?: number;
+    backoffBaseMs?: number;
+    timeoutMs?: number;
+    logger?: EventLogger;
+    tokenMapper?: (d: any) => TokenMap | undefined;
+  },
+): Promise<any> {
+  // Use the withRetry helper to centralize retry/backoff semantics
+  const attemptFn = async () => {
+    const controller = typeof timeoutMs === "number" ? new AbortController() : undefined;
+    const signal = controller?.signal;
+    const timeoutId = controller && typeof timeoutMs === "number"
+      ? setTimeout(() => controller.abort(), timeoutMs)
+      : undefined;
+
+    try {
+      const response = await fetch(url, { ...fetchOptions, signal });
+      // Let handleProviderResponse inspect status, parse JSON and throw typed errors
+      const data = await handleProviderResponse(response, id, logger, tokenMapper);
+      if (timeoutId) clearTimeout(timeoutId);
+      return data;
+    } catch (err) {
+      if (timeoutId) clearTimeout(timeoutId);
+      // Rethrow to allow withRetry to decide whether to retry
+      throw err;
+    }
+  };
+
+  // Use withRetry defined in providers/common.ts
+  const { withRetry } = await import("./providers/common.ts");
+  return withRetry(attemptFn, { maxRetries: maxAttempts, baseDelayMs: backoffBaseMs });
+}

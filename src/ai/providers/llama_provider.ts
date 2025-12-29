@@ -40,26 +40,19 @@ export class LlamaProvider implements IModelProvider {
       prompt,
       stream: false,
     };
-    let response: Response;
-    try {
-      response = await fetch(this.endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-    } catch (_err) {
-      throw new Error("Connection error");
-    }
-    if (!response.ok) {
-      // Ensure we consume the response body to avoid readable stream leaks
-      try {
-        await response.text();
-      } catch {
-        // ignore
-      }
-      throw new Error(`Ollama error: ${response.status}`);
-    }
-    const data = await response.json();
+
+    const { fetchJsonWithRetries } = await import("../provider_common_utils.ts");
+    const data = await fetchJsonWithRetries(this.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }, {
+      id: this.id,
+      maxAttempts: Number(Deno.env.get("EXO_OLLAMA_RETRY_MAX") ?? "3"),
+      backoffBaseMs: Number(Deno.env.get("EXO_OLLAMA_RETRY_BACKOFF_MS") ?? "1000"),
+      timeoutMs: undefined,
+    });
+
     if (!data || typeof data.response !== "string") {
       throw new Error("Invalid Ollama response");
     }

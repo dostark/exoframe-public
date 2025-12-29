@@ -63,7 +63,7 @@ export class FlowLoader {
       const originalContent = await Deno.readTextFile(filePath);
 
       // Rewrite imports that reference "src/" so they resolve to the repository's src directory
-      let rewrittenContent = originalContent.replace(/from\s+(['"])([^'"\n]*src\/[^'"\n]+)\1/g, (m, q, spec) => {
+      let rewrittenContent = originalContent.replace(/from\s+(['"])([^'"\n]*src\/[^'"\n]+)\1/g, (_m, q, spec) => {
         const idx = spec.indexOf("src/");
         const relAfterSrc = spec.slice(idx + 4); // path after src/
         const absPath = join(Deno.cwd(), "src", relAfterSrc);
@@ -72,7 +72,7 @@ export class FlowLoader {
 
       // Rewrite relative imports (./ or ../) to absolute file URLs so that they resolve from the temp file
       const fileDir = dirname(filePath);
-      rewrittenContent = rewrittenContent.replace(/from\s+(['"])(\.\.?\/[^'"\n]+)\1/g, (m, q, spec) => {
+      rewrittenContent = rewrittenContent.replace(/from\s+(['"])(\.{1,2}\/[^'"\n]+)\1/g, (_m, q, spec) => {
         const resolvedPath = resolve(fileDir, spec);
         return `from ${q}file://${resolvedPath}${q}`;
       });

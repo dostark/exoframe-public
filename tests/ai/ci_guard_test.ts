@@ -21,7 +21,7 @@ Deno.test("ModelFactory falls back to mock provider in CI unless EXO_ENABLE_PAID
       if (originalFlag === undefined) Deno.env.delete("EXO_ENABLE_PAID_LLM");
       else Deno.env.set("EXO_ENABLE_PAID_LLM", originalFlag);
     }
-  } catch (err) {
+  } catch {
     console.warn("Skipping CI guard test: no env access in this environment");
   }
 });

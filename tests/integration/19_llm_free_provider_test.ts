@@ -10,7 +10,7 @@ import { getTestModel } from "../ai/helpers/test_model.ts";
 const _enabled = Deno.env.get("EXO_ENABLE_PAID_LLM");
 Deno.test(
   { name: "LLM provider integration (manual) - end-to-end RequestProcessor", ignore: (_enabled !== "1") },
-  async (t) => {
+  async (_t) => {
     // Manual integration test - opt-in only
     // Requires:
     //  - EXO_ENABLE_PAID_LLM=1 (explicit opt-in)

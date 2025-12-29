@@ -31,7 +31,7 @@ You can override selection with environment variables or by passing options dire
 
 - `EXO_OPENAI_RETRY_MAX` — _(optional)_ Maximum retry attempts used by `OpenAIShim` when encountering retryable errors (e.g., HTTP 429, 503, or transient network errors). **Default:** `6`.
 - `EXO_OPENAI_RETRY_BACKOFF_MS` — _(optional)_ Base backoff delay in milliseconds used by `OpenAIShim` for exponential backoff between retries. **Default:** `2000` (ms). Subsequent retries multiply this delay.
-- `EXO_TEST_LLM_MODEL` — *(optional)* Default model used when running live LLM tests. **Default:** `gpt-5mini`. You can also set this to any OpenAI-style model id that your key can access (e.g., `gpt-3.5-turbo`, `gpt-4o`, or `gpt-4.1`).
+- `EXO_TEST_LLM_MODEL` — _(optional)_ Default model used when running live LLM tests. **Default:** `gpt-5-mini`. You can also set this to any OpenAI-style model id that your key can access (e.g., `gpt-3.5-turbo`, `gpt-4o`, or `gpt-4.1`).
 
 Notes:
 
