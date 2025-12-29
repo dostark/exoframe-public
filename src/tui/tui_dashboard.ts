@@ -61,6 +61,34 @@ export interface TuiDashboard {
   resetToDefault(): void;
 }
 
+export function tryEnableRawMode(): boolean {
+  try {
+    const stdinAny = Deno.stdin as any;
+    if (typeof stdinAny.isTerminal === "function" && stdinAny.isTerminal()) {
+      if (typeof stdinAny.setRaw === "function") {
+        stdinAny.setRaw(true);
+        return true;
+      }
+    }
+  } catch (_err) {
+    // best-effort: ignore errors
+  }
+  return false;
+}
+
+export function tryDisableRawMode(): boolean {
+  try {
+    const stdinAny = Deno.stdin as any;
+    if (typeof stdinAny.setRaw === "function") {
+      stdinAny.setRaw(false);
+      return true;
+    }
+  } catch (_err) {
+    // ignore
+  }
+  return false;
+}
+
 export async function launchTuiDashboard(
   options: { testMode?: boolean; nonInteractive?: boolean } = {},
 ): Promise<TuiDashboard | undefined> {
@@ -395,90 +423,209 @@ export async function launchTuiDashboard(
   await render();
 
   if (!options.nonInteractive) {
-    // Interactive mode: handle keyboard input
-    const decoder = new TextDecoder();
-    for await (const chunk of Deno.stdin.readable) {
-      const input = decoder.decode(chunk);
-      const key = input.trim();
-
-      if (key === "\x1b") { // Esc
-        break;
-      } else if (key === "\t") { // Tab
-        const currentIndex = panes.findIndex((p) => p.id === activePaneId);
-        const nextIndex = (currentIndex + 1) % panes.length;
-        activePaneId = panes[nextIndex].id;
-        panes.forEach((p) => p.focused = false);
-        panes[nextIndex].focused = true;
-        await render();
-      } else if (key === "\x1b[Z") { // Shift+Tab (reverse)
-        const currentIndex = panes.findIndex((p) => p.id === activePaneId);
-        const prevIndex = (currentIndex - 1 + panes.length) % panes.length;
-        activePaneId = panes[prevIndex].id;
-        panes.forEach((p) => p.focused = false);
-        panes[prevIndex].focused = true;
-        await render();
-      } else if (key === "v") { // Split vertical
-        const activePane = panes.find((p) => p.id === activePaneId);
-        if (activePane && panes.length < 4) { // Limit to 4 panes
-          const newId = `pane-${panes.length}`;
-          const halfWidth = Math.floor(activePane.width / 2);
-          activePane.width = halfWidth;
-          const newPane: Pane = {
-            id: newId,
-            view: views[panes.length % views.length],
-            x: activePane.x + halfWidth,
-            y: activePane.y,
-            width: activePane.width,
-            height: activePane.height,
-            focused: false,
-          };
-          panes.push(newPane);
-        }
-        await render();
-      } else if (key === "h") { // Split horizontal
-        const activePane = panes.find((p) => p.id === activePaneId);
-        if (activePane && panes.length < 4) {
-          const newId = `pane-${panes.length}`;
-          const halfHeight = Math.floor(activePane.height / 2);
-          activePane.height = halfHeight;
-          const newPane: Pane = {
-            id: newId,
-            view: views[panes.length % views.length],
-            x: activePane.x,
-            y: activePane.y + halfHeight,
-            width: activePane.width,
-            height: activePane.height,
-            focused: false,
-          };
-          panes.push(newPane);
-        }
-        await render();
-      } else if (key === "c") { // Close pane
-        if (panes.length > 1) {
-          const index = panes.findIndex((p) => p.id === activePaneId);
-          panes.splice(index, 1);
-          activePaneId = panes[0].id;
-          panes[0].focused = true;
-        }
-        await render();
-      } else if (key === "\n") { // Enter
-        console.log(`Selected pane: ${panes.find((p) => p.id === activePaneId)?.view.name}`);
-        // TODO: Implement pane-specific actions
-        await render();
-      } else if (key === "s") { // Save layout
-        await saveLayout();
-        console.log("Layout saved.");
-        await render();
-      } else if (key === "r") { // Restore layout
-        await restoreLayout();
-        console.log("Layout restored.");
-        await render();
-      } else if (key === "d") { // Reset to default
-        resetToDefault();
-        console.log("Reset to default layout.");
-        await render();
+    // Interactive mode: attempt to enable raw mode when possible and provide a line-based fallback
+    let rawEnabled = false;
+    try {
+      const stdinAny = Deno.stdin as any;
+      const isTty = typeof stdinAny.isTerminal === "function" && stdinAny.isTerminal();
+      if (isTty) {
+        rawEnabled = tryEnableRawMode();
+        if (!rawEnabled) console.warn("Warning: terminal raw mode not available; keyboard keys will require Enter.");
+      } else {
+        console.log("Non-tty stdin detected; using line-based input (press Enter after commands).");
       }
-      // Ignore other keys
+
+      const decoder = new TextDecoder();
+
+      if (rawEnabled) {
+        // Raw-mode loop - immediate key sequences
+        for await (const chunk of Deno.stdin.readable) {
+          const input = decoder.decode(chunk);
+          const key = input; // preserve escape sequences
+
+          if (key === "\x1b") { // Esc
+            break;
+          } else if (key === "\t") { // Tab
+            const currentIndex = panes.findIndex((p) => p.id === activePaneId);
+            const nextIndex = (currentIndex + 1) % panes.length;
+            activePaneId = panes[nextIndex].id;
+            panes.forEach((p) => p.focused = false);
+            panes[nextIndex].focused = true;
+            await render();
+          } else if (key === "\x1b[Z") { // Shift+Tab (reverse)
+            const currentIndex = panes.findIndex((p) => p.id === activePaneId);
+            const prevIndex = (currentIndex - 1 + panes.length) % panes.length;
+            activePaneId = panes[prevIndex].id;
+            panes.forEach((p) => p.focused = false);
+            panes[prevIndex].focused = true;
+            await render();
+          } else if (key === "v") { // Split vertical
+            const activePane = panes.find((p) => p.id === activePaneId);
+            if (activePane && panes.length < 4) { // Limit to 4 panes
+              const newId = `pane-${panes.length}`;
+              const halfWidth = Math.floor(activePane.width / 2);
+              activePane.width = halfWidth;
+              const newPane: Pane = {
+                id: newId,
+                view: views[panes.length % views.length],
+                x: activePane.x + halfWidth,
+                y: activePane.y,
+                width: activePane.width,
+                height: activePane.height,
+                focused: false,
+              };
+              panes.push(newPane);
+            }
+            await render();
+          } else if (key === "h") { // Split horizontal
+            const activePane = panes.find((p) => p.id === activePaneId);
+            if (activePane && panes.length < 4) {
+              const newId = `pane-${panes.length}`;
+              const halfHeight = Math.floor(activePane.height / 2);
+              activePane.height = halfHeight;
+              const newPane: Pane = {
+                id: newId,
+                view: views[panes.length % views.length],
+                x: activePane.x,
+                y: activePane.y + halfHeight,
+                width: activePane.width,
+                height: activePane.height,
+                focused: false,
+              };
+              panes.push(newPane);
+            }
+            await render();
+          } else if (key === "c") { // Close pane
+            if (panes.length > 1) {
+              const index = panes.findIndex((p) => p.id === activePaneId);
+              panes.splice(index, 1);
+              activePaneId = panes[0].id;
+              panes[0].focused = true;
+            }
+            await render();
+          } else if (key === "\n") { // Enter
+            console.log(`Selected pane: ${panes.find((p) => p.id === activePaneId)?.view.name}`);
+            // TODO: Implement pane-specific actions
+            await render();
+          } else if (key === "s") { // Save layout
+            await saveLayout();
+            console.log("Layout saved.");
+            await render();
+          } else if (key === "r") { // Restore layout
+            await restoreLayout();
+            console.log("Layout restored.");
+            await render();
+          } else if (key === "d") { // Reset to default
+            resetToDefault();
+            console.log("Reset to default layout.");
+            await render();
+          }
+          // Ignore other keys
+        }
+      } else {
+        // Non-raw fallback: read lines from stdin (Enter-terminated commands)
+        const { readLines } = await import("https://deno.land/std@0.203.0/io/mod.ts");
+        for await (const line of readLines(Deno.stdin)) {
+          const cmd = line.trim().toLowerCase();
+          if (!cmd) continue;
+          if (cmd === "esc" || cmd === "exit") break;
+          if (cmd === "tab") {
+            const currentIndex = panes.findIndex((p) => p.id === activePaneId);
+            const nextIndex = (currentIndex + 1) % panes.length;
+            activePaneId = panes[nextIndex].id;
+            panes.forEach((p) => p.focused = false);
+            panes[nextIndex].focused = true;
+            await render();
+            continue;
+          }
+          if (cmd === "shift+tab" || cmd === "shift-tab") {
+            const currentIndex = panes.findIndex((p) => p.id === activePaneId);
+            const prevIndex = (currentIndex - 1 + panes.length) % panes.length;
+            activePaneId = panes[prevIndex].id;
+            panes.forEach((p) => p.focused = false);
+            panes[prevIndex].focused = true;
+            await render();
+            continue;
+          }
+          if (cmd === "v") {
+            const activePane = panes.find((p) => p.id === activePaneId);
+            if (activePane && panes.length < 4) {
+              const newId = `pane-${panes.length}`;
+              const halfWidth = Math.floor(activePane.width / 2);
+              activePane.width = halfWidth;
+              const newPane: Pane = {
+                id: newId,
+                view: views[panes.length % views.length],
+                x: activePane.x + halfWidth,
+                y: activePane.y,
+                width: activePane.width,
+                height: activePane.height,
+                focused: false,
+              };
+              panes.push(newPane);
+            }
+            await render();
+            continue;
+          }
+          if (cmd === "h") {
+            const activePane = panes.find((p) => p.id === activePaneId);
+            if (activePane && panes.length < 4) {
+              const newId = `pane-${panes.length}`;
+              const halfHeight = Math.floor(activePane.height / 2);
+              activePane.height = halfHeight;
+              const newPane: Pane = {
+                id: newId,
+                view: views[panes.length % views.length],
+                x: activePane.x,
+                y: activePane.y + halfHeight,
+                width: activePane.width,
+                height: activePane.height,
+                focused: false,
+              };
+              panes.push(newPane);
+            }
+            await render();
+            continue;
+          }
+          if (cmd === "c") {
+            if (panes.length > 1) {
+              const index = panes.findIndex((p) => p.id === activePaneId);
+              panes.splice(index, 1);
+              activePaneId = panes[0].id;
+              panes[0].focused = true;
+            }
+            await render();
+            continue;
+          }
+          if (cmd === "enter") {
+            console.log(`Selected pane: ${panes.find((p) => p.id === activePaneId)?.view.name}`);
+            await render();
+            continue;
+          }
+          if (cmd === "s") {
+            await saveLayout();
+            console.log("Layout saved.");
+            await render();
+            continue;
+          }
+          if (cmd === "r") {
+            await restoreLayout();
+            console.log("Layout restored.");
+            await render();
+            continue;
+          }
+          if (cmd === "d") {
+            resetToDefault();
+            console.log("Reset to default layout.");
+            await render();
+            continue;
+          }
+        }
+      }
+    } finally {
+      if (rawEnabled) {
+        tryDisableRawMode();
+      }
     }
   }
 
