@@ -1,6 +1,6 @@
 import { EventLogger } from "../services/event_logger.ts";
 import { AuthenticationError, RateLimitError } from "./providers/common.ts";
-import { ModelProviderError } from "./providers.ts";
+import { ConnectionError, ModelProviderError } from "./providers.ts";
 
 export type TokenMap = {
   prompt_tokens?: number;
@@ -16,10 +16,14 @@ export async function handleProviderResponse(
   tokenMapper?: (data: any) => TokenMap | undefined,
 ): Promise<any> {
   if (!response.ok) {
-    let message = response.statusText;
+    // Include HTTP status code in messages so tests can assert on it (e.g. "HTTP 503").
+    let message = `HTTP ${response.status} ${response.statusText}`;
     try {
       const error = await response.json();
-      message = error.error?.message ?? message;
+      const remoteMsg = error.error?.message ?? error.message ?? undefined;
+      if (remoteMsg) {
+        message = `HTTP ${response.status} ${remoteMsg}`;
+      }
     } catch {
       // ignore JSON parse errors and fallback to statusText
     }
@@ -30,7 +34,8 @@ export async function handleProviderResponse(
       throw new RateLimitError(id, message);
     }
     if (response.status >= 500) {
-      throw new ModelProviderError(`Server error: ${message}`, id);
+      // Treat server (5xx) responses as connection-level failures
+      throw new ConnectionError(id, message);
     }
     throw new ModelProviderError(message, id);
   }
