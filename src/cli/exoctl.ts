@@ -102,7 +102,86 @@ const blueprintCommands = new BlueprintCommands(context);
 const flowCommands = new FlowCommands(context);
 const dashboardCommands = new DashboardCommands(context);
 
-await new Command()
+// Export test helper for unit tests to inspect module-internal context when running in test mode.
+export function __test_getContext() {
+  return {
+    IN_TEST_MODE,
+    config,
+    db,
+    gitService,
+    provider,
+    display,
+    context,
+    requestCommands,
+    planCommands,
+    changesetCommands,
+    gitCommands,
+    daemonCommands,
+    portalCommands,
+    blueprintCommands,
+    flowCommands,
+    dashboardCommands,
+  } as const;
+}
+
+// Test helper: initialize the heavy services path (same logic used in non-test runtime)
+// Returns an object describing whether initialization succeeded and the constructed services.
+export async function __test_initializeServices(opts?: { simulateFail?: boolean; instantiateDb?: boolean }) {
+  try {
+    if (opts?.simulateFail) throw new Error("simulate-failure");
+    const cfgService = new ConfigService();
+    const cfg = cfgService.get();
+
+    // Dynamically import DatabaseService as the runtime code does
+    // Only import and instantiate DatabaseService if explicitly requested by caller.
+    // Importing the DB module may load native dynamic libraries during module initialization,
+    // which unit tests need to avoid unless they're prepared to close them.
+    let dbLocal: any = {};
+    if (opts?.instantiateDb) {
+      const { DatabaseService } = await import("../services/db.ts");
+      dbLocal = new DatabaseService(cfg);
+      // Close DB if it exposes a close method to avoid leaking dynamic libraries during tests
+      if (typeof (dbLocal as any).close === "function") {
+        try {
+          await (dbLocal as any).close();
+        } catch {
+          // ignore close errors in test helper
+        }
+      }
+    }
+    const gitLocal = new GitService({ config: cfg, db: dbLocal });
+    const providerLocal = ProviderFactory.createByName(cfg, cfg.agents.default_model);
+    const displayLocal = new EventLogger({});
+    return {
+      success: true,
+      config: cfg,
+      db: dbLocal,
+      gitService: gitLocal,
+      provider: providerLocal,
+      display: displayLocal,
+    };
+  } catch (err) {
+    // Fallback minimal stubs (same as runtime fallback)
+    const cfg = {
+      system: { root: Deno.cwd() },
+      paths: { knowledge: "Knowledge", system: "System" },
+      agents: { default_model: "mock:test" },
+    } as any;
+    const providerLocal = ProviderFactory.createByName(cfg, cfg.agents.default_model);
+    const displayLocal = new EventLogger({});
+    return {
+      success: false,
+      error: String(err),
+      config: cfg,
+      db: {} as any,
+      gitService: {} as any,
+      provider: providerLocal,
+      display: displayLocal,
+    };
+  }
+}
+
+export const __test_command = new Command()
   .name("exoctl")
   .version("1.0.0")
   .description("ExoFrame CLI - Human interface for agent orchestration")
@@ -961,8 +1040,7 @@ await new Command()
       .action(async () => {
         await dashboardCommands.show();
       }),
-  )
-  .parse(Deno.args);
+  );
 
 // Helper function for printing request results
 import type { RequestMetadata } from "./request_commands.ts";
@@ -979,4 +1057,8 @@ function printRequestResult(result: RequestMetadata, json: boolean, _dryRun: boo
       next: "Daemon will process this automatically",
     });
   }
+}
+
+if (!IN_TEST_MODE) {
+  await __test_command.parse(Deno.args);
 }
