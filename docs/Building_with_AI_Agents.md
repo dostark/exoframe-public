@@ -3199,34 +3199,136 @@ _The recursion continues. The patterns emerge. The meta-framework takes shape._
 
 The repository underwent an intensive implementation and QA cycle between 2025-12-21 and 2025-12-23. The following patterns and engineering observations emerged and are recommended to be included in this guide so future contributors and integrators benefit from them.
 
-- **TUI-first cockpit architecture**: The primary human interface is a keyboard-first TUI dashboard (split panes, saved layouts, multiple views). See the unified dashboard implementation and layout features in [src/tui/tui_dashboard.ts](src/tui/tui_dashboard.ts). The design favors fast, scriptable interactions and accessibility over a web-based control panel.
+### Pattern 8: The Cockpit Philosophy (TUI-First)
 
-- **Centralize small, orthogonal helpers to reduce duplication**: Multiple modules were refactored to extract tiny shared utilities rather than copy-pasting logic across providers and views. Notable examples:
-  - `TuiSessionBase` centralizes selection, navigation handling, status messages, and an async `performAction` wrapper used by views (see [src/tui/tui_common.ts](src/tui/tui_common.ts)).
-  - `provider_common_utils.ts` centralizes HTTP response handling, token mapping, and content extraction so each provider focuses on request shaping only (see [src/ai/provider_common_utils.ts](src/ai/provider_common_utils.ts)).
-  - `request_common.ts` provides blueprint loading and parsed-request construction to avoid duplicated file I/O and parsing logic (see [src/services/request_common.ts](src/services/request_common.ts)).
+**The Discovery**: Web dashboards are heavy, require build steps, and break the terminal workflow.
+**The Pattern**:
 
-- **Guarded async error handling pattern in TUI sessions**: TUI handlers now use a guarded `performAction` helper which awaits the action and maps thrown errors to a consistent `statusMessage` string. This prevents subtle timing issues where tests (or users) might not observe status updates because an async operation wasn't awaited.
+- **Why**: Keyboard-driven interfaces are faster for developers (0ms latency, muscle memory).
+- **Implementation**: `src/tui/tui_dashboard.ts` implements a split-pane, tabbed interface using `deno-tui` or `cliffy`.
+- **Key Pattern**: `performAction` wrapper.
+  ```typescript
+  // Wrap every user action to ensure consistent error handling
+  protected async performAction(actionName: string, action: () => Promise<void>) {
+    try {
+      this.statusMessage = `Running ${actionName}...`;
+      await action();
+      this.statusMessage = `${actionName} complete.`;
+    } catch (err) {
+      this.statusMessage = `Error: ${err.message}`;
+      this.eventLogger.error(err);
+    }
+  }
+  ```
 
-- **Make invalid selection explicit (testability + clarity)**: Instead of silently clamping selection indices, the TUI sessions allow an out-of-range sentinel (e.g. `-1`) to represent "no selection"; code sets an immediate status message for invalid selections. This pattern improves testability and avoids surprising behavior when callers need to simulate an empty selection. See [src/tui/portal_manager_view.ts](src/tui/portal_manager_view.ts) and [src/tui/plan_reviewer_view.ts](src/tui/plan_reviewer_view.ts).
+**Lesson**: Don't build a web app when a TUI will do. It's closer to the metal and the user.
 
-- **Provider robustness: standardized error classification & token mapping**: Provider HTTP responses are now parsed through shared helpers that map status codes to a small set of domain errors (authentication, rate-limit, server error, generic provider error) and optionally emit token-usage debug events. This makes metrics/logging and retry behaviour consistent across providers. See [src/ai/provider_common_utils.ts](src/ai/provider_common_utils.ts) and provider adaptations in [src/ai/providers/](src/ai/providers/).
+### Pattern 9: The Robust Provider Shim
 
-- **Deferred/native initialization and safe env access**: To make tooling robust under restricted runtime environments (CI / limited Deno permissions), native bindings (e.g. sqlite) and environment reads have been deferred or wrapped in safe getters. This reduces import-time failures in test runs and during CLI invocation.
+**The Problem**: Every LLM provider has different error codes (401 vs 403), token formats, and rate limit headers.
+**The Pattern**: `provider_common_utils.ts` acts as a normalization layer.
 
-- **DRY post-processing for plan generation**: The RequestProcessor consolidates post-plan logic (write plan, mark request planned, log activity) into a helper to guarantee consistent logging and state transitions regardless of plan origin (flow vs agent). See [src/services/request_processor.ts](src/services/request_processor.ts).
+- **Unified Errors**: Map everything to `AuthenticationError`, `RateLimitError`, `ProviderError`.
+- **Unified Tokens**: Standardize usage reporting (prompt_tokens, completion_tokens).
+- **Benefit**: Changing providers becomes a config change, not a code refactor.
 
-- **Chronological sorting must be numeric (timestamps)**: When sorting items by creation time, prefer numeric Date comparisons rather than string localeCompare to avoid incorrect ordering across formats/locales. Example fix: [src/cli/changeset_commands.ts](src/cli/changeset_commands.ts).
+### Pattern 10: The Semantic Sentinel
 
-- **Test-first and broad TDD coverage**: A large set of unit and integration tests were added/expanded (TUI, providers, CLI, integration flows). The team made tests the primary verification method before merging UI/UX changes. Look at `tests/tui/` and `tests/ai/` for representative examples.
+**The Anti-Pattern**: Using `index` for selection and checking `if (index >= 0)`.
+**The Pattern**: Explicit sentinels and impossible states.
 
-- **Activity Journal (logging) integration**: Many flows and CLI commands log structured events to the Activity Journal. Standardize log keys and payload shapes (e.g., `changeset.created`, `plan.approved`). Search `src/services/event_logger.ts` and tests under `tests/` to see expectations.
+- **Selection**: `selectedIndex: number | null` (not -1).
+- **Errors**: `statusMessage` is never null, defaults to "Ready".
+- **Validation**: Bounds checking happens at the UI layer, not the business logic layer.
 
-- **Housekeeping: ignore runtime artifacts**: CI and local runs generate runtime artifacts (e.g., `System/daemon.pid`); these should be ignored in `.gitignore` to avoid spurious commits. See the `.gitignore` updates performed recently.
+### Pattern 11: Deferred Initialization
 
-How to use these patterns when extending ExoFrame
+**The Problem**: Importing `sqlite` in a CI environment without read permissions crashes the script immediately.
+**The Solution**: Lazy load heavyweight dependencies.
 
-- Prefer small, well-named helpers for cross-cutting concerns (parsing, error classification, logging) rather than copying code between providers/views.
-- When adding TUI commands that invoke async side-effects, use `performAction` or similar wrappers so errors map to user-visible status messages and tests can assert on them deterministically.
-- When writing new providers, rely on `provider_common_utils` for HTTP/error/token handling and implement only request shaping and model-specific response mapping.
-- Add tests for both success and failure modes — the test-suite includes many examples of how to mock providers and DB-like services.
+```typescript
+// Don't do this at top level
+// import { DB } from "sqlite"; const db = new DB();
+
+// Do this
+class DatabaseService {
+  private _db: DB | null = null;
+  get db() {
+    if (!this._db) this._db = new DB(config.path);
+    return this._db;
+  }
+}
+```
+
+**Result**: Scripts like `deno task fmt` run instantly without checking DB permissions.
+
+### Pattern 12: Chronological Truth
+
+**The Bug**: `sort((a,b) => a.created.localeCompare(b.created))`
+**The Reality**: ISO strings usually sort correctly, but mixed formats (Agent logs vs System logs) caused jitter.
+**The Fix**: Always parse to `getTime()` before comparing.
+
+```typescript
+sort((a, b) => new Date(a.created).getTime() - new Date(b.created).getTime());
+```
+
+**Rule**: Time is a number, not a string.
+
+## Part IX: The Agents Directory (Meta-Cognition)
+
+### The Problem of Tribal Knowledge
+
+By Phase 10, the "physics" of ExoFrame had become complex. We had rules for:
+
+- TUI-first design (no web apps)
+- Archival approvals (no deletions)
+- Mock-first testing (no API bills)
+
+But these rules lived in my head, old PR reviews, and scattered `AGENT_INSTRUCTIONS.md` files that were notoriously hard to maintain. When a new agent spun up (whether Copilot in my IDE or an autonomous agent in a loop), it had to "guess" the rules or halluncinate patterns.
+
+### The Solution: `agents/` as a Constitution
+
+We decided to treat **Agent Context as a First-Class Citizen**. We created a top-level `agents/` directory that acts as the repository's API for machine intelligence.
+
+**The Philosophy:**
+
+1. **Machine-First**: These aren't just docs; they are **manifests**. They have JSON schemas, chunked outputs, and embedding vectors.
+2. **Intent-Segregated**:
+   - `agents/copilot/`: Short-term memory for IDE autocomplete.
+   - `agents/providers/`: Hardware abstraction layer (e.g., "OpenAI likes small prompts, Claude likes big ones").
+   - `agents/source/`: Deep context on coding patterns.
+3. **Active Maintenance**: The build system (`scripts/build_agents_index.ts`) breaks these docs into "chunks" so an agent can retrieve _just_ the testing guide without reading the whole history.
+
+**The Usage Pattern:**
+When I ask Copilot to "Refactor the planner," it doesn't just read the code. It (ideally) executes:
+
+1. `read agents/manifest.json` -> finds "Testing Standards"
+2. `read agents/chunks/testing.md.chunk0.txt` -> learns about `MockLLMProvider`
+3. Generates code that _already_ follows the rules.
+
+This shift—from "training the model" to "curating the context"—is how we scale development without scaling the team.
+
+## Part X: The Future
+
+The patterns above represent the "physics" of ExoFrame. As we move to multi-agent flows and hybrid cloud execution, these physics will keep the system grounded.
+
+## Part XV: Framework Decisions - The Case for Native Flows
+
+### The LangChain Temptation
+
+In **Step 7 (Flow Orchestration)**, we faced a critical decision: adopt LangChain/LangGraph, or build a native execution engine?
+
+- **LangChain Promise**: "Don't reinvent the wheel. We have 5,000 integrations."
+- **ExoFrame Reality**: "We don't need 5,000 integrations. We need 1 solid filesystem abstraction and 3 secure providers."
+
+### The Decision: Native Flows
+
+We chose to build `src/flows/` as a lightweight, type-safe DAG engine (<700 LOC) instead of importing the massive LangChain dependency tree.
+
+**Why?**
+
+1. **Safety**: ExoFrame's "Safe-by-Design" promise relies on Deno's kernel-level permissions. LangChain's "magic" abstractions often hide whether a tool is reading a file or sending data to a server. Native flows make every I/O operation explicit and auditable.
+2. **Auditability**: A security auditor can read our entire execution engine in 15 minutes. LangChain would require auditing a massive third-party library.
+3. **Dependencies**: We treat dependencies as liabilities. A "Files as API" system shouldn't depend on a framework that changes its API every week.
+
+For a detailed analysis, see: [ExoFrame_LangChain_Comparison.md](./ExoFrame_LangChain_Comparison.md).
