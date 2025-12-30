@@ -6678,11 +6678,11 @@ The combination of a manifest, short summaries, chunking, optional embeddings, a
 
 **Success Criteria:**
 
-1. [ ] `deno task ci` runs full pipeline locally
-2. [ ] GitHub Actions workflows migrated to use `deno task ci`
-3. [ ] Git hooks block bad commits locally
-4. [ ] Documentation drift prevents merging
-5. [ ] Security regression suite runs on every PR
+1. [x] `deno task ci` runs full pipeline locally
+2. [x] GitHub Actions workflows migrated to use `deno task ci`
+3. [x] Git hooks block bad commits locally
+4. [x] Documentation drift prevents merging
+5. [x] Security regression suite runs on every PR
 
 ## Phase 11: Testing & Quality Assurance
 
