@@ -9,8 +9,6 @@ topics: ["docs","process","publishing"]
 
 # ExoFrame Documentation Development Guidelines (migrated)
 
-This document is a migration of `docs/AGENT_INSTRUCTIONS.md` into `agents/` to provide concise guidance for documentation-focused dev agents.
-
 ## Quickstart — Using `agents/` with VS Code & Copilot ✅
 
 1. Install Copilot (or open Copilot Labs) in your VS Code.
@@ -92,5 +90,3 @@ Maintain a standard Terminology Reference and link to it from major documents. U
 Use relative paths for internal links and include file paths when referencing code. Keep documentation changes minimal and tied to Implementation Plan steps.
 
 ---
-
-*The above content is migrated from `docs/AGENT_INSTRUCTIONS.md` to ensure `agents/docs/documentation.md` contains the full, authoritative documentation guidelines.*

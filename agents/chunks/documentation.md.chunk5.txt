@@ -7,5 +7,3 @@
 Use relative paths for internal links and include file paths when referencing code. Keep documentation changes minimal and tied to Implementation Plan steps.
 
 ---
-
-*The above content is migrated from `docs/AGENT_INSTRUCTIONS.md` to ensure `agents/docs/documentation.md` contains the full, authoritative documentation guidelines.*

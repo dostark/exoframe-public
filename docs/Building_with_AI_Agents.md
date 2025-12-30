@@ -1452,7 +1452,7 @@ This isn't inconsistency—it's documentation of real engineering decisions:
 
 **The Problem**: Every module had its own conventions. Service A logged with `console.log`, Service B used `console.error`, Service C had its own logging helper. Tests were scattered, and new contributors (human or AI) had to reverse-engineer patterns.
 
-**The Solution**: Create `AGENT_INSTRUCTIONS.md` files at strategic locations.
+**The Solution**: Create `agents/` files to provide focused guidance for dev-time agents and tooling.
 
 **What We Created**:
 
@@ -3151,7 +3151,7 @@ _The recursion continues. The patterns emerge. The meta-framework takes shape._
 | **Activity Export**           | `deno task export-activity`                            | Bridge SQLite to Obsidian Dataview             |
 | **User-Defined Portals**      | Define `@Alias` in `exo.config.toml`                   | Secure, flexible project boundaries            |
 | **Full Verification**         | "Run all tests"                                        | Verify nothing broke                           |
-| **Agent Instructions**        | Create AGENT_INSTRUCTIONS.md in key directories        | AI helpers follow same patterns                |
+| **Agent Instructions**        | Create `agents/` files in key directories              | AI helpers follow same patterns                |
 | **Unified Logging**           | "Migrate console.log to EventLogger"                   | Audit trail + consistent output                |
 | **Display Logger**            | EventLogger without db parameter                       | Console-only for read operations               |
 | **Provider Selection**        | Environment → Config → Defaults hierarchy              | Flexible LLM provider configuration            |

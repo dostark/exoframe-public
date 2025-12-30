@@ -7,13 +7,15 @@ version: "0.1"
 topics: ["tests","tdd","helpers"]
 ---
 
-# ExoFrame Test Development Guidelines (migrated)
-
-This document is a migration of `tests/AGENT_INSTRUCTIONS.md` into `agents/` to provide focused guidance for dev-time agents and tooling.
+# ExoFrame Test Development Guidelines
 
 Key points
 - Use `initTestDbService()` and `createCliTestContext()` to centralize db+tempdir setup
 - Use `withEnv()` for temporary env var changes in tests
+- **Mocking**: Use `MockLLMProvider` for deterministic agent testing (avoid real API calls).
+- **Integration**: Use `TestEnvironment.create()` to scaffold full workspace/DB structures.
+- **Leases**: File locking integration tests live in `tests/execution_loop_test.ts`.
+
 - Prefer `createCliTestContext()` for CLI tests and call returned `cleanup()` in `afterEach`
 
 Canonical prompt (short):
@@ -77,5 +79,3 @@ Use `createCliTestContext()` to centralize DB + tempdir setup for CLI tests. Alw
 Use `TestEnvironment.create()` for full integration tests that require workspace layout, DB, and optional git initialization. Prefer small, focused integration tests that exercise end-to-end behavior with deterministic teardown.
 
 ---
-
-*The above content is migrated from `tests/AGENT_INSTRUCTIONS.md` to ensure the `agents/tests/testing.md` document contains the full guidance used by test-focused agents.*

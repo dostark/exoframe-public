@@ -1,0 +1,8 @@
+### System Constraints & Patterns
+- **Runtime Persistence**: The /System/Active, /Inbox/Requests, and /Inbox/Plans folders are the "Database". Code must respect file-system atomicity (use `writeTextFile` with atomic renaming where possible).
+- **Activity Journal**: All side-effects (file writes, executions, errors) MUST be logged to the Activity Journal (`System/journal.db`) via `EventLogger`.
+- **Security Modes**:
+    - **Sandboxed**: No network, no file access (default).
+    - **Hybrid**: Read-only access to specific "Portal" paths.
+    - **Note**: Always use `PathResolver` to validate paths before access.
+- **MCP Enforcement**: In Hybrid mode, agents can read files directly but MUST use MCP tools for writes (to ensure auditability).

@@ -3,7 +3,3 @@ Use Zod for config validation and keep config options in `exo.config.toml` examp
 ### Service Pattern
 
 Constructor-based DI: pass `config`, `db`, and `provider` into services. Keep side effects out of constructors where feasible.
-
----
-
-*The above content is migrated from `src/AGENT_INSTRUCTIONS.md` to ensure the `agents/source/exoframe.md` document contains the full, authoritative developer guidance.*

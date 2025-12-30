@@ -7,9 +7,7 @@ version: "0.1"
 topics: ["source","development","tdd","patterns"]
 ---
 
-# ExoFrame Source Development Guidelines (migrated)
-
-This document is a migration of `src/AGENT_INSTRUCTIONS.md` into `agents/` for machine-consumable agent guidance.
+# ExoFrame Source Development Guidelines
 
 Key points
 - Strict TDD-first approach: write failing tests before implementation
@@ -59,6 +57,17 @@ Use Zod for config validation and keep config options in `exo.config.toml` examp
 
 Constructor-based DI: pass `config`, `db`, and `provider` into services. Keep side effects out of constructors where feasible.
 
----
+### System Constraints & Patterns
+- **Runtime Persistence**: The /System/Active, /Inbox/Requests, and /Inbox/Plans folders are the "Database". Code must respect file-system atomicity (use `writeTextFile` with atomic renaming where possible).
+- **Activity Journal**: All side-effects (file writes, executions, errors) MUST be logged to the Activity Journal (`System/journal.db`) via `EventLogger`.
+- **Security Modes**:
+    - **Sandboxed**: No network, no file access (default).
+    - **Hybrid**: Read-only access to specific "Portal" paths.
+    - **Note**: Always use `PathResolver` to validate paths before access.
+- **MCP Enforcement**: In Hybrid mode, agents can read files directly but MUST use MCP tools for writes (to ensure auditability).
 
-*The above content is migrated from `src/AGENT_INSTRUCTIONS.md` to ensure the `agents/source/exoframe.md` document contains the full, authoritative developer guidance.*
+### Business Logic Rules
+- **Plan Approval**: `exoctl plan approve` must never fail due to existing files. It should archive the previous state to `System/Archive/` before writing the new plan.
+- **Data Formats**: Use **YAML Frontmatter** for all markdown metadata (Obsidian compatibility). Do NOT use TOML or JSON for frontmatter.
+
+---
