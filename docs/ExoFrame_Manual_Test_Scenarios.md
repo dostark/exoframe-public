@@ -3,7 +3,7 @@
 - **Version:** 1.7.0
 - **Release Date:** 2025-12-02
 - **Status:** Active
-- **Reference:** [Testing Strategy](./ExoFrame_Testing_Strategy.md) Section 2.4
+- **Reference:** [Testing Strategy](./ExoFrame_Testing_and_CI_Strategy.md) Section 2.4
 
 ---
 

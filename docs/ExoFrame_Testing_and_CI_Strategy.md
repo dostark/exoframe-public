@@ -1,9 +1,9 @@
-# ExoFrame Testing Strategy
+# ExoFrame Testing and CI Strategy
 
 - **Version:** 1.7.0
 - **Release Date:** 2025-12-02
 - **Status:** Planning Document
-- **Reference:** [Implementation Plan](./ExoFrame_Implementation_Plan.md) Phase 6
+- **Reference:** [Implementation Plan](./ExoFrame_Implementation_Plan.md) Phase 10.3
 
 ---
 

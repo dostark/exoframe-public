@@ -6690,7 +6690,7 @@ The combination of a manifest, short summaries, chunking, optional embeddings, a
 > **Prerequisites:** Phases 1–10 (Runtime, Events, Intelligence, Tools, Obsidian, Portal, Flows, LLM Providers, UX, Polishing)\
 > **Goal:** Validate single-agent and multi-agent workflows end-to-end with both local and cloud providers.
 
-📄 **Full Documentation:** [`ExoFrame_Testing_Strategy.md`](./ExoFrame_Testing_Strategy.md)
+📄 **Full Documentation:** [`ExoFrame_Testing_and_CI_Strategy.md`](./ExoFrame_Testing_and_CI_Strategy.md)
 
 ### Overview
 
