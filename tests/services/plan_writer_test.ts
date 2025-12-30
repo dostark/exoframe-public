@@ -56,7 +56,7 @@ Deno.test("PlanWriter: constructor initializes with config", () => {
 });
 
 Deno.test("PlanWriter: writePlan creates plan file with correct structure", async () => {
-  const tempDir = await Deno.makeTempDir();
+  const { tempDir, cleanup } = await initTestDbService();
   const mockConfig = createMockPlanWriterConfig(tempDir);
 
   try {
@@ -113,12 +113,12 @@ Deno.test("PlanWriter: writePlan creates plan file with correct structure", asyn
     assertStringIncludes(content, "## Next Steps");
     assertStringIncludes(content, "test-request-123");
   } finally {
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   }
 });
 
 Deno.test("PlanWriter: writePlan handles minimal plan content", async () => {
-  const tempDir = await Deno.makeTempDir();
+  const { tempDir, cleanup } = await initTestDbService();
   const mockConfig = createMockPlanWriterConfig(tempDir);
 
   try {
@@ -153,13 +153,12 @@ Deno.test("PlanWriter: writePlan handles minimal plan content", async () => {
     assertStringIncludes(content, "Just the basics");
     assertStringIncludes(content, "Do something");
   } finally {
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   }
 });
 
 Deno.test("PlanWriter: writePlan logs activity when database available", async () => {
-  const tempDir = await Deno.makeTempDir();
-  const { db, cleanup } = await initTestDbService();
+  const { db, tempDir, cleanup } = await initTestDbService();
 
   try {
     const mockConfig = createMockPlanWriterConfig(tempDir, db);
@@ -199,9 +198,7 @@ Deno.test("PlanWriter: writePlan logs activity when database available", async (
     assertEquals(payload.request_id, "logging-test");
     assertEquals(payload.context_files_count, 1);
   } finally {
-    db.close();
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 
@@ -237,7 +234,7 @@ Deno.test("PlanWriter: writePlan works without database (testing mode)", async (
 });
 
 Deno.test("PlanWriter: writePlan handles invalid JSON gracefully", async () => {
-  const tempDir = await Deno.makeTempDir();
+  const { tempDir, cleanup } = await initTestDbService();
   const mockConfig = createMockPlanWriterConfig(tempDir);
 
   try {
@@ -266,6 +263,6 @@ Deno.test("PlanWriter: writePlan handles invalid JSON gracefully", async () => {
 
     assert(threw, "Expected PlanValidationError to be thrown for invalid JSON");
   } finally {
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   }
 });

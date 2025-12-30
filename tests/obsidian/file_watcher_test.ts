@@ -16,16 +16,17 @@
 
 import { assert, assertEquals, assertMatch, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { join } from "jsr:@std/path@^1.0.0";
+import { initTestDbService } from "../helpers/db.ts";
 
 // ============================================================================
 // File Creation Tests - Success Criteria #1: Obsidian detects files quickly
 // ============================================================================
 
 Deno.test("ExoFrame creates files Obsidian can detect", async () => {
-  const testDir = await Deno.makeTempDir({ prefix: "exoframe-obsidian-" });
+  const { tempDir, cleanup } = await initTestDbService();
 
   try {
-    const testFile = join(testDir, "test-report.md");
+    const testFile = join(tempDir, "test-report.md");
 
     // Simulate agent writing a file
     const content = `---
@@ -50,16 +51,16 @@ This is a test.
     const readBack = await Deno.readTextFile(testFile);
     assertEquals(readBack, content, "Content should round-trip correctly");
   } finally {
-    await Deno.remove(testDir, { recursive: true });
+    await cleanup();
   }
 });
 
 Deno.test("File creation triggers filesystem events (inotify/FSEvents compatible)", async () => {
   // This test verifies files are created in a way that filesystem watchers can detect
-  const testDir = await Deno.makeTempDir({ prefix: "exoframe-fswatch-" });
+  const { tempDir, cleanup } = await initTestDbService();
 
   try {
-    const testFile = join(testDir, "new-file.md");
+    const testFile = join(tempDir, "new-file.md");
 
     // Record time before write
     const beforeWrite = Date.now();
@@ -82,15 +83,15 @@ Deno.test("File creation triggers filesystem events (inotify/FSEvents compatible
       `File mtime (${mtime}) should be near current time (${beforeWrite}-${afterWrite})`,
     );
   } finally {
-    await Deno.remove(testDir, { recursive: true });
+    await cleanup();
   }
 });
 
 Deno.test("File modifications update mtime for watcher detection", async () => {
-  const testDir = await Deno.makeTempDir({ prefix: "exoframe-mtime-" });
+  const { tempDir, cleanup } = await initTestDbService();
 
   try {
-    const testFile = join(testDir, "existing-file.md");
+    const testFile = join(tempDir, "existing-file.md");
 
     // Create initial file
     await Deno.writeTextFile(testFile, "# Initial Content\n");
@@ -108,15 +109,15 @@ Deno.test("File modifications update mtime for watcher detection", async () => {
     // mtime should be updated (Obsidian uses this to detect changes)
     assert(mtime2 >= mtime1, "File mtime should be updated on modification");
   } finally {
-    await Deno.remove(testDir, { recursive: true });
+    await cleanup();
   }
 });
 
 Deno.test("Files are created with readable permissions", async () => {
-  const testDir = await Deno.makeTempDir({ prefix: "exoframe-perms-" });
+  const { tempDir, cleanup } = await initTestDbService();
 
   try {
-    const testFile = join(testDir, "test-file.md");
+    const testFile = join(tempDir, "test-file.md");
     await Deno.writeTextFile(testFile, "# Test\n");
 
     const stat = await Deno.stat(testFile);
@@ -133,7 +134,7 @@ Deno.test("Files are created with readable permissions", async () => {
     const content = await Deno.readTextFile(testFile);
     assert(content.length > 0, "Should be able to read file");
   } finally {
-    await Deno.remove(testDir, { recursive: true });
+    await cleanup();
   }
 });
 
@@ -142,10 +143,10 @@ Deno.test("Files are created with readable permissions", async () => {
 // ============================================================================
 
 Deno.test("YAML frontmatter is valid for Obsidian", async () => {
-  const testDir = await Deno.makeTempDir({ prefix: "exoframe-yaml-" });
+  const { tempDir, cleanup } = await initTestDbService();
 
   try {
-    const testFile = join(testDir, "report.md");
+    const testFile = join(tempDir, "report.md");
 
     // YAML frontmatter format (ExoFrame standard for Dataview compatibility)
     const content = `---
@@ -167,7 +168,7 @@ Content here.
     assert(readBack.startsWith("---"), "Should start with YAML delimiter");
     assert(readBack.includes("---\n\n#"), "Should have closing delimiter before content");
   } finally {
-    await Deno.remove(testDir, { recursive: true });
+    await cleanup();
   }
 });
 
@@ -267,11 +268,11 @@ status: "success"
 });
 
 Deno.test("Internal links in ExoFrame reports follow Obsidian conventions", async () => {
-  const testDir = await Deno.makeTempDir({ prefix: "exoframe-links-" });
+  const { tempDir, cleanup } = await initTestDbService();
 
   try {
     // Create a report with internal links
-    const reportFile = join(testDir, "mission-report.md");
+    const reportFile = join(tempDir, "mission-report.md");
     const content = `---
 title: "Mission Report"
 trace_id: "abc123"
@@ -303,7 +304,7 @@ Check the [[Knowledge/README]] for more information.
       assert(!link.includes(".md]]"), `Link ${link} should not include .md extension`);
     }
   } finally {
-    await Deno.remove(testDir, { recursive: true });
+    await cleanup();
   }
 });
 
@@ -313,13 +314,13 @@ Check the [[Knowledge/README]] for more information.
 // When "Show all file types" is enabled in Obsidian, non-.md files are visible.
 
 Deno.test("Markdown files use .md extension", async () => {
-  const testDir = await Deno.makeTempDir({ prefix: "exoframe-ext-" });
+  const { tempDir, cleanup } = await initTestDbService();
 
   try {
     // ExoFrame should create .md files for reports
-    const reportFile = join(testDir, "report.md");
-    const requestFile = join(testDir, "request.md");
-    const planFile = join(testDir, "plan.md");
+    const reportFile = join(tempDir, "report.md");
+    const requestFile = join(tempDir, "request.md");
+    const planFile = join(tempDir, "plan.md");
 
     await Deno.writeTextFile(reportFile, "# Report");
     await Deno.writeTextFile(requestFile, "# Request");
@@ -332,7 +333,7 @@ Deno.test("Markdown files use .md extension", async () => {
       assert(file.endsWith(".md"), "Should use .md extension");
     }
   } finally {
-    await Deno.remove(testDir, { recursive: true });
+    await cleanup();
   }
 });
 
@@ -342,24 +343,24 @@ Deno.test("Config files use appropriate extensions", async () => {
 name = "default"
 `;
 
-  const testDir = await Deno.makeTempDir({ prefix: "exoframe-config-" });
+  const { tempDir, cleanup } = await initTestDbService();
 
   try {
-    const configFile = join(testDir, "exo.config.toml");
+    const configFile = join(tempDir, "exo.config.toml");
     await Deno.writeTextFile(configFile, tomlContent);
 
     const stat = await Deno.stat(configFile);
     assert(stat.isFile);
     assert(configFile.endsWith(".toml"), "Config should use .toml extension");
   } finally {
-    await Deno.remove(testDir, { recursive: true });
+    await cleanup();
   }
 });
 
 Deno.test("TOML files are visible when 'Show all file types' is enabled", async () => {
   // This test verifies ExoFrame creates .toml files that Obsidian can display
   // when "Show all file types" setting is enabled
-  const testDir = await Deno.makeTempDir({ prefix: "exoframe-toml-visible-" });
+  const { tempDir, cleanup } = await initTestDbService();
 
   try {
     const tomlFiles = [
@@ -368,7 +369,7 @@ Deno.test("TOML files are visible when 'Show all file types' is enabled", async 
     ];
 
     for (const file of tomlFiles) {
-      const filePath = join(testDir, file.name);
+      const filePath = join(tempDir, file.name);
       await Deno.writeTextFile(filePath, file.content);
 
       // Verify file exists and is readable
@@ -381,13 +382,13 @@ Deno.test("TOML files are visible when 'Show all file types' is enabled", async 
       assert(content.length > 0, `${file.name} should have content`);
     }
   } finally {
-    await Deno.remove(testDir, { recursive: true });
+    await cleanup();
   }
 });
 
 Deno.test("JSON files are visible when 'Show all file types' is enabled", async () => {
   // ExoFrame may create .json files for certain data
-  const testDir = await Deno.makeTempDir({ prefix: "exoframe-json-visible-" });
+  const { tempDir, cleanup } = await initTestDbService();
 
   try {
     const jsonFiles = [
@@ -396,7 +397,7 @@ Deno.test("JSON files are visible when 'Show all file types' is enabled", async 
     ];
 
     for (const file of jsonFiles) {
-      const filePath = join(testDir, file.name);
+      const filePath = join(tempDir, file.name);
       await Deno.writeTextFile(filePath, file.content);
 
       const stat = await Deno.stat(filePath);
@@ -404,13 +405,13 @@ Deno.test("JSON files are visible when 'Show all file types' is enabled", async 
       assert(filePath.endsWith(".json"), `${file.name} should have .json extension`);
     }
   } finally {
-    await Deno.remove(testDir, { recursive: true });
+    await cleanup();
   }
 });
 
 Deno.test("All ExoFrame file types use standard extensions", async () => {
   // Verify ExoFrame uses standard extensions that Obsidian recognizes
-  const testDir = await Deno.makeTempDir({ prefix: "exoframe-extensions-" });
+  const { tempDir, cleanup } = await initTestDbService();
 
   try {
     // Create all file types ExoFrame uses
@@ -424,16 +425,16 @@ Deno.test("All ExoFrame file types use standard extensions", async () => {
     ];
 
     for (const file of files) {
-      const filePath = join(testDir, file.path);
+      const filePath = join(tempDir, file.path);
       await Deno.writeTextFile(filePath, `# ${file.desc}\n`);
 
       assert(filePath.endsWith(file.ext), `${file.path} should have ${file.ext} extension`);
     }
 
-    // List directory to verify all files are present
-    const entries = [];
-    for await (const entry of Deno.readDir(testDir)) {
-      entries.push(entry.name);
+    // List directory to verify all files are present (ignore directories like System)
+    const entries: string[] = [];
+    for await (const entry of Deno.readDir(tempDir)) {
+      if (entry.isFile) entries.push(entry.name);
     }
 
     assertEquals(entries.length, files.length, "All files should be created");
@@ -443,7 +444,7 @@ Deno.test("All ExoFrame file types use standard extensions", async () => {
       assert(entries.includes(file.path), `${file.path} should be in directory listing`);
     }
   } finally {
-    await Deno.remove(testDir, { recursive: true });
+    await cleanup();
   }
 });
 
@@ -452,11 +453,11 @@ Deno.test("All ExoFrame file types use standard extensions", async () => {
 // ============================================================================
 
 Deno.test("Created files respect directory hierarchy", async () => {
-  const testDir = await Deno.makeTempDir({ prefix: "exoframe-hierarchy-" });
+  const { tempDir, cleanup } = await initTestDbService();
 
   try {
     // Create nested structure like ExoFrame does
-    const reportsDir = join(testDir, "Knowledge", "Reports");
+    const reportsDir = join(tempDir, "Knowledge", "Reports");
     await Deno.mkdir(reportsDir, { recursive: true });
 
     const reportFile = join(reportsDir, "mission-abc123.md");
@@ -467,9 +468,9 @@ Deno.test("Created files respect directory hierarchy", async () => {
     assert(stat.isFile);
 
     // Verify parent directories exist
-    const knowledgeStat = await Deno.stat(join(testDir, "Knowledge"));
+    const knowledgeStat = await Deno.stat(join(tempDir, "Knowledge"));
     assert(knowledgeStat.isDirectory);
   } finally {
-    await Deno.remove(testDir, { recursive: true });
+    await cleanup();
   }
 });

@@ -8,8 +8,7 @@
 import { join } from "@std/path";
 import { ensureDir, exists } from "@std/fs";
 import { DatabaseService } from "../../../src/services/db.ts";
-import { createMockConfig } from "../../helpers/config.ts";
-import { initActivityTableSchema } from "../../helpers/db.ts";
+import { initTestDbService } from "../../helpers/db.ts";
 import type { Config } from "../../../src/config/schema.ts";
 import { MockLLMProvider } from "../../../src/ai/providers/mock_llm_provider.ts";
 import { RequestProcessor } from "../../../src/services/request_processor.ts";
@@ -26,24 +25,28 @@ export class TestEnvironment {
   readonly tempDir: string;
   readonly config: Config;
   readonly db: DatabaseService;
+  private readonly _dbCleanup?: () => Promise<void>;
 
   private constructor(
     tempDir: string,
     config: Config,
     db: DatabaseService,
+    cleanup?: () => Promise<void>,
   ) {
     this.tempDir = tempDir;
     this.config = config;
     this.db = db;
+    this._dbCleanup = cleanup;
   }
 
   /**
    * Create a new isolated test environment
    */
   static async create(options: TestEnvironmentOptions = {}): Promise<TestEnvironment> {
-    const tempDir = await Deno.makeTempDir({ prefix: "exo-integration-" });
+    // Use centralized test DB + tempdir helper for consistency
+    const { db, tempDir, config, cleanup } = await initTestDbService();
 
-    // Create directory structure
+    // Create any additional directory structure required for integration tests
     await ensureDir(join(tempDir, "Inbox", "Requests"));
     await ensureDir(join(tempDir, "Inbox", "Plans"));
     await ensureDir(join(tempDir, "Inbox", "Rejected"));
@@ -54,17 +57,6 @@ export class TestEnvironment {
     await ensureDir(join(tempDir, "Knowledge", "Context"));
     await ensureDir(join(tempDir, "Blueprints", "Agents"));
     await ensureDir(join(tempDir, "Portals"));
-
-    // Create config
-    const config = createMockConfig(tempDir, {
-      watcher: { debounce_ms: 50, stability_check: false },
-      database: { batch_flush_ms: 50, batch_max_size: 10 },
-      ...options.configOverrides,
-    });
-
-    // Initialize database
-    const db = new DatabaseService(config);
-    initActivityTableSchema(db);
 
     // Initialize git if requested
     if (options.initGit !== false) {
@@ -97,7 +89,7 @@ export class TestEnvironment {
       }).output();
     }
 
-    return new TestEnvironment(tempDir, config, db);
+    return new TestEnvironment(tempDir, config, db, cleanup);
   }
 
   /**
@@ -465,6 +457,17 @@ Always respond with valid JSON containing a plan with actionable steps.`;
    * Cleanup test environment
    */
   async cleanup(): Promise<void> {
+    // Prefer the DB helper's cleanup (it closes DB and removes the tempdir),
+    // but fall back to manual cleanup if not available.
+    if (this._dbCleanup) {
+      try {
+        await this._dbCleanup();
+        return;
+      } catch {
+        // Fall back to manual cleanup
+      }
+    }
+
     try {
       await this.db.close();
     } catch {

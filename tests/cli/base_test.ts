@@ -14,11 +14,9 @@
 
 import { assertEquals, assertExists, assertStringIncludes, assertThrows } from "jsr:@std/assert@^1.0.0";
 import { afterEach, beforeEach, describe, it } from "jsr:@std/testing@^1.0.0/bdd";
-import { join } from "@std/path";
-import { ensureDir } from "@std/fs";
 import { BaseCommand, type CommandContext } from "../../src/cli/base.ts";
 import { DatabaseService } from "../../src/services/db.ts";
-import { createMockConfig } from "../helpers/config.ts";
+import { createCliTestContext } from "./helpers/test_setup.ts";
 
 // Concrete implementation of BaseCommand for testing
 class TestCommand extends BaseCommand {
@@ -61,25 +59,23 @@ class TestCommand extends BaseCommand {
 }
 
 describe("BaseCommand", () => {
-  let tempDir: string;
+  let _tempDir: string;
   let db: DatabaseService;
   let testCommand: TestCommand;
+  let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    tempDir = await Deno.makeTempDir({ prefix: "base_command_test_" });
+    const result = await createCliTestContext();
+    _tempDir = result.tempDir;
+    db = result.db;
+    const config = result.config;
+    cleanup = result.cleanup;
 
-    // Create System directory for database
-    const systemDir = join(tempDir, "System");
-    await ensureDir(systemDir);
-
-    const config = createMockConfig(tempDir);
-    db = new DatabaseService(config);
     testCommand = new TestCommand({ config, db });
   });
 
   afterEach(async () => {
-    await db.close();
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   });
 
   describe("getUserIdentity", () => {

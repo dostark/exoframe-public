@@ -18,7 +18,7 @@ import { join } from "@std/path";
 import { ensureDir, exists } from "@std/fs";
 import { DaemonCommands } from "../../src/cli/daemon_commands.ts";
 import { DatabaseService } from "../../src/services/db.ts";
-import { initTestDbService } from "../helpers/db.ts";
+import { createCliTestContext } from "./helpers/test_setup.ts";
 import type { Config } from "../../src/config/schema.ts";
 
 describe("DaemonCommands", {
@@ -35,12 +35,12 @@ describe("DaemonCommands", {
   let testCleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    // Initialize database with initTestDbService
-    const testDbResult = await initTestDbService();
-    tempDir = testDbResult.tempDir;
-    db = testDbResult.db;
-    config = testDbResult.config;
-    testCleanup = testDbResult.cleanup;
+    // Initialize shared CLI test context
+    const result = await createCliTestContext();
+    tempDir = result.tempDir;
+    db = result.db;
+    config = result.config;
+    testCleanup = result.cleanup;
 
     pidFile = join(tempDir, "System", "daemon.pid");
     logFile = join(tempDir, "System", "daemon.log");
@@ -534,12 +534,12 @@ describe("DaemonCommands - Edge Cases", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    // Initialize database with initTestDbService
-    const testDbResult = await initTestDbService();
-    tempDir = testDbResult.tempDir;
-    db = testDbResult.db;
-    const config = testDbResult.config;
-    cleanup = testDbResult.cleanup;
+    // Initialize shared CLI test context
+    const result = await createCliTestContext();
+    tempDir = result.tempDir;
+    db = result.db;
+    const config = result.config;
+    cleanup = result.cleanup;
 
     pidFile = join(tempDir, "System", "daemon.pid");
 

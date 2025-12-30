@@ -61,7 +61,7 @@ async function readFileWhenStable(path: string): Promise<string> {
 }
 
 Deno.test("Test 1: Debouncing - rapid file touches only trigger once", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "watcher-test-debounce-" });
+  const { tempDir, cleanup } = await initTestDbService();
   try {
     const testFile = join(tempDir, "test.txt");
     const content = "Hello, World!";
@@ -85,12 +85,12 @@ Deno.test("Test 1: Debouncing - rapid file touches only trigger once", async () 
     const result = await readFileWhenStable(testFile);
     assertEquals(result, content);
   } finally {
-    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+    await cleanup();
   }
 });
 
 Deno.test("Test 2: Stability verification - slow write in chunks", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "watcher-test-chunks-" });
+  const { tempDir, cleanup } = await initTestDbService();
   try {
     const testFile = join(tempDir, "large.txt");
 
@@ -127,12 +127,12 @@ Deno.test("Test 2: Stability verification - slow write in chunks", async () => {
     assertEquals(duration > 100, true); // At least waited for backoff
     assertEquals(duration < 3000, true); // Didn't exhaust all retries
   } finally {
-    await Deno.remove(tempDir, { recursive: true }).catch(() => {});
+    await cleanup();
   }
 });
 
 Deno.test("Test 3: File disappears - handles NotFound gracefully", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "watcher-test-deleted-" });
+  const { tempDir, cleanup: _cleanup } = await initTestDbService();
   try {
     const testFile = join(tempDir, "ephemeral.txt");
 

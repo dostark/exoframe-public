@@ -33,7 +33,9 @@ let dbService: Awaited<ReturnType<typeof initTestDbService>>;
 
 // Setup before all tests
 async function setup() {
-  testDir = await Deno.makeTempDir();
+  // Use centralized test DB + tempdir
+  dbService = await initTestDbService();
+  testDir = dbService.tempDir;
   blueprintsDir = join(testDir, "Blueprints", "Agents");
   portalDir = join(testDir, "TestPortal");
   systemDir = join(testDir, "System");
@@ -76,9 +78,6 @@ async function setup() {
   });
   await initialCommit.output();
 
-  // Initialize database service with proper schema
-  dbService = await initTestDbService();
-
   // Test config
   testConfig = {
     system: {
@@ -112,7 +111,6 @@ async function setup() {
 async function cleanup() {
   try {
     await dbService.cleanup();
-    await Deno.remove(testDir, { recursive: true });
   } catch {
     // Ignore cleanup errors
   }

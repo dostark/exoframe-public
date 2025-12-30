@@ -117,6 +117,26 @@ ExoFrame takes security seriously. Unlike other agent frameworks that run with f
 
 ---
 
+## Contributing & Testing ✅
+
+Please follow our test patterns when contributing tests or refactoring existing ones:
+
+- Use the centralized DB helper `initTestDbService()` (in `tests/helpers/db.ts`) to create an in-memory SQLite DB, initialize required tables, and obtain a `cleanup()` helper for deterministic teardown.
+- For CLI tests, prefer `createCliTestContext()` (in `tests/cli/helpers/test_setup.ts`) which wraps `initTestDbService()` and optionally pre-creates common directories (e.g., `Inbox/Requests`, `System/Active`). This reduces boilerplate and avoids leaking temp directories.
+
+Quick example (recommended):
+
+```typescript
+import { createCliTestContext } from "tests/cli/helpers/test_setup.ts";
+let db, tempDir, config, cleanup;
+beforeEach(async () => ({ db, tempDir, config, cleanup } = await createCliTestContext({ createDirs: ["Inbox/Requests"] }));
+afterEach(async () => await cleanup());
+```
+
+For more details and examples, see `tests/AGENT_INSTRUCTIONS.md` under **CLI Test Context — Recommended Pattern**.
+
+---
+
 ## 📄 License
 
 MIT © [dostark](https://github.com/dostark)

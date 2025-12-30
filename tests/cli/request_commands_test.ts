@@ -24,7 +24,7 @@ import { join } from "@std/path";
 import { ensureDir } from "@std/fs";
 import { RequestCommands } from "../../src/cli/request_commands.ts";
 import { DatabaseService } from "../../src/services/db.ts";
-import { initTestDbService } from "../helpers/db.ts";
+import { createCliTestContext } from "./helpers/test_setup.ts";
 import { createMockConfig } from "../helpers/config.ts";
 
 describe("RequestCommands", () => {
@@ -35,18 +35,15 @@ describe("RequestCommands", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    // Initialize database with initTestDbService
-    const testDbResult = await initTestDbService();
-    tempDir = testDbResult.tempDir;
-    db = testDbResult.db;
-    cleanup = testDbResult.cleanup;
-    const config = testDbResult.config;
+    // Initialize shared CLI test context
+    const result = await createCliTestContext({ createDirs: ["Inbox/Requests"] });
+    tempDir = result.tempDir;
+    db = result.db;
+    cleanup = result.cleanup;
+    const config = result.config;
 
-    // Create additional directories
+    // Derived paths
     inboxRequestsDir = join(tempDir, "Inbox", "Requests");
-
-    await ensureDir(inboxRequestsDir);
-    // System dir already created by initTestDbService
 
     // Initialize RequestCommands
     requestCommands = new RequestCommands({ config, db }, tempDir);

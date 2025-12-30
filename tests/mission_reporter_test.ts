@@ -83,8 +83,7 @@ async function runGitCommand(cwd: string, args: string[]): Promise<string> {
 // ============================================================================
 
 Deno.test("MissionReporter: generates report after successful execution", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mission-reporter-test-" });
-  const { db, cleanup } = await initTestDbService();
+  const { db, tempDir, cleanup } = await initTestDbService();
 
   try {
     // Create required directories
@@ -114,13 +113,11 @@ Deno.test("MissionReporter: generates report after successful execution", async 
     assertStringIncludes(content, "Mission Report");
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 
 Deno.test("MissionReporter: filename follows naming convention", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mission-reporter-name-" });
-  const { db, cleanup } = await initTestDbService();
+  const { db, tempDir, cleanup } = await initTestDbService();
 
   try {
     await Deno.mkdir(join(tempDir, "Knowledge", "Reports"), { recursive: true });
@@ -148,7 +145,6 @@ Deno.test("MissionReporter: filename follows naming convention", async () => {
     assertMatch(filename, /^\d{4}-\d{2}-\d{2}_abc12345_implement-login\.md$/);
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 
@@ -157,8 +153,7 @@ Deno.test("MissionReporter: filename follows naming convention", async () => {
 // ============================================================================
 
 Deno.test("MissionReporter: includes git diff summary", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mission-reporter-git-" });
-  const { db, cleanup } = await initTestDbService();
+  const { db, tempDir, cleanup } = await initTestDbService();
 
   try {
     await Deno.mkdir(join(tempDir, "Knowledge", "Reports"), { recursive: true });
@@ -197,13 +192,11 @@ Deno.test("MissionReporter: includes git diff summary", async () => {
     assertStringIncludes(content, "files changed");
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 
 Deno.test("MissionReporter: categorizes file changes (created/modified)", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mission-reporter-changes-" });
-  const { db, cleanup } = await initTestDbService();
+  const { db, tempDir, cleanup } = await initTestDbService();
 
   try {
     await Deno.mkdir(join(tempDir, "Knowledge", "Reports"), { recursive: true });
@@ -246,7 +239,6 @@ Deno.test("MissionReporter: categorizes file changes (created/modified)", async 
     assertStringIncludes(content, "Files Modified");
   } finally {
     await cleanup();
-    await Deno.remove(tempDir, { recursive: true });
   }
 });
 

@@ -1,5 +1,16 @@
 import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 
+/*
+  Note: This test file exercises the top-level CLI parsing and command
+  dispatch behavior using the module's internal test-mode context
+  (via `__test_getContext()` / `__test_command`). It intentionally
+  uses lightweight in-process stubs (no tempdir or real DB) so these
+  tests remain fast and focused on CLI wiring rather than full
+  integration with filesystem/DB helpers. For filesystem and DB
+  integration, use the other CLI test modules that rely on
+  `initTestDbService()` / `createCliTestContext()`.
+*/
+
 // Reusable helpers
 async function withTestMod<T>(fn: (mod: any, ctx: any) => Promise<T> | T) {
   const origEnv = Deno.env.get("EXOCTL_TEST_MODE");

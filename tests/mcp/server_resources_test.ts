@@ -11,10 +11,15 @@ import { MCPServer } from "../../src/mcp/server.ts";
 
 /**
  * Creates a test server with portals
+ *
+ * When called, this helper uses `initTestDbService()` to create a fresh
+ * temporary workspace and database for the test. It returns `{ server, db,
+ * tempDir, cleanup }` so callers should call `cleanup()` in their finally
+ * block to remove the workspace and close the database.
  */
-async function createTestServer(tempDir: string, portals: Array<{ alias: string; files: Record<string, string> }>) {
-  const { db, cleanup } = await initTestDbService();
-  const portalConfigs = [];
+async function createTestServer(portals: Array<{ alias: string; files: Record<string, string> }>) {
+  const { db, tempDir, cleanup } = await initTestDbService();
+  const portalConfigs: Array<{ alias: string; target_path: string }> = [];
 
   for (const { alias, files } of portals) {
     const portalPath = join(tempDir, alias);
@@ -30,7 +35,7 @@ async function createTestServer(tempDir: string, portals: Array<{ alias: string;
   const server = new MCPServer({ config, db, transport: "stdio" });
   await server.start();
 
-  return { server, db, cleanup };
+  return { server, db, tempDir, cleanup };
 }
 
 // ============================================================================
@@ -38,13 +43,12 @@ async function createTestServer(tempDir: string, portals: Array<{ alias: string;
 // ============================================================================
 
 Deno.test("MCP Server: handles resources/list request", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-resources-list-" });
-  try {
-    const { server, cleanup } = await createTestServer(tempDir, [{
-      alias: "TestPortal",
-      files: { "README.md": "# Test", "src/main.ts": "console.log('test');" },
-    }]);
+  const { server, cleanup } = await createTestServer([{
+    alias: "TestPortal",
+    files: { "README.md": "# Test", "src/main.ts": "console.log('test');" },
+  }]);
 
+  try {
     const response = await server.handleRequest({
       jsonrpc: "2.0",
       id: 1,
@@ -60,20 +64,18 @@ Deno.test("MCP Server: handles resources/list request", async () => {
     assertEquals(hasPortalUri, true);
 
     await server.stop();
-    await cleanup();
   } finally {
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   }
 });
 
 Deno.test("MCP Server: resources/list discovers multiple portals", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-resources-multi-" });
-  try {
-    const { server, cleanup } = await createTestServer(tempDir, [
-      { alias: "Portal1", files: { "file1.ts": "// portal1" } },
-      { alias: "Portal2", files: { "file2.ts": "// portal2" } },
-    ]);
+  const { server, cleanup } = await createTestServer([
+    { alias: "Portal1", files: { "file1.ts": "// portal1" } },
+    { alias: "Portal2", files: { "file2.ts": "// portal2" } },
+  ]);
 
+  try {
     const response = await server.handleRequest({
       jsonrpc: "2.0",
       id: 1,
@@ -91,9 +93,8 @@ Deno.test("MCP Server: resources/list discovers multiple portals", async () => {
     assertEquals(portal2Resources.length >= 1, true);
 
     await server.stop();
-    await cleanup();
   } finally {
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   }
 });
 
@@ -102,13 +103,12 @@ Deno.test("MCP Server: resources/list discovers multiple portals", async () => {
 // ============================================================================
 
 Deno.test("MCP Server: handles resources/read request", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-resources-read-" });
-  try {
-    const { server, cleanup } = await createTestServer(tempDir, [{
-      alias: "TestPortal",
-      files: { "test.ts": "export const x = 42;" },
-    }]);
+  const { server, cleanup } = await createTestServer([{
+    alias: "TestPortal",
+    files: { "test.ts": "export const x = 42;" },
+  }]);
 
+  try {
     const response = await server.handleRequest({
       jsonrpc: "2.0",
       id: 1,
@@ -123,20 +123,18 @@ Deno.test("MCP Server: handles resources/read request", async () => {
     assertStringIncludes(result.contents[0].text, "export const x = 42");
 
     await server.stop();
-    await cleanup();
   } finally {
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   }
 });
 
 Deno.test("MCP Server: resources/read rejects invalid URI", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-resources-invalid-" });
-  try {
-    const config = createMockConfig(tempDir);
-    const { db, cleanup } = await initTestDbService();
-    const server = new MCPServer({ config, db, transport: "stdio" });
-    await server.start();
+  const { db, tempDir, cleanup } = await initTestDbService();
+  const config = createMockConfig(tempDir);
+  const server = new MCPServer({ config, db, transport: "stdio" });
+  await server.start();
 
+  try {
     const response = await server.handleRequest({
       jsonrpc: "2.0",
       id: 1,
@@ -149,20 +147,18 @@ Deno.test("MCP Server: resources/read rejects invalid URI", async () => {
     assertStringIncludes(response.error.message, "Invalid portal URI");
 
     await server.stop();
-    await cleanup();
   } finally {
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   }
 });
 
 Deno.test("MCP Server: resources/read logs to Activity Journal", async () => {
-  const tempDir = await Deno.makeTempDir({ prefix: "mcp-resources-log-" });
-  try {
-    const { server, db, cleanup } = await createTestServer(tempDir, [{
-      alias: "TestPortal",
-      files: { "test.ts": "export {}" },
-    }]);
+  const { server, db, cleanup } = await createTestServer([{
+    alias: "TestPortal",
+    files: { "test.ts": "export {}" },
+  }]);
 
+  try {
     await server.handleRequest({
       jsonrpc: "2.0",
       id: 1,
@@ -179,8 +175,7 @@ Deno.test("MCP Server: resources/read logs to Activity Journal", async () => {
     assertStringIncludes(activity.target, "portal://TestPortal/test.ts");
 
     await server.stop();
-    await cleanup();
   } finally {
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   }
 });

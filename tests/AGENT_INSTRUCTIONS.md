@@ -104,6 +104,173 @@ import { initTestDbService } from "./helpers/db.ts";
 const { db, cleanup } = await initTestDbService();
 ```
 
+### ✅ CLI Test Context — Recommended Pattern
+
+Use a centralized test context for CLI tests to avoid duplicated tempdir, database, and schema setup. Prefer `initTestDbService()` (from `tests/helpers/db.ts`) for database + temp directory initialization, and prefer the `createCliTestContext()` helper in `tests/cli/helpers/test_setup.ts` when you need common CLI directories created automatically.
+
+Example — minimal pattern using `initTestDbService()`:
+
+```typescript
+import { initTestDbService } from "./helpers/db.ts";
+import { join } from "@std/path";
+
+let db, tempDir, config, cleanup;
+
+beforeEach(async () => {
+  ({ db, tempDir, config, cleanup } = await initTestDbService());
+  // Create any additional directories required by the command under test
+  await Deno.mkdir(join(tempDir, "Inbox", "Plans"), { recursive: true });
+});
+
+afterEach(async () => {
+  await cleanup();
+});
+```
+
+Example — using the `createCliTestContext()` helper (recommended for CLI tests):
+
+```typescript
+import { createCliTestContext } from "./cli/helpers/test_setup.ts";
+
+let db, tempDir, config, cleanup;
+
+beforeEach(async () => {
+  ({ db, tempDir, config, cleanup } = await createCliTestContext({
+    createDirs: ["Inbox/Plans", "System/Active"],
+  }));
+});
+
+afterEach(async () => {
+  await cleanup();
+});
+```
+
+Why:
+
+- Centralizes schema initialization and teardown.
+- Ensures `System/` exists for services that rely on it.
+- Prevents leaking temp directories and DB connections by using the returned `cleanup()`.
+
+> Tip: Always call the returned `cleanup()` in `afterEach` to guarantee deterministic teardown.
+
+---
+
+### ✅ Unified Test Context — Guidance
+
+Use the unified test context patterns consistently across test suites to reduce duplication and ensure reliable teardown and predictable test behavior.
+
+- **Prefer `createCliTestContext()`** (from `tests/cli/helpers/test_setup.ts`) for CLI tests that interact with the filesystem, git, or the database.
+- **Use `initTestDbService()`** for tests focused on database behavior only (e.g., DatabaseService unit tests or activity-table reconnection checks).
+- **For fast parse-level CLI tests**, where you only need to exercise command parsing and dispatch, use the CLI module's in-process test helpers (`__test_getContext()` / `__test_command`) — see `tests/cli/exoctl_all_test.ts`. These are intentionally lightweight and avoid filesystem/DB setup.
+- **Always call `cleanup()`** returned by initialization helpers in `afterEach` to avoid leaking temp directories and DB connections.
+- **Avoid manual schema SQL** in tests; prefer helpers such as `initActivityTableSchema()` or the centralized `initTestDbService()` helpers.
+
+Migration checklist when adopting the unified pattern:
+
+1. Replace ad-hoc `Deno.makeTempDir()` + manual DB setup with `initTestDbService()` or `createCliTestContext()`.
+2. Create required workspace directories via `createCliTestContext({ createDirs: [...] })` or `ensureDir()` in `beforeEach`.
+3. Move any DB schema initialization to the centralized helper (or call `initActivityTableSchema()` where appropriate).
+4. Ensure the test calls the returned `cleanup()` in `afterEach` (or uses `TestEnvironment.cleanup()` for integration environments).
+
+Example migration snippet:
+
+```typescript
+// Before: manual tempdir + init
+const tempDir = await Deno.makeTempDir();
+// ... set up files and directories ...
+const { db, cleanup } = await initTestDbService();
+
+// After: unified helper (preferred)
+const { db, tempDir, cleanup } = await createCliTestContext({ createDirs: ["Inbox/Plans"] });
+```
+
+**Note:** `tests/cli/exoctl_all_test.ts` purposefully uses `__test_getContext()` and in-process stubs to validate CLI parsing and command dispatch only; it is an intentional exception and should remain lightweight.
+
+---
+
+#### Integration TestEnvironment — Recommended Pattern ✅
+
+Use `TestEnvironment.create()` for integration tests that require a full workspace layout, database, and optional git initialization.
+
+Example:
+
+```typescript
+import { TestEnvironment } from "./integration/helpers/test_environment.ts";
+
+const env = await TestEnvironment.create({ initGit: false });
+try {
+  // Use env.tempDir, env.db, env.createRequest(), etc.
+  await env.createBlueprint("test-agent");
+  // Run service that relies on workspace
+} finally {
+  await env.cleanup();
+}
+```
+
+Notes:
+
+- Use `initGit: false` to avoid starting git when not required by the test.
+- `TestEnvironment.cleanup()` will prefer the DB helper's cleanup to close DB and remove the tempdir for you.
+
+---
+
+#### Temporary environment and env vars — Helper pattern 💡
+
+When tests need temporary environment variables, prefer using the centralized `withEnv` helper in `tests/helpers/env.ts` that sets and restores env vars for the duration of the given function. This keeps tests deterministic and avoids cross-test contamination.
+
+```typescript
+// tests/helpers/env.ts
+import { withEnv } from "./helpers/env.ts";
+
+// Inline usage (async test)
+Deno.test("handles paid LLM feature when enabled", async () => {
+  await withEnv({ EXO_ENABLE_PAID_LLM: "1" }, async () => {
+    // inside here the env var is set; run the code you expect
+    const provider = ProviderFactory.getProvider();
+    // assertions that assume EXO_ENABLE_PAID_LLM=1
+  });
+});
+
+// Synchronous test usage
+Deno.test("sync path that relies on env", () => {
+  withEnv({ EXO_FEATURE_X: "true" }, () => {
+    // synchronous assertions
+  });
+});
+
+// Helper wrapper for repeated usage in a test
+async function withFeatureFlag(fn: () => Promise<void>) {
+  return withEnv({ EXO_FEATURE_X: "1" }, fn);
+}
+
+// Usage:
+Deno.test("uses feature flag across multiple assertions", async () => {
+  await withFeatureFlag(async () => {
+    // tests here see EXO_FEATURE_X=1
+  });
+});
+```
+
+Notes:
+- Prefer using the `withEnv` helper inside the individual test so the env change is limited in scope and automatically restored.
+- If you must set env vars for many tests, prefer an explicit `beforeEach`/`afterEach` pattern that restores original values (avoid global permanent mutations).
+
+
+---
+
+#### MockLLMProvider — Best Practices 🎯
+
+- **Deterministic tests**: Use `scripted` mode with explicit `recordings` for predictable outputs.
+- **Recorded tests**: Use `recorded` mode when you have saved recordings; if recordings are missing a fallback to `pattern` may occur — be explicit about expectations in the test.
+- **Failure scenarios**: Use `failing` to simulate provider failures and `slow` for timeouts and delay testing.
+- **Helper**: Prefer `createMockProvider()` or `new MockLLMProvider(mode, { recordings })` and assert provider outputs directly when needed.
+
+Example — scripted provider:
+
+```typescript
+const provider = new MockLLMProvider("scripted", { recordings: [{ promptHash: "abc", response: "..." }] });
+```
+
 ## Frontmatter Formats
 
 ### Request Files: Use YAML frontmatter (`---`)

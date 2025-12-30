@@ -105,3 +105,19 @@ export function getPortalSymlinkPath(tempRoot: string, alias: string): string {
 export function getPortalCardPath(tempRoot: string, alias: string): string {
   return join(tempRoot, "Knowledge", "Portals", `${alias}.md`);
 }
+
+/**
+ * Creates a unified CLI test context for tests.
+ * Delegates to `initTestDbService()` and optionally creates extra directories.
+ */
+export async function createCliTestContext(options?: { createDirs?: string[] }) {
+  const { db, tempDir, config, cleanup } = await initTestDbService();
+
+  if (options?.createDirs) {
+    for (const dir of options.createDirs) {
+      await Deno.mkdir(join(tempDir, dir), { recursive: true });
+    }
+  }
+
+  return { db, tempDir, config, cleanup };
+}

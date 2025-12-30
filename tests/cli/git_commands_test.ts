@@ -14,21 +14,23 @@
 import { assertEquals, assertExists, assertRejects, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { afterEach, beforeEach, describe, it } from "jsr:@std/testing@^1.0.0/bdd";
 import { join } from "@std/path";
-import { ensureDir } from "@std/fs";
 import { GitCommands } from "../../src/cli/git_commands.ts";
 import { DatabaseService } from "../../src/services/db.ts";
-import { createMockConfig } from "../helpers/config.ts";
+import { createCliTestContext } from "./helpers/test_setup.ts";
 
 describe("GitCommands", () => {
   let tempDir: string;
   let db: DatabaseService;
   let gitCommands: GitCommands;
+  let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    // Create temp directory structure
-    tempDir = await Deno.makeTempDir({ prefix: "git_commands_test_" });
-    const systemDir = join(tempDir, "System");
-    await ensureDir(systemDir);
+    // Initialize shared CLI test context
+    const result = await createCliTestContext();
+    tempDir = result.tempDir;
+    db = result.db;
+    const config = result.config;
+    cleanup = result.cleanup;
 
     // Initialize git repository
     await runGitCommand(tempDir, ["init", "-b", "main"]);
@@ -38,21 +40,16 @@ describe("GitCommands", () => {
     // Create initial commit on main
     await Deno.writeTextFile(join(tempDir, "README.md"), "# Test Project\n");
     await runGitCommand(tempDir, ["add", "README.md"]);
-    // Add System directory to avoid it appearing as untracked
+    // System dir already exists from createCliTestContext; add a .gitkeep to it
     await Deno.writeTextFile(join(tempDir, "System", ".gitkeep"), "");
     await runGitCommand(tempDir, ["add", "System"]);
     await runGitCommand(tempDir, ["commit", "-m", "Initial commit"]);
-
-    // Initialize database
-    const config = createMockConfig(tempDir);
-    db = new DatabaseService(config);
 
     gitCommands = new GitCommands({ config, db });
   });
 
   afterEach(async () => {
-    await db.close();
-    await Deno.remove(tempDir, { recursive: true });
+    await cleanup();
   });
 
   describe("listBranches", () => {

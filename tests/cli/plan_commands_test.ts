@@ -17,7 +17,7 @@ import { join } from "@std/path";
 import { PlanCommands } from "../../src/cli/plan_commands.ts";
 import { DatabaseService } from "../../src/services/db.ts";
 import { ensureDir } from "@std/fs";
-import { initTestDbService } from "../helpers/db.ts";
+import { createCliTestContext } from "./helpers/test_setup.ts";
 
 describe("PlanCommands", () => {
   let tempDir: string;
@@ -29,21 +29,17 @@ describe("PlanCommands", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    // Initialize database with initTestDbService
-    const testDbResult = await initTestDbService();
-    tempDir = testDbResult.tempDir;
-    db = testDbResult.db;
-    cleanup = testDbResult.cleanup;
-    const config = testDbResult.config;
+    // Initialize shared CLI test context
+    const result = await createCliTestContext({ createDirs: ["Inbox/Plans", "System/Active", "Inbox/Rejected"] });
+    tempDir = result.tempDir;
+    db = result.db;
+    cleanup = result.cleanup;
+    const config = result.config;
 
-    // Create additional directories
+    // Derived paths
     inboxPlansDir = join(tempDir, "Inbox", "Plans");
     systemActiveDir = join(tempDir, "System", "Active");
     inboxRejectedDir = join(tempDir, "Inbox", "Rejected");
-
-    await ensureDir(inboxPlansDir);
-    await ensureDir(systemActiveDir);
-    await ensureDir(inboxRejectedDir);
 
     // Initialize PlanCommands
     planCommands = new PlanCommands({ config, db }, tempDir);

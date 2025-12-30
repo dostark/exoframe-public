@@ -17,7 +17,7 @@ import { join } from "@std/path";
 import { ChangesetCommands } from "../../src/cli/changeset_commands.ts";
 import { DatabaseService } from "../../src/services/db.ts";
 import { GitService } from "../../src/services/git_service.ts";
-import { initTestDbService } from "../helpers/db.ts";
+import { createCliTestContext } from "./helpers/test_setup.ts";
 import type { Config } from "../../src/config/schema.ts";
 
 describe("ChangesetCommands", () => {
@@ -29,12 +29,12 @@ describe("ChangesetCommands", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    // Initialize database with initTestDbService
-    const testDbResult = await initTestDbService();
-    tempDir = testDbResult.tempDir;
-    db = testDbResult.db;
-    config = testDbResult.config;
-    cleanup = testDbResult.cleanup;
+    // Initialize shared CLI test context
+    const result = await createCliTestContext();
+    tempDir = result.tempDir;
+    db = result.db;
+    config = result.config;
+    cleanup = result.cleanup;
 
     // Initialize git repository
     await runGitCommand(tempDir, ["init", "-b", "main"]);
@@ -339,12 +339,12 @@ describe("ChangesetCommands - Edge Cases", () => {
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    // Initialize database with initTestDbService
-    const testDbResult = await initTestDbService();
-    tempDir = testDbResult.tempDir;
-    db = testDbResult.db;
-    const config = testDbResult.config;
-    cleanup = testDbResult.cleanup;
+    // Initialize shared CLI test context
+    const result = await createCliTestContext();
+    tempDir = result.tempDir;
+    db = result.db;
+    const config = result.config;
+    cleanup = result.cleanup;
 
     // Initialize git repository
     await runGitCommand(tempDir, ["init", "-b", "main"]);
