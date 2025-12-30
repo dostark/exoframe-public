@@ -1,6 +1,54 @@
 {
-  "generated_at": "{{GENERATED_AT}}",
+  "generated_at": "2025-12-30T13:13:44.975Z",
   "docs": [
+    {
+      "path": "agents/docs/documentation.md",
+      "agent": "copilot",
+      "scope": "dev",
+      "title": "ExoFrame Documentation Development Guidelines",
+      "short_summary": "Guidance for producing and maintaining docs in the docs/ directory and cross-referencing the Implementation Plan.",
+      "version": "0.1",
+      "topics": [
+        "docs",
+        "process",
+        "publishing"
+      ],
+      "chunks": [
+        "agents/chunks/documentation.md.chunk0.txt",
+        "agents/chunks/documentation.md.chunk1.txt"
+      ]
+    },
+    {
+      "path": "agents/source/exoframe.md",
+      "agent": "copilot",
+      "scope": "dev",
+      "title": "ExoFrame Source Development Guidelines",
+      "short_summary": "Guidance for developing ExoFrame source code: TDD-first, patterns, project structure, and best practices.",
+      "version": "0.1",
+      "topics": [
+        "source",
+        "development",
+        "tdd",
+        "patterns"
+      ],
+      "chunks": [
+        "agents/chunks/exoframe.md.chunk0.txt",
+        "agents/chunks/exoframe.md.chunk1.txt"
+      ]
+    },
+    {
+      "path": "agents/README.md",
+      "agent": "general",
+      "scope": "dev",
+      "title": "Agents directory README",
+      "short_summary": "Overview of the agents/ directory, schema, and maintenance guidelines.",
+      "version": "0.1",
+      "chunks": [
+        "agents/chunks/README.md.chunk0.txt",
+        "agents/chunks/README.md.chunk1.txt",
+        "agents/chunks/README.md.chunk2.txt"
+      ]
+    },
     {
       "path": "agents/copilot/exoframe.md",
       "agent": "copilot",
@@ -8,7 +56,78 @@
       "title": "ExoFrame quick reference for Copilot",
       "short_summary": "Short summary: ExoFrame is a Deno + TypeScript project that provides Flow-driven AI automation. Key dirs: src/, tests/, Blueprints/, docs/, agents/. Use Copilot to suggest edits and tests but consult `agents/manifest.json` first.",
       "version": "0.1",
-      "topics": ["repo-overview","testing","flows","obsidian"]
+      "topics": [
+        "repo-overview",
+        "testing",
+        "flows",
+        "obsidian"
+      ],
+      "chunks": [
+        "agents/chunks/exoframe.md.chunk0.txt",
+        "agents/chunks/exoframe.md.chunk1.txt"
+      ]
+    },
+    {
+      "path": "agents/providers/claude.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Claude provider adaptation notes",
+      "short_summary": "Provider-specific tips for Claude usage (chunking and context inclusion).",
+      "version": "0.1",
+      "topics": [
+        "provider-adaptations",
+        "prompts"
+      ],
+      "chunks": [
+        "agents/chunks/claude.md.chunk0.txt"
+      ]
+    },
+    {
+      "path": "agents/providers/google.md",
+      "agent": "google",
+      "scope": "dev",
+      "title": "Google provider adaptation notes",
+      "short_summary": "Provider-specific tips for Google PaLM/Vertex AI usage.",
+      "version": "0.1",
+      "topics": [
+        "provider-adaptations",
+        "prompts"
+      ],
+      "chunks": [
+        "agents/chunks/google.md.chunk0.txt"
+      ]
+    },
+    {
+      "path": "agents/providers/openai.md",
+      "agent": "openai",
+      "scope": "dev",
+      "title": "OpenAI adaptation notes",
+      "short_summary": "Provider-specific tips for OpenAI usage (token hints and example prompt template).",
+      "version": "0.1",
+      "topics": [
+        "provider-adaptations",
+        "prompts"
+      ],
+      "chunks": [
+        "agents/chunks/openai.md.chunk0.txt"
+      ]
+    },
+    {
+      "path": "agents/tests/testing.md",
+      "agent": "copilot",
+      "scope": "dev",
+      "title": "ExoFrame Test Development Guidelines",
+      "short_summary": "Testing patterns and unified test context for ExoFrame (initTestDbService, createCliTestContext, withEnv, etc.).",
+      "version": "0.1",
+      "topics": [
+        "tests",
+        "tdd",
+        "helpers"
+      ],
+      "chunks": [
+        "agents/chunks/testing.md.chunk0.txt",
+        "agents/chunks/testing.md.chunk1.txt"
+      ]
     }
   ]
 }

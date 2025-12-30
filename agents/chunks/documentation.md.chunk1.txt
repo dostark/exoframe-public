@@ -1,0 +1,2 @@
+Examples section
+- Example prompt: "Draft a short 'How-to' section for adding a new agent doc in `agents/` following the schema and validation rules."

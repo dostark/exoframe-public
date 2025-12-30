@@ -1,0 +1,6 @@
+Do / Don't
+- ✅ Do consult `agents/manifest.json` and `agents/copilot/exoframe.md` before applying repo-specific assumptions.
+- ❌ Don't assume production agent blueprint semantics when modifying these docs — runtime agents live in `Blueprints/Agents/`.
+
+Quick verification
+- Provide a 1–2 line `short_summary` to insert into small prompts.

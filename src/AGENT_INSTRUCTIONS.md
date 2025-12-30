@@ -1,6 +1,10 @@
-# ExoFrame Source Development Guidelines
+# EXOFRAME AGENT INSTRUCTIONS (migrated)
 
-This document contains instructions for AI coding agents when creating or modifying modules in the ExoFrame `src/` directory.
+This file was relocated to `agents/source/exoframe.md` to centralize IDE/agent guidance.
+
+**DEPRECATION NOTICE:** The authoritative doc is `agents/source/exoframe.md`. This file will be kept as a thin redirect for 3 months and may be removed afterwards.
+
+See: `agents/source/exoframe.md` for the full, machine-friendly guidance.
 
 ## ⚠️ CRITICAL: Test-Driven Development Required
 

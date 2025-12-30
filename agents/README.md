@@ -1,3 +1,11 @@
+---
+agent: general
+scope: dev
+title: Agents directory README
+short_summary: "Overview of the agents/ directory, schema, and maintenance guidelines."
+version: "0.1"
+---
+
 # agents/ — IDE & Dev Agent Instructions
 
 Purpose
@@ -25,6 +33,12 @@ Maintenance
 -----------
 - Use `scripts/validate_agents_docs.ts` to validate frontmatter and safety rules.
 - Update the manifest with `scripts/build_agents_index.ts` if new docs are added.
+
+Canonical prompt (short):
+"You are a dev-time agent. Before performing repository-specific changes, consult `agents/manifest.json` and include matching `short_summary` items for relevant docs in `agents/`."
+
+Examples
+- Example prompt: "Suggest 3 unit test cases for PlanWriter that use `initTestDbService()` and include expected assertions."
 
 Notes
 -----

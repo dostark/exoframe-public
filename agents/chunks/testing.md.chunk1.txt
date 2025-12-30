@@ -1,0 +1,12 @@
+Example snippet
+```typescript
+const { db, tempDir, cleanup } = await initTestDbService();
+try {
+  // test actions
+} finally {
+  await cleanup();
+}
+```
+
+Examples section
+- Example prompt: "Provide 3 failing unit tests showing how PlanWriter handles malformed plan.json and missing permissions."

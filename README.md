@@ -133,7 +133,7 @@ beforeEach(async () => ({ db, tempDir, config, cleanup } = await createCliTestCo
 afterEach(async () => await cleanup());
 ```
 
-For more details and examples, see `tests/AGENT_INSTRUCTIONS.md` under **CLI Test Context — Recommended Pattern**.
+For more details and examples, see `agents/tests/testing.md` under **CLI Test Context — Recommended Pattern**.
 
 ---
 

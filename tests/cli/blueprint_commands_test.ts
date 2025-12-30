@@ -2,7 +2,7 @@
  * Blueprint Commands Tests
  * Tests for Step 5.11 - Blueprint Creation and Management
  *
- * Following TDD approach per src/AGENT_INSTRUCTIONS.md:
+ * Following TDD approach per agents/source/exoframe.md:
  * 1. Write tests first (RED phase)
  * 2. Implement minimal code to pass (GREEN phase)
  * 3. Refactor while keeping tests green

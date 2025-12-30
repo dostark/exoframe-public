@@ -127,7 +127,7 @@ Each agent should be tested for:
 3. **Portal Integration**: Works with configured portals
 4. **Flow Compatibility**: Can be used in multi-agent flows
 
-See `tests/AGENT_INSTRUCTIONS.md` for comprehensive testing guidelines.
+See `agents/tests/testing.md` for comprehensive testing guidelines.
 
 ## 🚀 Getting Started
 
@@ -140,6 +140,6 @@ See `tests/AGENT_INSTRUCTIONS.md` for comprehensive testing guidelines.
 ## 📚 Related Documentation
 
 - `docs/ExoFrame_Implementation_Plan.md` - Step 6.10: Agent Examples
-- `src/AGENT_INSTRUCTIONS.md` - Blueprint creation guidelines
-- `tests/AGENT_INSTRUCTIONS.md` - Testing guidelines
+- `agents/source/exoframe.md` - Blueprint creation guidelines
+- `agents/tests/testing.md` - Testing guidelines
 - `Blueprints/Flows/examples/` - Flow examples that use these agents

@@ -1,7 +1,10 @@
-# ExoFrame Documentation Development Guidelines
+# EXOFRAME AGENT INSTRUCTIONS (docs) — (migrated)
 
-This document contains instructions for AI coding agents when creating or modifying
-documentation in the ExoFrame `docs/` directory.
+This file has been migrated to `agents/docs/documentation.md` to provide a focused, machine-friendly location for documentation guidelines used by dev-time agents.
+
+**DEPRECATION NOTICE:** The authoritative doc is `agents/docs/documentation.md`. This file will remain as a redirect for 3 months.
+
+See: `agents/docs/documentation.md` for the full guidance.
 
 ## Core Documentation Patterns
 

@@ -1,4 +1,4 @@
-import { assert } from "https://jsr.io/@std/assert/1.0.16/mod.ts";
+import { assert } from "https://deno.land/std@0.203.0/assert/mod.ts";
 import { validateFile } from "../scripts/validate_agents_docs.ts";
 
 Deno.test("agent docs validate", async () => {

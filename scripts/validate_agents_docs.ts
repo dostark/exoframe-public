@@ -32,7 +32,8 @@ async function validateFile(path: string): Promise<string[]> {
   }
 
   // quick safety check for obvious secrets
-  const secretRegex = /(AKIA|AIza|SECRET|api_key|pass(word)?|token\s*[:=])/i;
+  // Detect common secret patterns. Use stricter matches to avoid false positives (e.g., 'pass' as a word).
+  const secretRegex = /(AKIA|AIza|SECRET|api_key|password|token\s*[:=])/i;
   if (secretRegex.test(content)) {
     errors.push(`${path}: potential secret/token found (CI will fail on secrets)`);
   }

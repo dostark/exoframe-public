@@ -6511,7 +6511,7 @@ Phase 10 collects finishing touches that improve user experience, reduce operati
 4. [ ] Define a small YAML frontmatter schema for agent docs (required fields: `agent`, `scope`, `title`, `summary`, `version`) so the docs are machine-discoverable and validate with a lightweight `scripts/validate_agents_docs.ts` script.
 5. [ ] Migrate or reference existing `src/AGENT_INSTRUCTIONS.md`, `tests/AGENT_INSTRUCTIONS.md`, and `docs/AGENT_INSTRUCTIONS.md` so links remain intact; adopt redirects or thin wrappers for backwards compatibility for a transition period.
 6. [ ] Add CI validation (linting job) that runs the validation script on PRs and ensures each agent doc contains required metadata and at least one canonical example prompt.
-7. [ ] Add a short quickstart in `docs/AGENT_INSTRUCTIONS.md` that explains how to use the `agents/` content with VS Code Copilot / Copilot Labs and other agent interfaces.
+7. [ ] Add a short quickstart in `agents/docs/documentation.md` that explains how to use the `agents/` content with VS Code Copilot / Copilot Labs and other agent interfaces.
 
 **Test Definitions:**
 
@@ -6552,7 +6552,7 @@ Phase 10 collects finishing touches that improve user experience, reduce operati
 5. Implement `scripts/build_agents_index.ts` (creates `manifest.json` and `chunks/`) and `scripts/build_agents_embeddings.ts` optionally to produce `agents/embeddings/*`.
 6. Add `scripts/inject_agent_context.ts` and a thin CLI wrapper `bin/agent-context` that returns the best matching short_summary and chunk set for a query and agent type.
 7. Add CI workflow step `validate-agent-docs` that runs validation + retrieval smoke test + optional embedding build check.
-8. Add VS Code snippet and a short `docs/AGENT_INSTRUCTIONS.md` quickstart with Copilot Labs instructions and an example using `bin/agent-context`.
+8. Add VS Code snippet and a short `agents/docs/documentation.md` quickstart with Copilot Labs instructions and an example using `bin/agent-context`.
 9. Migrate or add references from the existing `AGENT_INSTRUCTIONS.md` files to the new `agents/` structure; add small redirect/wrapper files in the original locations for 3 months before deprecation.
 10. Add an integration (manual) test and a small automated smoke test that runs `bin/agent-context` for canonical queries and asserts it returns expected short_summary strings and at least one chunk.
 
@@ -6572,12 +6572,6 @@ Phase 10 collects finishing touches that improve user experience, reduce operati
 **Final Note:**
 
 The combination of a manifest, short summaries, chunking, optional embeddings, and deterministic prompt-injection helpers greatly increases the chance that Copilot, OpenAI, Claude, or Google agents will find and consult the authoritative `agents/` docs when performing repo-specific development tasks. This approach emphasizes deterministic, auditable pipelines over hoping an agent "guesses" to look in a particular file.
-
-### Exit Criteria
-
-- [ ] Step 10.1 implemented and tested
-- [ ] UX polish tasks completed
-- [ ] Documentation for Polishing tasks added
 
 ## Phase 11: Testing & Quality Assurance
 

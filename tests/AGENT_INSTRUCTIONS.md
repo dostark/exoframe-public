@@ -1,6 +1,10 @@
-# ExoFrame Test Development Guidelines
+# EXOFRAME AGENT INSTRUCTIONS (tests) — (migrated)
 
-This document contains instructions for AI coding agents when creating or refactoring tests in the ExoFrame project.
+This file has been migrated to `agents/tests/testing.md` to provide a focused, machine-friendly location for test development guidance.
+
+**DEPRECATION NOTICE:** The authoritative doc is `agents/tests/testing.md`. This file will remain as a redirect for 3 months to allow migration of links.
+
+See: `agents/tests/testing.md` for the full guidance.
 
 ## Core Testing Patterns
 
@@ -252,9 +256,9 @@ Deno.test("uses feature flag across multiple assertions", async () => {
 ```
 
 Notes:
+
 - Prefer using the `withEnv` helper inside the individual test so the env change is limited in scope and automatically restored.
 - If you must set env vars for many tests, prefer an explicit `beforeEach`/`afterEach` pattern that restores original values (avoid global permanent mutations).
-
 
 ---
 
