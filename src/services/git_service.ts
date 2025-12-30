@@ -103,7 +103,7 @@ export class GitService {
     // Create .gitignore
     await Deno.writeTextFile(
       `${this.repoPath}/.gitignore`,
-      "System/journal.db\nSystem/journal.db-*\nSystem/daemon.*\ndeno.lock\n",
+      "Inbox/\nSystem/journal.db\nSystem/journal.db-*\nSystem/daemon.*\ndeno.lock\n",
     );
 
     // Stage .gitignore

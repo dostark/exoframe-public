@@ -77,7 +77,11 @@ export class TestEnvironment {
         cwd: tempDir,
       }).output();
 
-      // Create initial commit
+      // Create initial commit with .gitignore to prevent collateral damage from git reset --hard
+      await Deno.writeTextFile(
+        join(tempDir, ".gitignore"),
+        "Inbox/\nSystem/journal.db*\nSystem/daemon.*\ndeno.lock\n",
+      );
       await Deno.writeTextFile(join(tempDir, ".gitkeep"), "");
       await new Deno.Command("git", {
         args: ["add", "."],

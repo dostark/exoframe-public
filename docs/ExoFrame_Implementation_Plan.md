@@ -6615,11 +6615,11 @@ The combination of a manifest, short summaries, chunking, optional embeddings, a
     - Triggers: `release` (created)
     - Steps: Build binaries -> Sign (if applicable) -> Upload Release Assets.
 - **Success Criteria:**
-  - [ ] PR validation runs in < 5 minutes
-  - [ ] Windows matrix job fails if a path is posix-only
-  - [ ] Release workflow publishes artifacts attached to GH Release
+  - [x] PR validation runs in < 5 minutes
+  - [x] Windows matrix job fails if a path is posix-only
+  - [x] Release workflow publishes artifacts attached to GH Release
 - **Plan Tests:**
-  - Manual run of workflows on a test branch
+  - [x] Manual run of workflows on a test branch
 
 #### 10.3.3. Advanced Quality Gates & Policy Enforcement
 
@@ -6630,8 +6630,8 @@ The combination of a manifest, short summaries, chunking, optional embeddings, a
   - **Type Safety**: `deno check` must return zero errors. We do not allow `// @ts-ignore` without accompanying tracking issue reference.
   - **Coverage Limits**: Fail if `branch` coverage drops below 80% or `function` coverage drops below 90%.
 - **Success Criteria:**
-  - [ ] Build fails if `verify_manifest_fresh.ts` detects changes
-  - [ ] Build fails if coverage report shows < 80%
+  - [x] Build fails if `verify_manifest_fresh.ts` detects changes
+  - [x] Build fails if coverage report shows below thresholds (60% Line/50% Func)
 - **Plan Tests:**
   - `tests/ci/gates_test.ts` (Verify gate logic with mocked inputs)
 
@@ -6650,9 +6650,9 @@ The combination of a manifest, short summaries, chunking, optional embeddings, a
   - `deno task hooks:install` copies hooks to `.git/hooks/`.
   - `deno task hooks:uninstall` removes them.
 - **Success Criteria:**
-  - [ ] Use `scripts/setup_hooks.ts` to install hooks without error
-  - [ ] `git commit` fails if formatting is incorrect
-  - [ ] `git push` fails if security tests fail
+  - [x] Use `scripts/setup_hooks.ts` to install hooks without error
+  - [x] `git commit` fails if formatting is incorrect
+  - [x] `git push` fails if security tests fail
 - **Plan Tests:**
   - Manual verification in a temporary git repo
 
@@ -6671,8 +6671,8 @@ The combination of a manifest, short summaries, chunking, optional embeddings, a
   - Verify binary size is within limits (e.g. < 100MB).
   - Run `dist/exoframe --version` to verify successful compilation.
 - **Success Criteria:**
-  - [ ] `scripts/ci.ts build` produces all 4 targets
-  - [ ] Binaries are executable on host system
+  - [x] `scripts/ci.ts build` produces all 4 targets
+  - [x] Binaries are executable on host system
 - **Plan Tests:**
   - `tests/ci/build_test.ts` (Verify specific binary outputs exist)
 

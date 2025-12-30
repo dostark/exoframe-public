@@ -13,8 +13,9 @@
     "migrate": "deno run --allow-read --allow-write --allow-env --allow-ffi scripts/migrate_db.ts",
     "export-activity": "deno run --allow-all scripts/export_activity.ts",
     "cli": "deno run --allow-all src/cli/exoctl.ts",
-    "test": "deno test --allow-all tests/",
+    "test": "deno test --allow-all",
     "test:security": "deno test --allow-all --filter \"[security]\" tests/",
+    "test:ci": "deno test --allow-all tests_infra/",
     "test:llama": "EXO_RUN_LLAMA_TESTS=true deno test --allow-all tests/llama_provider_test.ts",
     "test:watch": "deno test --watch --allow-all tests/",
     "test:coverage": "rm -rf coverage && deno test --allow-all --coverage=coverage tests/",
@@ -27,6 +28,9 @@
     "fmt": "deno fmt src/ tests/ docs/",
     "fmt:check": "deno fmt --check src/ tests/ docs/",
     "cache": "deno cache src/main.ts",
+    "hooks:install": "deno run --allow-read --allow-write scripts/setup_hooks.ts",
+    "check": "deno check src/main.ts",
+    "check:docs": "deno run --allow-all scripts/verify_manifest_fresh.ts",
     "compile": "deno compile --allow-all --output exoframe src/main.ts"
   },
   "imports": {
@@ -70,6 +74,9 @@
       "docs/",
       "scripts/"
     ]
+  },
+  "test": {
+    "include": ["tests/"]
   },
   "compilerOptions": {
     "strict": true,

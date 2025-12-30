@@ -20,3 +20,7 @@ deno.lock
 
 # Test artifacts
 test-*.toml
+
+# Build artifacts and profiles
+exoframe
+cov_profile/
