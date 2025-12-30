@@ -1,3 +1,11 @@
+Documents that share version numbers MUST be updated together. Add a checklist for updating versions and release dates.
+
+### Terminology Consistency
+
+Maintain a standard Terminology Reference and link to it from major documents. Use consistent capitalization and add new terms to the reference when needed.
+
+### Formatting Standards
+
 - Headers must include version, release date, status, and references
 - Use fenced code blocks with language identifiers
 - Use consistent table formatting

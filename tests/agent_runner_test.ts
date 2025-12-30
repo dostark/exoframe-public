@@ -425,8 +425,8 @@ Deno.test("AgentRunner can be reused for multiple runs", async () => {
 
 Deno.test("AgentRunner handles provider errors gracefully", async () => {
   const errorProvider = new MockProvider(wellFormedResponse);
-  errorProvider.generate = async () => {
-    throw new Error("API Error: Rate limit exceeded");
+  errorProvider.generate = () => {
+    return Promise.reject(new Error("API Error: Rate limit exceeded"));
   };
 
   const runner = new AgentRunner(errorProvider);
@@ -447,7 +447,7 @@ Deno.test("AgentRunner handles provider errors gracefully", async () => {
 
 Deno.test("AgentRunner handles network timeout errors", async () => {
   const timeoutProvider = new MockProvider(wellFormedResponse);
-  timeoutProvider.generate = async () => {
+  timeoutProvider.generate = () => {
     throw new Error("Network timeout");
   };
 
@@ -467,7 +467,7 @@ Deno.test("AgentRunner handles network timeout errors", async () => {
 
 Deno.test("AgentRunner handles JSON parse errors", async () => {
   const malformedProvider = new MockProvider(wellFormedResponse);
-  malformedProvider.generate = async () => {
+  malformedProvider.generate = () => {
     throw new SyntaxError("Unexpected token in JSON");
   };
 
@@ -487,8 +487,8 @@ Deno.test("AgentRunner handles JSON parse errors", async () => {
 
 Deno.test("AgentRunner handles provider returning null", async () => {
   const nullProvider = new MockProvider(wellFormedResponse);
-  nullProvider.generate = async () => {
-    return null as unknown as string;
+  nullProvider.generate = () => {
+    return Promise.resolve(null as unknown as string);
   };
 
   const runner = new AgentRunner(nullProvider);
@@ -501,8 +501,8 @@ Deno.test("AgentRunner handles provider returning null", async () => {
 
 Deno.test("AgentRunner handles provider returning undefined", async () => {
   const undefinedProvider = new MockProvider(wellFormedResponse);
-  undefinedProvider.generate = async () => {
-    return undefined as unknown as string;
+  undefinedProvider.generate = () => {
+    return Promise.resolve(undefined as unknown as string);
   };
 
   const runner = new AgentRunner(undefinedProvider);
@@ -620,11 +620,11 @@ Deno.test("AgentRunner handles mixed case XML tags", async () => {
 });
 
 Deno.test("AgentRunner handles tags with extra whitespace", async () => {
-  const response = `<thought>   
-  Thought with whitespace   
+  const response = `<thought>
+  Thought with whitespace
   </thought>
-  <content>   
-  Content with whitespace   
+  <content>
+  Content with whitespace
   </content>`;
 
   const mockProvider = new MockProvider(response);

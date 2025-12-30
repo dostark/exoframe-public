@@ -30,15 +30,15 @@ Modern AI-enabled IDEs (Cursor, Copilot, Windsurf) excel at **interactive, real-
 
 **ExoFrame is an Auditable Agent Orchestration Platform** — designed for scenarios where you need:
 
-1.  **Audit Trail & Traceability:** Every agent action is logged with trace IDs linking requests → plans → code changes → commits. Essential for compliance, team accountability, and understanding "why did this change happen?" The **Activity Journal** serves as a permanent, queryable "black box" recorder for AI operations.
+1. **Audit Trail & Traceability:** Every agent action is logged with trace IDs linking requests → plans → code changes → commits. Essential for compliance, team accountability, and understanding "why did this change happen?" The **Activity Journal** serves as a permanent, queryable "black box" recorder for AI operations.
 
-2.  **Asynchronous Workflows:** Drop a request, go to lunch, come back to a reviewed plan. Unlike chat-based agents that require constant supervision, ExoFrame operates as a background daemon.
+2. **Asynchronous Workflows:** Drop a request, go to lunch, come back to a reviewed plan. Unlike chat-based agents that require constant supervision, ExoFrame operates as a background daemon.
 
-3.  **Explicit Human Approval Gates:** Plans must be approved before execution. Code changes must be approved before merging. This **Human-in-the-Loop** governance ensures that agents never act without explicit authorization.
+3. **Explicit Human Approval Gates:** Plans must be approved before execution. Code changes must be approved before merging. This **Human-in-the-Loop** governance ensures that agents never act without explicit authorization.
 
-4.  **Multi-Project Context:** **Portals** link multiple codebases simultaneously. Agents can reference your API server while modifying your frontend — something single-workspace IDEs struggle with.
+4. **Multi-Project Context:** **Portals** link multiple codebases simultaneously. Agents can reference your API server while modifying your frontend — something single-workspace IDEs struggle with.
 
-5.  **Data Sovereignty & Security:** 100% local-first option with Ollama. Leveraging **Deno's process-level sandboxing**, ExoFrame enforces security boundaries that prompt-engineering alone cannot guarantee. Your code never leaves your machine unless you explicitly configure cloud APIs.
+5. **Data Sovereignty & Security:** 100% local-first option with Ollama. Leveraging **Deno's process-level sandboxing**, ExoFrame enforces security boundaries that prompt-engineering alone cannot guarantee. Your code never leaves your machine unless you explicitly configure cloud APIs.
 
 **When to Use ExoFrame vs IDE Agents:**
 

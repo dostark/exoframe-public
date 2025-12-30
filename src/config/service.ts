@@ -125,7 +125,7 @@ stability_check = true
     return this.config.portals?.find((p) => p.alias === alias);
   }
 
-  public async updatePortalVerification(alias: string): Promise<void> {
+  public async updatePortalVerification(_alias: string): Promise<void> {
     // This would update last_verified timestamp if we add it to schema
     // For now, this is a placeholder for future enhancement
   }

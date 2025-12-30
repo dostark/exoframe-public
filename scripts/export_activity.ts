@@ -36,7 +36,7 @@ async function main() {
       "| :--- | :--- | :--- | :--- | :--- |",
       ...tableRows,
       "",
-      `*Last updated: ${new Date().toLocaleString()}*`
+      `*Last updated: ${new Date().toLocaleString()}*`,
     ].join("\n");
 
     const exportPath = join(config.system.root, "System", "activity_export.md");

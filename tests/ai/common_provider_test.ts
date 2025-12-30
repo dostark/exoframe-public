@@ -1,5 +1,4 @@
-import { assertEquals, assertRejects } from "jsr:@std/assert@^1.0.0";
-import { spy, stub } from "https://deno.land/std@0.203.0/testing/mock.ts";
+import { assertEquals, assertRejects } from "https://deno.land/std@0.221.0/assert/mod.ts";
 import { AuthenticationError, isRetryable, RateLimitError, withRetry } from "../../src/ai/providers/common.ts";
 
 Deno.test("isRetryable - identifies retryable errors", () => {
@@ -10,12 +9,12 @@ Deno.test("isRetryable - identifies retryable errors", () => {
 
 Deno.test("withRetry - retries on retryable errors", async () => {
   let callCount = 0;
-  const fn = async () => {
+  const fn = () => {
     callCount++;
     if (callCount < 3) {
-      throw new RateLimitError("test", "Rate limit");
+      return Promise.reject(new RateLimitError("test", "Rate limit"));
     }
-    return "success";
+    return Promise.resolve("success");
   };
 
   const result = await withRetry(fn, { maxRetries: 3, baseDelayMs: 1 });
@@ -25,9 +24,9 @@ Deno.test("withRetry - retries on retryable errors", async () => {
 
 Deno.test("withRetry - fails after max retries", async () => {
   let callCount = 0;
-  const fn = async () => {
+  const fn = () => {
     callCount++;
-    throw new RateLimitError("test", "Rate limit");
+    return Promise.reject(new RateLimitError("test", "Rate limit"));
   };
 
   await assertRejects(
@@ -40,7 +39,7 @@ Deno.test("withRetry - fails after max retries", async () => {
 
 Deno.test("withRetry - does not retry on non-retryable errors", async () => {
   let callCount = 0;
-  const fn = async () => {
+  const fn = () => {
     callCount++;
     throw new AuthenticationError("test", "Invalid key");
   };

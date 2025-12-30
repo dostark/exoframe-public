@@ -93,7 +93,7 @@ Deno.test({
   console.log(`\n🦙 Testing Ollama with ${OLLAMA_MODEL} at ${OLLAMA_BASE_URL}\n`);
 
   // Setup test environment
-  const { db, config, tempDir, cleanup } = await initTestDbService();
+  const { db, config: _config, tempDir, cleanup } = await initTestDbService();
 
   try {
     // Create provider and services
@@ -225,7 +225,7 @@ Deno.test({
   ignore: !(await isOllamaAvailable()),
   sanitizeResources: false,
   sanitizeOps: false,
-}, async () => {
+}, () => {
   const adapter = new PlanAdapter();
 
   // Test malformed JSON

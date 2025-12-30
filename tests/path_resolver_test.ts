@@ -513,9 +513,9 @@ Deno.test("PathResolver: handles database logging errors gracefully", async () =
 
     // Capture console.error
     const originalError = console.error;
-    let errorLogged = false;
+    let _errorLogged = false;
     console.error = () => {
-      errorLogged = true;
+      _errorLogged = true;
     };
 
     try {

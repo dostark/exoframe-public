@@ -50,20 +50,20 @@ Deno.test("MonitorView - renderLogs outputs ANSI and handles empty", () => {
       timestamp: "2025-12-22T10:01:00Z",
     },
   ];
-  const { db, monitorView } = createMonitorViewWithLogs(logs);
+  const { db: _db, monitorView } = createMonitorViewWithLogs(logs);
   monitorView.setFilter({});
   const output = monitorView.renderLogs();
   assert(output.includes("\x1b[31m")); // red for error
   assert(output.includes("\x1b[37m")); // white for unknown
   // Empty logs
-  const { db: emptyDb, monitorView: emptyView } = createMonitorViewWithLogs([]);
+  const { db: _emptyDb, monitorView: emptyView } = createMonitorViewWithLogs([]);
   assertEquals(emptyView.renderLogs(), "");
 });
 
 // Mock DatabaseService for testing - use `createMockDatabaseService` in `tests/tui/helpers.ts` instead
 
 Deno.test("MonitorView - should display real-time log streaming", () => {
-  const { db, monitorView } = createMonitorViewWithLogs([
+  const { db: _db, monitorView } = createMonitorViewWithLogs([
     {
       id: "1",
       trace_id: "trace-1",
@@ -84,7 +84,7 @@ Deno.test("MonitorView - should display real-time log streaming", () => {
 });
 
 Deno.test("MonitorView - should filter logs by agent", () => {
-  const { db, monitorView } = createMonitorViewWithLogs([
+  const { db: _db, monitorView } = createMonitorViewWithLogs([
     {
       id: "1",
       trace_id: "trace-1",
@@ -115,7 +115,7 @@ Deno.test("MonitorView - should filter logs by agent", () => {
 });
 
 Deno.test("MonitorView - should filter logs by action type", () => {
-  const { db, monitorView } = createMonitorViewWithLogs([
+  const { db: _db, monitorView } = createMonitorViewWithLogs([
     {
       id: "1",
       trace_id: "trace-1",
@@ -146,7 +146,7 @@ Deno.test("MonitorView - should filter logs by action type", () => {
 });
 
 Deno.test("MonitorView - should pause and resume log streaming", () => {
-  const { db, monitorView } = createMonitorViewWithLogs();
+  const { db: _db, monitorView } = createMonitorViewWithLogs();
 
   // Initially streaming
   assertEquals(monitorView.isStreaming(), true);
@@ -208,7 +208,7 @@ Deno.test("MonitorView - maps Activity Journal action names to colors", () => {
 });
 
 Deno.test("MonitorView - should export logs to file", () => {
-  const { db, monitorView } = createMonitorViewWithLogs([
+  const { db: _db, monitorView } = createMonitorViewWithLogs([
     {
       id: "1",
       trace_id: "trace-1",
@@ -240,7 +240,7 @@ Deno.test("MonitorView - should handle large log volumes without crashing", () =
     timestamp: new Date(Date.now() - i * 1000).toISOString(),
   }));
 
-  const { db, monitorView } = createMonitorViewWithLogs(largeLogs);
+  const { db: _db, monitorView } = createMonitorViewWithLogs(largeLogs);
 
   // Should handle large volumes
   const logs = monitorView.getLogs();
@@ -254,7 +254,7 @@ Deno.test("MonitorView - should handle large log volumes without crashing", () =
 });
 
 Deno.test("MonitorView - should handle empty logs gracefully", () => {
-  const { db, monitorView } = createMonitorViewWithLogs([]);
+  const { db: _db, monitorView } = createMonitorViewWithLogs([]);
 
   const logs = monitorView.getLogs();
   assertEquals(logs.length, 0);
@@ -271,7 +271,7 @@ Deno.test("MonitorView - should filter logs by time window", () => {
   const now = new Date();
   const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 
-  const { db, monitorView } = createMonitorViewWithLogs([
+  const { db: _db, monitorView } = createMonitorViewWithLogs([
     {
       id: "1",
       trace_id: "trace-1",

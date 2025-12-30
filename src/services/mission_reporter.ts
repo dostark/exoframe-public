@@ -217,7 +217,7 @@ branch: "${traceData.branch}"
   /**
    * Analyze git changes for the trace's branch
    */
-  private async analyzeGitChanges(traceData: TraceData): Promise<GitChangeStats> {
+  private async analyzeGitChanges(_traceData: TraceData): Promise<GitChangeStats> {
     const repoPath = this.config.system.root;
     const defaultStats: GitChangeStats = {
       filesCreated: [],

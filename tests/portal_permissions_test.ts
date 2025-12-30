@@ -17,7 +17,7 @@ Deno.test("PathResolver: resolves user-defined portal", async () => {
         alias: "MyProject",
         target_path: externalDir,
         created: new Date().toISOString(),
-      }
+      },
     ];
 
     const resolver = new PathResolver(config);
@@ -44,7 +44,7 @@ Deno.test("[security] PathResolver: prevents traversal out of user-defined porta
         alias: "MyProject",
         target_path: externalDir,
         created: new Date().toISOString(),
-      }
+      },
     ];
 
     const resolver = new PathResolver(config);
@@ -80,7 +80,7 @@ Deno.test("[security] PathResolver: prevents access via symlink out of user-defi
         alias: "MyProject",
         target_path: externalDir,
         created: new Date().toISOString(),
-      }
+      },
     ];
 
     const resolver = new PathResolver(config);

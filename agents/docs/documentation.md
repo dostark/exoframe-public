@@ -27,7 +27,14 @@ System: You are a repository-aware coding assistant for ExoFrame. Before answeri
 
 User: [task details]
 
-### VS Code snippet (Installed in `.vscode/snippets/agent-context.code-snippets`)
+### 3. The Living Plan Principle
+The `ExoFrame_Implementation_Plan.md` is not a static roadmap; it is a mutable artifact.
+- **Extend on Discovery**: If a task reveals new complexity, add a new sub-step (e.g., `Step 10.3`).
+- **Document Before Coding**: Never write code for a feature that isn't in the plan. Write the step first.
+- **Structure**: Follow the existing format (Goal, Action items, Success Criteria).
+
+### 4. Style Guide
+ snippet (Installed in `.vscode/snippets/agent-context.code-snippets`)
 
 - Trigger: "agent-context"
 - Inserts a short template reminding Copilot to consult `agents/manifest.json` and include short_summary.

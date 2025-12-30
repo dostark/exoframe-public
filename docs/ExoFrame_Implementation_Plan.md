@@ -6572,6 +6572,118 @@ Phase 10 collects finishing touches that improve user experience, reduce operati
 
 The combination of a manifest, short summaries, chunking, optional embeddings, and deterministic prompt-injection helpers greatly increases the chance that Copilot, OpenAI, Claude, or Google agents will find and consult the authoritative `agents/` docs when performing repo-specific development tasks. This approach emphasizes deterministic, auditable pipelines over hoping an agent "guesses" to look in a particular file.
 
+### Step 10.3: Comprehensive CI Infrastructure
+
+**Goal**: Unify local and remote CI/CD pipelines to ensure identical validation standards across environments.
+
+#### 10.3.1. Unified CI Pipeline Script (`scripts/ci.ts`)
+
+- **Action**: Create a `scripts/ci.ts` CLI tool using `cliffy` that orchestrates the entire build/validation lifecycle.
+- **Commands**:
+  - `deno run scripts/ci.ts check` (Lint + Type Check)
+  - `deno run scripts/ci.ts test` (Unit + Security Tests)
+  - `deno run scripts/ci.ts build` (Compile Binaries)
+  - `deno run scripts/ci.ts all` (Full Pipeline)
+- **Technical Requirements**:
+  - **Parallel Execution**: Run unrelated tasks (e.g., linting vs testing) concurrently using `Promise.all` + `Deno.Command`.
+  - **Step Isolation**: Each step must be idempotent and isolated (no shared mutable state).
+  - **Reporter**: Output a structured summary (Markdown/Console) of pass/fail status per step.
+  - **Cross-Platform**: Ensure paths and commands work on Linux, macOS, and Windows.
+- **Success Criteria:**
+  - [x] `deno run scripts/ci.ts all` completes successfully on local machine
+  - [x] Script cleanly handles failure in one parallel step without hanging
+  - [x] Output includes timing for each step
+- **Plan Tests:**
+  - [x] `deno test tests/ci/script_test.ts` (Mocked extensive pipeline run)
+
+#### 10.3.2. GitHub Actions Optimization (`.github/workflows/`)
+
+- **Action**: Deconstruct existing workflows and rebuild them to call `scripts/ci.ts`.
+- **Workflow Architecture**:
+  - **`pr-validation.yml`**:
+    - Triggers: `pull_request` (branches: main, develop)
+    - Strategy: Matrix build (Linux, macOS, Windows) to catch platform-specific bugs.
+    - Steps:
+      1. Checkout
+      2. Install Deno (uses `denoland/setup-deno`)
+      3. Run `deno run scripts/ci.ts check` (Fast feedback)
+      4. Run `deno run scripts/ci.ts test --quick` (Skip integration tests)
+  - **`merge-validation.yml`**:
+    - Triggers: `push` (branches: main)
+    - Steps: Full pipeline (`ci.ts all`) + Coverage uploading to Codecov.
+  - **`release-pipeline.yml`**:
+    - Triggers: `release` (created)
+    - Steps: Build binaries -> Sign (if applicable) -> Upload Release Assets.
+- **Success Criteria:**
+  - [ ] PR validation runs in < 5 minutes
+  - [ ] Windows matrix job fails if a path is posix-only
+  - [ ] Release workflow publishes artifacts attached to GH Release
+- **Plan Tests:**
+  - Manual run of workflows on a test branch
+
+#### 10.3.3. Advanced Quality Gates & Policy Enforcement
+
+- **Action**: Implement strict gates that fail the build if specific criteria aren't met.
+- **Gates**:
+  - **Security Regression**: `deno task test:security` must pass 100%. Blocks PRs with security vulnerabilities.
+  - **Documentation Drift**: `verify_manifest_fresh.ts` must pass. Ensures `agents/manifest.json` matches the Markdown files.
+  - **Type Safety**: `deno check` must return zero errors. We do not allow `// @ts-ignore` without accompanying tracking issue reference.
+  - **Coverage Limits**: Fail if `branch` coverage drops below 80% or `function` coverage drops below 90%.
+- **Success Criteria:**
+  - [ ] Build fails if `verify_manifest_fresh.ts` detects changes
+  - [ ] Build fails if coverage report shows < 80%
+- **Plan Tests:**
+  - `tests/ci/gates_test.ts` (Verify gate logic with mocked inputs)
+
+#### 10.3.4. Local Git Hooks (`scripts/setup_hooks.ts`)
+
+- **Action**: Automate the installation of git hooks to shift-left validation.
+- **Hooks**:
+  - **`pre-commit`**:
+    - `deno task lint` (Format + Lint)
+    - `deno task check:docs` (Fast drift check)
+    - Rejects commit if files are messy.
+  - **`pre-push`**:
+    - `deno task test:security` (Prevent pushing vulnerable code)
+    - `deno task check` (Type check)
+- **Developer UX**:
+  - `deno task hooks:install` copies hooks to `.git/hooks/`.
+  - `deno task hooks:uninstall` removes them.
+- **Success Criteria:**
+  - [ ] Use `scripts/setup_hooks.ts` to install hooks without error
+  - [ ] `git commit` fails if formatting is incorrect
+  - [ ] `git push` fails if security tests fail
+- **Plan Tests:**
+  - Manual verification in a temporary git repo
+
+#### 10.3.5. Artifact Management and Publishing
+
+- **Action**: Standardize the output of the build process.
+- **Artifact Layout**:
+  ```text
+  dist/
+  ├── exoframe-x86_64-unknown-linux-gnu
+  ├── exoframe-x86_64-apple-darwin
+  ├── exoframe-aarch64-apple-darwin
+  └── exoframe-x86_64-pc-windows-msvc.exe
+  ```
+- **Validation**:
+  - Verify binary size is within limits (e.g. < 100MB).
+  - Run `dist/exoframe --version` to verify successful compilation.
+- **Success Criteria:**
+  - [ ] `scripts/ci.ts build` produces all 4 targets
+  - [ ] Binaries are executable on host system
+- **Plan Tests:**
+  - `tests/ci/build_test.ts` (Verify specific binary outputs exist)
+
+**Success Criteria:**
+
+1. [ ] `deno task ci` runs full pipeline locally
+2. [ ] GitHub Actions workflows migrated to use `deno task ci`
+3. [ ] Git hooks block bad commits locally
+4. [ ] Documentation drift prevents merging
+5. [ ] Security regression suite runs on every PR
+
 ## Phase 11: Testing & Quality Assurance
 
 > **Status:** 🏗️ IN PROGRESS (Steps 11.1-11.9 ✅ COMPLETED)\

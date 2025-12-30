@@ -3331,4 +3331,4 @@ We chose to build `src/flows/` as a lightweight, type-safe DAG engine (<700 LOC)
 2. **Auditability**: A security auditor can read our entire execution engine in 15 minutes. LangChain would require auditing a massive third-party library.
 3. **Dependencies**: We treat dependencies as liabilities. A "Files as API" system shouldn't depend on a framework that changes its API every week.
 
-For a detailed analysis, see: [ExoFrame_LangChain_Comparison.md](./ExoFrame_LangChain_Comparison.md).
+For a detailed analysis, see: [ExoFrame_LangChain_Comparison.md](./not_actual/ExoFrame_LangChain_Comparison.md).
