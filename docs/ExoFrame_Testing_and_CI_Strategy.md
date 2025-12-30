@@ -687,20 +687,41 @@ deno run -A scripts/ci.ts build
 
 We employ three distinct workflows to balance developer velocity with deployment rigor:
 
-| Workflow             | Trigger             | Scope                   | Purpose                                                                                                         |
-| :------------------- | :------------------ | :---------------------- | :-------------------------------------------------------------------------------------------------------------- |
-| **PR Validation**    | `pull_request`      | `check`, `test --quick` | **Fast Feedback**: Matrix builds on Linux, macOS, and Windows to catch platform-specific issues in < 5 mins.    |
-| **Merge Validation** | `push` to `main`    | `all`                   | **Full QA**: Comprehensive testing, full integration suite, and coverage enforcement.                           |
-| **Release Pipeline** | `release` (created) | `build`                 | **Distribution**: Generates and validates binaries for all 4 targets, then attaches them to the GitHub Release. |
+| Workflow             | Trigger             | Scope                   | Purpose                                                                                                      |
+| :------------------- | :------------------ | :---------------------- | :----------------------------------------------------------------------------------------------------------- |
+| **PR Validation**    | `pull_request`      | `check`, `test --quick` | **Fast Feedback**: Matrix builds on Linux, macOS, and Windows to catch platform-specific issues in < 5 mins. |
+| **Merge Validation** | `push` to `main`    | `all`                   | **Full QA**: Comprehensive testing, full integration suite, and coverage enforcement.                        |
+| **Release Pipeline** | `release` (created) | `build`                 | **Distribution**: Generates and validates binaries for all 4 targets.                                        |
 
 #### Quality Gates & Enforcement
 
 The pipeline enforces the following gates strictly:
 
-- **Security**: `test:security` suite must pass 100%. Blocks PRs with regression vulnerabilities.
-- **Documentation Drift**: `check:docs` ensures that agent manifests stay in sync with their source documentation.
-- **Coverage Limits**: The pipeline fails if `line` coverage drops below **60%** or `function` coverage drops below **50%**.
-- **Build Integrity**: Binaries are validated after compilation for size and basic executability.
+- **Security**: `test:security` suite must pass 100%.
+- **Documentation Drift**: `check:docs` ensures `agents/manifest.json` stays in sync with source code.
+- **Coverage Limits**: The pipeline fails if coverage drops below the defined thresholds (60% Lines / 50% Functions).
+- **Build Integrity**: Binaries are validated for size (>10MB) and basic execution.
+
+---
+
+### 3.5 Dry Run & CI Development
+
+To facilitate testing of the CI pipeline itself without triggering expensive build processes, the CI script supports a global `--dry-run` flag.
+
+- **Usage**: `deno run -A scripts/ci.ts --dry-run all`
+- **Behavior**: Instead of executing commands (like `deno test` or `deno compile`), it logs exactly what would be executed and returns success if the orchestration logic is sound.
+- **Use Case**: Testing new quality gates or modifying the build sequence.
+
+---
+
+### 3.6 Infrastructure Isolation
+
+Test code related to the CI pipeline and quality gates is isolated from regular project tests:
+
+- **Directory**: `tests_infra/`
+- **Contents**: Integration tests for `ci.ts`, gate verification, and artifact validation tests.
+- **Isolation**: These tests are **excluded** from the default `deno task test` run to prevent recursive execution or unnecessary overhead during unit testing.
+- **Execution**: Run manually via `deno test -A tests_infra/` or as part of the `ci.ts` pipeline logic.
 
 ---
 
@@ -1102,44 +1123,33 @@ When adding new features or refactoring:
 
 ### 9.5 Tools & Reports
 
-The `scripts/coverage.sh` script provides an all-in-one solution:
+The unified CI script handles coverage analysis and reporting:
 
 ```bash
-# Summary report (default)
-./scripts/coverage.sh
+# General coverage analysis (summed per file)
+deno run -A scripts/ci.ts coverage
 
-# HTML report (interactive, great for finding gaps)
-./scripts/coverage.sh html
+# Generates HTML report (coverage/html/index.html)
+deno task coverage:html
 
-# LCOV report (standard format)
-./scripts/coverage.sh lcov
-
-# Detailed line-by-line report
-./scripts/coverage.sh detailed
+# Generates LCOV report for CI (coverage/lcov.info)
+deno task coverage:lcov
 ```
 
 #### Report Types
 
-- **Summary:** Quick overview of percentages per file.
-- **HTML:** Interactive visualization. Highlights uncovered lines in red. Located at `coverage/html/index.html`.
-- **LCOV:** Standard format for CI/CD tools (Codecov, Coveralls). Located at `coverage/lcov.info`.
+- **Summary**: Terminal output with percentage of lines and functions per file.
+- **HTML**: Interactive visualization. Highlights uncovered lines in red. Located at `coverage/html/index.html`.
+- **LCOV**: Standard format for upstream coverage tools.
 
-### 9.6 CI/CD Integration
+### 9.6 CI Enforcement
 
-Example GitHub Actions workflow:
+In the `scripts/ci.ts` pipeline, coverage is verified using the following thresholds:
 
-```yaml
-- name: Run tests with coverage
-  run: deno task test:coverage
+- **Min Lines**: 60.0%
+- **Min Functions**: 50.0%
 
-- name: Generate LCOV report
-  run: deno task coverage:lcov
-
-- name: Upload to Codecov
-  uses: codecov/codecov-action@v3
-  with:
-    files: ./coverage/lcov.info
-```
+The `all` command runs `verifyCoverage()` which will automatically fail the pipeline if these are not met, providing immediate feedback on PRs.
 
 ### 9.7 Configuration
 
