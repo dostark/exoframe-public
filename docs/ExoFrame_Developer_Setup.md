@@ -77,7 +77,6 @@ ollama run llama3.2 "Hello, world!"
 - Without GPU, stick to smaller models (3b or 7b parameter variants)
 - Ollama uses ~2-4GB base memory plus model size
 
-
 4. (Optional) Install Obsidian (GUI knowledge management)
 
 Obsidian is not required for ExoFrame operation. Install only if you want to use the knowledge graph, dashboards, or Dataview features.
@@ -129,7 +128,6 @@ deno test --allow-read --allow-write --allow-run
 deno run --watch --allow-read --allow-write --allow-run src/main.ts
 ```
 
-
 6. (Optional) Initialize Obsidian vault
 
 ```bash
@@ -139,7 +137,6 @@ deno run --watch --allow-read --allow-write --allow-run src/main.ts
 # Verify the Activity Journal (SQLite) was initialized correctly
 deno test --allow-read --allow-write --allow-run tests/setup_db_test.ts
 ```
-
 
 7. (Optional) Configure Obsidian for ExoFrame compatibility
 
@@ -156,11 +153,13 @@ If you want to use Obsidian for knowledge management, configure the following:
 **Recommended Settings:**
 
 1. Go to **Settings → Files & Links**:
-  - ☑ **Automatically update internal links** — enables wikilinks like `[[Dashboard]]` to auto-update when files are renamed
-  - ☑ **Show all file types** — makes `.toml`, `.json` files visible in the sidebar
+
+- ☑ **Automatically update internal links** — enables wikilinks like `[[Dashboard]]` to auto-update when files are renamed
+- ☑ **Show all file types** — makes `.toml`, `.json` files visible in the sidebar
 
 2. (Optional) Go to **Settings → Editor**:
-  - ☑ Auto pair markdown syntax
+
+- ☑ Auto pair markdown syntax
 
 **Verify Configuration (Optional):**
 
@@ -170,7 +169,7 @@ deno test --allow-all tests/obsidian/
 
 # Expected: All tests pass, including:
 # - File watcher compatibility tests
-# - Dashboard content tests  
+# - Dashboard content tests
 # - Vault structure tests
 ```
 
@@ -207,7 +206,6 @@ Notes specific to WSL2:
 
 3. Windows-side utilities (optional convenience)
 
-
 - (Optional) Install Obsidian on Windows and open the WSL vault via `\\wsl$` share.
 - If you expect to run UI workflows from Windows, install the Windows Git client and ensure `core.autocrlf` matches your
   team policy.
@@ -231,12 +229,12 @@ echo "# Test Request" > ~/ExoFrame/Inbox/Requests/test.md
 
 ExoFrame uses a **hybrid format strategy**:
 
-| File Type                | Format   | Reason                            |
-| ------------------------ | -------- | --------------------------------- |
-| System config            | TOML     | Token-efficient for LLM context   |
-| Agent blueprints         | TOML     | Complex nested structures         |
+| File Type                | Format   | Reason                                                  |
+| ------------------------ | -------- | ------------------------------------------------------- |
+| System config            | TOML     | Token-efficient for LLM context                         |
+| Agent blueprints         | TOML     | Complex nested structures                               |
 | **Markdown frontmatter** | **YAML** | **Dataview plugin compatibility (Obsidian users only)** |
-| Deno config              | JSON     | Runtime requirement               |
+| Deno config              | JSON     | Runtime requirement                                     |
 
 #### YAML Frontmatter (Requests, Plans, Reports)
 
@@ -258,9 +256,10 @@ created_by: user@example.com
 
 **Why YAML for frontmatter?**
 
-* Obsidian's **Dataview plugin only parses YAML** frontmatter natively (relevant only if using Obsidian)
-- Standard Dataview `TABLE` queries work without custom JavaScript
-- Dashboard shows proper field values (not `-` placeholders)
+- Obsidian's **Dataview plugin only parses YAML** frontmatter natively (relevant only if using Obsidian)
+
+* Standard Dataview `TABLE` queries work without custom JavaScript
+* Dashboard shows proper field values (not `-` placeholders)
 
 #### Test Fixture Format
 
@@ -319,6 +318,44 @@ const yamlMatch = content.match(/^---\n([\s\S]*?)\n---/);
   replicate these steps.
 - Consider a declarative setup using Ansible (Ubuntu) and Winget/PowerShell (Windows) for reproducible developer
   environments.
+
+#### Embeddings build & tests 🔧
+
+We provide scripts and tests to build optional precomputed embeddings used for retrieval-augmented generation (RAG):
+
+- Script: `scripts/build_agents_embeddings.ts` supports three modes:
+  - `--mode mock` (default): deterministic mock embeddings (SHA-256 derived) — no external API or cost
+  - `--mode openai`: use OpenAI Embeddings API (requires `OPENAI_API_KEY`)
+  - `--mode precomputed --dir <path>`: copy validated precomputed embedding files from `<path>` into `agents/embeddings/`
+
+Each embedding file should be JSON with the minimal schema:
+
+```json
+{ "path": "agents/docs/documentation.md", "title": "Documentation quickstart", "vecs": [{ "text": "chunk text...", "vector": [0.1, 0.2, ...] } ] }
+```
+
+Run the embedding build script (mock):
+
+```bash
+# Mock mode (fast, free)
+den o run --allow-read --allow-write scripts/build_agents_embeddings.ts --mode mock
+```
+
+Run the precomputed copy mode:
+
+```bash
+deno run --allow-read --allow-write scripts/build_agents_embeddings.ts --mode precomputed --dir /path/to/precomputed
+# or set env var:
+PRECOMPUTED_EMB_DIR=/path/to/precomputed deno run --allow-read --allow-write scripts/build_agents_embeddings.ts --mode precomputed
+```
+
+Tests for the embedding builder live under `scripts/` and can be run directly with Deno:
+
+```bash
+deno test --allow-read --allow-write --allow-run scripts/build_agents_embeddings_test.ts scripts/build_agents_embeddings_precomputed_test.ts
+```
+
+The tests validate manifest generation, file copying, and basic shape of the embedding files.
 
 ### 5. Security & permission notes
 
