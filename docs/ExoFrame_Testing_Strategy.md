@@ -661,73 +661,63 @@ Deno.test("Example test", async () => {
 
 ---
 
-### 3.3 CI/CD Integration
+### 3.3 CI/CD Pipeline Integration
 
-**GitHub Actions Workflow:**
+ExoFrame uses a **"Single Script, Multiple Workflows"** architecture. All CI/CD logic is centralized in a unified controller script, ensuring that local development and cloud validation remain perfectly synchronized.
 
-```yaml
-# .github/workflows/test.yml
-name: Test Suite
+#### The CI Controller: `scripts/ci.ts`
 
-on: [push, pull_request]
+The project's quality gates are abstracted into a single Deno script using the `cliffy` command library. This allows both developers and automated runners to execute the same logic:
 
-jobs:
-  unit-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: v2.x
+```bash
+# Run static analysis (Fmt, Lint, Types, Docs Drift)
+deno run -A scripts/ci.ts check
 
-      - name: Run unit tests
-        run: deno test --allow-all
+# Run the test suite
+deno run -A scripts/ci.ts test
 
-      - name: Check coverage
-        run: |
-          deno test --coverage=cov_profile
-          deno coverage cov_profile --lcov > coverage.lcov
+# Run coverage verification with enforcement
+deno run -A scripts/ci.ts coverage
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: coverage.lcov
-
-  integration-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
-
-      - name: Run integration tests
-        run: deno test tests/integration/ --allow-all
-
-  security-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
-
-      - name: Run security tests
-        run: deno test tests/security/ --allow-read=. --allow-run
-
-  benchmarks:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: denoland/setup-deno@v1
-
-      - name: Run benchmarks
-        run: deno bench tests/benchmarks/ --allow-all
-
-      - name: Compare with baseline
-        run: |
-          deno bench tests/benchmarks/ --json > current.json
-          deno run --allow-read scripts/compare_benchmarks.ts \
-            --baseline=tests/benchmarks/baseline.json \
-            --current=current.json \
-            --threshold=20
+# Build cross-platform binaries
+deno run -A scripts/ci.ts build
 ```
+
+#### GitHub Actions Workflows
+
+We employ three distinct workflows to balance developer velocity with deployment rigor:
+
+| Workflow             | Trigger             | Scope                   | Purpose                                                                                                         |
+| :------------------- | :------------------ | :---------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| **PR Validation**    | `pull_request`      | `check`, `test --quick` | **Fast Feedback**: Matrix builds on Linux, macOS, and Windows to catch platform-specific issues in < 5 mins.    |
+| **Merge Validation** | `push` to `main`    | `all`                   | **Full QA**: Comprehensive testing, full integration suite, and coverage enforcement.                           |
+| **Release Pipeline** | `release` (created) | `build`                 | **Distribution**: Generates and validates binaries for all 4 targets, then attaches them to the GitHub Release. |
+
+#### Quality Gates & Enforcement
+
+The pipeline enforces the following gates strictly:
+
+- **Security**: `test:security` suite must pass 100%. Blocks PRs with regression vulnerabilities.
+- **Documentation Drift**: `check:docs` ensures that agent manifests stay in sync with their source documentation.
+- **Coverage Limits**: The pipeline fails if `line` coverage drops below **60%** or `function` coverage drops below **50%**.
+- **Build Integrity**: Binaries are validated after compilation for size and basic executability.
+
+---
+
+### 3.4 Local Git Hooks
+
+To "shift-left" code quality, ExoFrame provides automated git hooks that run the same gates as the CI pipeline before code is even committed or pushed.
+
+**Installation:**
+
+```bash
+deno task hooks:install
+```
+
+**Configured Hooks:**
+
+- **`pre-commit`**: Runs formatting, linting, and documentation drift checks. Rejects the commit if issues are found.
+- **`pre-push`**: Runs full type-checking and the security regression suite. Prevents pushing vulnerable or broken code to the remote.
 
 ---
 
