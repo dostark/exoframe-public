@@ -1,0 +1,14 @@
+---
+agent: claude
+scope: dev
+title: Claude provider adaptation notes
+short_summary: "Provider-specific tips for Claude usage (chunking and context inclusion)."
+version: "0.1"
+topics: ["provider-adaptations","prompts"]
+---
+
+# Claude provider adaptation notes
+
+- Claude handles longer contexts; include `short_summary` plus up to 4 chunks for high-confidence guidance.
+- Prefer explicit instruction to "consult manifest.json and short_summary first" in your prompt.
+- Example template provided in the OpenAI doc applies with increased chunk allowance.

@@ -1,0 +1,18 @@
+name: Validate Agent Docs
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  validate-agent-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run validation script
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1
+      - name: Validate agent docs
+        run: deno run --allow-read scripts/validate_agents_docs.ts
