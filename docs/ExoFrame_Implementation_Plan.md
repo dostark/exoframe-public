@@ -6505,13 +6505,13 @@ Phase 10 collects finishing touches that improve user experience, reduce operati
 
 **Success Criteria:**
 
-1. [ ] Create `agents/` directory with a standardized layout and a top-level `agents/README.md` describing intent and maintenance policy.
-2. [ ] Add a Copilot-focused doc (e.g., `agents/copilot/exoframe.md`) containing: short repo summary, critical conventions (file locations, important modules), canonical prompts, example workflows, and "Do / Don't" guidance for automation tasks.
-3. [ ] Add provider-specific adaptation docs under `agents/providers/` (OpenAI, Claude, Google) that explain model-specific considerations (token limits, tooling, prompt templates) and include provider-tailored example prompts.
-4. [ ] Define a small YAML frontmatter schema for agent docs (required fields: `agent`, `scope`, `title`, `summary`, `version`) so the docs are machine-discoverable and validate with a lightweight `scripts/validate_agents_docs.ts` script.
-5. [ ] Migrate or reference existing `src/AGENT_INSTRUCTIONS.md`, `tests/AGENT_INSTRUCTIONS.md`, and `docs/AGENT_INSTRUCTIONS.md` so links remain intact; adopt redirects or thin wrappers for backwards compatibility for a transition period.
-6. [ ] Add CI validation (linting job) that runs the validation script on PRs and ensures each agent doc contains required metadata and at least one canonical example prompt.
-7. [ ] Add a short quickstart in `agents/docs/documentation.md` that explains how to use the `agents/` content with VS Code Copilot / Copilot Labs and other agent interfaces.
+1. [x] Create `agents/` directory with a standardized layout and a top-level `agents/README.md` describing intent and maintenance policy.
+2. [x] Add a Copilot-focused doc (e.g., `agents/copilot/exoframe.md`) containing: short repo summary, critical conventions (file locations, important modules), canonical prompts, example workflows, and "Do / Don't" guidance for automation tasks.
+3. [x] Add provider-specific adaptation docs under `agents/providers/` (OpenAI, Claude, Google) that explain model-specific considerations (token limits, tooling, prompt templates) and include provider-tailored example prompts.
+4. [x] Define a small YAML frontmatter schema for agent docs (required fields: `agent`, `scope`, `title`, `summary`, `version`) so the docs are machine-discoverable and validate with a lightweight `scripts/validate_agents_docs.ts` script.
+5. [x] Migrate existing `src/AGENT_INSTRUCTIONS.md`, `tests/AGENT_INSTRUCTIONS.md`, and `docs/AGENT_INSTRUCTIONS.md` into `agents/` and consolidate enhanced guidance; legacy files removed.
+6. [x] Add CI validation (linting job) that runs the validation script on PRs and ensures each agent doc contains required metadata and at least one canonical example prompt.
+7. [x] Add a short quickstart in `agents/docs/documentation.md` that explains how to use the `agents/` content with VS Code Copilot / Copilot Labs and other agent interfaces.
 
 **Test Definitions:**
 
@@ -6531,7 +6531,7 @@ Phase 10 collects finishing touches that improve user experience, reduce operati
 - Add a `scripts/inject_agent_context.ts` utility which, given a target `agent` and a short query, returns the most relevant `short_summary` + `chunks` (or the full doc when small) to be appended to prompts. This makes it straightforward for CI scripts or local agent wrappers to include `agents/` content deterministically.
 - Provide a VS Code snippet/task and a short Copilot Labs prompt template that instructs Copilot to "consult the `agents/manifest.json` and include any matching `short_summary` or `chunks` before answering or editing files" — this reduces ambiguity for dev-time agents.
 - Include a lightweight content-safety check in `scripts/validate_agents_docs.ts` that flags secrets, plaintext tokens, or sensitive paths; CI should fail if secrets are found in agent docs.
-- Maintain thin redirect files at the old locations (`src/AGENT_INSTRUCTIONS.md`, `tests/AGENT_INSTRUCTIONS.md`, `docs/AGENT_INSTRUCTIONS.md`) that point to the new `agents/` locations and explain the migration and deprecation timeline.
+- Legacy `AGENT_INSTRUCTIONS.md` files have been consolidated into `agents/` and removed; references and Implementation Plan updated to point to `agents/` equivalents.
 
 **Enhancements to maximize agent adoption (multi-provider):**
 

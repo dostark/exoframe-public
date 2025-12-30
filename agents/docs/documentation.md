@@ -57,3 +57,40 @@ Examples
 
 Examples section
 - Example prompt: "Draft a short 'How-to' section for adding a new agent doc in `agents/` following the schema and validation rules."
+
+## Full migration: Documentation guidelines (extended)
+
+### Core Documentation Patterns
+
+- The Refinement Loop: request refinement of Implementation Plan steps before implementing; ensure success criteria are measurable.
+- Documentation Cleanup: remove planning artifacts from code; keep history in git and planning docs.
+
+### Test-Driven Documentation
+
+All documentation changes MUST be coordinated with implementation: verify refined Implementation Plan step exists and add TDD test cases when defining new behavior.
+
+### Implementation Plan Structure
+
+Each step MUST include dependencies, rollback, action, justification, TDD test cases, and measurable Success Criteria. Use step status markers (COMPLETED, IN PROGRESS, BLOCKED) to track progress.
+
+### Version Synchronization
+
+Documents that share version numbers MUST be updated together. Add a checklist for updating versions and release dates.
+
+### Terminology Consistency
+
+Maintain a standard Terminology Reference and link to it from major documents. Use consistent capitalization and add new terms to the reference when needed.
+
+### Formatting Standards
+
+- Headers must include version, release date, status, and references
+- Use fenced code blocks with language identifiers
+- Use consistent table formatting
+
+### Cross-Reference Guidelines
+
+Use relative paths for internal links and include file paths when referencing code. Keep documentation changes minimal and tied to Implementation Plan steps.
+
+---
+
+*The above content is migrated from `docs/AGENT_INSTRUCTIONS.md` to ensure `agents/docs/documentation.md` contains the full, authoritative documentation guidelines.*

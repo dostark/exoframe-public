@@ -30,3 +30,35 @@ Do / Don't
 
 Examples section
 - Example prompt: "You are an engineer. Propose a set of failing tests that validate behavior X. Output JSON with test names and assertions."
+
+## Full migration: Source guidelines (extended)
+
+### Project Structure
+
+- `src/ai/` — AI/LLM provider implementations
+- `src/cli/` — CLI command implementations
+- `src/config/` — Configuration schemas and loaders
+- `src/parsers/` — File parsers (frontmatter, etc.)
+- `src/schemas/` — Zod validation schemas
+- `src/services/` — Core business logic services
+- `src/main.ts` — Application entry point
+
+### Module Documentation
+
+Always include file-level documentation with responsibilities and the Implementation Plan step the module implements. Use clear section separators for large files, and include types/interfaces near the top.
+
+### Type Definitions
+
+Export types that consumers need and keep internal types private. Provide thorough JSDoc or TypeScript comments for public types.
+
+### Configuration Schema
+
+Use Zod for config validation and keep config options in `exo.config.toml` examples. Provide default values and bounds where possible.
+
+### Service Pattern
+
+Constructor-based DI: pass `config`, `db`, and `provider` into services. Keep side effects out of constructors where feasible.
+
+---
+
+*The above content is migrated from `src/AGENT_INSTRUCTIONS.md` to ensure the `agents/source/exoframe.md` document contains the full, authoritative developer guidance.*
