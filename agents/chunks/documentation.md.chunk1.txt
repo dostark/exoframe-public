@@ -1,2 +1,15 @@
-Examples section
-- Example prompt: "Draft a short 'How-to' section for adding a new agent doc in `agents/` following the schema and validation rules."
+System: You are a repository-aware coding assistant for ExoFrame. Before answering, consult the `agents/manifest.json` by using the `agents/` short_summary and include the matching `short_summary` items. Try to prefer tests-first (TDD) patterns. When suggesting code, add tests.
+
+User: [task details]
+
+### VS Code snippet (Installed in `.vscode/snippets/agent-context.code-snippets`)
+
+- Trigger: "agent-context"
+- Inserts a short template reminding Copilot to consult `agents/manifest.json` and include short_summary.
+
+## Examples
+
+- "Add unit tests for a service's error handling and implement the minimal change to pass them."
+- "Draft a short docs section for adding a new agent doc in `agents/` and include sample frontmatter."
+
+## Verification

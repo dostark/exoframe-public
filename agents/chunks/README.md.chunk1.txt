@@ -13,5 +13,6 @@ Maintenance
 - Use `scripts/validate_agents_docs.ts` to validate frontmatter and safety rules.
 - Update the manifest with `scripts/build_agents_index.ts` if new docs are added.
 
-Canonical prompt (short):
-"You are a dev-time agent. Before performing repository-specific changes, consult `agents/manifest.json` and include matching `short_summary` items for relevant docs in `agents/`."
+Regenerating manifest & chunks
+------------------------------
+If you add or update files under `agents/`, regenerate the manifest and pre-chunk artifacts with:

@@ -1,0 +1,17 @@
+- `src/ai/` — AI/LLM provider implementations
+- `src/cli/` — CLI command implementations
+- `src/config/` — Configuration schemas and loaders
+- `src/parsers/` — File parsers (frontmatter, etc.)
+- `src/schemas/` — Zod validation schemas
+- `src/services/` — Core business logic services
+- `src/main.ts` — Application entry point
+
+### Module Documentation
+
+Always include file-level documentation with responsibilities and the Implementation Plan step the module implements. Use clear section separators for large files, and include types/interfaces near the top.
+
+### Type Definitions
+
+Export types that consumers need and keep internal types private. Provide thorough JSDoc or TypeScript comments for public types.
+
+### Configuration Schema

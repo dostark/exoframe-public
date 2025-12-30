@@ -127,6 +127,53 @@ async function buildOpenAI() {
   console.log(`Built OpenAI embeddings to ${OUT_DIR}`);
 }
 
+async function buildPrecomputed(dir: string) {
+  // Copy & validate precomputed embedding files from `dir` into OUT_DIR
+  try {
+    const stat = await Deno.stat(dir).catch(() => null);
+    if (!stat || !stat.isDirectory) {
+      console.error(`Precomputed dir not found or not a directory: ${dir}`);
+      Deno.exit(2);
+    }
+
+    await Deno.mkdir(OUT_DIR, { recursive: true });
+    const index: Record<string, unknown>[] = [];
+
+    for await (const entry of walk(dir, { exts: [".json"], maxDepth: 1 })) {
+      if (!entry.isFile) continue;
+      const raw = await Deno.readTextFile(entry.path);
+      let obj;
+      try {
+        obj = JSON.parse(raw) as Record<string, unknown>;
+      } catch (e) {
+        console.error(`Invalid JSON in precomputed file ${entry.path}: ${e}`);
+        Deno.exit(2);
+      }
+      if (!obj.path || !obj.vecs) {
+        console.error(`Precomputed file ${entry.path} missing required keys (path, vecs)`);
+        Deno.exit(2);
+      }
+      // validate vecs shape minimally
+      if (!Array.isArray(obj.vecs)) {
+        console.error(`Precomputed file ${entry.path}: vecs must be an array`);
+        Deno.exit(2);
+      }
+      const outPath = `${OUT_DIR}/${entry.name}`;
+      await Deno.writeTextFile(outPath, JSON.stringify(obj, null, 2));
+      index.push({ path: obj.path, title: obj.title ?? entry.name, embeddingFile: outPath });
+    }
+
+    await Deno.writeTextFile(
+      `${OUT_DIR}/manifest.json`,
+      JSON.stringify({ generated_at: new Date().toISOString(), index }, null, 2),
+    );
+    console.log(`Copied precomputed embeddings to ${OUT_DIR}`);
+  } catch (e) {
+    console.error(`Error processing precomputed embeddings: ${e}`);
+    Deno.exit(2);
+  }
+}
+
 async function main() {
   const args = Object.fromEntries(Deno.args.reduce((acc, cur, i, arr) => {
     if (cur.startsWith("--")) acc.push([cur.slice(2), arr[i + 1] || ""]);
@@ -136,8 +183,15 @@ async function main() {
   const mode = (args["mode"] || "mock").toLowerCase();
   if (mode === "mock") await buildMock();
   else if (mode === "openai") await buildOpenAI();
-  else {
-    console.error("Unknown mode: use --mode mock|openai");
+  else if (mode === "precomputed") {
+    const dir = args["dir"] || Deno.env.get("PRECOMPUTED_EMB_DIR") || "";
+    if (!dir) {
+      console.error("--mode precomputed requires --dir <path> or PRECOMPUTED_EMB_DIR env var");
+      Deno.exit(2);
+    }
+    await buildPrecomputed(dir);
+  } else {
+    console.error("Unknown mode: use --mode mock|openai|precomputed");
     Deno.exit(2);
   }
 }

@@ -1,0 +1,1 @@
+ExoFrame is a Deno + TypeScript framework for flow orchestration and LLM-integrated automation. Use this doc for quick Copilot context: key directories, testing conventions (use `initTestDbService()`), and canonical prompts for suggested tests and refactors.

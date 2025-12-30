@@ -30,7 +30,7 @@ function chunkText(text: string, size = 800): string[] {
   return chunks;
 }
 
-async function main() {
+export async function generateManifestObject() {
   const docs = [] as Record<string, unknown>[];
   await Deno.mkdir(CHUNKS_DIR, { recursive: true });
   for await (const entry of walk(AGENTS_DIR, { exts: [".md"], maxDepth: 3 })) {
@@ -60,9 +60,15 @@ async function main() {
     });
   }
 
-  const manifest = { generated_at: new Date().toISOString(), docs };
+  return { generated_at: new Date().toISOString(), docs };
+}
+
+export async function buildIndex() {
+  const manifest = await generateManifestObject();
   await Deno.writeTextFile(OUT_MANIFEST, JSON.stringify(manifest, null, 2));
   console.log(`Wrote manifest to ${OUT_MANIFEST}`);
 }
 
-if (import.meta.main) await main();
+if (import.meta.main) await buildIndex();
+
+export { chunkText, extractFrontmatter };

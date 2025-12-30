@@ -35,6 +35,19 @@ async function findBest(agent: string, query: string) {
   return best;
 }
 
+export async function inject(agent: string, query: string, _maxChunks = 2) {
+  const best = await findBest(agent, query);
+  if (!best.path) return { found: false };
+  const mdBody = best.md!.replace(/^---[\s\S]*?---/, "");
+  const paragraph = mdBody.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)[0] || "";
+  return {
+    found: true,
+    path: best.path,
+    title: String(best.fm!.title || ""),
+    short_summary: String(best.fm!.short_summary || ""),
+    snippet: paragraph,
+  };
+}
 async function main() {
   const args = new Map<string, string>();
   for (let i = 0; i < Deno.args.length; i++) {

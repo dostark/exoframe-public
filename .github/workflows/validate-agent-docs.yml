@@ -16,3 +16,7 @@ jobs:
           deno-version: v1
       - name: Validate agent docs
         run: deno run --allow-read scripts/validate_agents_docs.ts
+      - name: Verify agents manifest is fresh
+        run: deno run --allow-read scripts/verify_manifest_fresh.ts
+      - name: Run agent retrieval smoke test
+        run: deno test --allow-read tests/agent_retrieval_smoke_test.ts

@@ -16,7 +16,6 @@ import { afterEach, beforeEach, describe, it } from "jsr:@std/testing@^1.0.0/bdd
 import { join } from "@std/path";
 import { PlanCommands } from "../../src/cli/plan_commands.ts";
 import { DatabaseService } from "../../src/services/db.ts";
-import { ensureDir } from "@std/fs";
 import { createCliTestContext } from "./helpers/test_setup.ts";
 
 describe("PlanCommands", () => {

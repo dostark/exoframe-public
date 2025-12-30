@@ -10,3 +10,16 @@ try {
 
 Examples section
 - Example prompt: "Provide 3 failing unit tests showing how PlanWriter handles malformed plan.json and missing permissions."
+
+## Full migration: Test guidelines (extended)
+
+### Coverage-Driven TDD
+
+Target: Minimum 70% branch coverage on new features. Request an implementation with a coverage target and add tests to cover uncovered branches using `deno test --coverage`.
+
+### Test Organization and Deduplication
+
+- `tests/cli/` - CLI command tests
+- `tests/services/` - Service unit tests
+- `tests/integration/` - End-to-end workflows
+- `tests/helpers/` - Shared test utilities

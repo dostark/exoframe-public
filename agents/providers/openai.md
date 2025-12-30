@@ -10,6 +10,7 @@ topics: ["provider-adaptations","prompts"]
 # OpenAI provider adaptation notes
 
 - Token hints: Keep `short_summary` under ~800 tokens for reliable inclusion in prompts.
+- Token guidance: gpt-4o (128k context); text-embedding-3-small (1536 dims).
 - Use `inject_agent_context.ts` to include `short_summary` + at most two chunks for larger docs.
 - Example prompt template:
 ```

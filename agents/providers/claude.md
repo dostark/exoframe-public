@@ -10,6 +10,7 @@ topics: ["provider-adaptations","prompts"]
 # Claude provider adaptation notes
 
 - Claude handles longer contexts; include `short_summary` plus up to 4 chunks for high-confidence guidance.
+- Token guidance: Claude 3.5 Sonnet (200k context).
 - Prefer explicit instruction to "consult manifest.json and short_summary first" in your prompt.
 - Example template provided in the OpenAI doc applies with increased chunk allowance.
 

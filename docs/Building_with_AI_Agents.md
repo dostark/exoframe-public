@@ -1457,9 +1457,9 @@ This isn't inconsistency—it's documentation of real engineering decisions:
 **What We Created**:
 
 ```
-src/AGENT_INSTRUCTIONS.md     # Source development guidelines
-tests/AGENT_INSTRUCTIONS.md   # Test development guidelines
-docs/AGENT_INSTRUCTIONS.md    # Documentation development guidelines
+agents/source/exoframe.md     # Source development guidelines
+agents/tests/testing.md       # Test development guidelines
+agents/docs/documentation.md  # Documentation development guidelines
 ```
 
 **The Critical Addition—TDD as a Gate**:
