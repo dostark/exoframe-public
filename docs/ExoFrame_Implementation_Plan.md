@@ -6497,9 +6497,81 @@ Phase 10 collects finishing touches that improve user experience, reduce operati
 - Added documentation at `docs/CostFree_LLMs.md` with setup instructions, a sample `exo.config` snippet, environment variables, and instructions for running the manual integration test.
 - The manual integration test is intentionally **ignored by default** and also guards on `EXO_ENABLE_PAID_LLM=1` and the appropriate API key to prevent accidental paid calls in CI or local runs.
 
-### Step 10.2: UX polish and micro-optimizations 🔲 Planned
+### Step 10.2: Modernize IDE/Agent instruction files for VS Code (Copilot) & multi-provider agents 🔧 Planned
 
-- Minor UI/UX tweaks, accessibility labels, keyboard shortcuts review, and minor performance tunings.
+**Location:** `agents/` (new top-level directory), plus references in `src/AGENT_INSTRUCTIONS.md`, `tests/AGENT_INSTRUCTIONS.md`, and `docs/AGENT_INSTRUCTIONS.md` (these may be renamed to `agents/*.md` or preserved as small redirects).
+
+**Goal:** Establish a clear, provider-agnostic, and machine-friendly set of agent instruction files that are optimized for consumption by VS Code Copilot (dev-time agents) and easily adaptable for OpenAI, Claude, and Google agent integrations. These files will provide concise repository context, canonical prompts, safe/unsafe patterns, and quick-start examples that agents can use to build task-specific context for development work.
+
+**Success Criteria:**
+
+1. [ ] Create `agents/` directory with a standardized layout and a top-level `agents/README.md` describing intent and maintenance policy.
+2. [ ] Add a Copilot-focused doc (e.g., `agents/copilot/exoframe.md`) containing: short repo summary, critical conventions (file locations, important modules), canonical prompts, example workflows, and "Do / Don't" guidance for automation tasks.
+3. [ ] Add provider-specific adaptation docs under `agents/providers/` (OpenAI, Claude, Google) that explain model-specific considerations (token limits, tooling, prompt templates) and include provider-tailored example prompts.
+4. [ ] Define a small YAML frontmatter schema for agent docs (required fields: `agent`, `scope`, `title`, `summary`, `version`) so the docs are machine-discoverable and validate with a lightweight `scripts/validate_agents_docs.ts` script.
+5. [ ] Migrate or reference existing `src/AGENT_INSTRUCTIONS.md`, `tests/AGENT_INSTRUCTIONS.md`, and `docs/AGENT_INSTRUCTIONS.md` so links remain intact; adopt redirects or thin wrappers for backwards compatibility for a transition period.
+6. [ ] Add CI validation (linting job) that runs the validation script on PRs and ensures each agent doc contains required metadata and at least one canonical example prompt.
+7. [ ] Add a short quickstart in `docs/AGENT_INSTRUCTIONS.md` that explains how to use the `agents/` content with VS Code Copilot / Copilot Labs and other agent interfaces.
+
+**Test Definitions:**
+
+- Unit tests: `tests/agents_docs_test.ts` to validate YAML schema and presence of required sections and examples. ✅
+- Integration (manual): A documented manual test that illustrates loading `agents/copilot/exoframe.md` content into VS Code Copilot (via Copilot Labs or local Copilot preview) and verifies suggested code or prose references repository-specific guidance.
+- CI checks: `validate-agent-docs` workflow step that fails PRs missing required metadata or example prompts.
+
+**Notes:**
+
+- Use YAML frontmatter to provide metadata helpful for automated indexing and filtering (e.g., `agent`, `scope`, `tags`, `short_summary`, `version`). Keep frontmatter minimal and stable.
+- Provide a small `agents/manifest.json` (or `manifest.yaml`) that lists available agent docs, version, and per-doc `short_summary` and `topics` so automated tools can discover content without scanning the whole tree.
+- Add a per‑doc `short_summary` and a `summary.md` (one paragraph) to ensure quick ingestion by agents with limited token budgets.
+- Distinguish clearly between "Dev/IDE agent instructions" and runtime agents defined in `Blueprints/Agents/` in the header of each agent doc so they are not confused. ✅
+- Keep provider-specific docs limited to adaptation guidance (token constraints, tool integration notes, prompt templates) so the same core content can be reused across providers.
+- Add a `scripts/build_agents_index.ts` that produces both a human-friendly `agents/manifest.json` and a pre-chunked artifacts folder `agents/chunks/` for quick retrieval.
+- Provide an optional `agents/embeddings/` index (vector store or serialized JSON) and a `scripts/build_agents_embeddings.ts` to support retrieval-augmented generation (RAG) for providers that support embeddings (OpenAI, Claude, Google). This is optional but dramatically increases the probability that external agents will find and use relevant passages.
+- Add a `scripts/inject_agent_context.ts` utility which, given a target `agent` and a short query, returns the most relevant `short_summary` + `chunks` (or the full doc when small) to be appended to prompts. This makes it straightforward for CI scripts or local agent wrappers to include `agents/` content deterministically.
+- Provide a VS Code snippet/task and a short Copilot Labs prompt template that instructs Copilot to "consult the `agents/manifest.json` and include any matching `short_summary` or `chunks` before answering or editing files" — this reduces ambiguity for dev-time agents.
+- Include a lightweight content-safety check in `scripts/validate_agents_docs.ts` that flags secrets, plaintext tokens, or sensitive paths; CI should fail if secrets are found in agent docs.
+- Maintain thin redirect files at the old locations (`src/AGENT_INSTRUCTIONS.md`, `tests/AGENT_INSTRUCTIONS.md`, `docs/AGENT_INSTRUCTIONS.md`) that point to the new `agents/` locations and explain the migration and deprecation timeline.
+
+**Enhancements to maximize agent adoption (multi-provider):**
+
+1. Manifest & short summaries — agents often prefer small, structured entry points. `agents/manifest.json` + `short_summary` fields make it trivial for any agent to discover and ingest the most relevant content.
+2. Chunking & embeddings — split long docs into small chunks and optionally precompute embeddings to enable fast semantic retrieval with RAG. Embed building should be provider-agnostic and reversible.
+3. Prompt injection helpers — `scripts/inject_agent_context.ts` and a simple CLI (`bin/agent-context`) allow any automation pipeline to deterministically insert curated context into prompts.
+4. Provider adapters — document explicit prompt templates for OpenAI/Claude/Google that include how to handle token limits and instruct the agent to reference `manifest.json` first.
+5. VS Code integration — provide a snippet and Copilot Labs prompt that standardizes how devs include `agents/` content in copilot requests; include a small VS Code task to run `bin/agent-context` and copy the returned context into the clipboard for manual use.
+6. CI & tests — build a `validate-agent-docs` workflow that runs schema checks, safety checks, and a retrieval smoke test that verifies `inject_agent_context` returns content for a small list of canonical queries.
+7. Monitoring & metrics — optionally add a manual logging step in developer agent wrappers to count usage (how often a doc was injected) so teams can monitor whether docs are actually being used and which docs are most useful.
+
+**Implementation Plan (step-by-step, extended):**
+
+1. Create `agents/README.md` with purpose, schema reference, and maintenance guidelines.
+2. Add `agents/copilot/exoframe.md` (concise repo summary, key files, canonical prompts, example dev tasks, "Do/Don't" guidance) and a `summary.md` per doc for quick ingestion.
+3. Add `agents/providers/{openai,claude,google}.md` with adaptation notes and sample prompt templates (include `token_limit_hints` and examples of `inject_agent_context` usage).
+4. Implement `scripts/validate_agents_docs.ts` and `tests/agents_docs_test.ts` to check schema, required fields, safety rules, and presence of canonical prompts.
+5. Implement `scripts/build_agents_index.ts` (creates `manifest.json` and `chunks/`) and `scripts/build_agents_embeddings.ts` optionally to produce `agents/embeddings/*`.
+6. Add `scripts/inject_agent_context.ts` and a thin CLI wrapper `bin/agent-context` that returns the best matching short_summary and chunk set for a query and agent type.
+7. Add CI workflow step `validate-agent-docs` that runs validation + retrieval smoke test + optional embedding build check.
+8. Add VS Code snippet and a short `docs/AGENT_INSTRUCTIONS.md` quickstart with Copilot Labs instructions and an example using `bin/agent-context`.
+9. Migrate or add references from the existing `AGENT_INSTRUCTIONS.md` files to the new `agents/` structure; add small redirect/wrapper files in the original locations for 3 months before deprecation.
+10. Add an integration (manual) test and a small automated smoke test that runs `bin/agent-context` for canonical queries and asserts it returns expected short_summary strings and at least one chunk.
+
+**Additional Exit Criteria:**
+
+- [ ] `agents/manifest.json` is present and lists all agent docs with `short_summary` and `topics`.
+- [ ] `bin/agent-context` / `scripts/inject_agent_context.ts` returns relevant context for canonical queries in CI smoke tests.
+- [ ] Validation script and tests added and green in CI (schema, safety rules, retrieval smoke test).
+- [ ] VS Code snippet and quickstart doc added; at least one developer has verified the Copilot flow (manual verification step).
+- [ ] Old `AGENT_INSTRUCTIONS.md` locations contain redirects and a clear deprecation timeline noted.
+
+**Estimated Effort & Risks (updated):**
+
+- Effort: 2–3 days for initial scaffold, validation scripts, and CI integration; another 1–2 days for embedding index and optional RAG flow. Adding CI retrieval smoke tests and provider-specific prompts increases testing overhead but improves reliability.
+- Risks: Embeddings and RAG introduce maintenance and cost considerations. If using external embeddings, make the embedding build optional and gated behind CI flags (e.g., `EXO_BUILD_EMBEDDINGS=1`) to prevent accidental costs.
+
+**Final Note:**
+
+The combination of a manifest, short summaries, chunking, optional embeddings, and deterministic prompt-injection helpers greatly increases the chance that Copilot, OpenAI, Claude, or Google agents will find and consult the authoritative `agents/` docs when performing repo-specific development tasks. This approach emphasizes deterministic, auditable pipelines over hoping an agent "guesses" to look in a particular file.
 
 ### Exit Criteria
 
