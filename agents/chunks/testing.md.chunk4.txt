@@ -1,0 +1,7 @@
+### Integration TestEnvironment — Recommended Pattern
+
+Use `TestEnvironment.create()` for full integration tests that require workspace layout, DB, and optional git initialization. Prefer small, focused integration tests that exercise end-to-end behavior with deterministic teardown.
+
+---
+
+*The above content is migrated from `tests/AGENT_INSTRUCTIONS.md` to ensure the `agents/tests/testing.md` document contains the full guidance used by test-focused agents.*

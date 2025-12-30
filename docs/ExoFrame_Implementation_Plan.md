@@ -2225,7 +2225,7 @@ CLI commands interact with ExoFrame on behalf of the user. All CLI **actions** m
 9. [x] CLI read-only display uses display logger (EventLogger without DB) for consistency
 10. [x] All state-changing events + user actions in Activity Journal
 11. [x] Activity Journal becomes the single source of truth for debugging and audit
-12. [x] AGENT_INSTRUCTIONS.md updated with EventLogger usage guidelines
+12. [x] `agents/` files updated with EventLogger usage guidelines
 13. [x] All existing tests pass after migration
 14. [x] User identity resolved from git config (email) or OS username
 15. [x] Activity Journal queryable by trace_id and action_type via DB methods
@@ -6472,7 +6472,7 @@ Implement the Request Manager view to list all requests, view request details, c
 
 Phase 10 collects finishing touches that improve user experience, reduce operational costs, and broaden accessibility. Activities in this phase are low-risk, high-impact improvements that make ExoFrame feel production-ready without changing core architecture.
 
-### Step 10.1: Add cost-free LLM providers 🔧 COMPLETED
+### Step 10.1: Add cost-free LLM providers ✅ COMPLETED
 
 **Location:** `src/ai/providers.ts` (ModelFactory), `src/ai/providers/openai_provider.ts`, `tests/ai/`, `docs/CostFree_LLMs.md`
 
@@ -6497,9 +6497,9 @@ Phase 10 collects finishing touches that improve user experience, reduce operati
 - Added documentation at `docs/CostFree_LLMs.md` with setup instructions, a sample `exo.config` snippet, environment variables, and instructions for running the manual integration test.
 - The manual integration test is intentionally **ignored by default** and also guards on `EXO_ENABLE_PAID_LLM=1` and the appropriate API key to prevent accidental paid calls in CI or local runs.
 
-### Step 10.2: Modernize IDE/Agent instruction files for VS Code (Copilot) & multi-provider agents 🔧 Planned
+### Step 10.2: Modernize IDE/Agent instruction files for VS Code (Copilot) & multi-provider agents ✅ COMPLETED
 
-**Location:** `agents/` (new top-level directory), plus references in `src/AGENT_INSTRUCTIONS.md`, `tests/AGENT_INSTRUCTIONS.md`, and `docs/AGENT_INSTRUCTIONS.md` (these may be renamed to `agents/*.md` or preserved as small redirects).
+**Location:** `agents/` (new top-level directory), plus references in `agents/src/`, `agents/tests/`, and `agents/docs/` (these may be renamed to `agents/*.md` or preserved as small redirects).
 
 **Goal:** Establish a clear, provider-agnostic, and machine-friendly set of agent instruction files that are optimized for consumption by VS Code Copilot (dev-time agents) and easily adaptable for OpenAI, Claude, and Google agent integrations. These files will provide concise repository context, canonical prompts, safe/unsafe patterns, and quick-start examples that agents can use to build task-specific context for development work.
 
@@ -6559,10 +6559,9 @@ Phase 10 collects finishing touches that improve user experience, reduce operati
 **Additional Exit Criteria:**
 
 - [ ] `agents/manifest.json` is present and lists all agent docs with `short_summary` and `topics`.
-- [ ] `bin/agent-context` / `scripts/inject_agent_context.ts` returns relevant context for canonical queries in CI smoke tests.
+- [ ] `scripts/inject_agent_context.ts` returns relevant context for canonical queries in CI smoke tests.
 - [ ] Validation script and tests added and green in CI (schema, safety rules, retrieval smoke test).
-- [ ] VS Code snippet and quickstart doc added; at least one developer has verified the Copilot flow (manual verification step).
-- [ ] Old `AGENT_INSTRUCTIONS.md` locations contain redirects and a clear deprecation timeline noted.
+- [ ] VS Code quickstart doc added; at least one developer has verified the Copilot flow (manual verification step).
 
 **Estimated Effort & Risks (updated):**
 

@@ -357,7 +357,32 @@ deno test --allow-read --allow-write --allow-run scripts/build_agents_embeddings
 
 The tests validate manifest generation, file copying, and basic shape of the embedding files.
 
-### 5. Security & permission notes
+### 5. Agent Context & Documentation
+
+ExoFrame includes a dedicated `agents/` directory containing machine-friendly documentation, provider adaptation notes (OpenAI, Claude, Google), and canonical prompt templates. This directory is designed to be consumed by both VS Code Copilot (dev-time) and the ExoFrame runtime system.
+
+**Usage with VS Code / Copilot:**
+When asking Copilot to perform repository tasks, it is highly recommended to instruct it to consult `agents/manifest.json`. The recommended canonical prompt is:
+
+> "You are a dev-time agent. Before performing repository-specific changes, consult `agents/manifest.json` and include matching `short_summary` items for relevant docs in `agents/`."
+
+**Key components:**
+
+- `agents/manifest.json`: An index of all available agent docs, topics, and chunk references.
+- `agents/providers/`: Specific guidance for different LLM providers (token limits, prompt structures).
+- `agents/copilot/`: Quick-start context for IDE agents.
+
+**Maintenance:**
+If you add or update documentation in `agents/`, you must regenerate the manifest and chunks to keep the index fresh:
+
+```bash
+# Regenerate manifest and chunks
+deno run --allow-read --allow-write scripts/build_agents_index.ts
+```
+
+This ensures downstream tools and agents always have access to the latest documentation.
+
+### 6. Security & permission notes
 
 - On Ubuntu, ensure `libsecret` is installed for keyring support: `sudo apt install -y libsecret-1-0 libsecret-1-dev`.
 - On WSL, GUI keyrings are not available by default; prefer environment-based secrets or Windows credential manager with

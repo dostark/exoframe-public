@@ -3,7 +3,7 @@
   "title": "ExoFrame Documentation Development Guidelines",
   "vecs": [
     {
-      "text": "# ExoFrame Documentation Development Guidelines (migrated)\n\nThis document is a migration of `docs/AGENT_INSTRUCTIONS.md` into `agents/` to provide concise guidance for documentation-focused dev agents.\n\n## Quickstart — Using `agents/` with VS Code & Copilot ✅\n\n1. Install Copilot (or open Copilot Labs) in your VS Code.\n2. Run the helper to get the most relevant agent context for your task:\n\n```bash\n# returns JSON with short_summary and snippet for the best doc matching the query\ndeno run --allow-read scripts/inject_agent_context.ts --query \"fix tests\" --agent copilot\n```\n\n3. Copy the `short_summary` and paste into your Copilot prompt (or use the VS Code snippet below to automate insertion).\n\n### Copilot Labs / Prompt Template (short)",
+      "text": "# ExoFrame Documentation Development Guidelines (migrated)\n\n## Quickstart — Using `agents/` with VS Code & Copilot ✅\n\n1. Install Copilot (or open Copilot Labs) in your VS Code.\n2. Run the helper to get the most relevant agent context for your task:\n\n```bash\n# returns JSON with short_summary and snippet for the best doc matching the query\ndeno run --allow-read scripts/inject_agent_context.ts --query \"fix tests\" --agent copilot\n```\n\n3. Copy the `short_summary` and paste into your Copilot prompt (or use the VS Code snippet below to automate insertion).\n\n### Copilot Labs / Prompt Template (short)",
       "vector": [
         0.01568627450980392,
         0.07058823529411765,
@@ -348,7 +348,7 @@
       ]
     },
     {
-      "text": "- Headers must include version, release date, status, and references\n- Use fenced code blocks with language identifiers\n- Use consistent table formatting\n\n### Cross-Reference Guidelines\n\nUse relative paths for internal links and include file paths when referencing code. Keep documentation changes minimal and tied to Implementation Plan steps.\n\n---\n\n*The above content is migrated from `docs/AGENT_INSTRUCTIONS.md` to ensure `agents/docs/documentation.md` contains the full, authoritative documentation guidelines.*",
+      "text": "- Headers must include version, release date, status, and references\n- Use fenced code blocks with language identifiers\n- Use consistent table formatting\n\n### Cross-Reference Guidelines\n\nUse relative paths for internal links and include file paths when referencing code. Keep documentation changes minimal and tied to Implementation Plan steps.\n\n",
       "vector": [
         0.12549019607843137,
         0.9058823529411765,

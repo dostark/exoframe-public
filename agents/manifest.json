@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-12-30T14:59:13.069Z",
+  "generated_at": "2025-12-30T17:36:53.160Z",
   "docs": [
     {
       "path": "agents/docs/documentation.md",
@@ -71,7 +71,8 @@
       ],
       "chunks": [
         "agents/chunks/exoframe.md.chunk0.txt",
-        "agents/chunks/exoframe.md.chunk1.txt"
+        "agents/chunks/exoframe.md.chunk1.txt",
+        "agents/chunks/exoframe.md.chunk2.txt"
       ]
     },
     {
@@ -135,7 +136,8 @@
         "agents/chunks/testing.md.chunk0.txt",
         "agents/chunks/testing.md.chunk1.txt",
         "agents/chunks/testing.md.chunk2.txt",
-        "agents/chunks/testing.md.chunk3.txt"
+        "agents/chunks/testing.md.chunk3.txt",
+        "agents/chunks/testing.md.chunk4.txt"
       ]
     }
   ]

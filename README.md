@@ -114,6 +114,17 @@ ExoFrame takes security seriously. Unlike other agent frameworks that run with f
 - [Technical Spec](./docs/ExoFrame_Technical_Spec.md) - Architecture and Schemas
 - [User Guide](./docs/ExoFrame_User_Guide.md) - Detailed Usage and Setup
 - [Building with AI Agents](./docs/Building_with_AI_Agents.md) - Our TDD-first development philosophy
+- [Agent Context Guide](./agents/README.md) - How to use the `agents/` directory for IDE/Copilot context
+
+## 🤖 Dev-time Agents
+
+ExoFrame includes a curated set of machine-friendly instructions in the `agents/` directory to help IDE agents (like Copilot) understand the repository structure and conventions.
+
+- **`agents/manifest.json`**: Index of all developer documentation.
+- **`agents/providers/`**: Adaptation notes for OpenAI, Claude, and Google models.
+- **`scripts/build_agents_index.ts`**: Tooling to keep agent context fresh.
+
+See [agents/README.md](agents/README.md) for full usage instructions.
 
 ---
 
