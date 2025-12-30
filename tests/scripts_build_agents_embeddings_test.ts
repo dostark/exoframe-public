@@ -2,12 +2,23 @@ import { assert } from "https://deno.land/std@0.203.0/assert/mod.ts";
 
 Deno.test("build mock embeddings produces manifest and files", async () => {
   // run the script in mock mode
-  const p = Deno.run({ cmd: ["deno", "run", "--allow-read", "--allow-write", "scripts/build_agents_embeddings.ts", "--mode", "mock"], stdout: "piped", stderr: "piped" });
-  const status = await p.status();
-  const out = new TextDecoder().decode(await p.output());
-  const err = new TextDecoder().decode(await p.stderrOutput());
-  p.close();
-  if (!status.success) {
+  const cmd = new Deno.Command("deno", {
+    args: [
+      "run",
+      "--no-check",
+      "--allow-read",
+      "--allow-write",
+      "scripts/build_agents_embeddings.ts",
+      "--mode",
+      "mock",
+    ],
+    stdout: "piped",
+    stderr: "piped",
+  });
+  const result = await cmd.output();
+  const _out = new TextDecoder().decode(result.stdout);
+  const err = new TextDecoder().decode(result.stderr);
+  if (result.code !== 0) {
     throw new Error(`script failed: ${err}`);
   }
 

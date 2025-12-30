@@ -4,7 +4,6 @@
 
 import { parse } from "https://deno.land/std@0.203.0/yaml/mod.ts";
 import { walk } from "https://deno.land/std@0.203.0/fs/mod.ts";
-import { createHash } from "https://deno.land/std@0.203.0/hash/mod.ts";
 
 const AGENTS_DIR = "agents";
 const OUT_DIR = `${AGENTS_DIR}/embeddings`;
@@ -15,7 +14,7 @@ function extractFrontmatter(md: string): string | null {
 }
 
 function chunkText(text: string, size = 800): string[] {
-  const paragraphs = text.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+  const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
   const chunks: string[] = [];
   let current = "";
   for (const p of paragraphs) {
@@ -30,11 +29,15 @@ function chunkText(text: string, size = 800): string[] {
   return chunks;
 }
 
-function mockVector(text: string, dim = 64): number[] {
+async function sha256Bytes(text: string) {
+  const data = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return new Uint8Array(digest);
+}
+
+async function mockVector(text: string, dim = 64): Promise<number[]> {
   // deterministic mock vector using SHA-256 derived values
-  const h = createHash("sha256");
-  h.update(text);
-  const digest = h.digest();
+  const digest = await sha256Bytes(text);
   const vec: number[] = [];
   for (let i = 0; i < dim; i++) {
     vec.push(digest[i % digest.length] / 255);
@@ -53,13 +56,23 @@ async function buildMock() {
     const fm = fmRaw ? (parse(fmRaw) as Record<string, unknown>) : {};
     const body = md.replace(/^---[\s\S]*?---/, "");
     const chunks = chunkText(body, 800).slice(0, 16);
-    const vecs = chunks.map((c) => ({ text: c.slice(0, 2000), vector: mockVector(c, 64) }));
+    const vecs: { text: string; vector: number[] }[] = [];
+    for (const c of chunks) {
+      const vector = await mockVector(c, 64);
+      vecs.push({ text: c.slice(0, 2000), vector });
+    }
     const outPath = `${OUT_DIR}/${entry.name}.json`;
-    await Deno.writeTextFile(outPath, JSON.stringify({ path: entry.path, title: fm.title ?? entry.name, vecs }, null, 2));
+    await Deno.writeTextFile(
+      outPath,
+      JSON.stringify({ path: entry.path, title: fm.title ?? entry.name, vecs }, null, 2),
+    );
     index.push({ path: entry.path, title: fm.title, embeddingFile: outPath });
   }
 
-  await Deno.writeTextFile(`${OUT_DIR}/manifest.json`, JSON.stringify({ generated_at: new Date().toISOString(), index }, null, 2));
+  await Deno.writeTextFile(
+    `${OUT_DIR}/manifest.json`,
+    JSON.stringify({ generated_at: new Date().toISOString(), index }, null, 2),
+  );
   console.log(`Built mock embeddings to ${OUT_DIR}`);
 }
 
@@ -100,11 +113,17 @@ async function buildOpenAI() {
     }
 
     const outPath = `${OUT_DIR}/${entry.name}.json`;
-    await Deno.writeTextFile(outPath, JSON.stringify({ path: entry.path, title: fm.title ?? entry.name, vecs }, null, 2));
+    await Deno.writeTextFile(
+      outPath,
+      JSON.stringify({ path: entry.path, title: fm.title ?? entry.name, vecs }, null, 2),
+    );
     index.push({ path: entry.path, title: fm.title, embeddingFile: outPath });
   }
 
-  await Deno.writeTextFile(`${OUT_DIR}/manifest.json`, JSON.stringify({ generated_at: new Date().toISOString(), index }, null, 2));
+  await Deno.writeTextFile(
+    `${OUT_DIR}/manifest.json`,
+    JSON.stringify({ generated_at: new Date().toISOString(), index }, null, 2),
+  );
   console.log(`Built OpenAI embeddings to ${OUT_DIR}`);
 }
 
