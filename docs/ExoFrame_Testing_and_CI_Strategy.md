@@ -679,8 +679,9 @@ deno run -A scripts/ci.ts test
 # Run coverage verification with enforcement
 deno run -A scripts/ci.ts coverage
 
-# Build cross-platform binaries
-deno run -A scripts/ci.ts build
+# Build cross-platform binaries (opt-in compilation)
+# Artifacts are placed in dist/bin/
+deno run -A scripts/ci.ts build --compile
 ```
 
 #### GitHub Actions Workflows
@@ -1165,4 +1166,46 @@ To adjust exclusions, edit the `--exclude` pattern in the `test:coverage` task.
 
 ---
 
-_End of Testing Strategy_
+## 10. GitHub Actions Enablement Guide
+
+To enable the automated CI/CD pipeline on a GitHub repository, follow these steps:
+
+### 10.1 Repository Permissions
+
+1. Navigate to **Settings > Actions > General**.
+2. Under **Actions permissions**, select **"Allow all actions and reusable workflows"**.
+3. Under **Workflow permissions**, select **"Read and write permissions"**. This is required for the release pipeline to create tags and upload binary artifacts.
+4. Click **Save**.
+
+### 10.2 Branch Protection Rules
+
+To ensure high code quality, protect the `main` branch:
+
+1. Navigate to **Settings > Branches**.
+2. Click **Add branch protection rule**.
+3. Set **Branch name pattern** to `main`.
+4. Enable **"Require a pull request before merging"**.
+5. Enable **"Require status checks to pass before merging"**.
+6. Search for and add the following status checks:
+   - `PR Validation (ubuntu-latest)`
+   - `PR Validation (macos-latest)`
+   - `PR Validation (windows-latest)`
+7. Click **Create**.
+
+### 10.3 Automated Releases
+
+1. To trigger a production build, create a new Release via the GitHub UI (**Releases > Draft a new release**).
+2. Creating and publishing the release will trigger the `release-pipeline.yml`.
+3. The workflow will automatically compile binaries for all 4 target platforms and attach them as assets to the release.
+
+### 10.4 Local Developer Sync
+
+Developers should run the following command to ensure local checks match CI gates:
+
+```bash
+deno task hooks:install
+```
+
+---
+
+_End of Testing and CI Strategy_

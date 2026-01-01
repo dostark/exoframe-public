@@ -6658,10 +6658,10 @@ The combination of a manifest, short summaries, chunking, optional embeddings, a
 
 #### 10.3.5. Artifact Management and Publishing
 
-- **Action**: Standardize the output of the build process.
+- **Action**: Standardize the output of the build process. Compilation is optional and triggered via `--compile`.
 - **Artifact Layout**:
   ```text
-  dist/
+  dist/bin/
   ├── exoframe-x86_64-unknown-linux-gnu
   ├── exoframe-x86_64-apple-darwin
   ├── exoframe-aarch64-apple-darwin
@@ -6669,12 +6669,29 @@ The combination of a manifest, short summaries, chunking, optional embeddings, a
   ```
 - **Validation**:
   - Verify binary size is within limits (e.g. < 100MB).
-  - Run `dist/exoframe --version` to verify successful compilation.
+  - Run `dist/bin/exoframe-<target> --version` to verify successful compilation.
 - **Success Criteria:**
-  - [x] `scripts/ci.ts build` produces all 4 targets
+  - [x] `scripts/ci.ts build --compile` produces all 4 targets
   - [x] Binaries are executable on host system
 - **Plan Tests:**
-  - `tests/ci/build_test.ts` (Verify specific binary outputs exist)
+  - `tests_infra/build_test.ts` (Verify specific binary outputs exist)
+
+#### 10.4. GitHub Actions CI Enablement Guide
+
+- **Action**: Document the setup process for enabling and maintaining the ExoFrame CI pipeline on GitHub.
+- **Guideline**:
+  1. **Permissions**: Go to Repo Settings -> Actions -> General. Ensure "Allow all actions and reusable workflows" is selected. Set "Workflow permissions" to "Read and write permissions" (required for the Release Pipeline to upload assets).
+  2. **Branch Protection**: Go to Repo Settings -> Branches -> Add rule for `main`.
+     - Enable "Require a pull request before merging".
+     - Enable "Require status checks to pass before merging".
+     - Search and add `PR Validation (ubuntu-latest)`, `PR Validation (macos-latest)`, `PR Validation (windows-latest)` as required checks.
+  3. **Release configuration**: To trigger automated binary builds, create a new Release in GitHub and tag it. The `release-pipeline.yml` will automatically build and attach all 4 target binaries to the release.
+  4. **Local setup**: Run `deno task hooks:install` to sync your local environment with the CI gates.
+- **Success Criteria**:
+  - [x] Guide is integrated into the Implementation Plan
+  - [x] All 3 workflows are correctly triggered by their respective events
+- **Plan Tests**:
+  - [x] Manual verification of workflow triggers on repo configuration
 
 **Success Criteria:**
 
@@ -6683,6 +6700,7 @@ The combination of a manifest, short summaries, chunking, optional embeddings, a
 3. [x] Git hooks block bad commits locally
 4. [x] Documentation drift prevents merging
 5. [x] Security regression suite runs on every PR
+6. [x] GitHub Actions enablement steps documented and verified
 
 ## Phase 11: Testing & Quality Assurance
 
