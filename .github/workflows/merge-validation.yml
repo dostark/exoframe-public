@@ -16,6 +16,20 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Configure git identity (CI)
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "CI Bot"
+
+      - name: Build exoctl for integration tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ./.ci-bin
+          deno compile --allow-all --output ./.ci-bin/exoctl src/cli/exoctl.ts
+          chmod +x ./.ci-bin/exoctl || true
+          echo "$PWD/.ci-bin" >> "$GITHUB_PATH"
+
       - name: Run Full Pipeline
         run: deno run -A scripts/ci.ts all
 

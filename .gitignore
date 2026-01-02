@@ -21,4 +21,5 @@ test-*.toml
 
 # Build artifacts and profiles
 exoframe
+/.ci-bin/
 cov_profile/
