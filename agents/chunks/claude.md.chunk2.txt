@@ -1,0 +1,16 @@
+```typescript
+import { assertEquals, assertRejects } from "https://deno.land/std@0.203.0/assert/mod.ts";
+import { ConfigLoader } from "../src/config/loader.ts";
+import { createCliTestContext } from "./helpers/test_context.ts";
+import { join } from "https://deno.land/std@0.203.0/path/mod.ts";
+
+Deno.test("ConfigLoader: missing file returns default config", async () => {
+  const { tempDir, cleanup } = await createCliTestContext();
+  try {
+    const loader = new ConfigLoader(join(tempDir, "nonexistent.toml"));
+    const cfg = await loader.load();
+    assertEquals(cfg.mode, "sandboxed"); // default mode
+  } finally {
+    await cleanup();
+  }
+});

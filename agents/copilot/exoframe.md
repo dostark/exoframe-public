@@ -2,7 +2,7 @@
 agent: copilot
 scope: dev
 title: ExoFrame quick reference for Copilot
-short_summary: "Short summary: ExoFrame is a Deno + TypeScript project that provides Flow-driven AI automation. Key dirs: src/, tests/, Blueprints/, docs/, agents/. Use Copilot to suggest edits and tests but consult `agents/manifest.json` first."
+short_summary: "Deno + TypeScript Flow-driven AI automation. Key dirs: src/, tests/, Blueprints/, docs/. Consult agents/manifest.json before edits."
 version: "0.1"
 topics: ["repo-overview","testing","flows","obsidian"]
 ---

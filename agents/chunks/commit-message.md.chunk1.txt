@@ -1,0 +1,16 @@
+GUIDELINES:
+- Summary: ≤72 chars, imperative mood ("add" not "added")
+- Body: Wrap at 72 chars, explain context and rationale
+- Reference Implementation Plan steps: "Implements Step X.Y"
+- Reference issues if applicable: "Fixes #123"
+- List breaking changes if any: "BREAKING CHANGE: ..."
+
+Component: [agents / flows / portal / mcp / cli / etc.]
+Type: [feat / fix / refactor / test / docs / chore]
+```
+
+## Example Usage (Feature Addition)
+
+**User:**
+```
+I've completed work on Step 10.5 - Claude agent interaction enhancements. Create a detailed commit message.

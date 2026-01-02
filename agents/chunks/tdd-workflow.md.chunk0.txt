@@ -1,0 +1,20 @@
+# TDD Workflow Prompt Example
+
+## Prompt Template
+
+```
+I need to [add feature / fix bug / refactor code] for [component name].
+
+Before you start:
+1. Search agents/ for relevant patterns: "TDD testing [component area]"
+2. Read the Implementation Plan to find/create the step
+3. Review existing tests in tests/ to understand patterns
+
+Then follow TDD workflow:
+1. Write failing test first (use initTestDbService() if needed)
+2. Implement minimal code to pass
+3. Refactor and verify coverage maintained
+4. Update Implementation Plan step as [x] completed
+
+Context injection command:
+deno run --allow-read scripts/inject_agent_context.ts claude "TDD testing [component]" 6

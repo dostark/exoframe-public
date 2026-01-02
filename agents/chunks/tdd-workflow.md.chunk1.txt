@@ -1,0 +1,23 @@
+Requirements:
+- Follow patterns from agents/tests/testing.md
+- Use test helpers from tests/helpers/
+- Include cleanup in try/finally blocks
+- Verify no coverage drop
+```
+
+## Example Usage
+
+**User:**
+```
+I need to add input validation for Portal configuration files.
+
+Before you start:
+1. Search agents/ for relevant patterns: "TDD testing validation Portal"
+2. Read the Implementation Plan step for Portal validation
+3. Review existing tests in tests/portal_permissions_test.ts
+
+Then follow TDD workflow:
+1. Write failing test first (test malformed YAML, missing required fields)
+2. Implement minimal code to pass (validation schema)
+3. Refactor and verify coverage maintained
+4. Update Implementation Plan step as [x] completed

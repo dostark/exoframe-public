@@ -1,0 +1,25 @@
+Read the errors, understand the patterns from source/exoframe.md, then fix following:
+- Service Pattern if it's a service
+- Proper error handling
+- Type safety throughout
+```
+
+## Example Usage (Topic Search)
+
+**User:**
+```
+I need help with embeddings and RAG.
+
+Use agents/cross-reference.md topic search:
+- Topic: "embeddings" → agents/providers/claude-rag.md, agents/README.md
+- Topic: "rag" → agents/providers/claude-rag.md
+
+Read claude-rag.md sections:
+- RAG Workflow (4 steps)
+- Tools usage (inspect_embeddings.ts, inject_agent_context.ts)
+- Token budget strategies
+
+Then answer my questions about using embeddings.
+```
+
+## Expected Response Pattern

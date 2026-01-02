@@ -1,12 +1,13 @@
-# Claude provider adaptation notes
+# Claude Provider Adaptation Guide
 
-- Claude handles longer contexts; include `short_summary` plus up to 4 chunks for high-confidence guidance.
-- Token guidance: Claude 3.5 Sonnet (200k context).
-- Prefer explicit instruction to "consult manifest.json and short_summary first" in your prompt.
-- Example template provided in the OpenAI doc applies with increased chunk allowance.
+## Overview
 
-Canonical prompt (short):
-"You are a Claude-based assistant working on ExoFrame. Check `agents/manifest.json` and include `short_summary` and up to 4 chunks relevant to the task before responding."
+Claude 3.5 Sonnet provides a 200k context window and excellent reasoning capabilities. This guide provides task-specific prompt templates, thinking protocols, and tool-use patterns optimized for ExoFrame development.
 
-Examples
-- Example prompt: "Inspect test patterns and suggest TDD tests for module X using `initTestDbService()` and provide failing assertions."
+## Task-Specific System Prompts
+
+### TDD Workflow
+
+**System prompt:**
+```
+You are a test-driven development assistant for ExoFrame. Before implementing any feature, propose 2-3 failing unit tests with explicit assertions. Use `initTestDbService()` or `createCliTestContext()` for test setup. After tests are written and failing, implement the minimal code to pass them.

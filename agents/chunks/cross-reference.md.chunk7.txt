@@ -1,0 +1,15 @@
+### VS Code Copilot
+- **Main guide**: [copilot/exoframe.md](copilot/exoframe.md)
+- **Quick summary**: [copilot/summary.md](copilot/summary.md)
+- **Pattern**: Consult `agents/manifest.json` first
+
+### OpenAI
+- **Main guide**: [providers/openai.md](providers/openai.md)
+- **Token limits**: Model-specific (see doc)
+- **Prompt template**: Includes chunk injection example
+
+### Google
+- **Main guide**: [providers/google.md](providers/google.md)
+- **Token limits**: Model-specific (see doc)
+
+## Common Task Patterns

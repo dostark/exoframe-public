@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-12-30T21:09:42.883Z",
+  "generated_at": "2026-01-02T13:00:43.736Z",
   "docs": [
     {
       "path": "agents/docs/documentation.md",
@@ -20,6 +20,182 @@
         "agents/chunks/documentation.md.chunk3.txt",
         "agents/chunks/documentation.md.chunk4.txt",
         "agents/chunks/documentation.md.chunk5.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/refactoring-with-thinking.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Refactoring with Thinking Protocol Prompt",
+      "short_summary": "Example prompt for complex refactoring using Claude's thinking protocol.",
+      "version": "0.1",
+      "topics": [
+        "refactoring",
+        "thinking-protocol",
+        "prompts",
+        "examples"
+      ],
+      "chunks": [
+        "agents/chunks/refactoring-with-thinking.md.chunk0.txt",
+        "agents/chunks/refactoring-with-thinking.md.chunk1.txt",
+        "agents/chunks/refactoring-with-thinking.md.chunk2.txt",
+        "agents/chunks/refactoring-with-thinking.md.chunk3.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/commit-message.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Detailed Commit Message Prompt",
+      "short_summary": "Example prompt for creating structured, informative commit messages.",
+      "version": "0.1",
+      "topics": [
+        "git",
+        "commit",
+        "documentation",
+        "best-practices"
+      ],
+      "chunks": [
+        "agents/chunks/commit-message.md.chunk0.txt",
+        "agents/chunks/commit-message.md.chunk1.txt",
+        "agents/chunks/commit-message.md.chunk2.txt",
+        "agents/chunks/commit-message.md.chunk3.txt",
+        "agents/chunks/commit-message.md.chunk4.txt",
+        "agents/chunks/commit-message.md.chunk5.txt",
+        "agents/chunks/commit-message.md.chunk6.txt",
+        "agents/chunks/commit-message.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/debugging-systematic.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Systematic Debugging Prompt",
+      "short_summary": "Example prompt for systematic debugging using agents/ guidance.",
+      "version": "0.1",
+      "topics": [
+        "debugging",
+        "troubleshooting",
+        "prompts",
+        "examples"
+      ],
+      "chunks": [
+        "agents/chunks/debugging-systematic.md.chunk0.txt",
+        "agents/chunks/debugging-systematic.md.chunk1.txt",
+        "agents/chunks/debugging-systematic.md.chunk2.txt",
+        "agents/chunks/debugging-systematic.md.chunk3.txt",
+        "agents/chunks/debugging-systematic.md.chunk4.txt",
+        "agents/chunks/debugging-systematic.md.chunk5.txt",
+        "agents/chunks/debugging-systematic.md.chunk6.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/README.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Prompt Examples README",
+      "short_summary": "Guide to using example prompts for maximum agent effectiveness.",
+      "version": "0.1",
+      "topics": [
+        "prompts",
+        "examples",
+        "guide",
+        "best-practices"
+      ],
+      "chunks": [
+        "agents/chunks/README.md.chunk0.txt",
+        "agents/chunks/README.md.chunk1.txt",
+        "agents/chunks/README.md.chunk2.txt",
+        "agents/chunks/README.md.chunk3.txt",
+        "agents/chunks/README.md.chunk4.txt",
+        "agents/chunks/README.md.chunk5.txt",
+        "agents/chunks/README.md.chunk6.txt",
+        "agents/chunks/README.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/rag-context-injection.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "RAG Context Injection Prompt",
+      "short_summary": "Example prompt showing how to use semantic search for context injection.",
+      "version": "0.1",
+      "topics": [
+        "rag",
+        "embeddings",
+        "context-injection",
+        "prompts"
+      ],
+      "chunks": [
+        "agents/chunks/rag-context-injection.md.chunk0.txt",
+        "agents/chunks/rag-context-injection.md.chunk1.txt",
+        "agents/chunks/rag-context-injection.md.chunk2.txt",
+        "agents/chunks/rag-context-injection.md.chunk3.txt",
+        "agents/chunks/rag-context-injection.md.chunk4.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/tdd-workflow.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "TDD Workflow Prompt Example",
+      "short_summary": "Example prompt for test-driven development following ExoFrame patterns.",
+      "version": "0.1",
+      "topics": [
+        "tdd",
+        "testing",
+        "prompts",
+        "examples"
+      ],
+      "chunks": [
+        "agents/chunks/tdd-workflow.md.chunk0.txt",
+        "agents/chunks/tdd-workflow.md.chunk1.txt",
+        "agents/chunks/tdd-workflow.md.chunk2.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/implementation-plan-driven.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Implementation Plan Driven Development Prompt",
+      "short_summary": "Example prompt for working from Implementation Plan steps.",
+      "version": "0.1",
+      "topics": [
+        "implementation-plan",
+        "workflow",
+        "prompts",
+        "examples"
+      ],
+      "chunks": [
+        "agents/chunks/implementation-plan-driven.md.chunk0.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk1.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk2.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk3.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk4.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk5.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk6.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/cross-reference-navigation.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Cross-Reference Navigation Prompt",
+      "short_summary": "Example prompt using cross-reference map for task navigation.",
+      "version": "0.1",
+      "topics": [
+        "cross-reference",
+        "navigation",
+        "prompts",
+        "workflow"
+      ],
+      "chunks": [
+        "agents/chunks/cross-reference-navigation.md.chunk0.txt",
+        "agents/chunks/cross-reference-navigation.md.chunk1.txt",
+        "agents/chunks/cross-reference-navigation.md.chunk2.txt",
+        "agents/chunks/cross-reference-navigation.md.chunk3.txt",
+        "agents/chunks/cross-reference-navigation.md.chunk4.txt"
       ]
     },
     {
@@ -55,7 +231,34 @@
         "agents/chunks/README.md.chunk0.txt",
         "agents/chunks/README.md.chunk1.txt",
         "agents/chunks/README.md.chunk2.txt",
-        "agents/chunks/README.md.chunk3.txt"
+        "agents/chunks/README.md.chunk3.txt",
+        "agents/chunks/README.md.chunk4.txt",
+        "agents/chunks/README.md.chunk5.txt",
+        "agents/chunks/README.md.chunk6.txt",
+        "agents/chunks/README.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/cross-reference.md",
+      "agent": "general",
+      "scope": "dev",
+      "title": "Agent Documentation Cross-Reference Map",
+      "short_summary": "Quick reference mapping task types to relevant agent documentation files.",
+      "version": "0.1",
+      "topics": [
+        "navigation",
+        "quick-reference",
+        "task-mapping"
+      ],
+      "chunks": [
+        "agents/chunks/cross-reference.md.chunk0.txt",
+        "agents/chunks/cross-reference.md.chunk1.txt",
+        "agents/chunks/cross-reference.md.chunk2.txt",
+        "agents/chunks/cross-reference.md.chunk3.txt",
+        "agents/chunks/cross-reference.md.chunk4.txt",
+        "agents/chunks/cross-reference.md.chunk5.txt",
+        "agents/chunks/cross-reference.md.chunk6.txt",
+        "agents/chunks/cross-reference.md.chunk7.txt"
       ]
     },
     {
@@ -63,7 +266,7 @@
       "agent": "copilot",
       "scope": "dev",
       "title": "ExoFrame quick reference for Copilot",
-      "short_summary": "Short summary: ExoFrame is a Deno + TypeScript project that provides Flow-driven AI automation. Key dirs: src/, tests/, Blueprints/, docs/, agents/. Use Copilot to suggest edits and tests but consult `agents/manifest.json` first.",
+      "short_summary": "Deno + TypeScript Flow-driven AI automation. Key dirs: src/, tests/, Blueprints/, docs/. Consult agents/manifest.json before edits.",
       "version": "0.1",
       "topics": [
         "repo-overview",
@@ -78,18 +281,44 @@
       ]
     },
     {
+      "path": "agents/copilot/summary.md",
+      "agent": "copilot",
+      "scope": "dev",
+      "title": "ExoFrame Quick Summary",
+      "short_summary": "One-line overview of ExoFrame for quick Copilot context injection.",
+      "version": "0.1",
+      "topics": [
+        "quickstart",
+        "overview"
+      ],
+      "chunks": [
+        "agents/chunks/summary.md.chunk0.txt"
+      ]
+    },
+    {
       "path": "agents/providers/claude.md",
       "agent": "claude",
       "scope": "dev",
       "title": "Claude provider adaptation notes",
-      "short_summary": "Provider-specific tips for Claude usage (chunking and context inclusion).",
-      "version": "0.1",
+      "short_summary": "Comprehensive Claude usage guide with task-specific prompts, thinking protocols, and tool-use patterns.",
+      "version": "0.2",
       "topics": [
         "provider-adaptations",
-        "prompts"
+        "prompts",
+        "tdd",
+        "refactoring",
+        "debugging",
+        "tool-use"
       ],
       "chunks": [
-        "agents/chunks/claude.md.chunk0.txt"
+        "agents/chunks/claude.md.chunk0.txt",
+        "agents/chunks/claude.md.chunk1.txt",
+        "agents/chunks/claude.md.chunk2.txt",
+        "agents/chunks/claude.md.chunk3.txt",
+        "agents/chunks/claude.md.chunk4.txt",
+        "agents/chunks/claude.md.chunk5.txt",
+        "agents/chunks/claude.md.chunk6.txt",
+        "agents/chunks/claude.md.chunk7.txt"
       ]
     },
     {
@@ -105,6 +334,30 @@
       ],
       "chunks": [
         "agents/chunks/google.md.chunk0.txt"
+      ]
+    },
+    {
+      "path": "agents/providers/claude-rag.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Claude RAG (Retrieval-Augmented Generation) Usage Guide",
+      "short_summary": "How to use embeddings infrastructure for semantic search and context injection with Claude.",
+      "version": "0.1",
+      "topics": [
+        "rag",
+        "embeddings",
+        "context-injection",
+        "semantic-search"
+      ],
+      "chunks": [
+        "agents/chunks/claude-rag.md.chunk0.txt",
+        "agents/chunks/claude-rag.md.chunk1.txt",
+        "agents/chunks/claude-rag.md.chunk2.txt",
+        "agents/chunks/claude-rag.md.chunk3.txt",
+        "agents/chunks/claude-rag.md.chunk4.txt",
+        "agents/chunks/claude-rag.md.chunk5.txt",
+        "agents/chunks/claude-rag.md.chunk6.txt",
+        "agents/chunks/claude-rag.md.chunk7.txt"
       ]
     },
     {

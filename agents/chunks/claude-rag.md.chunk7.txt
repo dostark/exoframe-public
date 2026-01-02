@@ -1,0 +1,30 @@
+2. **Place files** in `agents/embeddings/` (format: `<doc-name>.json`)
+
+3. **Validate and import**:
+```bash
+deno run --allow-read --allow-write scripts/build_agents_embeddings.ts \
+  --mode precomputed --dir agents/embeddings
+```
+
+**Template:** See `agents/embeddings/example_precomputed_template.json`
+
+## Example: Multi-Step Task with RAG
+
+### Scenario: Add Security Tests for PathResolver
+
+**Step 1: Retrieve relevant context**
+```typescript
+const query = "security tests PathResolver path traversal";
+const context = await inject("claude", query, 6);
+```
+
+**Step 2: Build enriched system prompt**
+```typescript
+const systemPrompt = `
+You are a security-focused test developer for ExoFrame.
+
+Relevant context from documentation:
+${context.short_summary}
+
+Key patterns:
+${context.snippet}

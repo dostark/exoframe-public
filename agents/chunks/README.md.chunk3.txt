@@ -1,11 +1,17 @@
 See `agents/embeddings/example_precomputed_template.json` for a minimal, valid template to create precomputed embedding files.
 
-Canonical prompt (short):
-"You are a dev-time agent. Before performing repository-specific changes, consult `agents/manifest.json` and include matching `short_summary` items for relevant docs in `agents/`."
+How to Add a New Agent Doc
+---------------------------
 
-Examples
-- Example prompt: "Suggest 3 unit test cases for PlanWriter that use `initTestDbService()` and include expected assertions."
+Follow this workflow to create a new agent documentation file:
 
-Notes
------
-These files are **not** runtime Blueprints/agents (see `Blueprints/Agents/`). They are development-focused guidance to be used by IDE agents and automation helpers.
+### 1. Create File in Appropriate Subfolder
+
+Choose the right location based on content:
+- **`source/`** — Source code development guidance (patterns, architecture, conventions)
+- **`tests/`** — Testing patterns and helpers (TDD, test utilities, security tests)
+- **`docs/`** — Documentation maintenance (Implementation Plan, versioning, cross-references)
+- **`providers/`** — Provider-specific adaptations (Claude, OpenAI, Google, Copilot)
+- **`copilot/`** — Copilot-specific quick references
+
+### 2. Add YAML Frontmatter with Required Fields

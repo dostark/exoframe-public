@@ -6693,14 +6693,612 @@ The combination of a manifest, short summaries, chunking, optional embeddings, a
 - **Plan Tests**:
   - [x] Manual verification of workflow triggers on repo configuration
 
+### Step 10.5: Enhance `agents/` for Claude Agent Interaction ✅ COMPLETED
+
+**Location:** `agents/providers/claude.md`, `agents/providers/claude-rag.md`, `agents/README.md`, `agents/cross-reference.md`
+
+**Goal:** Improve the `agents/` folder structure and content to maximize interaction quality with Claude agents by providing explicit prompt templates, RAG usage guides, thinking protocols, and task-specific guidance that leverages Claude's 200k context window and tool-use capabilities.
+
 **Success Criteria:**
 
-1. [x] `deno task ci` runs full pipeline locally
-2. [x] GitHub Actions workflows migrated to use `deno task ci`
-3. [x] Git hooks block bad commits locally
-4. [x] Documentation drift prevents merging
-5. [x] Security regression suite runs on every PR
-6. [x] GitHub Actions enablement steps documented and verified
+1. [x] `agents/providers/claude.md` expanded with concrete, actionable prompt templates for different task types (TDD, refactoring, debugging, documentation)
+2. [x] `agents/providers/claude-rag.md` created with retrieval-augmented generation (RAG) workflow documentation
+3. [x] "Thinking Protocol" section added to guide Claude through complex multi-step tasks
+4. [x] "Quick Start Guide for New Agent Docs" added to `agents/README.md` with step-by-step instructions and frontmatter template
+5. [x] Tool-use best practices section added showing parallel reads, incremental updates, and efficient context gathering patterns
+6. [x] Cross-reference map created (`agents/cross-reference.md`) mapping task types to primary/secondary agent docs
+7. [x] "Common Pitfalls" section added with ExoFrame-specific anti-patterns and best practices
+8. [x] Short summaries reviewed and optimized for conciseness (1-3 sentences max)
+
+**Test Definitions:**
+
+- Validation tests: `tests/agents/claude_enhancements_test.ts` to verify all new sections exist and contain required elements (canonical prompts, examples, code snippets)
+- Integration tests (manual): Load enhanced Claude docs into Claude API and verify responses reference ExoFrame-specific patterns (e.g., `initTestDbService()`, TDD workflow, PathResolver usage)
+- CI checks: Extend `validate-agent-docs` workflow to check for minimum section requirements in provider-specific docs
+
+**Enhancement Details:**
+
+#### 1. Enhanced Claude-Specific Prompt Templates (HIGH PRIORITY)
+
+**File:** `agents/providers/claude.md`
+
+**Action:** Expand from minimal (16 lines) to comprehensive prompt templates:
+
+- **System prompts** for different task types:
+  - **TDD workflow**: "You are a test-driven development assistant for ExoFrame. Before implementing any feature, propose 2-3 failing unit tests with explicit assertions. Use `initTestDbService()` or `createCliTestContext()` for test setup. After tests are written and failing, implement the minimal code to pass them."
+  - **Refactoring**: "You are a refactoring assistant. Before changing code, read the existing implementation and all related tests. Propose refactoring steps that preserve behavior (proven by unchanged test results). Use `deno test --coverage` to verify coverage is maintained."
+  - **Debugging**: "You are a debugging assistant. Start by reading error messages, stack traces, and the Implementation Plan step. Identify the root cause before proposing fixes. Suggest a test that reproduces the bug, then fix it."
+  - **Documentation**: "You are a documentation assistant. Check the Implementation Plan for the related step. Maintain version sync, update cross-references, and include a short summary of changes with required tests."
+
+- **Few-shot examples** showing ideal responses:
+  ````markdown
+  **Example: TDD Test Proposal**
+
+  User: "Add error handling for missing config files in ConfigLoader"
+
+  Claude response:
+  <thinking>
+  The ConfigLoader needs to handle missing files gracefully. I'll propose tests first, then implement.
+
+  Tests needed:
+
+  1. Missing file returns default config
+  2. Invalid TOML format throws clear error
+  3. Partial config merges with defaults
+     </thinking>
+
+  Here are 3 failing tests:
+
+  ```typescript
+  import { assertEquals, assertRejects } from "https://deno.land/std@0.203.0/assert/mod.ts";
+  import { ConfigLoader } from "../src/config/loader.ts";
+  import { createCliTestContext } from "./helpers/test_context.ts";
+
+  Deno.test("ConfigLoader: missing file returns default config", async () => {
+    const { tempDir, cleanup } = await createCliTestContext();
+    try {
+      const loader = new ConfigLoader(join(tempDir, "nonexistent.toml"));
+      const cfg = await loader.load();
+      assertEquals(cfg.mode, "sandboxed"); // default mode
+    } finally {
+      await cleanup();
+    }
+  });
+
+  Deno.test("ConfigLoader: invalid TOML throws clear error", async () => {
+    const { tempDir, cleanup } = await createCliTestContext();
+    try {
+      await Deno.writeTextFile(join(tempDir, "bad.toml"), "mode = [[[invalid");
+      const loader = new ConfigLoader(join(tempDir, "bad.toml"));
+      await assertRejects(
+        () => loader.load(),
+        Error,
+        "Invalid TOML syntax",
+      );
+    } finally {
+      await cleanup();
+    }
+  });
+  ```
+  ````
+
+  Now run these tests (they should fail), then I'll implement the error handling.
+  ```
+  ```
+
+- **Thinking budget hints**: Guide Claude to use `<thinking>` tags for complex planning before tool invocations
+- **Token budget strategies**: "With 200k context, include up to 4-6 relevant chunk files from `agents/chunks/` for high-confidence guidance"
+
+**Success Criteria:**
+
+- [x] At least 4 task-type system prompts added
+- [x] At least 2 few-shot examples included
+- [x] Thinking protocol guidance added
+- [x] Token budget strategies documented
+
+#### 2. RAG Usage Guide (HIGH PRIORITY)
+
+**File:** `agents/providers/claude-rag.md` (new)
+
+**Action:** Create comprehensive retrieval-augmented generation guide:
+
+````markdown
+---
+agent: claude
+scope: dev
+title: Claude RAG (Retrieval-Augmented Generation) Usage Guide
+short_summary: "How to use embeddings infrastructure for semantic search and context injection with Claude."
+version: "0.1"
+topics: ["rag", "embeddings", "context-injection", "semantic-search"]
+---
+
+# Claude RAG Usage Guide
+
+## Overview
+
+ExoFrame pre-computes embeddings for all agent documentation, enabling semantic search and automatic context injection for Claude-powered workflows.
+
+## Workflow
+
+1. **Generate query embedding** for user's task (or use mock vector)
+2. **Rank chunks** by cosine similarity
+3. **Inject top 4-6 chunks** into Claude system prompt (within 200k token budget)
+
+## Tools
+
+### Inspect Embeddings
+
+Find best matching chunks for a query:
+
+```bash
+deno run --allow-read scripts/inspect_embeddings.ts --query "test database setup" --top 5
+```
+````
+
+Output: ranked list of `agents/chunks/*.txt` files with cosine similarity scores.
+
+### Automatic Context Injection
+
+```typescript
+import { inject } from "./scripts/inject_agent_context.ts";
+
+const context = await inject("claude", "fix async test flake", 4);
+if (context.found) {
+  const systemPrompt = `${context.short_summary}\n\nRelevant docs:\n${context.snippet}`;
+  // Pass systemPrompt to Claude API
+}
+```
+
+## Token Budget Strategies
+
+- **Claude 3.5 Sonnet**: 200k context window
+- **Recommended**: 4-6 chunks (~2-3k tokens) for high-confidence tasks
+- **Maximum**: 10-12 chunks (~5-6k tokens) for complex multi-file refactoring
+
+## Semantic Search Quality
+
+The mock embeddings use SHA-256-based deterministic vectors (64-dim). For production:
+
+1. Generate OpenAI embeddings: `deno run --allow-read --allow-write --allow-net --allow-env scripts/build_agents_embeddings.ts --mode openai`
+2. Or use precomputed embeddings: Place JSON files in `agents/embeddings/` following `precomputed_template.json` format
+
+## Example: Multi-Step Task with RAG
+
+```typescript
+// 1. User query: "Add security tests for PathResolver"
+const query = "security tests PathResolver";
+
+// 2. Retrieve relevant chunks
+const context = await inject("claude", query, 6);
+
+// 3. Build system prompt
+const systemPrompt = `
+You are a security-focused test developer for ExoFrame.
+
+Relevant context:
+${context.short_summary}
+
+Key patterns from docs:
+${context.snippet}
+
+Task: Propose 3 security tests for PathResolver that check:
+- Path traversal attacks (../)
+- Symlink escape attempts
+- Absolute path handling
+`;
+
+// 4. Call Claude API with context
+const response = await claude.complete(systemPrompt, userMessage);
+```
+
+## Best Practices
+
+- **Pre-filter by agent/scope**: Search only `agent: claude` and `scope: dev` docs for dev tasks
+- **Combine chunks intelligently**: Group related chunks (e.g., all testing.md chunks together)
+- **Validate freshness**: Run `scripts/verify_manifest_fresh.ts` before retrieval to ensure embeddings match current docs
+
+````
+**Success Criteria:**
+- [x] RAG workflow documented with code examples
+- [x] Token budget strategies explained
+- [x] Semantic search quality guidance added
+- [x] Multi-step example included
+
+#### 3. Thinking Protocol for Complex Tasks (MEDIUM PRIORITY)
+
+**File:** `agents/providers/claude.md` (append section)
+
+**Action:** Add explicit thinking protocol:
+
+```markdown
+### Thinking Protocol for Complex Tasks
+
+Claude excels when given space to plan before acting. For multi-step work:
+
+1. **Analyze** dependencies and risks in `<thinking>` tags
+2. **Plan** tool calls (read files, search patterns, check tests)
+3. **Execute** tool calls in parallel where possible
+4. **Synthesize** results and propose next steps
+5. **Verify** against Implementation Plan success criteria
+
+**Example: Multi-file refactoring**
+
+<thinking>
+User wants to extract database initialization logic into a shared helper.
+
+Dependencies:
+- Read all files that call initTestDbService()
+- Check if a shared helper already exists
+- Verify test coverage won't drop
+
+Risks:
+- Breaking existing tests if import paths change
+- Circular dependencies if helper is in wrong location
+
+Plan:
+1. Parallel reads: grep for "initTestDbService", read test helpers
+2. Propose new helper location (tests/helpers/db.ts)
+3. Show migration for 2-3 representative files
+4. Verify tests still pass
+</thinking>
+
+[tool calls for reading files, then implementation]
+````
+
+**Success Criteria:**
+
+- [x] Thinking protocol with 5-step framework added
+- [x] Multi-file refactoring example included
+
+#### 4. Quick Start Guide for New Agent Docs (MEDIUM PRIORITY)
+
+**File:** `agents/README.md` (append section)
+
+**Action:** Add step-by-step guide:
+
+````markdown
+## How to Add a New Agent Doc
+
+1. **Create file** in appropriate subfolder:
+   - `source/` — source code development guidance
+   - `tests/` — testing patterns and helpers
+   - `docs/` — documentation maintenance
+   - `providers/` — provider-specific adaptations
+
+2. **Add frontmatter** with required fields:
+   ```yaml
+   ---
+   agent: claude  # or copilot, openai, google, general
+   scope: dev     # or ci, docs, test
+   title: "Your Title Here"
+   short_summary: "One-liner description (1-3 sentences max, <200 chars)"
+   version: "0.1"
+   topics: ["keyword1", "keyword2", "keyword3"]
+   ---
+   ```
+````
+
+3. **Include required sections**:
+   - **Key points** — bullet list of 3-5 critical takeaways
+   - **Canonical prompt (short)** — example system prompt showing ideal usage
+   - **Examples** — 2-3 example prompts with expected responses
+   - **Do / Don't** — guidance on safe/unsafe patterns
+
+4. **Regenerate manifest**:
+   ```bash
+   deno run --allow-read --allow-write scripts/build_agents_index.ts
+   ```
+
+5. **Build embeddings** (optional but recommended):
+   ```bash
+   # Mock embeddings (deterministic, no API calls)
+   deno run --allow-read --allow-write scripts/build_agents_embeddings.ts --mode mock
+
+   # Or OpenAI embeddings (requires API key)
+   deno run --allow-read --allow-write --allow-net --allow-env scripts/build_agents_embeddings.ts --mode openai
+   ```
+
+6. **Validate**:
+   ```bash
+   deno run --allow-read scripts/validate_agents_docs.ts
+   ```
+
+7. **Test retrieval**:
+   ```bash
+   deno run --allow-read scripts/inject_agent_context.ts --query "your test query" --agent claude
+   ```
+
+**Template file**: Copy `agents/providers/claude.md` as starting point.
+
+**Common mistakes**:
+
+- Missing `short_summary` or making it too long (>200 chars)
+- Forgetting to add topics array
+- Not including canonical prompt example
+- Skipping manifest regeneration (doc won't be discoverable)
+
+````
+**Success Criteria:**
+- [x] 7-step guide added to README.md
+- [x] Frontmatter template included
+- [x] Common mistakes section added
+
+#### 5. Tool-Use Best Practices (MEDIUM PRIORITY)
+
+**File:** `agents/providers/claude.md` (append section)
+
+**Action:** Add efficient tool-use patterns:
+
+```markdown
+### Tool-Use Patterns for Claude
+
+**Parallel reads** when gathering context:
+
+✅ **Good: Read multiple files in parallel**
+```xml
+<antml_function_calls>
+<antml_invoke name="read_file">
+<antml_parameter name="filePath">src/services/plan_writer.ts</antml_parameter>
+<antml_parameter name="startLine">1</antml_parameter>
+<antml_parameter name="endLine">100</antml_parameter>
+</antml_invoke>
+<antml_invoke name="read_file">
+<antml_parameter name="filePath">tests/plan_writer_test.ts</antml_parameter>
+<antml_parameter name="startLine">1</antml_parameter>
+<antml_parameter name="endLine">100</antml_parameter>
+</antml_invoke>
+<antml_invoke name="grep_search">
+<antml_parameter name="query">PlanWriter</antml_parameter>
+<antml_parameter name="isRegexp">false</antml_parameter>
+</antml_invoke>
+</antml_function_calls>
+````
+
+❌ **Avoid: Sequential reads** (read file 1, wait for result, then read file 2)
+
+**Incremental updates** for multi-step tasks:
+
+```markdown
+Use `manage_todo_list` to track progress:
+
+- Mark tasks in-progress before starting
+- Complete immediately after finishing each step
+- Provide status updates between major operations
+```
+
+**Efficient context gathering**:
+
+```markdown
+1. Parallelize independent searches (grep + file_search + semantic_search)
+2. Read results, deduplicate file paths
+3. Batch read unique files in one parallel call
+4. Synthesize and proceed with implementation
+```
+
+**Success Criteria:**
+
+- [x] Parallel read pattern documented with code example
+- [x] Sequential anti-pattern shown
+- [x] Incremental update guidance added
+- [x] Efficient context gathering workflow included
+
+#### 6. Cross-Reference Map (LOW PRIORITY)
+
+**File:** `agents/cross-reference.md` (new)
+
+**Action:** Create task-to-doc mapping:
+
+```markdown
+---
+agent: general
+scope: dev
+title: Agent Documentation Cross-Reference Map
+short_summary: "Quick reference mapping task types to relevant agent documentation files."
+version: "0.1"
+topics: ["navigation", "quick-reference", "task-mapping"]
+---
+
+# Agent Documentation Cross-Reference Map
+
+## Task → Agent Doc Quick Reference
+
+| Task Type                | Primary Doc                                                                     | Secondary Docs                                                 |
+| ------------------------ | ------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Write unit tests         | [tests/testing.md](tests/testing.md)                                            | [source/exoframe.md](source/exoframe.md)                       |
+| Refactor code            | [source/exoframe.md](source/exoframe.md)                                        | [tests/testing.md](tests/testing.md)                           |
+| Update documentation     | [docs/documentation.md](docs/documentation.md)                                  | -                                                              |
+| Fix TypeScript errors    | [source/exoframe.md](source/exoframe.md)                                        | [copilot/exoframe.md](copilot/exoframe.md)                     |
+| Add new feature          | [source/exoframe.md](source/exoframe.md) + [tests/testing.md](tests/testing.md) | [docs/documentation.md](docs/documentation.md)                 |
+| Debug test failures      | [tests/testing.md](tests/testing.md)                                            | [source/exoframe.md](source/exoframe.md)                       |
+| Security audit           | [tests/testing.md](tests/testing.md) (#Security Tests)                          | [source/exoframe.md](source/exoframe.md) (#System Constraints) |
+| Claude-specific guidance | [providers/claude.md](providers/claude.md)                                      | [README.md](README.md)                                         |
+| RAG/embeddings usage     | [providers/claude-rag.md](providers/claude-rag.md)                              | [README.md](README.md) (#Building embeddings)                  |
+
+## Search by Topic
+
+- **`tdd`** → [source/exoframe.md](source/exoframe.md), [tests/testing.md](tests/testing.md)
+- **`security`** → [tests/testing.md](tests/testing.md) (Security Tests as First-Class Citizens)
+- **`database`** → [tests/testing.md](tests/testing.md) (Database Initialization, initTestDbService)
+- **`docs`** → [docs/documentation.md](docs/documentation.md)
+- **`patterns`** → [source/exoframe.md](source/exoframe.md) (Service Pattern, Module Documentation)
+- **`helpers`** → [tests/testing.md](tests/testing.md) (Test Organization, Helpers)
+- **`embeddings`** → [providers/claude-rag.md](providers/claude-rag.md), [README.md](README.md)
+
+## Workflow Examples
+
+**"I want to add a new feature"**
+
+1. Read [docs/ExoFrame_Implementation_Plan.md](../docs/ExoFrame_Implementation_Plan.md) to find or create Implementation Plan step
+2. Follow TDD guidance from [source/exoframe.md](source/exoframe.md)
+3. Use test helpers from [tests/testing.md](tests/testing.md)
+4. Update docs per [docs/documentation.md](docs/documentation.md)
+
+**"I want to fix a bug"**
+
+1. Check Implementation Plan for related step
+2. Write failing test per [tests/testing.md](tests/testing.md)
+3. Fix code following [source/exoframe.md](source/exoframe.md) patterns
+4. Verify coverage maintained
+
+**"I want to use Claude effectively"**
+
+1. Read [providers/claude.md](providers/claude.md) for prompt templates
+2. Use [providers/claude-rag.md](providers/claude-rag.md) for context injection
+3. Follow tool-use patterns (parallel reads, thinking protocol)
+```
+
+**Success Criteria:**
+
+- [ ] Cross-reference table created with 8+ task types
+- [ ] Topic search section added
+- [ ] Workflow examples included
+
+#### 7. Common Pitfalls Section (LOW PRIORITY)
+
+**File:** `agents/providers/claude.md` (append section)
+
+**Action:** Add ExoFrame-specific anti-patterns:
+
+```markdown
+### Common Pitfalls with ExoFrame
+
+1. **Forgetting cleanup in tests**
+   - ❌ Bad: `const { db, tempDir, cleanup } = await initTestDbService(); // no cleanup`
+   - ✅ Good: Use `try/finally` or `afterEach` to always call `cleanup()`
+
+2. **Not checking Implementation Plan**
+   - ❌ Bad: Implement features without corresponding Plan step
+   - ✅ Good: Read Plan first, create step if missing, then implement
+
+3. **Skipping TDD workflow**
+   - ❌ Bad: Write implementation first, add tests later (or never)
+   - ✅ Good: Write failing tests FIRST, then implement minimal code to pass
+
+4. **Ignoring security patterns**
+   - ❌ Bad: `const filePath = userInput; await Deno.readTextFile(filePath);`
+   - ✅ Good: `const filePath = pathResolver.resolve(userInput); // validates against Portal permissions`
+
+5. **Hardcoding paths**
+   - ❌ Bad: `"/home/user/ExoFrame/System/Active"`
+   - ✅ Good: `join(workspaceRoot, "System", "Active")` (use PathResolver)
+
+6. **Missing activity logging**
+   - ❌ Bad: Side effects (file writes, executions) without EventLogger calls
+   - ✅ Good: `await eventLogger.log({ type: "file_write", path, ... })`
+
+7. **Using deprecated Deno APIs**
+   - ❌ Bad: `Deno.run({ cmd: ["deno", "test"] })`
+   - ✅ Good: `new Deno.Command("deno", { args: ["test"] }).output()`
+
+8. **Not validating frontmatter**
+   - ❌ Bad: Manually parse YAML without schema validation
+   - ✅ Good: Use Zod schemas from `src/schemas/` for all YAML frontmatter
+```
+
+**Success Criteria:**
+
+- [x] At least 8 common pitfalls documented
+- [x] Each pitfall includes ❌ Bad and ✅ Good examples
+- [x] Code snippets are ExoFrame-specific (not generic advice)
+
+#### 8. Short Summary Optimization (LOW PRIORITY)
+
+**Action:** Review and shorten verbose `short_summary` fields:
+
+**Before:**
+
+```yaml
+short_summary: "Guidance for producing and maintaining docs in the docs/ directory and cross-referencing the Implementation Plan."
+```
+
+**After:**
+
+```yaml
+short_summary: "How to maintain docs/ and sync with Implementation Plan. Includes Refinement Loop, version control, terminology."
+```
+
+**Files to review:**
+
+- `agents/docs/documentation.md`
+- `agents/source/exoframe.md`
+- `agents/tests/testing.md`
+- `agents/README.md`
+
+**Success Criteria:**
+
+- [ ] All `short_summary` fields are ≤200 characters
+- [ ] Summaries are concise (1-3 sentences) but informative
+- [ ] Key topics mentioned explicitly
+
+**Plan Tests:**
+
+- Unit tests: `tests/agents/claude_enhancements_test.ts`
+  ```typescript
+  Deno.test("Claude enhancements: verify all sections exist", async () => {
+    const claudeMd = await Deno.readTextFile("agents/providers/claude.md");
+    assert(claudeMd.includes("### Tool-Use Patterns for Claude"));
+    assert(claudeMd.includes("### Thinking Protocol for Complex Tasks"));
+    assert(claudeMd.includes("### Common Pitfalls with ExoFrame"));
+
+    const ragMd = await Deno.readTextFile("agents/providers/claude-rag.md");
+    assert(ragMd.includes("## Workflow"));
+    assert(ragMd.includes("## Token Budget Strategies"));
+
+    const readmeMd = await Deno.readTextFile("agents/README.md");
+    assert(readmeMd.includes("## How to Add a New Agent Doc"));
+
+    const crossRefMd = await Deno.readTextFile("agents/cross-reference.md");
+    assert(crossRefMd.includes("## Task → Agent Doc Quick Reference"));
+  });
+
+  Deno.test("Claude enhancements: verify frontmatter schema", async () => {
+    const ragMd = await Deno.readTextFile("agents/providers/claude-rag.md");
+    const fmMatch = ragMd.match(/^---\n([\s\S]*?)\n---/);
+    assertExists(fmMatch);
+
+    const fm = parse(fmMatch[1]) as Record<string, unknown>;
+    assertEquals(fm.agent, "claude");
+    assertEquals(fm.scope, "dev");
+    assert(fm.short_summary);
+    assert((fm.short_summary as string).length <= 200);
+  });
+  ```
+
+- Integration tests (manual):
+  1. Load `agents/providers/claude.md` content into Claude API
+  2. Ask: "Write tests for ConfigLoader error handling"
+  3. Verify response includes `initTestDbService()`, TDD workflow, and follows few-shot example pattern
+  4. Ask: "How do I use embeddings for context injection?"
+  5. Verify response references `claude-rag.md` and includes `inspect_embeddings.ts` usage
+
+- CI checks: Extend `.github/workflows/validate-agent-docs.yml`
+  ```yaml
+  - name: Validate Claude enhancements
+    run: |
+      deno test --allow-read tests/agents/claude_enhancements_test.ts
+      deno run --allow-read scripts/validate_agents_docs.ts
+  ```
+
+**Success Criteria:**
+
+1. [x] `agents/providers/claude.md` expanded with 4+ task-type prompts, 2+ few-shot examples, thinking protocol, token strategies
+2. [x] `agents/providers/claude-rag.md` created with RAG workflow, tools usage, token budget strategies, multi-step example
+3. [x] "Thinking Protocol" section added to `claude.md` with 5-step framework and refactoring example
+4. [x] "Quick Start Guide" added to `agents/README.md` with 7-step process and frontmatter template
+5. [x] Tool-use best practices added to `claude.md` (parallel reads, incremental updates, context gathering)
+6. [x] `agents/cross-reference.md` created with task mapping table, topic search, workflow examples
+7. [x] "Common Pitfalls" section added to `claude.md` with 8+ ExoFrame-specific anti-patterns
+8. [x] All `short_summary` fields optimized to ≤200 chars
+9. [x] Unit tests pass (`tests/agents/claude_enhancements_test.ts`) - 12/12 tests passing
+10. [x] CI validation includes Claude enhancement checks (validate_agents_docs.ts passes)
+
+**Notes:**
+
+- This step enhances developer experience with Claude agents by providing explicit, actionable guidance
+- RAG infrastructure enables semantic search and automatic context injection (leverages existing embeddings system)
+- Thinking protocol guides Claude through complex multi-step refactoring/debugging tasks
+- Cross-reference map reduces discovery friction for new contributors
+- All enhancements follow existing `agents/` frontmatter schema and validation rules
 
 ## Phase 11: Testing & Quality Assurance
 
