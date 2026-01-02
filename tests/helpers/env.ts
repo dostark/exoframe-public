@@ -22,3 +22,14 @@ export function withEnv(env: Record<string, string>, fn: () => Promise<void> | v
     }
   }
 }
+
+export function isTruthyEnv(name: string): boolean {
+  const value = Deno.env.get(name);
+  if (!value) return false;
+  const normalized = value.toLowerCase().trim();
+  return normalized !== "0" && normalized !== "false" && normalized !== "no" && normalized !== "off";
+}
+
+export function isCi(): boolean {
+  return isTruthyEnv("CI");
+}

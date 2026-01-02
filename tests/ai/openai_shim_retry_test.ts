@@ -1,16 +1,10 @@
 import { assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
 import { ModelFactory } from "../../src/ai/providers.ts";
 import { getTestModel } from "./helpers/test_model.ts";
-
-function isTruthyEnv(name: string): boolean {
-  const value = Deno.env.get(name);
-  if (!value) return false;
-  const normalized = value.toLowerCase().trim();
-  return normalized !== "0" && normalized !== "false" && normalized !== "no" && normalized !== "off";
-}
+import { isCi } from "../helpers/env.ts";
 
 function isCiGuardActive(): boolean {
-  return isTruthyEnv("CI") && Deno.env.get("EXO_ENABLE_PAID_LLM") !== "1";
+  return isCi() && Deno.env.get("EXO_ENABLE_PAID_LLM") !== "1";
 }
 
 Deno.test("OpenAIShim retries on 429 and returns content", async () => {
