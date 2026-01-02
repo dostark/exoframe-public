@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-02T13:39:10.595Z",
+  "generated_at": "2026-01-02T14:12:14.071Z",
   "docs": [
     {
       "path": "agents/docs/documentation.md",
@@ -20,6 +20,24 @@
         "agents/chunks/documentation.md.chunk3.txt",
         "agents/chunks/documentation.md.chunk4.txt",
         "agents/chunks/documentation.md.chunk5.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/openai-debugging-systematic.md",
+      "agent": "openai",
+      "scope": "dev",
+      "title": "OpenAI Debugging: Reproduce → Diagnose → Fix → Verify",
+      "short_summary": "Prompt template for systematic debugging with context injection, minimal diffs, and explicit verification steps.",
+      "version": "0.1",
+      "topics": [
+        "openai",
+        "debugging",
+        "prompts",
+        "diff-first"
+      ],
+      "chunks": [
+        "agents/chunks/openai-debugging-systematic.md.chunk0.txt",
+        "agents/chunks/openai-debugging-systematic.md.chunk1.txt"
       ]
     },
     {
@@ -90,6 +108,25 @@
       ]
     },
     {
+      "path": "agents/prompts/openai-tdd-workflow.md",
+      "agent": "openai",
+      "scope": "dev",
+      "title": "OpenAI TDD Workflow (tests first)",
+      "short_summary": "Prompt template that forces tests-first with explicit assertions, then minimal diffs and verification.",
+      "version": "0.1",
+      "topics": [
+        "openai",
+        "tdd",
+        "testing",
+        "prompts",
+        "diff-first"
+      ],
+      "chunks": [
+        "agents/chunks/openai-tdd-workflow.md.chunk0.txt",
+        "agents/chunks/openai-tdd-workflow.md.chunk1.txt"
+      ]
+    },
+    {
       "path": "agents/prompts/README.md",
       "agent": "claude",
       "scope": "dev",
@@ -135,6 +172,25 @@
       ]
     },
     {
+      "path": "agents/prompts/openai-rag-context-injection.md",
+      "agent": "openai",
+      "scope": "dev",
+      "title": "OpenAI RAG Context Injection (inspect → inject)",
+      "short_summary": "Prompt template for OpenAI agents to inspect embeddings, inject top chunks, then answer with minimal diffs and verification.",
+      "version": "0.1",
+      "topics": [
+        "openai",
+        "rag",
+        "embeddings",
+        "context-injection",
+        "prompts"
+      ],
+      "chunks": [
+        "agents/chunks/openai-rag-context-injection.md.chunk0.txt",
+        "agents/chunks/openai-rag-context-injection.md.chunk1.txt"
+      ]
+    },
+    {
       "path": "agents/prompts/tdd-workflow.md",
       "agent": "claude",
       "scope": "dev",
@@ -151,6 +207,25 @@
         "agents/chunks/tdd-workflow.md.chunk0.txt",
         "agents/chunks/tdd-workflow.md.chunk1.txt",
         "agents/chunks/tdd-workflow.md.chunk2.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/openai-quickstart.md",
+      "agent": "openai",
+      "scope": "dev",
+      "title": "OpenAI Quickstart: Use agents/ first",
+      "short_summary": "Copy/paste prompt that forces OpenAI agents to inject agents/ context, answer diff-first, and verify with tests.",
+      "version": "0.1",
+      "topics": [
+        "openai",
+        "quickstart",
+        "rag",
+        "diff-first",
+        "prompts"
+      ],
+      "chunks": [
+        "agents/chunks/openai-quickstart.md.chunk0.txt",
+        "agents/chunks/openai-quickstart.md.chunk1.txt"
       ]
     },
     {
@@ -361,6 +436,29 @@
       ]
     },
     {
+      "path": "agents/providers/openai-rag.md",
+      "agent": "openai",
+      "scope": "dev",
+      "title": "OpenAI RAG (Retrieval-Augmented Generation) Usage Guide",
+      "short_summary": "How to retrieve and inject agents/ context for OpenAI models using ExoFrame embeddings and chunk tooling.",
+      "version": "0.1",
+      "topics": [
+        "rag",
+        "embeddings",
+        "context-injection",
+        "semantic-search",
+        "provider-adaptations"
+      ],
+      "chunks": [
+        "agents/chunks/openai-rag.md.chunk0.txt",
+        "agents/chunks/openai-rag.md.chunk1.txt",
+        "agents/chunks/openai-rag.md.chunk2.txt",
+        "agents/chunks/openai-rag.md.chunk3.txt",
+        "agents/chunks/openai-rag.md.chunk4.txt",
+        "agents/chunks/openai-rag.md.chunk5.txt"
+      ]
+    },
+    {
       "path": "agents/providers/claude-rag.md",
       "agent": "claude",
       "scope": "dev",
@@ -389,14 +487,24 @@
       "agent": "openai",
       "scope": "dev",
       "title": "OpenAI adaptation notes",
-      "short_summary": "Provider-specific tips for OpenAI usage (token hints and example prompt template).",
-      "version": "0.1",
+      "short_summary": "OpenAI usage guide with quick-start, RAG steps, prompt templates, and tool-use guardrails for gpt-4o family.",
+      "version": "0.2",
       "topics": [
         "provider-adaptations",
-        "prompts"
+        "prompts",
+        "rag",
+        "tooling",
+        "thinking-protocol"
       ],
       "chunks": [
-        "agents/chunks/openai.md.chunk0.txt"
+        "agents/chunks/openai.md.chunk0.txt",
+        "agents/chunks/openai.md.chunk1.txt",
+        "agents/chunks/openai.md.chunk2.txt",
+        "agents/chunks/openai.md.chunk3.txt",
+        "agents/chunks/openai.md.chunk4.txt",
+        "agents/chunks/openai.md.chunk5.txt",
+        "agents/chunks/openai.md.chunk6.txt",
+        "agents/chunks/openai.md.chunk7.txt"
       ]
     },
     {

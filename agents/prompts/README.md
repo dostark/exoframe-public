@@ -9,7 +9,7 @@ topics: ["prompts", "examples", "guide", "best-practices"]
 
 # Agent Prompt Examples
 
-This folder contains example prompts demonstrating how to effectively utilize the `agents/` documentation system with Claude.
+This folder contains example prompts demonstrating how to effectively utilize the `agents/` documentation system with Claude and OpenAI agents.
 
 ## Available Prompt Templates
 
@@ -55,6 +55,24 @@ This folder contains example prompts demonstrating how to effectively utilize th
    - Context injection: Task-specific documentation
 
 8. **[rag-context-injection.md](rag-context-injection.md)** — Semantic search and context injection
+   ### OpenAI (gpt-4o family)
+
+   9. **[openai-quickstart.md](openai-quickstart.md)** — Use agents/ first (diff-first + verification)
+      - When to use: Any OpenAI-driven coding task
+      - Key pattern: Inject context → Files/Plan/Diffs/Verification → cite doc paths
+
+   10. **[openai-rag-context-injection.md](openai-rag-context-injection.md)** — Inspect → Inject → execute with context
+      - When to use: Unfamiliar areas, multi-step tasks, cross-cutting changes
+      - Key pattern: inspect_embeddings → inject_agent_context → minimal diffs
+
+   11. **[openai-tdd-workflow.md](openai-tdd-workflow.md)** — Tests first with explicit assertions
+      - When to use: New features, bugfixes that need regression coverage
+      - Key pattern: failing tests → minimal implementation → verify
+
+   12. **[openai-debugging-systematic.md](openai-debugging-systematic.md)** — Reproduce → Diagnose → Fix → Verify
+      - When to use: Flakes, runtime errors, TypeScript failures
+      - Key pattern: evidence-first debugging + minimal diffs
+
    - When to use: Complex questions, unfamiliar areas, multi-step tasks
    - Key pattern: Inspect → Inject → Execute with context
    - Context injection: Dynamic based on query
@@ -75,6 +93,10 @@ Match your task to the appropriate prompt template:
 | Update Building with AI Agents doc | [update-building-with-ai-agents.md](update-building-with-ai-agents.md) |
 | Don't know where to start | [cross-reference-navigation.md](cross-reference-navigation.md) |
 | Need docs for unfamiliar area | [rag-context-injection.md](rag-context-injection.md) |
+| OpenAI quickstart (diff-first) | [openai-quickstart.md](openai-quickstart.md) |
+| OpenAI context injection | [openai-rag-context-injection.md](openai-rag-context-injection.md) |
+| OpenAI TDD workflow | [openai-tdd-workflow.md](openai-tdd-workflow.md) |
+| OpenAI debugging workflow | [openai-debugging-systematic.md](openai-debugging-systematic.md) |
 
 ### 2. Customize the Template
 

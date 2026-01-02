@@ -1,10 +1,15 @@
 {
-  "generated_at": "2026-01-02T13:39:10.689Z",
+  "generated_at": "2026-01-02T14:12:14.201Z",
   "index": [
     {
       "path": "agents/docs/documentation.md",
       "title": "ExoFrame Documentation Development Guidelines",
       "embeddingFile": "agents/embeddings/documentation.md.json"
+    },
+    {
+      "path": "agents/prompts/openai-debugging-systematic.md",
+      "title": "OpenAI Debugging: Reproduce → Diagnose → Fix → Verify",
+      "embeddingFile": "agents/embeddings/openai-debugging-systematic.md.json"
     },
     {
       "path": "agents/prompts/refactoring-with-thinking.md",
@@ -22,6 +27,11 @@
       "embeddingFile": "agents/embeddings/debugging-systematic.md.json"
     },
     {
+      "path": "agents/prompts/openai-tdd-workflow.md",
+      "title": "OpenAI TDD Workflow (tests first)",
+      "embeddingFile": "agents/embeddings/openai-tdd-workflow.md.json"
+    },
+    {
       "path": "agents/prompts/README.md",
       "title": "Prompt Examples README",
       "embeddingFile": "agents/embeddings/README.md.json"
@@ -32,9 +42,19 @@
       "embeddingFile": "agents/embeddings/rag-context-injection.md.json"
     },
     {
+      "path": "agents/prompts/openai-rag-context-injection.md",
+      "title": "OpenAI RAG Context Injection (inspect → inject)",
+      "embeddingFile": "agents/embeddings/openai-rag-context-injection.md.json"
+    },
+    {
       "path": "agents/prompts/tdd-workflow.md",
       "title": "TDD Workflow Prompt Example",
       "embeddingFile": "agents/embeddings/tdd-workflow.md.json"
+    },
+    {
+      "path": "agents/prompts/openai-quickstart.md",
+      "title": "OpenAI Quickstart: Use agents/ first",
+      "embeddingFile": "agents/embeddings/openai-quickstart.md.json"
     },
     {
       "path": "agents/prompts/implementation-plan-driven.md",
@@ -85,6 +105,11 @@
       "path": "agents/providers/google.md",
       "title": "Google provider adaptation notes",
       "embeddingFile": "agents/embeddings/google.md.json"
+    },
+    {
+      "path": "agents/providers/openai-rag.md",
+      "title": "OpenAI RAG (Retrieval-Augmented Generation) Usage Guide",
+      "embeddingFile": "agents/embeddings/openai-rag.md.json"
     },
     {
       "path": "agents/providers/claude-rag.md",

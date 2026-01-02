@@ -7300,6 +7300,84 @@ short_summary: "How to maintain docs/ and sync with Implementation Plan. Include
 - Cross-reference map reduces discovery friction for new contributors
 - All enhancements follow existing `agents/` frontmatter schema and validation rules
 
+### Step 10.6: Enhance `agents/` for OpenAI Agent Interaction ✅ COMPLETED
+
+**Location:** `agents/providers/openai.md`, `agents/providers/openai-rag.md` (new), `agents/prompts/openai-*.md` (new), `agents/cross-reference.md`, `tests/agents/openai_enhancements_test.ts` (new)
+
+**Goal:** Improve the `agents/` folder to maximize _regular usage_ and _effectiveness_ for OpenAI agents (junior → senior) by making “use agents/ first” the default path, with copy/paste prompt templates, predictable RAG workflows, and tool-use guardrails tuned to the gpt-4o family.
+
+**Design Constraints (from `agents/README.md`):**
+
+- All new/updated agent docs MUST have valid YAML frontmatter and required sections.
+- Required sections: **Key points**, **Canonical prompt (short)**, **Examples**. Recommended: **Do / Don't**.
+- After edits under `agents/`: rebuild manifest/chunks, rebuild embeddings (mock or openai), then validate.
+
+**Success Criteria:**
+
+1. [x] `agents/providers/openai.md` expanded to include **Key points**, **Canonical prompt**, **Examples**, and **Do / Don't** in addition to OpenAI-specific guidance
+2. [x] OpenAI doc includes 4 task-type prompt patterns (TDD, refactoring, debugging, documentation) mirroring Step 10.5’s “task-type system prompts” approach
+3. [x] Clear “pit of success” RAG workflow documented for OpenAI: retrieve → plan → patch → verify, with chunk count guidance (2–3 simple, 4–6 standard, 8–10 complex)
+4. [x] New `agents/providers/openai-rag.md` created with tool-centric recipes (`inject_agent_context.ts`, `inspect_embeddings.ts`, embeddings modes)
+5. [x] New OpenAI prompt templates added under `agents/prompts/` (at least 4):
+   - openai-quickstart.md (diff-first + budgets)
+   - openai-rag-context-injection.md (inspect → inject)
+   - openai-tdd-workflow.md (tests-first + assertions)
+   - openai-debugging-systematic.md (repro → isolate → fix → test)
+6. [x] `agents/prompts/README.md` updated to include the new OpenAI templates and when to use them
+7. [x] `agents/cross-reference.md` updated so OpenAI users can find the “right doc first” (task → doc mapping + topic search entries)
+8. [x] All OpenAI-related `short_summary` fields are ≤200 chars and topics are populated (improves retrieval quality)
+9. [x] Unit tests added (`tests/agents/openai_enhancements_test.ts`) to enforce required sections, frontmatter compliance, and summary limits
+10. [x] CI validation includes OpenAI enhancements via `deno task test` (runs the new OpenAI enhancement tests) plus `check:docs` (manifest freshness) and `validate_agents_docs.ts`
+
+**Test Definitions:**
+
+- Validation: `deno run --allow-read scripts/validate_agents_docs.ts`
+- Manifest/chunks: `deno run --allow-read --allow-write scripts/build_agents_index.ts`
+- Embeddings (mock baseline): `deno run --allow-read --allow-write scripts/build_agents_embeddings.ts --mode mock`
+- Unit tests: `deno test --allow-read tests/agents/openai_enhancements_test.ts`
+- Retrieval sanity (manual): `deno run --allow-read scripts/inject_agent_context.ts openai "openai rag context injection" 6` returns OpenAI docs and templates
+
+**Enhancement Details:**
+
+#### 1. OpenAI Provider Guide: Copy/Paste First (HIGH PRIORITY)
+
+- Expand `agents/providers/openai.md` so the first screen is actionable:
+  - A canonical system prompt that _requires_ retrieval from `agents/` and requires citing doc paths used
+  - Explicit budgets (simple/standard/complex) and an instruction to trim output if over budget
+  - A “stop and ask” rule when context is missing or ambiguous requirements exist
+
+#### 2. OpenAI RAG Usage Guide (HIGH PRIORITY)
+
+- Create `agents/providers/openai-rag.md` with:
+  - Inspect-first workflow (`inspect_embeddings.ts`) then inject (`inject_agent_context.ts`)
+  - Chunk-count guidance by task complexity
+  - Freshness contract: if docs changed, rebuild manifest/chunks/embeddings then retry
+  - Guidance for `--mode mock` vs `--mode openai` embeddings
+
+#### 3. Multi-Level Prompts (MEDIUM PRIORITY)
+
+- Add examples for junior/mid/senior prompts, each with:
+  - An explicit budget
+  - Required output format (diff-first, apply_patch-ready)
+  - Required citations (which agent docs were used)
+
+#### 4. Tool-Use Guardrails (MEDIUM PRIORITY)
+
+- Document OpenAI-specific guardrails (in `openai.md` + templates):
+  - Prefer minimal diffs; separate multi-file changes
+  - Ask 1–3 clarifying questions if requirements are ambiguous
+  - Always end with verification steps (tests/lint) and residual risks
+
+#### 5. Discovery: Cross-Reference + Prompts Library (LOW PRIORITY)
+
+- Update `agents/cross-reference.md` with OpenAI mapping rows and topics
+- Add OpenAI templates to `agents/prompts/` to make the “right way” the fastest way
+
+#### 6. Enforcement: Tests + CI (LOW PRIORITY)
+
+- Add `tests/agents/openai_enhancements_test.ts` matching the style of the Claude enhancement tests
+- Update CI so drift and section regression fails fast
+
 ## Phase 11: Testing & Quality Assurance
 
 > **Status:** 🏗️ IN PROGRESS (Steps 11.1-11.9 ✅ COMPLETED)\

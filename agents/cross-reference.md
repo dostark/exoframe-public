@@ -24,6 +24,7 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 | RAG/embeddings usage | [providers/claude-rag.md](providers/claude-rag.md) | [README.md](README.md) (#Building embeddings) |
 | VS Code Copilot setup | [copilot/exoframe.md](copilot/exoframe.md) | [README.md](README.md) |
 | OpenAI integration | [providers/openai.md](providers/openai.md) | [README.md](README.md) |
+| OpenAI RAG/embeddings usage | [providers/openai-rag.md](providers/openai-rag.md) | [providers/openai.md](providers/openai.md) |
 | Google integration | [providers/google.md](providers/google.md) | [README.md](README.md) |
 
 ## Search by Topic
@@ -36,6 +37,7 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 - **`helpers`** → [tests/testing.md](tests/testing.md) (Test Organization, Helpers)
 - **`embeddings`** → [providers/claude-rag.md](providers/claude-rag.md), [README.md](README.md)
 - **`rag`** → [providers/claude-rag.md](providers/claude-rag.md)
+- **`openai`** → [providers/openai.md](providers/openai.md), [providers/openai-rag.md](providers/openai-rag.md)
 - **`prompts`** → [providers/claude.md](providers/claude.md), [providers/openai.md](providers/openai.md)
 - **`refactoring`** → [source/exoframe.md](source/exoframe.md), [providers/claude.md](providers/claude.md)
 - **`debugging`** → [providers/claude.md](providers/claude.md)
@@ -93,8 +95,9 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 
 ### OpenAI
 - **Main guide**: [providers/openai.md](providers/openai.md)
-- **Token limits**: Model-specific (see doc)
-- **Prompt template**: Includes chunk injection example
+- **RAG guide**: [providers/openai-rag.md](providers/openai-rag.md)
+- **Prompt templates**: See `agents/prompts/openai-*.md`
+- **Budgets**: Uses simple/standard/complex output budgets (see openai.md)
 
 ### Google
 - **Main guide**: [providers/google.md](providers/google.md)

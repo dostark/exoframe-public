@@ -5,8 +5,9 @@
 
 ### OpenAI
 - **Main guide**: [providers/openai.md](providers/openai.md)
-- **Token limits**: Model-specific (see doc)
-- **Prompt template**: Includes chunk injection example
+- **RAG guide**: [providers/openai-rag.md](providers/openai-rag.md)
+- **Prompt templates**: See `agents/prompts/openai-*.md`
+- **Budgets**: Uses simple/standard/complex output budgets (see openai.md)
 
 ### Google
 - **Main guide**: [providers/google.md](providers/google.md)
