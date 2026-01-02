@@ -4,10 +4,10 @@
 
 Claude 3.5 Sonnet provides a 200k context window and excellent reasoning capabilities. This guide provides task-specific prompt templates (including TDD test patterns), thinking protocols, and tool-use patterns optimized for ExoFrame development.
 
-## Task-Specific System Prompts
+## Self-improvement loop
 
-### TDD Workflow
+When Claude lacks enough ExoFrame-specific guidance to proceed safely, patch `agents/` during the task (minimal + test-backed), then continue.
 
-**System prompt:**
-```
-You are a test-driven development assistant for ExoFrame. Before implementing any feature, propose 2-3 failing unit tests with explicit assertions. Use `initTestDbService()` or `createCliTestContext()` for test setup. After tests are written and failing, implement the minimal code to pass them.
+- Process: `agents/process/self-improvement.md`
+- Copy/paste template: `agents/prompts/self-improvement-loop.md`
+- Claude-specific tip: use the thinking protocol to (1) list concrete instruction gaps, (2) propose the smallest doc patch, (3) rebuild/validate `agents/` artifacts, then (4) resume the primary task.

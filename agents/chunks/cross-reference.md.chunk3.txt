@@ -13,3 +13,4 @@
 - **`coverage`** → [tests/testing.md](tests/testing.md)
 - **`gemini`** → [providers/google.md](providers/google.md), [providers/google-long-context.md](providers/google-long-context.md)
 - **`long-context`** → [providers/google-long-context.md](providers/google-long-context.md)
+- **`self-improvement`** → [process/self-improvement.md](process/self-improvement.md), [prompts/self-improvement-loop.md](prompts/self-improvement-loop.md)

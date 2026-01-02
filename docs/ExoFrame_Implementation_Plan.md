@@ -7431,6 +7431,91 @@ short_summary: "How to maintain docs/ and sync with Implementation Plan. Include
 - **RAG-as-a-Filter**: Use semantic search to identify _which_ modules to load in full, rather than just loading chunks.
 - **Chunk Density**: Guidance on using 20+ chunks (or full docs) to provide maximum detail for reasoning.
 
+### Step 10.8: Add Self-Improvement Loop for `agents/` Instructions (Claude + OpenAI + Google) ✅ COMPLETED
+
+**Location:** `agents/process/self-improvement.md` (new, common), `agents/providers/{claude,openai,google}.md`, `agents/cross-reference.md`, `agents/prompts/self-improvement-loop.md` (new, common), `tests/agents/self_improvement_process_test.ts` (new)
+
+**Goal:** Establish a repeatable “instruction adequacy check” that runs during real chat/task execution: the active agent must (1) confirm the current `agents/` instructions are sufficient to complete the user request safely and correctly, and (2) if not sufficient, plan + apply a minimal update to `agents/` that eliminates the missing guidance _as part of the same work_ (then rebuild/validate artifacts), without derailing the primary task.
+
+**Design Constraints (from `agents/README.md`):**
+
+- All new/updated agent docs MUST have valid YAML frontmatter and required sections.
+- Required sections: **Key points**, **Canonical prompt (short)**, **Examples**. Recommended: **Do / Don't**.
+- After edits under `agents/`: rebuild manifest/chunks, rebuild embeddings (mock or openai), then validate.
+
+**Success Criteria:**
+
+1. [x] A provider-agnostic process doc exists: `agents/process/self-improvement.md` defining the self-improvement loop, when to trigger it, and how to keep doc updates minimal and grounded.
+2. [x] A common prompt template exists: `agents/prompts/self-improvement-loop.md` that forces (a) adequacy check, (b) explicit gaps list, (c) doc patch plan, (d) execution plan, (e) verification.
+3. [x] Provider docs (`claude.md`, `openai.md`, `google.md`) each include a short “Self-improvement loop” section that:
+   - references the common process doc,
+   - clarifies provider-specific implementation details (e.g., Claude thinking protocol, OpenAI diff-first output contract, Gemini long-context saturation).
+4. [x] Discovery surfaces include the process:
+   - `agents/cross-reference.md` includes a row/topic mapping for “instruction gaps / self-improvement loop”.
+   - `agents/prompts/README.md` lists the new template and when to use it.
+5. [x] Enforcement tests exist and pass: `tests/agents/self_improvement_process_test.ts` ensures the process doc/template exist, have required sections/frontmatter, and that each provider doc references the process.
+
+**Process Definition (to be captured in the common doc):**
+
+- **Trigger:** Before any non-trivial change (multi-file code edits, new feature, refactor, debugging session, doc updates) the agent performs an **Instruction Adequacy Check**:
+  1. Identify the task type (TDD/refactor/debug/docs/CI/etc).
+  2. Retrieve relevant agent docs (cross-reference + provider guide + any domain docs).
+  3. Answer: “Do the current docs contain enough concrete, ExoFrame-specific guidance to execute safely and verify?”
+
+- **If adequate:** Proceed with the task using the existing provider workflow (retrieve → plan → diff/patch → verify).
+
+- **If not adequate:** Execute a **Doc Patch Loop** (minimal, targeted):
+  1. List missing guidance as actionable gaps (e.g., missing test helper, missing CLI command pattern, missing schema expectation).
+  2. Propose the smallest doc update(s) that close the gap (new section, new example, new prompt template, or cross-reference row).
+  3. Apply the doc patch during the task (only changes directly relevant to the current request).
+  4. Rebuild `agents/manifest.json` + `agents/chunks/` and (mock) embeddings; run `validate_agents_docs.ts`.
+  5. Add/update a regression test that prevents the same gap from reappearing.
+  6. Continue the primary task with the improved instructions.
+
+- **Guardrails:**
+  - Keep doc updates **minimal and task-scoped**; avoid speculative “nice-to-have” content.
+  - If requirements are ambiguous, ask 1–3 clarifying questions before making doc changes.
+  - Prefer adding examples/checklists over long prose; optimize for retrieval.
+
+**Test Definitions:**
+
+- Validation: `deno run --allow-read scripts/validate_agents_docs.ts`
+- Manifest/chunks: `deno run --allow-read --allow-write scripts/build_agents_index.ts` + `deno run --allow-read scripts/verify_manifest_fresh.ts`
+- Embeddings (mock baseline): `deno run --allow-read --allow-write scripts/build_agents_embeddings.ts --mode mock`
+- Unit tests: `deno test --allow-read tests/agents/self_improvement_process_test.ts`
+
+**Enhancement Details:**
+
+#### 1. Common Self-Improvement Process Doc (HIGH PRIORITY)
+
+- Create `agents/process/self-improvement.md` (agent: `general`) with:
+  - A concrete checklist for adequacy assessment
+  - A “gap taxonomy” (missing examples, missing commands, missing invariants, missing tests, missing safety constraints)
+  - A minimal template for doc patches (what to add, where, and how to validate)
+
+#### 2. Common Prompt Template (HIGH PRIORITY)
+
+- Create `agents/prompts/self-improvement-loop.md` that enforces output structure:
+  - Used docs (paths)
+  - Instruction adequacy verdict
+  - Gaps list
+  - Doc patch plan (files to edit)
+  - Primary task plan
+  - Verification steps
+
+#### 3. Provider Integration (MEDIUM PRIORITY)
+
+- Update:
+  - `agents/providers/claude.md` to integrate with Claude thinking protocol + parallel reads.
+  - `agents/providers/openai.md` to integrate with OpenAI diff-first contract + ask-when-ambiguous rule.
+  - `agents/providers/google.md` to integrate with Gemini long-context saturation + parallel tool calls.
+
+#### 4. Discovery + Enforcement (LOW PRIORITY)
+
+- Add a cross-reference row/topic for “self-improvement loop”.
+- Add a prompts README entry for the new template.
+- Add `tests/agents/self_improvement_process_test.ts` mirroring the Claude/OpenAI/Google enhancement test style.
+
 ## Phase 11: Testing & Quality Assurance
 
 > **Status:** 🏗️ IN PROGRESS (Steps 11.1-11.9 ✅ COMPLETED)\

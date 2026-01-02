@@ -1,10 +1,5 @@
-RAG usage for OpenAI
-- Retrieval: `inject_agent_context.ts openai "<topic>" 4` (2-3 chunks simple, 4-6 standard, 8+ complex only if necessary).
-- Preview before injection (optional): `inspect_embeddings.ts --agent openai --query "<topic>" --top 8`.
-- Cite sources: e.g., "Used agents/providers/openai.md (chunks 0-1), agents/cross-reference.md (chunk 2)."
-- When context is stale or missing, ask for a rebuild of manifest + embeddings before proceeding.
-
-Examples (by level)
-
-- Junior (simple, ~500 tokens):
-	"Inject agents/ context for 'ConfigLoader TOML errors'. Propose 2 failing unit tests with explicit assertions, then provide a single file-scoped diff to make them pass. Output must follow: Files → Plan → Diffs → Verification. Cite the agent docs used by path."
+Self-improvement loop
+- If you discover an instruction gap mid-task (missing examples, missing commands, missing invariants), patch `agents/` as part of the work:
+	- Process: `agents/process/self-improvement.md`
+	- Template: `agents/prompts/self-improvement-loop.md`
+- Keep the patch minimal and task-scoped; rebuild/validate `agents/` artifacts before continuing.

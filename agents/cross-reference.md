@@ -27,6 +27,7 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 | OpenAI RAG/embeddings usage | [providers/openai-rag.md](providers/openai-rag.md) | [providers/openai.md](providers/openai.md) |
 | Google integration | [providers/google.md](providers/google.md) | [README.md](README.md) |
 | Gemini Long-Context | [providers/google-long-context.md](providers/google-long-context.md) | [providers/google.md](providers/google.md) |
+| Instruction gaps / self-improvement | [process/self-improvement.md](process/self-improvement.md) | [prompts/self-improvement-loop.md](prompts/self-improvement-loop.md) |
 
 ## Search by Topic
 
@@ -45,6 +46,7 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 - **`coverage`** → [tests/testing.md](tests/testing.md)
 - **`gemini`** → [providers/google.md](providers/google.md), [providers/google-long-context.md](providers/google-long-context.md)
 - **`long-context`** → [providers/google-long-context.md](providers/google-long-context.md)
+- **`self-improvement`** → [process/self-improvement.md](process/self-improvement.md), [prompts/self-improvement-loop.md](prompts/self-improvement-loop.md)
 
 ## Workflow Examples
 

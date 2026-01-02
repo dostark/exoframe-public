@@ -44,6 +44,12 @@ Ask-when-ambiguous rule
 - If requirements are unclear, ask 1–3 clarifying questions before changing code.
 - If agents/ context is missing/stale, request rebuild of manifest/chunks/embeddings before proceeding.
 
+Self-improvement loop
+- If you discover an instruction gap mid-task (missing examples, missing commands, missing invariants), patch `agents/` as part of the work:
+	- Process: `agents/process/self-improvement.md`
+	- Template: `agents/prompts/self-improvement-loop.md`
+- Keep the patch minimal and task-scoped; rebuild/validate `agents/` artifacts before continuing.
+
 RAG usage for OpenAI
 - Retrieval: `inject_agent_context.ts openai "<topic>" 4` (2-3 chunks simple, 4-6 standard, 8+ complex only if necessary).
 - Preview before injection (optional): `inspect_embeddings.ts --agent openai --query "<topic>" --top 8`.

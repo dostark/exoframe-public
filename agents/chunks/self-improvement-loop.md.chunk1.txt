@@ -1,0 +1,16 @@
+1) Instruction Adequacy Check
+- Task type: (TDD/refactor/debug/docs/etc)
+- Active provider: (Claude/OpenAI/Google)
+- Docs consulted (paths):
+- Verdict: Adequate / Inadequate
+- If inadequate: list 1–5 concrete gaps.
+
+2) Doc Patch Loop (only if inadequate)
+- Files to update under `agents/`:
+- Minimal changes to make (bullets):
+- Regeneration + validation commands to run:
+  - `deno run --allow-read --allow-write scripts/build_agents_index.ts`
+  - `deno run --allow-read scripts/verify_manifest_fresh.ts`
+  - `deno run --allow-read --allow-write scripts/build_agents_embeddings.ts --mode mock`
+  - `deno run --allow-read scripts/validate_agents_docs.ts`
+- Enforcement test to add/update (if applicable):

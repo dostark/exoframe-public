@@ -1,3 +1,14 @@
+Deno.test("ConfigLoader: missing file returns default config", async () => {
+  const { tempDir, cleanup } = await createCliTestContext();
+  try {
+    const loader = new ConfigLoader(join(tempDir, "nonexistent.toml"));
+    const cfg = await loader.load();
+    assertEquals(cfg.mode, "sandboxed"); // default mode
+  } finally {
+    await cleanup();
+  }
+});
+
 Deno.test("ConfigLoader: invalid TOML throws clear error", async () => {
   const { tempDir, cleanup } = await createCliTestContext();
   try {

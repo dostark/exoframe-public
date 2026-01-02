@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-02T14:48:39.106Z",
+  "generated_at": "2026-01-02T15:16:09.589Z",
   "docs": [
     {
       "path": "agents/docs/documentation.md",
@@ -334,6 +334,25 @@
       ]
     },
     {
+      "path": "agents/prompts/self-improvement-loop.md",
+      "agent": "general",
+      "scope": "dev",
+      "title": "Self-improvement loop prompt template",
+      "short_summary": "Copy/paste prompt to detect instruction gaps and patch agents/ docs during execution (then rebuild/validate) before continuing.",
+      "version": "0.1",
+      "topics": [
+        "self-improvement",
+        "prompt-template",
+        "instruction-adequacy",
+        "maintenance"
+      ],
+      "chunks": [
+        "agents/chunks/self-improvement-loop.md.chunk0.txt",
+        "agents/chunks/self-improvement-loop.md.chunk1.txt",
+        "agents/chunks/self-improvement-loop.md.chunk2.txt"
+      ]
+    },
+    {
       "path": "agents/source/exoframe.md",
       "agent": "copilot",
       "scope": "dev",
@@ -431,6 +450,30 @@
       ]
     },
     {
+      "path": "agents/process/self-improvement.md",
+      "agent": "general",
+      "scope": "dev",
+      "title": "Self-improvement loop for agent instructions",
+      "short_summary": "How to detect instruction gaps during work and patch agents/ docs safely with minimal, test-backed updates.",
+      "version": "0.1",
+      "topics": [
+        "self-improvement",
+        "instruction-adequacy",
+        "agents",
+        "maintenance",
+        "rag"
+      ],
+      "chunks": [
+        "agents/chunks/self-improvement.md.chunk0.txt",
+        "agents/chunks/self-improvement.md.chunk1.txt",
+        "agents/chunks/self-improvement.md.chunk2.txt",
+        "agents/chunks/self-improvement.md.chunk3.txt",
+        "agents/chunks/self-improvement.md.chunk4.txt",
+        "agents/chunks/self-improvement.md.chunk5.txt",
+        "agents/chunks/self-improvement.md.chunk6.txt"
+      ]
+    },
+    {
       "path": "agents/providers/claude.md",
       "agent": "claude",
       "scope": "dev",
@@ -472,7 +515,8 @@
       "chunks": [
         "agents/chunks/google.md.chunk0.txt",
         "agents/chunks/google.md.chunk1.txt",
-        "agents/chunks/google.md.chunk2.txt"
+        "agents/chunks/google.md.chunk2.txt",
+        "agents/chunks/google.md.chunk3.txt"
       ]
     },
     {

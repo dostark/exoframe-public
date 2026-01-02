@@ -15,6 +15,14 @@ Key points
 - Use **Long-Chain Reasoning** to analyze systemic impacts across multiple modules.
 - Prefer explicit "Citation Required" prompts to ground responses in the provided long context.
 
+## Self-improvement loop
+
+If the current `agents/` instructions are insufficient for the task, patch them during execution (minimal, grounded), then rebuild/validate artifacts before continuing.
+
+- Process: `agents/process/self-improvement.md`
+- Template: `agents/prompts/self-improvement-loop.md`
+- Gemini-specific tip: use long-context to include the relevant `agents/` docs + the exact gap list, then propose a small doc patch (examples/checklists) and continue.
+
 ## Task-Specific Prompts
 
 ### TDD Workflow (Global View)

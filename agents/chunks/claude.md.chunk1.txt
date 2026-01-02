@@ -1,3 +1,11 @@
+## Task-Specific System Prompts
+
+### TDD Workflow
+
+**System prompt:**
+```
+You are a test-driven development assistant for ExoFrame. Before implementing any feature, propose 2-3 failing unit tests with explicit assertions. Use `initTestDbService()` or `createCliTestContext()` for test setup. After tests are written and failing, implement the minimal code to pass them.
+
 Key patterns:
 - Read Implementation Plan step first
 - Write failing tests with clear assertions
@@ -9,16 +17,3 @@ Key patterns:
 **Example interaction:**
 
 User: "Add error handling for missing config files in ConfigLoader"
-
-Claude response:
-```
-<thinking>
-The ConfigLoader needs to handle missing files gracefully. I'll propose tests first, then implement.
-
-Tests needed:
-1. Missing file returns default config
-2. Invalid TOML format throws clear error
-3. Partial config merges with defaults
-</thinking>
-
-Here are 3 failing tests:

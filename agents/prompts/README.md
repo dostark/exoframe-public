@@ -54,32 +54,37 @@ This folder contains example prompts demonstrating how to effectively utilize th
    - Key pattern: Find task type → Read primary docs → Follow workflow
    - Context injection: Task-specific documentation
 
-8. **[rag-context-injection.md](rag-context-injection.md)** — Semantic search and context injection
+8. **[self-improvement-loop.md](self-improvement-loop.md)** — Patch instruction gaps during execution
+   - When to use: You notice `agents/` docs are missing guidance needed to complete the current task safely
+   - Key pattern: Adequacy check → Gaps → Minimal doc patch → Rebuild/validate → Resume
+   - Context injection: process doc + provider guide
+
+9. **[rag-context-injection.md](rag-context-injection.md)** — Semantic search and context injection
    ### OpenAI (gpt-4o family)
 
-   9. **[openai-quickstart.md](openai-quickstart.md)** — Use agents/ first (diff-first + verification)
+   10. **[openai-quickstart.md](openai-quickstart.md)** — Use agents/ first (diff-first + verification)
       - When to use: Any OpenAI-driven coding task
       - Key pattern: Inject context → Files/Plan/Diffs/Verification → cite doc paths
 
-   10. **[openai-rag-context-injection.md](openai-rag-context-injection.md)** — Inspect → Inject → execute with context
+   11. **[openai-rag-context-injection.md](openai-rag-context-injection.md)** — Inspect → Inject → execute with context
       - When to use: Unfamiliar areas, multi-step tasks, cross-cutting changes
       - Key pattern: inspect_embeddings → inject_agent_context → minimal diffs
 
-   11. **[openai-tdd-workflow.md](openai-tdd-workflow.md)** — Tests first with explicit assertions
+   12. **[openai-tdd-workflow.md](openai-tdd-workflow.md)** — Tests first with explicit assertions
       - When to use: New features, bugfixes that need regression coverage
       - Key pattern: failing tests → minimal implementation → verify
 
-   12. **[openai-debugging-systematic.md](openai-debugging-systematic.md)** — Reproduce → Diagnose → Fix → Verify
+   13. **[openai-debugging-systematic.md](openai-debugging-systematic.md)** — Reproduce → Diagnose → Fix → Verify
       - When to use: Flakes, runtime errors, TypeScript failures
       - Key pattern: evidence-first debugging + minimal diffs
 
    ### Google (Gemini 1.5 Pro)
 
-   13. **[google-quickstart.md](google-quickstart.md)** — Native long-context + broad reasoning
+   14. **[google-quickstart.md](google-quickstart.md)** — Native long-context + broad reasoning
       - When to use: Global refactorings, architecture audits, complex systemic changes
       - Key pattern: Saturation → Global Check → TDD → high-quality diffs
 
-   14. **[google-tdd-workflow.md](google-tdd-workflow.md)** — Exhaustive tests covering boundary conditions
+   15. **[google-tdd-workflow.md](google-tdd-workflow.md)** — Exhaustive tests covering boundary conditions
       - When to use: New features requiring high reliability
       - Key pattern: Research → Plan (5+ cases) → Execute → Finalize
 
@@ -102,6 +107,7 @@ Match your task to the appropriate prompt template:
 | Create a commit message | [commit-message.md](commit-message.md) |
 | Update Building with AI Agents doc | [update-building-with-ai-agents.md](update-building-with-ai-agents.md) |
 | Don't know where to start | [cross-reference-navigation.md](cross-reference-navigation.md) |
+| I’m missing guidance in agents/ | [self-improvement-loop.md](self-improvement-loop.md) |
 | Need docs for unfamiliar area | [rag-context-injection.md](rag-context-injection.md) |
 | OpenAI quickstart (diff-first) | [openai-quickstart.md](openai-quickstart.md) |
 | OpenAI context injection | [openai-rag-context-injection.md](openai-rag-context-injection.md) |

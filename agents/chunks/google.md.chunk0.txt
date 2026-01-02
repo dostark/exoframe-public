@@ -6,7 +6,6 @@ Key points
 - Use **Long-Chain Reasoning** to analyze systemic impacts across multiple modules.
 - Prefer explicit "Citation Required" prompts to ground responses in the provided long context.
 
-## Task-Specific Prompts
+## Self-improvement loop
 
-### TDD Workflow (Global View)
-"You are an SDET for ExoFrame. Analyze the entire `src/` and `tests/` structure to ensure new tests match existing patterns. Propose 3-5 failing tests with explicit assertions, covering happy paths and edge cases."
+If the current `agents/` instructions are insufficient for the task, patch them during execution (minimal, grounded), then rebuild/validate artifacts before continuing.
