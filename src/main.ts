@@ -8,6 +8,12 @@ import { ensureDir } from "@std/fs";
 import { join } from "@std/path";
 
 if (import.meta.main) {
+  // Simple argument handling for the compiled binary
+  if (Deno.args.includes("--version") || Deno.args.includes("-v")) {
+    console.log("ExoFrame Daemon v0.1.0");
+    Deno.exit(0);
+  }
+
   try {
     const configService = new ConfigService();
     const config = configService.get();
