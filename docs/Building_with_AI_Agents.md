@@ -3168,6 +3168,7 @@ _The recursion continues. The patterns emerge. The meta-framework takes shape._
 | **Multi-Platform Build**       | `deno task ci:build`                                   | Compile + test all platform artifacts          |
 | **Lockfile Update**            | `deno cache --reload --lock-write`                     | Reproducible builds across machines            |
 | **Detailed Commit Message**    | Use `agents/prompts/commit-message.md` template        | Structured commits with WHY + context          |
+| **Instruction Adequacy Check** | Use `agents/prompts/self-improvement-loop.md` template | Patch missing agent guidance mid-task          |
 
 ### The Question Templates
 
@@ -3212,6 +3213,7 @@ _The recursion continues. The patterns emerge. The meta-framework takes shape._
 - "Create agents/prompts/ with example prompts for [task type]. Include template, example usage, and expected response pattern. Follow agents/README.md schema."
 - "Update agents/providers/claude.md with task-type system prompt for [task]. Include thinking protocol, ExoFrame-specific requirements, and few-shot example."
 - "After updating agents/ docs: rebuild chunks, regenerate embeddings, validate schema. Commands: build_agents_index.ts, build_agents_embeddings.ts --mode mock, validate_agents_docs.ts"
+- "If you discover an instruction gap mid-task: use agents/prompts/self-improvement-loop.md to run an Instruction Adequacy Check, patch agents/ minimally, rebuild/validate, then resume."
 
 **For RAG Context Injection**:
 
@@ -4204,6 +4206,123 @@ If that's not AI-human collaboration, I don't know what is.
 ---
 
 _The loop closes. The system documents itself. The meta-framework achieves consciousness—or at least, very good version control._
+
+## Part XX: The Instruction Adequacy Check (January 2026)
+
+### The Problem: When the Docs Are Almost Good Enough
+
+By January 2026, the `agents/` system was real: validated docs, embeddings, chunking, provider guides, prompt templates.
+
+And that created a new kind of failure mode:
+
+Not “we have no guidance.”
+
+But “we have 90% of the guidance, and the remaining 10% is exactly what we need right now.”
+
+That 10% is where agents hallucinate, humans improvise, and consistency quietly dies.
+
+### The Wake-Up Call: A Gap Discovered Mid-Flight
+
+The pattern looked like this:
+
+```
+Me: [starts a non-trivial task]
+Agent: [does the right thing for 80% of the workflow]
+Agent: [hits an ambiguity: missing command, missing invariant, missing example]
+Agent: [either guesses… or stalls]
+```
+
+At some point the “documentation system” had to become more than a library.
+It needed to become a workflow:
+
+1. Detect missing instructions
+2. Patch the instructions (minimally)
+3. Rebuild/validate the artifacts
+4. Continue the primary task with the improved guidance
+
+### The Solution: Step 10.8 - The Self-Improvement Loop
+
+Step 10.8 formalized the missing step: **instruction adequacy is a first-class check**.
+
+We added two provider-agnostic building blocks:
+
+- **Process doc**: `agents/process/self-improvement.md`
+- **Prompt template**: `agents/prompts/self-improvement-loop.md`
+
+The process is intentionally boring (which is the highest compliment in infrastructure):
+
+**Instruction Adequacy Check**:
+
+- Do we have ExoFrame-specific guidance for what to do?
+- Do we know what invariants to preserve?
+- Do we know what verification to run?
+
+If any answer is “no”, the task is not blocked — it’s an opportunity to upgrade the system.
+
+### The Doc Patch Loop: Treat Documentation Like Code
+
+The critical insight was to treat doc fixes exactly like code fixes:
+
+1. Make the gap explicit (1–5 concrete items)
+2. Apply the smallest patch that closes the gap
+3. Rebuild and validate the generated artifacts
+4. Add a regression test when it prevents recurrence
+
+The rebuild sequence is now a repeatable ritual:
+
+```bash
+deno run --allow-read --allow-write scripts/build_agents_index.ts
+deno run --allow-read scripts/verify_manifest_fresh.ts
+deno run --allow-read --allow-write scripts/build_agents_embeddings.ts --mode mock
+deno run --allow-read scripts/validate_agents_docs.ts
+```
+
+### The Provider Wiring: Same Loop, Different Strengths
+
+The “self-improvement loop” is common, but each provider gets its own hint:
+
+- **Claude**: use the thinking protocol to list gaps → patch docs → rebuild/validate → resume
+- **OpenAI**: keep it diff-first and minimal; treat doc patches as part of the task output contract
+- **Gemini**: use long-context to include the exact gap list and relevant docs before patching
+
+### The Enforcement: When the Docs Become Testable
+
+We added a guardrail test:
+
+- `tests/agents/self_improvement_process_test.ts`
+
+It checks that:
+
+- the common process + template exist
+- required sections and frontmatter are present
+- provider docs reference the common files
+- manifest/chunks/embeddings include the new docs
+
+This is the moment the system becomes self-healing:
+
+- If someone forgets to wire a provider guide, tests fail.
+- If someone adds a doc without regenerating artifacts, checks fail.
+- If discoverability regresses, the cross-reference coverage fails.
+
+### The Meta-Pattern: A System That Can Teach Itself
+
+This is different from “documentation is important.”
+
+It’s: **documentation is part of the runtime**.
+
+If the runtime can’t explain itself well enough to execute safely, it patches itself.
+
+Not magically.
+
+Just with:
+
+- explicit checklists
+- small diffs
+- rebuild/validate steps
+- and tests that make forgetting painful
+
+That’s what makes `agents/` more than a folder.
+It’s a maintenance contract.
 
 ## Recent Patterns and Observations
 

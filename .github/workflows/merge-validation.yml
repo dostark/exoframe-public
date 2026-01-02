@@ -14,7 +14,7 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v1
         with:
-          deno-version: v1.x
+          deno-version: v2.x
 
       - name: Run Full Pipeline
         run: deno run -A scripts/ci.ts all
