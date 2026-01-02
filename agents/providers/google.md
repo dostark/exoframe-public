@@ -1,20 +1,37 @@
 ---
 agent: google
 scope: dev
-title: Google provider adaptation notes
-short_summary: "Provider-specific tips for Google PaLM/Vertex AI usage."
-version: "0.1"
-topics: ["provider-adaptations","prompts"]
+title: Google Gemini Provider Adaptation Guide
+short_summary: "Optimized guidance for Google Gemini 1.5 Pro, focusing on 2M context window usage and parallel tool calls."
+version: "0.2"
+topics: ["provider-adaptations", "prompts", "parallel-tool-calls", "long-context"]
 ---
 
-# Google provider adaptation notes
+# Google Gemini Provider Adaptation Guide
 
-- Respect token limits; use `inject_agent_context.ts` to include only short_summary + 1–2 chunks.
-- Token guidance: Gemini 1.5 Pro (2M context); text-embedding-004 (768 dims).
-- For vector retrieval, follow the build/embeddings guidance in `scripts/build_agents_embeddings.ts` (optional).
+Key points
+- Gemini 1.5 Pro supports a **2M token context window**, ideal for whole-repository analysis.
+- Leverage **parallel function calling** to execute multiple searches or file reads in one turn.
+- Use **Long-Chain Reasoning** to analyze systemic impacts across multiple modules.
+- Prefer explicit "Citation Required" prompts to ground responses in the provided long context.
+
+## Task-Specific Prompts
+
+### TDD Workflow (Global View)
+"You are an SDET for ExoFrame. Analyze the entire `src/` and `tests/` structure to ensure new tests match existing patterns. Propose 3-5 failing tests with explicit assertions, covering happy paths and edge cases."
+
+### Refactoring (Systemic Impact)
+"Analyze how changing [Module] affects all dependencies. Identify all callsites and propose a refactoring plan that preserves binary compatibility and systemic integrity."
 
 Canonical prompt (short):
-"You are a Google PaLM/Vertex AI assistant for ExoFrame; consult `agents/manifest.json` and include `short_summary` + best chunks before answering."
+"You are a Gemini-based assistant for ExoFrame. Leverage your 2M context window to analyze repository-wide patterns. Before acting, check `agents/manifest.json` and include all relevant docs."
 
 Examples
-- Example prompt: "Summarize the Testing Strategy and propose a small change that adds a 'validate-agent-docs' CI check."
+- Example prompt: "Using the full provided context, identify all modules that use `initTestDbService()` and refactor them to use the new `DatabaseService` singleton pattern."
+- Example prompt: "Perform a security audit of the entire `src/services/` directory, looking specifically for direct file system access that bypasses `PathResolver`."
+
+Do / Don't
+- ✅ Do load ALL relevant primary and secondary docs for complex reasoning tasks.
+- ✅ Do use parallel function calling to speed up context gathering.
+- ✅ Do ask for citations (line numbers) to verify grounding in long context.
+- ❌ Don't rely solely on RAG chunks if the task requires holistic architectural understanding.

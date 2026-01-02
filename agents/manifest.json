@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-02T14:12:14.071Z",
+  "generated_at": "2026-01-02T14:33:10.920Z",
   "docs": [
     {
       "path": "agents/docs/documentation.md",
@@ -108,6 +108,24 @@
       ]
     },
     {
+      "path": "agents/prompts/google-quickstart.md",
+      "agent": "google",
+      "scope": "dev",
+      "title": "Gemini Quickstart Prompt",
+      "short_summary": "Native long-context prompt for Gemini 1.5 Pro to perform whole-repo analysis.",
+      "version": "0.1",
+      "topics": [
+        "prompts",
+        "gemini",
+        "quickstart",
+        "long-context"
+      ],
+      "chunks": [
+        "agents/chunks/google-quickstart.md.chunk0.txt",
+        "agents/chunks/google-quickstart.md.chunk1.txt"
+      ]
+    },
+    {
       "path": "agents/prompts/openai-tdd-workflow.md",
       "agent": "openai",
       "scope": "dev",
@@ -207,6 +225,24 @@
         "agents/chunks/tdd-workflow.md.chunk0.txt",
         "agents/chunks/tdd-workflow.md.chunk1.txt",
         "agents/chunks/tdd-workflow.md.chunk2.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/google-tdd-workflow.md",
+      "agent": "google",
+      "scope": "dev",
+      "title": "Gemini TDD Workflow Prompt",
+      "short_summary": "Exhaustive TDD prompt optimized for Gemini's long-context reasoning.",
+      "version": "0.1",
+      "topics": [
+        "prompts",
+        "gemini",
+        "tdd",
+        "exhaustive-testing"
+      ],
+      "chunks": [
+        "agents/chunks/google-tdd-workflow.md.chunk0.txt",
+        "agents/chunks/google-tdd-workflow.md.chunk1.txt"
       ]
     },
     {
@@ -424,15 +460,19 @@
       "path": "agents/providers/google.md",
       "agent": "google",
       "scope": "dev",
-      "title": "Google provider adaptation notes",
-      "short_summary": "Provider-specific tips for Google PaLM/Vertex AI usage.",
-      "version": "0.1",
+      "title": "Google Gemini Provider Adaptation Guide",
+      "short_summary": "Optimized guidance for Google Gemini 1.5 Pro, focusing on 2M context window usage and parallel tool calls.",
+      "version": "0.2",
       "topics": [
         "provider-adaptations",
-        "prompts"
+        "prompts",
+        "parallel-tool-calls",
+        "long-context"
       ],
       "chunks": [
-        "agents/chunks/google.md.chunk0.txt"
+        "agents/chunks/google.md.chunk0.txt",
+        "agents/chunks/google.md.chunk1.txt",
+        "agents/chunks/google.md.chunk2.txt"
       ]
     },
     {
@@ -456,6 +496,25 @@
         "agents/chunks/openai-rag.md.chunk3.txt",
         "agents/chunks/openai-rag.md.chunk4.txt",
         "agents/chunks/openai-rag.md.chunk5.txt"
+      ]
+    },
+    {
+      "path": "agents/providers/google-long-context.md",
+      "agent": "google",
+      "scope": "dev",
+      "title": "Gemini Long-Context Reasoning Guide",
+      "short_summary": "Strategies for utilizing Gemini's 1.5 Pro's 2M context window for holistic repository reasoning.",
+      "version": "0.1",
+      "topics": [
+        "long-context",
+        "reasoning",
+        "gemini",
+        "context-saturation"
+      ],
+      "chunks": [
+        "agents/chunks/google-long-context.md.chunk0.txt",
+        "agents/chunks/google-long-context.md.chunk1.txt",
+        "agents/chunks/google-long-context.md.chunk2.txt"
       ]
     },
     {

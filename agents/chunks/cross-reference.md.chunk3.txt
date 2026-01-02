@@ -11,3 +11,5 @@
 - **`refactoring`** → [source/exoframe.md](source/exoframe.md), [providers/claude.md](providers/claude.md)
 - **`debugging`** → [providers/claude.md](providers/claude.md)
 - **`coverage`** → [tests/testing.md](tests/testing.md)
+- **`gemini`** → [providers/google.md](providers/google.md), [providers/google-long-context.md](providers/google-long-context.md)
+- **`long-context`** → [providers/google-long-context.md](providers/google-long-context.md)

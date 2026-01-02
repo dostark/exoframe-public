@@ -1,3 +1,5 @@
+### "I want to set up RAG for semantic search"
+
 1. Read [providers/claude-rag.md](providers/claude-rag.md) for workflow
 2. Build embeddings: `deno run --allow-read --allow-write scripts/build_agents_embeddings.ts --mode mock`
 3. Test retrieval: `deno run --allow-read scripts/inject_agent_context.ts --query "your query" --agent claude`

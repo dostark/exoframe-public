@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-02T14:12:14.201Z",
+  "generated_at": "2026-01-02T14:33:11.074Z",
   "index": [
     {
       "path": "agents/docs/documentation.md",
@@ -27,6 +27,11 @@
       "embeddingFile": "agents/embeddings/debugging-systematic.md.json"
     },
     {
+      "path": "agents/prompts/google-quickstart.md",
+      "title": "Gemini Quickstart Prompt",
+      "embeddingFile": "agents/embeddings/google-quickstart.md.json"
+    },
+    {
       "path": "agents/prompts/openai-tdd-workflow.md",
       "title": "OpenAI TDD Workflow (tests first)",
       "embeddingFile": "agents/embeddings/openai-tdd-workflow.md.json"
@@ -50,6 +55,11 @@
       "path": "agents/prompts/tdd-workflow.md",
       "title": "TDD Workflow Prompt Example",
       "embeddingFile": "agents/embeddings/tdd-workflow.md.json"
+    },
+    {
+      "path": "agents/prompts/google-tdd-workflow.md",
+      "title": "Gemini TDD Workflow Prompt",
+      "embeddingFile": "agents/embeddings/google-tdd-workflow.md.json"
     },
     {
       "path": "agents/prompts/openai-quickstart.md",
@@ -103,13 +113,18 @@
     },
     {
       "path": "agents/providers/google.md",
-      "title": "Google provider adaptation notes",
+      "title": "Google Gemini Provider Adaptation Guide",
       "embeddingFile": "agents/embeddings/google.md.json"
     },
     {
       "path": "agents/providers/openai-rag.md",
       "title": "OpenAI RAG (Retrieval-Augmented Generation) Usage Guide",
       "embeddingFile": "agents/embeddings/openai-rag.md.json"
+    },
+    {
+      "path": "agents/providers/google-long-context.md",
+      "title": "Gemini Long-Context Reasoning Guide",
+      "embeddingFile": "agents/embeddings/google-long-context.md.json"
     },
     {
       "path": "agents/providers/claude-rag.md",

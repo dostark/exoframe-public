@@ -26,6 +26,7 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 | OpenAI integration | [providers/openai.md](providers/openai.md) | [README.md](README.md) |
 | OpenAI RAG/embeddings usage | [providers/openai-rag.md](providers/openai-rag.md) | [providers/openai.md](providers/openai.md) |
 | Google integration | [providers/google.md](providers/google.md) | [README.md](README.md) |
+| Gemini Long-Context | [providers/google-long-context.md](providers/google-long-context.md) | [providers/google.md](providers/google.md) |
 
 ## Search by Topic
 
@@ -42,6 +43,8 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 - **`refactoring`** → [source/exoframe.md](source/exoframe.md), [providers/claude.md](providers/claude.md)
 - **`debugging`** → [providers/claude.md](providers/claude.md)
 - **`coverage`** → [tests/testing.md](tests/testing.md)
+- **`gemini`** → [providers/google.md](providers/google.md), [providers/google-long-context.md](providers/google-long-context.md)
+- **`long-context`** → [providers/google-long-context.md](providers/google-long-context.md)
 
 ## Workflow Examples
 
@@ -65,6 +68,12 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 2. Use [providers/claude-rag.md](providers/claude-rag.md) for context injection
 3. Follow tool-use patterns (parallel reads, thinking protocol)
 4. Reference task-specific system prompts for TDD/refactoring/debugging
+
+### "I want to use Gemini effectively"
+
+1. Read [providers/google.md](providers/google.md) for optimized prompts
+2. Use [providers/google-long-context.md](providers/google-long-context.md) to decide when to use RAG vs full context
+3. Follow thinking protocol (Saturate → Analyze → Plan)
 
 ### "I want to add security tests"
 
@@ -101,7 +110,8 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 
 ### Google
 - **Main guide**: [providers/google.md](providers/google.md)
-- **Token limits**: Model-specific (see doc)
+- **Long-context**: [providers/google-long-context.md](providers/google-long-context.md)
+- **Context window**: 1M-2M tokens (use "Saturation" pattern)
 
 ## Common Task Patterns
 

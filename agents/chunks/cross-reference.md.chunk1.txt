@@ -13,3 +13,4 @@
 | OpenAI integration | [providers/openai.md](providers/openai.md) | [README.md](README.md) |
 | OpenAI RAG/embeddings usage | [providers/openai-rag.md](providers/openai-rag.md) | [providers/openai.md](providers/openai.md) |
 | Google integration | [providers/google.md](providers/google.md) | [README.md](README.md) |
+| Gemini Long-Context | [providers/google-long-context.md](providers/google-long-context.md) | [providers/google.md](providers/google.md) |

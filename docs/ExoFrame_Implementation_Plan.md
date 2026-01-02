@@ -7378,6 +7378,59 @@ short_summary: "How to maintain docs/ and sync with Implementation Plan. Include
 - Add `tests/agents/openai_enhancements_test.ts` matching the style of the Claude enhancement tests
 - Update CI so drift and section regression fails fast
 
+### Step 10.7: Enhance `agents/` for Google (Gemini) Agent Interaction ✅ COMPLETED
+
+**Location:** `agents/providers/google.md`, `agents/providers/google-long-context.md` (new), `agents/prompts/google-*.md` (new), `agents/cross-reference.md`, `tests/agents/google_enhancements_test.ts` (new)
+
+**Goal:** Improve the `agents/` folder to maximize interaction quality with Google (Gemini) agents by leveraging Gemini's massive (1M-2M) context window, providing long-context reasoning protocols, and establishing "whole-module" injection patterns that complement the existing RAG-based retrieval.
+
+**Success Criteria:**
+
+1. [x] `agents/providers/google.md` expanded with Gemini-optimized system prompts, parallel function calling patterns, and multimodal guidance
+2. [x] New `agents/providers/google-long-context.md` created, documenting the "Full-Context Injection" strategy (injecting entire documentation sets for complex reasoning)
+3. [x] Gemini-specific thinking protocol added, focusing on long-context synthesis and cross-file reasoning
+4. [x] Google-specific prompt templates added under `agents/prompts/` (at least 3):
+   - `google-quickstart.md` (Native long-context + broad reasoning)
+   - `google-tdd-workflow.md` (Exhaustive test coverage + multi-file impact analysis)
+5. [x] `agents/cross-reference.md` updated with Google/Gemini mapping, highlighting long-context advantages
+6. [x] "Common Pitfalls" section updated with Gemini-specific considerations (e.g., "lost in the middle" mitigation, instruction following for specific output formats)
+7. [x] Unit tests added (`tests/agents/google_enhancements_test.ts`) to ensure frontmatter compliance, required section presence, and summary length
+8. [x] CI validation includes Google enhancements via `deno task test` and `validate_agents_docs.ts`
+
+**Test Definitions:**
+
+- **Validation Tests**: `tests/agents/google_enhancements_test.ts` will verify:
+  - All Google-specific files have valid YAML frontmatter.
+  - Required sections (Key points, Canonical prompt, Examples) are present in the provider docs.
+  - Short summaries in Google docs are ≤ 200 characters.
+  - Prompt templates are correctly associated with the `google` agent.
+- **Structural Tests**: `scripts/validate_agents_docs.ts` must pass for all new files.
+- **Retrieval Sanity**: Verify that `inject_agent_context.ts google "long context"` retrieves the `google-long-context.md` file and relevant guidance.
+
+**Enhancement Details:**
+
+#### 1. Gemini Provider Guide: Leveraging Scale (HIGH PRIORITY)
+
+- **Native Long-Context**: Unlike RAG-constrained providers, Gemini can ingest the entire `agents/` directory if needed.
+- **System instructions**: Optimization for "Long-Chain Reasoning" where the agent analyzes the broad architecture before proposing local changes.
+- **Parallel Function Calling**: Documenting how to structure multiple tool calls in a single turn for faster execution.
+
+#### 2. Long-Context Thinking Protocol (HIGH PRIORITY)
+
+- **Saturate**: Instructions to load ALL relevant primary and secondary docs for the task.
+- **Synthesize**: Analysis of how the change affects the entire system, not just the local file.
+- **Exhaustive Planning**: Leveraging the large window to brainstorm 5+ alternatives before picking the optimal path.
+
+#### 3. Task-Specific Gemini Prompts (MEDIUM PRIORITY)
+
+- **TDD (Broad View)**: "Analyze all existing test helpers and documentation before proposing tests. Ensure the new tests match the repository's physical laws."
+- **Refactoring (Global Impact)**: "Identify all occurrences of [pattern] across the provided context. Propose a plan that updates all callsites consistently."
+
+#### 4. Retrieval Strategy for Gemini (MEDIUM PRIORITY)
+
+- **RAG-as-a-Filter**: Use semantic search to identify _which_ modules to load in full, rather than just loading chunks.
+- **Chunk Density**: Guidance on using 20+ chunks (or full docs) to provide maximum detail for reasoning.
+
 ## Phase 11: Testing & Quality Assurance
 
 > **Status:** 🏗️ IN PROGRESS (Steps 11.1-11.9 ✅ COMPLETED)\

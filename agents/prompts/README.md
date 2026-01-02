@@ -73,6 +73,16 @@ This folder contains example prompts demonstrating how to effectively utilize th
       - When to use: Flakes, runtime errors, TypeScript failures
       - Key pattern: evidence-first debugging + minimal diffs
 
+   ### Google (Gemini 1.5 Pro)
+
+   13. **[google-quickstart.md](google-quickstart.md)** — Native long-context + broad reasoning
+      - When to use: Global refactorings, architecture audits, complex systemic changes
+      - Key pattern: Saturation → Global Check → TDD → high-quality diffs
+
+   14. **[google-tdd-workflow.md](google-tdd-workflow.md)** — Exhaustive tests covering boundary conditions
+      - When to use: New features requiring high reliability
+      - Key pattern: Research → Plan (5+ cases) → Execute → Finalize
+
    - When to use: Complex questions, unfamiliar areas, multi-step tasks
    - Key pattern: Inspect → Inject → Execute with context
    - Context injection: Dynamic based on query
@@ -97,6 +107,8 @@ Match your task to the appropriate prompt template:
 | OpenAI context injection | [openai-rag-context-injection.md](openai-rag-context-injection.md) |
 | OpenAI TDD workflow | [openai-tdd-workflow.md](openai-tdd-workflow.md) |
 | OpenAI debugging workflow | [openai-debugging-systematic.md](openai-debugging-systematic.md) |
+| Gemini quickstart (long-context) | [google-quickstart.md](google-quickstart.md) |
+| Gemini TDD workflow (exhaustive) | [google-tdd-workflow.md](google-tdd-workflow.md) |
 
 ### 2. Customize the Template
 

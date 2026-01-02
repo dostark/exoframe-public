@@ -11,6 +11,7 @@
 
 ### Google
 - **Main guide**: [providers/google.md](providers/google.md)
-- **Token limits**: Model-specific (see doc)
+- **Long-context**: [providers/google-long-context.md](providers/google-long-context.md)
+- **Context window**: 1M-2M tokens (use "Saturation" pattern)
 
 ## Common Task Patterns
