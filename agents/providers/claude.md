@@ -11,7 +11,7 @@ topics: ["provider-adaptations","prompts","tdd","refactoring","debugging","tool-
 
 ## Overview
 
-Claude 3.5 Sonnet provides a 200k context window and excellent reasoning capabilities. This guide provides task-specific prompt templates, thinking protocols, and tool-use patterns optimized for ExoFrame development.
+Claude 3.5 Sonnet provides a 200k context window and excellent reasoning capabilities. This guide provides task-specific prompt templates (including TDD test patterns), thinking protocols, and tool-use patterns optimized for ExoFrame development.
 
 ## Task-Specific System Prompts
 

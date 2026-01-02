@@ -11,7 +11,7 @@ topics: ["rag", "embeddings", "context-injection", "semantic-search"]
 
 ## Overview
 
-ExoFrame pre-computes embeddings for all agent documentation, enabling semantic search and automatic context injection for Claude-powered workflows. This guide shows how to leverage the embeddings infrastructure to provide Claude with the most relevant context for any task.
+ExoFrame pre-computes embeddings for all agent documentation, enabling rag embeddings semantic search and automatic context injection for Claude-powered workflows. This guide shows how to leverage the embeddings infrastructure to provide Claude with the most relevant context for any task.
 
 ## RAG Workflow
 
