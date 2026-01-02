@@ -25,22 +25,6 @@ jobs:
           git config --global user.email "ci@example.com"
           git config --global user.name "CI Bot"
 
-      - name: Build exoctl for integration tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p ./.ci-bin
-
-          if [[ "${RUNNER_OS}" == "Windows" ]]; then
-            deno compile --allow-all --output ./.ci-bin/exoctl.exe src/cli/exoctl.ts
-            printf '@echo off\r\n"%%~dp0exoctl.exe" %%*\r\n' > ./.ci-bin/exoctl.cmd
-          else
-            deno compile --allow-all --output ./.ci-bin/exoctl src/cli/exoctl.ts
-            chmod +x ./.ci-bin/exoctl || true
-          fi
-
-          echo "$PWD/.ci-bin" >> "$GITHUB_PATH"
-
       - name: Run Checks
         run: deno run -A scripts/ci.ts check
 

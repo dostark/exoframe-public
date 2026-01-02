@@ -1,13 +1,18 @@
 // Integration tests for exoctl CLI commands not yet covered
 // Covers: request list, request show, plan list, plan show, changeset list, changeset show, portal add/remove/refresh, dashboard
 
-import { assert, assertStringIncludes } from "https://deno.land/std@0.203.0/assert/mod.ts";
+import { assert, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
+import { dirname, fromFileUrl, join } from "@std/path";
 import { TestEnvironment } from "./helpers/test_environment.ts";
 
 // Helper to run exoctl command in a given workspace
 async function runExoctl(args: string[], cwd: string) {
-  const command = new Deno.Command("exoctl", {
-    args,
+  const repoRoot = join(dirname(fromFileUrl(import.meta.url)), "..", "..");
+  const exoctlPath = join(repoRoot, "src", "cli", "exoctl.ts");
+  const denoConfig = join(repoRoot, "deno.json");
+
+  const command = new Deno.Command(Deno.execPath(), {
+    args: ["run", "--allow-all", "--config", denoConfig, exoctlPath, ...args],
     cwd,
     stdout: "piped",
     stderr: "piped",
