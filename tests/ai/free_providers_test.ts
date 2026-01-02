@@ -3,10 +3,17 @@ import { ModelFactory } from "../../src/ai/providers.ts";
 import { OpenAIProvider } from "../../src/ai/providers/openai_provider.ts";
 import { getTestModel, getTestModelDisplay } from "./helpers/test_model.ts";
 
+function isTruthyEnv(name: string): boolean {
+  const value = Deno.env.get(name);
+  if (!value) return false;
+  const normalized = value.toLowerCase().trim();
+  return normalized !== "0" && normalized !== "false" && normalized !== "no" && normalized !== "off";
+}
+
 function isCiGuardActive(): boolean {
   // In CI, the code intentionally prevents accidental paid calls unless
   // explicitly opted-in.
-  return Deno.env.get("CI") === "1" && Deno.env.get("EXO_ENABLE_PAID_LLM") !== "1";
+  return isTruthyEnv("CI") && Deno.env.get("EXO_ENABLE_PAID_LLM") !== "1";
 }
 
 Deno.test("ModelFactory creates OpenAIProvider for default test model", () => {

@@ -44,12 +44,10 @@ LIMIT 20
 
 ```dataview
 TABLE
-  Action,
-  Actor,
-  Target,
-  Timestamp
-FROM "System/activity_export.md"
-SORT Timestamp DESC
+  file.link as "File",
+  file.mtime as "Modified"
+FROM "Knowledge"
+SORT file.mtime DESC
 LIMIT 20
 ```
 
