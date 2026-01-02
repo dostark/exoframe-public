@@ -1,14 +1,29 @@
 # ExoFrame Dashboard
 
-## 🚀 Daemon Status
+---
+
+## 📨 Pending Requests
 
 ```dataview
-TABLE WITHOUT ID
-  "🟢 Running" as Status,
-  file.mtime as "Last Activity"
-FROM "System"
-WHERE file.name = "daemon.pid"
+TABLE
+  trace_id as "Trace",
+  status as "Status",
+  priority as "Priority",
+  agent as "Agent",
+  created as "Created"
+FROM "Inbox/Requests"
+WHERE status = "pending"
+SORT created DESC
+LIMIT 20
 ```
+
+---
+
+## 🚀 Daemon Status
+
+Tip: daemon PID file is tracked at `System/daemon.pid`.
+
+---
 
 ## 🔍 Pending Plans
 
@@ -20,7 +35,10 @@ TABLE
 FROM "Inbox/Plans"
 WHERE status = "review"
 SORT created DESC
+LIMIT 20
 ```
+
+---
 
 ## 📝 Recent Activity
 
@@ -35,6 +53,8 @@ SORT Timestamp DESC
 LIMIT 20
 ```
 
+---
+
 ## 🌐 Active Portals
 
 ```dataview
@@ -43,7 +63,12 @@ TABLE
   status as Status
 FROM "Knowledge/Portals"
 SORT file.name ASC
+LIMIT 50
 ```
 
----
-*Tip: Use `exoctl plan approve <id>` to execute a plan.*
+## 🔗 Quick Links
+
+- [[README]]
+- [[templates/README]]
+
+Tip: Use `exoctl plan approve <id>` to execute a plan.

@@ -3,11 +3,24 @@ import { ModelFactory } from "../../src/ai/providers.ts";
 import { OpenAIProvider } from "../../src/ai/providers/openai_provider.ts";
 import { getTestModel, getTestModelDisplay } from "./helpers/test_model.ts";
 
+function isCiGuardActive(): boolean {
+  // In CI, the code intentionally prevents accidental paid calls unless
+  // explicitly opted-in.
+  return Deno.env.get("CI") === "1" && Deno.env.get("EXO_ENABLE_PAID_LLM") !== "1";
+}
+
 Deno.test("ModelFactory creates OpenAIProvider for default test model", () => {
   const model = getTestModel();
   const provider = ModelFactory.create(model, { apiKey: "test-key", baseUrl: "https://api.test" });
 
   assertExists(provider);
+
+  if (isCiGuardActive()) {
+    // In CI without opt-in, ModelFactory returns a mock provider.
+    assertStringIncludes(provider.id, "mock-provider");
+    return;
+  }
+
   // The provider should be an OpenAIProvider with model reflected in id
   assertStringIncludes(provider.id, `openai-${model}`);
   assertExists(provider.generate);
@@ -54,6 +67,12 @@ Deno.test("OpenAIProvider sends correct payload and returns content for default 
 Deno.test("ModelFactory creates provider for 'gpt-5-mini' and 'gpt-4o' types", () => {
   const p1 = ModelFactory.create("gpt-5-mini", { apiKey: "k" });
   const p2 = ModelFactory.create("gpt-4o", { apiKey: "k" });
+
+  if (isCiGuardActive()) {
+    assertStringIncludes(p1.id, "mock-provider");
+    assertStringIncludes(p2.id, "mock-provider");
+    return;
+  }
 
   assertStringIncludes(p1.id, "openai-gpt-5-mini");
   assertStringIncludes(p2.id, "openai-gpt-4o");

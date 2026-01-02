@@ -484,8 +484,14 @@ ${systemPrompt}
           const { frontmatter } = this.extractTomlFrontmatter(content);
 
           if (frontmatter) {
+            const agentId = frontmatter.agent_id;
+            if (typeof agentId !== "string" || agentId.trim().length === 0) {
+              // Skip malformed blueprint files rather than crashing list output.
+              continue;
+            }
+
             results.push({
-              agent_id: frontmatter.agent_id as string,
+              agent_id: agentId,
               name: frontmatter.name as string,
               model: frontmatter.model as string,
               capabilities: frontmatter.capabilities as string[] | undefined,
@@ -503,7 +509,7 @@ ${systemPrompt}
       throw error;
     }
 
-    return results.sort((a, b) => a.agent_id.localeCompare(b.agent_id));
+    return results.sort((a, b) => (a.agent_id ?? "").localeCompare(b.agent_id ?? ""));
   }
 
   /**
