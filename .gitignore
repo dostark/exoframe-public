@@ -1,5 +1,4 @@
 /.cache
-node_modules/
 dist/
 coverage/
 report/
@@ -16,7 +15,6 @@ report/
 /Inbox/
 /Portals/
 *.log
-deno.lock
 
 # Test artifacts
 test-*.toml

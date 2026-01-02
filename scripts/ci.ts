@@ -76,20 +76,37 @@ const testCommand = new Command()
 const buildCommand = new Command()
   .description("Build binaries")
   .option("--targets <targets:string>", "Comma separated list of targets")
+  .option("-c, --compile", "Compile the standalone binary", { default: false })
   .action(async (options) => {
-    const success = await generateBuilds(options.targets?.split(","));
+    const success = await generateBuilds({
+      targets: options.targets?.split(","),
+      compile: options.compile,
+    });
     if (!success) Deno.exit(1);
   });
 
-async function generateBuilds(targets?: string[]): Promise<boolean> {
-  const buildTargets = targets ?? [Deno.build.target];
-  console.log(`\n🏗️  Starting Build Phase for: ${buildTargets.join(", ")}`);
+interface BuildOptions {
+  targets?: string[];
+  compile?: boolean;
+}
 
-  await Deno.mkdir("dist", { recursive: true });
+async function generateBuilds(options: BuildOptions = {}): Promise<boolean> {
+  const { targets, compile = true } = options;
+  const buildTargets = targets ?? [Deno.build.target];
+
+  if (!compile) {
+    console.log("\n🏗️  Starting Build Phase (Compilation skipped)");
+    return true;
+  }
+
+  console.log(`\n🏗️  Starting Build Phase (Compiling) for: ${buildTargets.join(", ")}`);
+
+  const binDir = "dist/bin";
+  await Deno.mkdir(binDir, { recursive: true });
 
   const tasks = buildTargets.map((target) => {
     const isWin = target.includes("windows");
-    const output = isWin ? `dist/exoframe-${target}.exe` : `dist/exoframe-${target}`;
+    const output = isWin ? `${binDir}/exoframe-${target}.exe` : `${binDir}/exoframe-${target}`;
     return {
       cmd: [
         "deno",
@@ -113,7 +130,8 @@ async function generateBuilds(targets?: string[]): Promise<boolean> {
     console.log("\n🧪 Validating artifacts...");
     for (const target of buildTargets) {
       const isWin = target.includes("windows");
-      const output = isWin ? `dist/exoframe-${target}.exe` : `dist/exoframe-${target}`;
+      const binDir = "dist/bin";
+      const output = isWin ? `${binDir}/exoframe-${target}.exe` : `${binDir}/exoframe-${target}`;
       try {
         const stats = await Deno.stat(output);
         const sizeMb = (stats.size / (1024 * 1024)).toFixed(2);
@@ -242,7 +260,7 @@ const allCommand = new Command()
 
     // 4. Build
     console.log("\n--- Phase 4: Build ---");
-    if (!await generateBuilds()) Deno.exit(1);
+    if (!await generateBuilds({ compile: true })) Deno.exit(1);
 
     console.log(`\n🎉 CI Pipeline Completed Successfully in ${Date.now() - start}ms`);
   });

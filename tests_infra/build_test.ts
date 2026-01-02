@@ -3,7 +3,7 @@ import { join } from "https://deno.land/std@0.221.0/path/mod.ts";
 import { exists } from "https://deno.land/std@0.221.0/fs/mod.ts";
 
 const REPO_ROOT = Deno.cwd();
-const DIST_DIR = join(REPO_ROOT, "dist");
+const DIST_DIR = join(REPO_ROOT, "dist", "bin");
 const CI_SCRIPT = join(REPO_ROOT, "scripts", "ci.ts");
 
 Deno.test({
@@ -26,7 +26,7 @@ Deno.test({
 
     console.log(`\n🩺 Testing build for ${target}...`);
     const command = new Deno.Command(Deno.execPath(), {
-      args: ["run", "-A", CI_SCRIPT, "build", "--targets", target],
+      args: ["run", "-A", CI_SCRIPT, "build", "--compile", "--targets", target],
       stdout: "piped",
       stderr: "piped",
     });
@@ -36,7 +36,7 @@ Deno.test({
 
     // 2. Verify file exists
     const fileExists = await exists(expectedPath);
-    assert(fileExists, `Artifact ${expectedName} should exist in dist/`);
+    assert(fileExists, `Artifact ${expectedName} should exist in dist/bin/`);
 
     // 3. Verify it's executable and shows version (only for native target)
     if (!isWin) { // Skip execution check on windows if we are on linux runner
