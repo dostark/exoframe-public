@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-02T13:00:47.164Z",
+  "generated_at": "2026-01-02T13:39:10.689Z",
   "index": [
     {
       "path": "agents/docs/documentation.md",
@@ -45,6 +45,11 @@
       "path": "agents/prompts/cross-reference-navigation.md",
       "title": "Cross-Reference Navigation Prompt",
       "embeddingFile": "agents/embeddings/cross-reference-navigation.md.json"
+    },
+    {
+      "path": "agents/prompts/update-building-with-ai-agents.md",
+      "title": "Update Building with AI Agents Documentation",
+      "embeddingFile": "agents/embeddings/update-building-with-ai-agents.md.json"
     },
     {
       "path": "agents/source/exoframe.md",

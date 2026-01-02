@@ -1,0 +1,18 @@
+# Get commits since then
+   git log b849adf..HEAD --oneline
+
+# Read detailed commit messages
+   git log b849adf..HEAD --format="%H" | while read hash; do git show --stat $hash; done
+   ```
+
+2. **Content analysis**:
+   - Review chat history for user's prompts and agent's responses
+   - Identify patterns (e.g., "not following agents/ folder instructions")
+   - Extract "wake-up call" moments (e.g., being called out for inconsistency)
+   - Note technical implementations (prompt templates, RAG guide, git hooks)
+
+3. **Write new Part(s)**:
+   ```markdown
+   ## Part XVII: The Self-Documenting Agent System (January 2026)
+
+### The Bootstrap Problem Revisited

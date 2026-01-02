@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-02T13:00:43.736Z",
+  "generated_at": "2026-01-02T13:39:10.595Z",
   "docs": [
     {
       "path": "agents/docs/documentation.md",
@@ -196,6 +196,30 @@
         "agents/chunks/cross-reference-navigation.md.chunk2.txt",
         "agents/chunks/cross-reference-navigation.md.chunk3.txt",
         "agents/chunks/cross-reference-navigation.md.chunk4.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/update-building-with-ai-agents.md",
+      "agent": "claude",
+      "scope": "docs",
+      "title": "Update Building with AI Agents Documentation",
+      "short_summary": "Prompt template for adding new patterns and stories to Building_with_AI_Agents.md",
+      "version": "0.1",
+      "topics": [
+        "documentation",
+        "meta",
+        "patterns",
+        "field-guide"
+      ],
+      "chunks": [
+        "agents/chunks/update-building-with-ai-agents.md.chunk0.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk1.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk2.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk3.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk4.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk5.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk6.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk7.txt"
       ]
     },
     {

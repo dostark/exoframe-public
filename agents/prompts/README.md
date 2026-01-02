@@ -40,14 +40,21 @@ This folder contains example prompts demonstrating how to effectively utilize th
    - Key pattern: Review changes → Identify type/scope → Write structured message
    - Context injection: Commit conventions, Implementation Plan references
 
+### Documentation
+
+6. **[update-building-with-ai-agents.md](update-building-with-ai-agents.md)** — Updating Building with AI Agents field guide
+   - When to use: After major features, pattern discoveries, or implementation phases
+   - Key pattern: Review commits → Extract patterns → Write entertaining narrative
+   - Context injection: Commit history, chat history, implementation details
+
 ### Discovery & Navigation
 
-6. **[cross-reference-navigation.md](cross-reference-navigation.md)** — Using cross-reference map for task discovery
+7. **[cross-reference-navigation.md](cross-reference-navigation.md)** — Using cross-reference map for task discovery
    - When to use: Finding the right docs for your task
    - Key pattern: Find task type → Read primary docs → Follow workflow
    - Context injection: Task-specific documentation
 
-7. **[rag-context-injection.md](rag-context-injection.md)** — Semantic search and context injection
+8. **[rag-context-injection.md](rag-context-injection.md)** — Semantic search and context injection
    - When to use: Complex questions, unfamiliar areas, multi-step tasks
    - Key pattern: Inspect → Inject → Execute with context
    - Context injection: Dynamic based on query
@@ -65,6 +72,7 @@ Match your task to the appropriate prompt template:
 | Fix a failing test | [debugging-systematic.md](debugging-systematic.md) |
 | Work on Implementation Plan step | [implementation-plan-driven.md](implementation-plan-driven.md) |
 | Create a commit message | [commit-message.md](commit-message.md) |
+| Update Building with AI Agents doc | [update-building-with-ai-agents.md](update-building-with-ai-agents.md) |
 | Don't know where to start | [cross-reference-navigation.md](cross-reference-navigation.md) |
 | Need docs for unfamiliar area | [rag-context-injection.md](rag-context-injection.md) |
 
