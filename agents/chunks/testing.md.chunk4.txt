@@ -2,4 +2,4 @@
 
 Use `TestEnvironment.create()` for full integration tests that require workspace layout, DB, and optional git initialization. Prefer small, focused integration tests that exercise end-to-end behavior with deterministic teardown.
 
----
+### CI (GitHub Actions) — Common Pitfalls

@@ -11,23 +11,24 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 
 ## Task → Agent Doc Quick Reference
 
-| Task Type | Primary Doc | Secondary Docs |
-|-----------|-------------|----------------|
-| Write unit tests | [tests/testing.md](tests/testing.md) | [source/exoframe.md](source/exoframe.md) |
-| Refactor code | [source/exoframe.md](source/exoframe.md) | [tests/testing.md](tests/testing.md) |
-| Update documentation | [docs/documentation.md](docs/documentation.md) | - |
-| Fix TypeScript errors | [source/exoframe.md](source/exoframe.md) | [copilot/exoframe.md](copilot/exoframe.md) |
-| Add new feature | [source/exoframe.md](source/exoframe.md) + [tests/testing.md](tests/testing.md) | [docs/documentation.md](docs/documentation.md) |
-| Debug test failures | [tests/testing.md](tests/testing.md) | [source/exoframe.md](source/exoframe.md) |
-| Security audit | [tests/testing.md](tests/testing.md) (#Security Tests) | [source/exoframe.md](source/exoframe.md) (#System Constraints) |
-| Claude-specific guidance | [providers/claude.md](providers/claude.md) | [README.md](README.md) |
-| RAG/embeddings usage | [providers/claude-rag.md](providers/claude-rag.md) | [README.md](README.md) (#Building embeddings) |
-| VS Code Copilot setup | [copilot/exoframe.md](copilot/exoframe.md) | [README.md](README.md) |
-| OpenAI integration | [providers/openai.md](providers/openai.md) | [README.md](README.md) |
-| OpenAI RAG/embeddings usage | [providers/openai-rag.md](providers/openai-rag.md) | [providers/openai.md](providers/openai.md) |
-| Google integration | [providers/google.md](providers/google.md) | [README.md](README.md) |
-| Gemini Long-Context | [providers/google-long-context.md](providers/google-long-context.md) | [providers/google.md](providers/google.md) |
-| Instruction gaps / self-improvement | [process/self-improvement.md](process/self-improvement.md) | [prompts/self-improvement-loop.md](prompts/self-improvement-loop.md) |
+| Task Type                           | Primary Doc                                                                     | Secondary Docs                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Write unit tests                    | [tests/testing.md](tests/testing.md)                                            | [source/exoframe.md](source/exoframe.md)                             |
+| Refactor code                       | [source/exoframe.md](source/exoframe.md)                                        | [tests/testing.md](tests/testing.md)                                 |
+| Update documentation                | [docs/documentation.md](docs/documentation.md)                                  | -                                                                    |
+| Fix TypeScript errors               | [source/exoframe.md](source/exoframe.md)                                        | [copilot/exoframe.md](copilot/exoframe.md)                           |
+| Add new feature                     | [source/exoframe.md](source/exoframe.md) + [tests/testing.md](tests/testing.md) | [docs/documentation.md](docs/documentation.md)                       |
+| Debug test failures                 | [tests/testing.md](tests/testing.md)                                            | [source/exoframe.md](source/exoframe.md)                             |
+| Fix CI failures                     | [tests/testing.md](tests/testing.md) (#CI)                                      | [source/exoframe.md](source/exoframe.md)                             |
+| Security audit                      | [tests/testing.md](tests/testing.md) (#Security Tests)                          | [source/exoframe.md](source/exoframe.md) (#System Constraints)       |
+| Claude-specific guidance            | [providers/claude.md](providers/claude.md)                                      | [README.md](README.md)                                               |
+| RAG/embeddings usage                | [providers/claude-rag.md](providers/claude-rag.md)                              | [README.md](README.md) (#Building embeddings)                        |
+| VS Code Copilot setup               | [copilot/exoframe.md](copilot/exoframe.md)                                      | [README.md](README.md)                                               |
+| OpenAI integration                  | [providers/openai.md](providers/openai.md)                                      | [README.md](README.md)                                               |
+| OpenAI RAG/embeddings usage         | [providers/openai-rag.md](providers/openai-rag.md)                              | [providers/openai.md](providers/openai.md)                           |
+| Google integration                  | [providers/google.md](providers/google.md)                                      | [README.md](README.md)                                               |
+| Gemini Long-Context                 | [providers/google-long-context.md](providers/google-long-context.md)            | [providers/google.md](providers/google.md)                           |
+| Instruction gaps / self-improvement | [process/self-improvement.md](process/self-improvement.md)                      | [prompts/self-improvement-loop.md](prompts/self-improvement-loop.md) |
 
 ## Search by Topic
 
@@ -94,23 +95,27 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 ## Provider-Specific Quick Links
 
 ### Claude
+
 - **Main guide**: [providers/claude.md](providers/claude.md)
 - **RAG setup**: [providers/claude-rag.md](providers/claude-rag.md)
 - **System prompts**: TDD, Refactoring, Debugging, Documentation (in claude.md)
 - **Context window**: 200k tokens (4-6 chunks recommended)
 
 ### VS Code Copilot
+
 - **Main guide**: [copilot/exoframe.md](copilot/exoframe.md)
 - **Quick summary**: [copilot/summary.md](copilot/summary.md)
 - **Pattern**: Consult `agents/manifest.json` first
 
 ### OpenAI
+
 - **Main guide**: [providers/openai.md](providers/openai.md)
 - **RAG guide**: [providers/openai-rag.md](providers/openai-rag.md)
 - **Prompt templates**: See `agents/prompts/openai-*.md`
 - **Budgets**: Uses simple/standard/complex output budgets (see openai.md)
 
 ### Google
+
 - **Main guide**: [providers/google.md](providers/google.md)
 - **Long-context**: [providers/google-long-context.md](providers/google-long-context.md)
 - **Context window**: 1M-2M tokens (use "Saturation" pattern)
@@ -118,21 +123,25 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 ## Common Task Patterns
 
 ### Test-Driven Development (TDD)
+
 1. **Docs**: [source/exoframe.md](source/exoframe.md), [tests/testing.md](tests/testing.md)
 2. **Pattern**: Write failing tests → Implement minimal code → Verify passing → Refactor
 3. **Helpers**: `initTestDbService()`, `createCliTestContext()`, `withEnv()`
 
 ### Code Refactoring
+
 1. **Docs**: [source/exoframe.md](source/exoframe.md), [providers/claude.md](providers/claude.md)
 2. **Pattern**: Read existing code + tests → Propose changes → Verify tests still pass → Check coverage
 3. **Tools**: `deno test --coverage`, grep for usage patterns
 
 ### Documentation Updates
+
 1. **Docs**: [docs/documentation.md](docs/documentation.md)
 2. **Pattern**: Check Implementation Plan → Update docs → Sync versions → Cross-reference
 3. **Rules**: Keep synchronized with Plan, maintain terminology consistency
 
 ### Debugging
+
 1. **Docs**: [providers/claude.md](providers/claude.md) (Debugging section)
 2. **Pattern**: Read error/stack trace → Check Plan step → Write reproducing test → Fix → Verify
 3. **Tools**: Add regression test for bug

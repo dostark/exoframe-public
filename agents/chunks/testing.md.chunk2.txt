@@ -8,3 +8,5 @@
 - `tests/services/` - Service unit tests
 - `tests/integration/` - End-to-end workflows
 - `tests/helpers/` - Shared test utilities
+
+Deduplication checklist:

@@ -1,6 +1,7 @@
 # ExoFrame Test Development Guidelines
 
 Key points
+
 - Use `initTestDbService()` and `createCliTestContext()` to centralize db+tempdir setup
 - Use `withEnv()` for temporary env var changes in tests
 - **Mocking**: Use `MockLLMProvider` for deterministic agent testing (avoid real API calls).
@@ -11,3 +12,5 @@ Key points
 
 Canonical prompt (short):
 "You are a test-writing assistant for ExoFrame. List failing test names and assertions first, using `initTestDbService()` or `createCliTestContext()` where appropriate."
+
+Examples

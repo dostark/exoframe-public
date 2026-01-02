@@ -1,4 +1,3 @@
-Deduplication checklist:
 1. Search for similar test file names
 2. Compare test case names for duplicates
 3. Merge unique cases into canonical location

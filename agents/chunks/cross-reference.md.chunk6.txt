@@ -8,7 +8,10 @@
 ## Provider-Specific Quick Links
 
 ### Claude
+
 - **Main guide**: [providers/claude.md](providers/claude.md)
 - **RAG setup**: [providers/claude-rag.md](providers/claude-rag.md)
 - **System prompts**: TDD, Refactoring, Debugging, Documentation (in claude.md)
 - **Context window**: 200k tokens (4-6 chunks recommended)
+
+### VS Code Copilot
