@@ -35,7 +35,7 @@ export class PortalConfigTestHelper {
     const config = configService.get();
 
     await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+    await Deno.mkdir(join(tempRoot, "Memory", "Portals"), { recursive: true });
 
     const commands = new PortalCommands({ config, db, configService });
 
@@ -95,7 +95,7 @@ export class PortalConfigTestHelper {
    * Get portal context card path
    */
   getCardPath(alias: string): string {
-    return join(this.tempRoot, "Knowledge", "Portals", `${alias}.md`);
+    return join(this.tempRoot, "Memory", "Portals", `${alias}.md`);
   }
 
   /**

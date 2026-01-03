@@ -8,7 +8,7 @@
  * - Test 3: Plan approval moves it to /System/Active with status=approved
  * - Test 4: Execution creates a feature branch with naming convention feat/{requestId}-{traceId}
  * - Test 5: Execution commits changes with trace_id in commit message footer
- * - Test 6: Report is generated in /Knowledge/Reports with execution summary
+ * - Test 6: Report is generated in /Memory/Reports with execution summary
  * - Test 7: All operations are logged to Activity Journal with trace_id correlation
  */
 

@@ -36,7 +36,7 @@ if [ -f "$REPO_ROOT/scripts/scaffold.sh" ]; then
   bash "$REPO_ROOT/scripts/scaffold.sh" "$DEST"
 else
   echo "Warning: scaffold script not found; falling back to minimal layout"
-  mkdir -p "$DEST/System" "$DEST/Knowledge" "$DEST/Inbox/Requests" "$DEST/Inbox/Plans" "$DEST/Knowledge/Context" "$DEST/Knowledge/Reports" "$DEST/Portals"
+  mkdir -p "$DEST/System" "$DEST/Memory/Projects" "$DEST/Memory/Execution" "$DEST/Inbox/Requests" "$DEST/Inbox/Plans" "$DEST/Portals"
 fi
 
 # Copy runtime artifacts needed for an installed workspace (configs, tasks)
@@ -110,7 +110,7 @@ exoctl daemon restart  # Restart daemon
 
 - `Blueprints/` - Agent definitions
 - `Inbox/` - Request and plan queue
-- `Knowledge/` - Memory Banks for execution history and project context
+- `Memory/` - Memory Banks for execution history and project context
 - `System/` - Database and active tasks
 - `Portals/` - Symlinks to external projects
 

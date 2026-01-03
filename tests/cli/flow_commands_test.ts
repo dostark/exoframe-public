@@ -46,7 +46,7 @@ Deno.test("FlowCommands: listFlows outputs table for valid flows", async () => {
   const flowDir = join(mockContext.config.system.root, mockContext.config.paths.blueprints, "Flows");
   await Deno.mkdir(flowDir, { recursive: true });
   try {
-    // Copy define_flow.ts and schemas to knowledge dir
+    // Copy define_flow.ts and schemas to memory dir
     copySync("src/flows/define_flow.ts", `${flowDir}/define_flow.ts`);
     copySync(
       "src/schemas",
@@ -117,7 +117,7 @@ Deno.test("FlowCommands: validateFlow returns valid for correct flow", async () 
   const flowDir = join(mockContext.config.system.root, mockContext.config.paths.blueprints, "Flows");
   await Deno.mkdir(flowDir, { recursive: true });
   try {
-    // Copy define_flow.ts and schemas to knowledge dir
+    // Copy define_flow.ts and schemas to memory dir
     copySync("src/flows/define_flow.ts", `${flowDir}/define_flow.ts`);
     copySync(
       "src/schemas",

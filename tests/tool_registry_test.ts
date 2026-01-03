@@ -495,9 +495,9 @@ Deno.test("[security] ToolRegistry: write_file - blocks writing to System direct
     const registry = new ToolRegistry({ config, db });
 
     // Attempt to write to System directory (should be protected)
-    // Test 1: Try path traversal to escape Knowledge and reach System
+    // Test 1: Try path traversal to escape Memory and reach System
     const traversalResult = await registry.execute("write_file", {
-      path: join(tempDir, "Knowledge", "..", "System", "journal.db"),
+      path: join(tempDir, "Memory", "..", "System", "journal.db"),
       content: "CORRUPTED DATA",
     });
 

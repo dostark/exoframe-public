@@ -271,7 +271,7 @@ Deno.test("portal show prints details", async () => {
       targetPath: "/tmp/portal-target",
       symlinkPath: "Portals/MyPortal",
       status: "active",
-      contextCardPath: "Knowledge/Portals/MyPortal.md",
+      contextCardPath: "Memory/Projects/MyPortal/portal.md",
       permissions: ["read"],
       created: "now",
       lastVerified: "never",

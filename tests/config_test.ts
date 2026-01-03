@@ -23,7 +23,7 @@ Deno.test("ConfigSchema accepts valid minimal config", () => {
       log_level: "info",
     },
     paths: {
-      knowledge: "./Knowledge",
+      memory: "./Memory",
       blueprints: "./Blueprints",
       system: "./System",
     },
@@ -39,7 +39,7 @@ Deno.test("ConfigSchema rejects invalid log_level", () => {
       log_level: "invalid",
     },
     paths: {
-      knowledge: "./Knowledge",
+      memory: "./Memory",
     },
   };
 
@@ -54,7 +54,7 @@ Deno.test("ConfigSchema applies defaults for missing agents section", () => {
       log_level: "info",
     },
     paths: {
-      knowledge: "./Knowledge",
+      memory: "./Memory",
       blueprints: "./Blueprints",
       system: "./System",
     },
@@ -72,7 +72,7 @@ Deno.test("ConfigSchema applies defaults for missing watcher section", () => {
       log_level: "info",
     },
     paths: {
-      knowledge: "./Knowledge",
+      memory: "./Memory",
       blueprints: "./Blueprints",
       system: "./System",
     },
@@ -247,7 +247,7 @@ version = "1.0.0"
 log_level = "invalid_level"
 
 [paths]
-knowledge = "./Knowledge"
+memory = "./Memory"
 blueprints = "./Blueprints"
 system = "./System"
     `.trim(),
@@ -289,7 +289,7 @@ system = "./System"
 log_level = "info"
 
 [paths]
-knowledge = "./Knowledge"
+memory = "./Memory"
 blueprints = "./Blueprints"
 system = "./System"
 
@@ -362,7 +362,7 @@ version = "1.0.0"
 log_level = "info"  # inline comment
 
 [paths]
-knowledge = "./Knowledge"
+memory = "./Memory"
 blueprints = "./Blueprints"
 system = "./System"
     `.trim(),
@@ -395,7 +395,7 @@ log_level = "info"
 unknown_field = "should be ignored"
 
 [paths]
-knowledge = "./Knowledge"
+memory = "./Memory"
 blueprints = "./Blueprints"
 system = "./System"
 
@@ -458,7 +458,7 @@ system = "./系統"
 log_level = "info"
 
 [paths]
-knowledge = "./Knowledge"
+memory = "./Memory"
 blueprints = "./Blueprints"
 system = "./System"`;
 
@@ -496,7 +496,7 @@ system = "./System"`;
 log_level = "info"
 
 [paths]
-knowledge = "./Knowledge"
+memory = "./Memory"
 blueprints = "./Blueprints"
 system = "./System"`,
       );
@@ -507,7 +507,7 @@ system = "./System"`,
 log_level = "debug"
 
 [paths]
-knowledge = "./Knowledge"
+memory = "./Memory"
 blueprints = "./Blueprints"
 system = "./System"`,
       );
@@ -597,7 +597,7 @@ Deno.test("[security] Env Variable Security: Verify sensitive env vars are not i
 log_level = "info"
 
 [paths]
-knowledge = "./Knowledge"
+memory = "./Memory"
 blueprints = "./Blueprints"
 system = "./System"`,
     );

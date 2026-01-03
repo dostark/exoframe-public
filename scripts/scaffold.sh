@@ -15,9 +15,10 @@ mkdir -p "$TARGET/System" \
   "$TARGET/Blueprints/Flows" \
   "$TARGET/Inbox/Requests" \
   "$TARGET/Inbox/Plans" \
-  "$TARGET/Knowledge/Context" \
-  "$TARGET/Knowledge/Reports" \
-  "$TARGET/Knowledge/Portals" \
+  "$TARGET/Memory/Projects" \
+  "$TARGET/Memory/Execution" \
+  "$TARGET/Memory/Tasks" \
+  "$TARGET/Memory/Index" \
   "$TARGET/Portals" \
   "$TARGET/scripts"
 
@@ -27,7 +28,7 @@ touch "$TARGET/Blueprints/Agents/.gitkeep" || true
 touch "$TARGET/Blueprints/Flows/.gitkeep" || true
 touch "$TARGET/Inbox/Requests/.gitkeep" || true
 touch "$TARGET/Inbox/Plans/.gitkeep" || true
-touch "$TARGET/Knowledge/.gitkeep" || true
+touch "$TARGET/Memory/.gitkeep" || true
 touch "$TARGET/Portals/.gitkeep" || true
 
 # Copy templates into target if they don't already exist
@@ -41,10 +42,8 @@ if [ -f "$ROOT_DIR/templates/README.template.md" ] && [ ! -f "$TARGET/README.md"
   echo "Copied README template"
 fi
 
-if [ -f "$ROOT_DIR/templates/Knowledge_Dashboard.md" ] && [ ! -f "$TARGET/Knowledge/Dashboard.md" ]; then
-  cp "$ROOT_DIR/templates/Knowledge_Dashboard.md" "$TARGET/Knowledge/Dashboard.md"
-  echo "Copied Knowledge/Dashboard.md"
-fi
+# Note: Knowledge/Obsidian-specific dashboard template removed as part of Memory Banks migration
+
 
 echo "Scaffold complete. You can now run in the target workspace:"
 echo "  deno task cache"

@@ -35,7 +35,7 @@ function createTestTraceData(overrides: Partial<TraceData> = {}): TraceData {
     completedAt: overrides.completedAt ?? new Date(),
     contextFiles: overrides.contextFiles ?? [
       "Portals/MyApp/config.md",
-      "Knowledge/Context/Architecture_Docs.md",
+      "Memory/Projects/MyApp/architecture.md",
     ],
     reasoning: overrides.reasoning ?? "Chose JWT over sessions for stateless authentication.",
     summary: overrides.summary ?? "Successfully implemented JWT-based authentication system.",

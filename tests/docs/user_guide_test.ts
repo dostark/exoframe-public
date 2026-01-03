@@ -148,7 +148,7 @@ Deno.test("User Guide documents workspace structure", async () => {
 
   // Key directories should be documented
   assertStringIncludes(guide, "Inbox");
-  assertStringIncludes(guide, "Knowledge");
+  assertStringIncludes(guide, "Memory");
   assertStringIncludes(guide, "System");
   assertStringIncludes(guide, "Portals");
 });

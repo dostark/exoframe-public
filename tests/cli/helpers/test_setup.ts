@@ -21,7 +21,7 @@ export async function initPortalTest(options?: {
 
   // Create required directories
   await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-  await Deno.mkdir(join(tempRoot, "Knowledge", "Portals"), { recursive: true });
+  await Deno.mkdir(join(tempRoot, "Memory", "Projects"), { recursive: true });
 
   // Create target directory files if specified
   if (targetDir && options?.targetFiles) {

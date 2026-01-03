@@ -64,7 +64,7 @@ log_level = "info"
 root = "${root}"
 
 [paths]
-knowledge = "Knowledge"
+memory = "Memory"
 blueprints = "Blueprints"
 system = "System"
 

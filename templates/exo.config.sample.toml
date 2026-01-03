@@ -3,7 +3,7 @@ version = "1.0.0"
 log_level = "info"
 
 [paths]
-knowledge = "./Knowledge"
+memory = "./Memory"
 blueprints = "./Blueprints"
 system = "./System"
 

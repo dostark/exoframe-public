@@ -52,9 +52,9 @@ export class TestEnvironment {
     await ensureDir(join(tempDir, "Inbox", "Rejected"));
     await ensureDir(join(tempDir, "System", "Active"));
     await ensureDir(join(tempDir, "System", "Archive"));
-    await ensureDir(join(tempDir, "Knowledge", "Reports"));
-    await ensureDir(join(tempDir, "Knowledge", "Portals"));
-    await ensureDir(join(tempDir, "Knowledge", "Context"));
+    await ensureDir(join(tempDir, "Memory", "Execution"));
+    await ensureDir(join(tempDir, "Memory", "Projects"));
+    await ensureDir(join(tempDir, "Memory", "Tasks"));
     await ensureDir(join(tempDir, "Blueprints", "Agents"));
     await ensureDir(join(tempDir, "Portals"));
 
@@ -360,10 +360,10 @@ This plan will accomplish the requested task.
   }
 
   /**
-   * Get report from /Knowledge/Reports by trace ID
+   * Get report from /Memory/Reports by trace ID
    */
   async getReportByTraceId(traceId: string): Promise<string | null> {
-    const reportsDir = join(this.tempDir, "Knowledge", "Reports");
+    const reportsDir = join(this.tempDir, "Memory", "Reports");
 
     try {
       for await (const entry of Deno.readDir(reportsDir)) {

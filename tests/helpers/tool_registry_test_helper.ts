@@ -39,23 +39,23 @@ export class ToolRegistryTestHelper {
   }
 
   /**
-   * Creates the Knowledge directory within the temp directory
+   * Creates the Memory/Projects directory within the temp directory
    */
-  async createKnowledgeDir(): Promise<string> {
-    const knowledgeDir = join(this.tempDir, "Knowledge");
-    await Deno.mkdir(knowledgeDir, { recursive: true });
-    return knowledgeDir;
+  async createMemoryProjectsDir(): Promise<string> {
+    const memoryDir = join(this.tempDir, "Memory", "Projects");
+    await Deno.mkdir(memoryDir, { recursive: true });
+    return memoryDir;
   }
 
   /**
-   * Creates a file in the Knowledge directory
+   * Creates a file in the Memory/Projects directory (portal context card)
    */
-  async createKnowledgeFile(
+  async createMemoryProjectFile(
     filename: string,
     content: string,
   ): Promise<string> {
-    const knowledgeDir = await this.createKnowledgeDir();
-    const filePath = join(knowledgeDir, filename);
+    const memoryDir = await this.createMemoryProjectsDir();
+    const filePath = join(memoryDir, filename);
     await Deno.writeTextFile(filePath, content);
     return filePath;
   }

@@ -5,7 +5,7 @@
  * - Test 1: Creates required directory structure (Inbox, Blueprints, etc.)
  * - Test 2: Creates .gitkeep files in empty directories
  * - Test 3: Copies exo.config.sample.toml template
- * - Test 4: Copies src/main.ts and Knowledge/README.md templates
+ * - Test 4: Copies src/main.ts and Memory/README.md templates
  * - Test 5: Does not overwrite existing config files (idempotent)
  * - Test 6: Outputs completion message on success
  */
@@ -56,9 +56,9 @@ Deno.test("scaffold.sh creates required directory structure", async () => {
       "Blueprints/Flows",
       "Inbox/Requests",
       "Inbox/Plans",
-      "Knowledge/Context",
-      "Knowledge/Reports",
-      "Knowledge/Portals",
+      "Memory/Projects",
+      "Memory/Execution",
+      "Memory/Tasks",
       "Portals",
       "scripts",
     ];
@@ -88,7 +88,7 @@ Deno.test("scaffold.sh creates .gitkeep files", async () => {
       "Blueprints/Flows/.gitkeep",
       "Inbox/Requests/.gitkeep",
       "Inbox/Plans/.gitkeep",
-      "Knowledge/.gitkeep",
+      "Memory/.gitkeep",
       "Portals/.gitkeep",
     ];
 
@@ -141,22 +141,27 @@ Deno.test("scaffold.sh does not create src directory", async () => {
   }
 });
 
-Deno.test("scaffold.sh copies Knowledge/Dashboard.md template", async () => {
+Deno.test("scaffold.sh creates Memory/Projects directory and README placeholder", async () => {
   const tmp = await Deno.makeTempDir({ prefix: "exoframe-scaffold-test-" });
   try {
     const result = await runScaffold(tmp);
     assert(result.code === 0, `scaffold.sh failed: ${result.stderr}`);
-    assertStringIncludes(result.stdout, "Copied Knowledge/Dashboard.md");
 
-    const dashboardPath = join(tmp, "Knowledge", "Dashboard.md");
+    const projectsPath = join(tmp, "Memory", "Projects");
     assert(
-      await exists(dashboardPath),
-      "Knowledge/Dashboard.md should be copied",
+      await exists(projectsPath),
+      "Memory/Projects should be created",
     );
 
-    // Verify it has expected content
-    const content = await Deno.readTextFile(dashboardPath);
-    assert(content.length > 0, "Knowledge/Dashboard.md should not be empty");
+    // Verify the scaffold created a README template at top-level
+    const readmePath = join(tmp, "README.md");
+    assert(
+      await exists(readmePath),
+      "Top-level README.md should be copied",
+    );
+
+    const content = await Deno.readTextFile(readmePath);
+    assert(content.length > 0, "README.md should not be empty");
   } finally {
     await Deno.remove(tmp, { recursive: true }).catch(() => {});
   }
@@ -198,7 +203,7 @@ Deno.test("scaffold.sh is idempotent", async () => {
       "System",
       "Blueprints/Agents",
       "Inbox/Requests",
-      "Knowledge/Reports",
+      "Memory/Reports",
       "Portals",
     ];
 
