@@ -12,9 +12,7 @@ Deno.test("Security: No runtime code should reference 'Knowledge' path", async (
     if (
       !entry.path.startsWith(join(repoRoot, "src")) &&
       !entry.path.startsWith(join(repoRoot, "scripts")) &&
-      !entry.path.startsWith(join(repoRoot, "templates")) &&
-      !entry.path.startsWith(join(repoRoot, "tests")) &&
-      !entry.path.startsWith(join(repoRoot, "agents"))
+      !entry.path.startsWith(join(repoRoot, "templates"))
     ) {
       continue;
     }

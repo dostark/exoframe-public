@@ -123,7 +123,7 @@ export function generateExecutePlanPrompt(
 **Plan ID:** ${plan_id}
 
 **Your Task:**
-1. Read the plan from the Knowledge system
+1. Read the plan from the Memory Banks system
 2. Verify the plan is approved and not already executed
 3. Execute each action in the plan sequentially:
    - Use read_file to understand current code
@@ -205,7 +205,7 @@ export function generateCreateChangesetPrompt(
 
 **Available Tools:**
 - read_file(portal, path) - Read files from portal
-- write_file(portal, path, content) - Write files to portal  
+- write_file(portal, path, content) - Write files to portal
 - list_directory(portal, path) - List directory contents
 - git_status(portal) - Check git status
 - git_create_branch(portal, branch) - Create feature branch

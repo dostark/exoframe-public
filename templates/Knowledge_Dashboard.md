@@ -46,7 +46,7 @@ LIMIT 20
 TABLE
   file.link as "File",
   file.mtime as "Modified"
-FROM "Knowledge"
+FROM "Memory"
 SORT file.mtime DESC
 LIMIT 20
 ```
@@ -59,7 +59,7 @@ LIMIT 20
 TABLE
   target as Target,
   status as Status
-FROM "Knowledge/Portals"
+FROM "Memory/Projects"
 SORT file.name ASC
 LIMIT 50
 ```

@@ -20,7 +20,7 @@ export class ContextCardGenerator {
 
   async generate(info: PortalInfo): Promise<void> {
     const { system } = this.config;
-    // Put portal documentation in Memory/Projects instead of Knowledge/Portals
+    // Put portal documentation in Memory/Projects (replaces legacy portal storage)
     const portalsDir = join(system.root, "Memory", "Projects");
 
     // Ensure directory exists

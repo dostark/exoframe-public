@@ -8,8 +8,8 @@
  * - Activity Journal integration
  *
  * Memory Banks provide structured, programmatically accessible storage
- * for project knowledge and execution history, replacing Obsidian-specific
- * Knowledge/ directory.
+ * for project memory and execution history, replacing the Obsidian-specific
+ * storage layout.
  */
 
 import { join } from "@std/path";

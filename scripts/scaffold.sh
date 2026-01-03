@@ -19,6 +19,7 @@ mkdir -p "$TARGET/System" \
   "$TARGET/Memory/Execution" \
   "$TARGET/Memory/Tasks" \
   "$TARGET/Memory/Index" \
+  "$TARGET/Memory/Reports" \
   "$TARGET/Portals" \
   "$TARGET/scripts"
 
@@ -29,6 +30,7 @@ touch "$TARGET/Blueprints/Flows/.gitkeep" || true
 touch "$TARGET/Inbox/Requests/.gitkeep" || true
 touch "$TARGET/Inbox/Plans/.gitkeep" || true
 touch "$TARGET/Memory/.gitkeep" || true
+touch "$TARGET/Memory/Reports/.gitkeep" || true
 touch "$TARGET/Portals/.gitkeep" || true
 
 # Copy templates into target if they don't already exist
@@ -42,7 +44,7 @@ if [ -f "$ROOT_DIR/templates/README.template.md" ] && [ ! -f "$TARGET/README.md"
   echo "Copied README template"
 fi
 
-# Note: Knowledge/Obsidian-specific dashboard template removed as part of Memory Banks migration
+# Note: Obsidian-specific dashboard template removed as part of Memory Banks migration
 
 
 echo "Scaffold complete. You can now run in the target workspace:"

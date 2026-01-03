@@ -1,9 +1,9 @@
 /**
  * Memory Banks Schemas
  *
- * Data structures for ExoFrame's Memory Banks system (replaces Knowledge/ structure).
+ * Data structures for ExoFrame's Memory Banks system.
  * Memory Banks provide programmatic storage for:
- * - Project-specific knowledge (patterns, decisions, references)
+ * - Project-specific memory (patterns, decisions, references)
  * - Execution history (what was done, when, by whom)
  * - Lessons learned and architectural decisions
  *

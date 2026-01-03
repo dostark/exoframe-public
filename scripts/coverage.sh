@@ -20,7 +20,7 @@ for arg in "$@"; do
 done
 
 COVERAGE_DIR="coverage"
-SRC_PATTERN="^file://$(pwd)/src/"
+SRC_PATTERN="^file://$(pwd)/src/|^file://$(pwd)/scripts/"
 EXCLUDE_PATTERN="(^file:///tmp/|test\.(ts|js)$)"
 
 echo "🧪 Running tests with coverage..."

@@ -1,0 +1,112 @@
+{
+  "scriptId": "335",
+  "url": "file:///home/dkasymov/git/ExoFrame/scripts/build_agents_index.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 2338,
+          "count": 1
+        },
+        {
+          "startOffset": 2276,
+          "endOffset": 2295,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "extractFrontmatter",
+      "ranges": [
+        {
+          "startOffset": 402,
+          "endOffset": 522,
+          "count": 1
+        },
+        {
+          "startOffset": 513,
+          "endOffset": 519,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "chunkText",
+      "ranges": [
+        {
+          "startOffset": 523,
+          "endOffset": 990,
+          "count": 3
+        },
+        {
+          "startOffset": 750,
+          "endOffset": 934,
+          "count": 8
+        },
+        {
+          "startOffset": 798,
+          "endOffset": 865,
+          "count": 4
+        },
+        {
+          "startOffset": 819,
+          "endOffset": 840,
+          "count": 3
+        },
+        {
+          "startOffset": 865,
+          "endOffset": 930,
+          "count": 4
+        },
+        {
+          "startOffset": 897,
+          "endOffset": 919,
+          "count": 2
+        },
+        {
+          "startOffset": 920,
+          "endOffset": 923,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 648,
+          "endOffset": 661,
+          "count": 8
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "generateManifestObject",
+      "ranges": [
+        {
+          "startOffset": 998,
+          "endOffset": 2034,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "buildIndex",
+      "ranges": [
+        {
+          "startOffset": 2042,
+          "endOffset": 2253,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}
