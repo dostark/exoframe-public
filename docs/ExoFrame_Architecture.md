@@ -1,7 +1,7 @@
 # ExoFrame Architecture
 
-**Version:** 1.9.0\
-**Date:** December 20, 2025
+**Version:** 1.10.0\
+**Date:** January 2, 2026
 
 This document provides a comprehensive architectural overview of ExoFrame components using Mermaid diagrams.
 
@@ -25,6 +25,12 @@ graph TB
         DaemonCmd[Daemon Commands]
         PortalCmd[Portal Commands]
         BlueprintCmd[Blueprint Commands]
+        DashCmd[Dashboard Commands]
+    end
+
+    subgraph TUI["🧩 TUI Layer"]
+        TuiDash[TUI Dashboard]
+        TuiViews[Views: portals / plans / requests / logs / daemon / agents]
     end
 
     subgraph Core["⚙️ Core System"]
@@ -86,6 +92,7 @@ graph TB
     Exoctl --> DaemonCmd
     Exoctl --> PortalCmd
     Exoctl --> BlueprintCmd
+    Exoctl --> DashCmd
 
     %% CLI to Services
     ReqCmd --> Inbox
@@ -96,6 +103,8 @@ graph TB
     PortalCmd --> ConfigSvc
     PortalCmd --> CtxCard
     BlueprintCmd --> Blueprint
+    DashCmd --> TuiDash
+    TuiDash --> TuiViews
 
     %% Core daemon flow
     Main --> ConfigSvc
@@ -143,7 +152,7 @@ graph TB
     ConfigSvc --> FS
     DBSvc --> DB
     ReqProc --> Blueprint
-    Watcher --> System
+    PlanWatch --> System
 
     %% Styling
     classDef actor fill:#e1f5ff,stroke:#01579b,stroke-width:2px
@@ -154,11 +163,13 @@ graph TB
     classDef ai fill:#fce4ec,stroke:#880e4f,stroke-width:2px
 
     class User,Agent actor
-    class Exoctl,ReqCmd,PlanCmd,ChangeCmd,GitCmd,DaemonCmd,PortalCmd,BlueprintCmd cli
+    class Exoctl,ReqCmd,PlanCmd,ChangeCmd,GitCmd,DaemonCmd,PortalCmd,BlueprintCmd,DashCmd cli
     class Main,ReqWatch,PlanWatch,ReqProc,ReqRouter,PlanExec,AgentRun,FlowEng,FlowRun,ExecLoop core
     class ConfigSvc,DBSvc,GitSvc,EventLog,ContextLoad,PlanWriter,MissionRpt,PathRes,ToolReg,CtxCard service
     class DB,FS,Inbox,Blueprint,Knowledge,Portals,System storage
     class Factory,Ollama,Claude,GPT,Gemini,Mock ai
+
+    class TuiDash,TuiViews cli
 ```
 
 ---
@@ -310,6 +321,28 @@ Before routing to FlowRunner, the Request Router validates:
 
 ---
 
+## Parsing & Schema Layer
+
+ExoFrame centralizes file-format parsing and validation into two layers:
+
+- **Parsers** (`src/parsers/`): extract structure from Markdown files (YAML frontmatter + body).
+- **Schemas** (`src/schemas/`): validate structured objects using Zod (requests, plans, flows, portals, MCP).
+
+Key modules:
+
+- `src/parsers/markdown.ts` (`FrontmatterParser`)
+  - Extracts YAML frontmatter delimited by `--- ... ---`.
+  - Validates frontmatter using `src/schemas/request.ts`.
+  - Optionally logs validation events to the Activity Journal via `DatabaseService`.
+- `src/schemas/plan_schema.ts`
+  - Defines the JSON schema for LLM plan output (title/description + numbered steps + optional metadata).
+- `src/schemas/mcp.ts`
+  - Defines MCP tool argument schemas and MCP server configuration schema.
+
+This layer is what keeps file-driven workflows safe and deterministic: request/plan files may come from humans or LLMs, but the runtime only proceeds when schemas validate.
+
+---
+
 ## Plan Execution Flow
 
 The **Plan Executor** service orchestrates the step-by-step execution of approved plans. It uses a ReAct-style loop to prompt the LLM for actions, executes them via the **Tool Registry**, and commits changes to Git after each step.
@@ -453,6 +486,19 @@ graph TB
     class E1,E2,E3,E4 error
 ```
 
+### MCP Server Implementation Notes
+
+The MCP server lives under `src/mcp/` and is a JSON-RPC 2.0 server over stdio.
+
+- `src/mcp/server.ts`
+  - Routes: `initialize`, `tools/list`, `tools/call`, `resources/list`, `resources/read`, `prompts/list`, `prompts/get`.
+  - Logs lifecycle events (e.g., `mcp.server.started`) to the Activity Journal.
+- `src/mcp/tools.ts`
+  - Validates tool input using `src/schemas/mcp.ts` and enforces portal access via `PortalPermissionsService`.
+  - Applies path safety checks (no traversal/absolute paths; resolved path must remain within the portal root).
+- `src/mcp/resources.ts`
+  - Implements `portal://<PortalAlias>/<path>` resource discovery and reading.
+
 ### Plan File Structure
 
 ```mermaid
@@ -523,6 +569,7 @@ graph LR
         Daemon[DaemonCommands<br/>Daemon control]
         Portal[PortalCommands<br/>External projects]
         Blueprint[BlueprintCommands<br/>Agent templates]
+        Dashboard[DashboardCommands<br/>TUI dashboard]
     end
 
     subgraph Context["Shared Context"]
@@ -536,6 +583,7 @@ graph LR
     Exoctl --> Daemon
     Exoctl --> Portal
     Exoctl --> Blueprint
+    Exoctl --> Dashboard
 
     Req -.extends.-> Base
     Plan -.extends.-> Base
@@ -544,6 +592,7 @@ graph LR
     Daemon -.extends.-> Base
     Portal -.extends.-> Base
     Blueprint -.extends.-> Base
+    Dashboard -.extends.-> Base
 
     Base --> Ctx
 
@@ -552,8 +601,37 @@ graph LR
     classDef ctx fill:#fff9c4,stroke:#f57f17,stroke-width:2px
 
     class Exoctl entry
-    class Base,Req,Plan,Change,Git,Daemon,Portal,Blueprint cmd
+    class Base,Req,Plan,Change,Git,Daemon,Portal,Blueprint,Dashboard cmd
     class Ctx ctx
+```
+
+---
+
+## TUI Dashboard Architecture
+
+The dashboard is an interactive terminal UI launched from the CLI.
+
+- Entry point: `exoctl dashboard` → `src/cli/dashboard_commands.ts` → `src/tui/tui_dashboard.ts`.
+- The dashboard is composed from multiple views and supports pane splitting/focus.
+- Test stability: the wiring can run with mock services (see `src/tui/tui_dashboard_mocks.ts`).
+
+```mermaid
+graph TB
+    subgraph CLI[CLI]
+        Exoctl[exoctl.ts]
+        DashCmd[DashboardCommands.show]
+    end
+
+    subgraph TUI[TUI]
+        Launch[launchTuiDashboard()]
+        Panes[Panes + Focus Management]
+        Views[PortalManagerView / PlanReviewerView / RequestManagerView / MonitorView / DaemonControlView / AgentStatusView]
+        Raw[tryEnableRawMode / tryDisableRawMode]
+    end
+
+    Exoctl --> DashCmd --> Launch
+    Launch --> Raw
+    Launch --> Panes --> Views
 ```
 
 ---
@@ -951,7 +1029,7 @@ graph LR
 | **Request Watcher**    | Detect new requests in Inbox       | `src/services/watcher.ts`           |
 | **Plan Watcher**       | Detect approved plans              | `src/services/watcher.ts`           |
 | **Request Processor**  | Parse requests, generate plans     | `src/services/request_processor.ts` |
-| **Plan Executor**      | Execute approved plans             | `src/main.ts` (in-progress)         |
+| **Plan Executor**      | Execute approved plans             | `src/services/plan_executor.ts`     |
 | **Agent Runner**       | Execute agent logic with LLM       | `src/services/agent_runner.ts`      |
 | **Event Logger**       | Write to Activity Journal          | `src/services/event_logger.ts`      |
 | **Config Service**     | Load and validate exo.config.toml  | `src/config/service.ts`             |
@@ -961,6 +1039,41 @@ graph LR
 | **Context Loader**     | Load context for agent execution   | `src/services/context_loader.ts`    |
 | **Portal Commands**    | Manage external project access     | `src/cli/portal_commands.ts`        |
 | **Blueprint Commands** | Manage agent templates             | `src/cli/blueprint_commands.ts`     |
+| **Dashboard Commands** | Launch terminal dashboard          | `src/cli/dashboard_commands.ts`     |
+| **TUI Dashboard**      | Multi-view terminal UI             | `src/tui/*.ts`                      |
+| **Parsers**            | Parse markdown + frontmatter       | `src/parsers/*.ts`                  |
+| **Schemas**            | Zod validation layer               | `src/schemas/*.ts`                  |
+| **MCP Server**         | JSON-RPC server for tool execution | `src/mcp/server.ts`                 |
+
+---
+
+## Developer Tooling Architecture
+
+ExoFrame includes repository tooling under `scripts/` to keep development workflows deterministic.
+
+### agents/ Knowledge Base Index & Embeddings
+
+ExoFrame includes a developer-facing knowledge base under `agents/` used to keep AI assistants consistent and repository-aware.
+
+Artifacts:
+
+- `agents/manifest.json`: index of agent docs with metadata and chunk references
+- `agents/chunks/*`: chunked doc text used for retrieval
+- `agents/embeddings/*`: embedding vectors (often mocked in CI) used for semantic search
+
+Build/validation scripts:
+
+- `scripts/build_agents_index.ts`: rebuilds `agents/manifest.json` and chunks
+- `scripts/build_agents_embeddings.ts`: regenerates embeddings (`--mode mock` for deterministic CI)
+- `scripts/verify_manifest_fresh.ts`: checks manifest/chunks are up to date
+- `scripts/validate_agents_docs.ts`: validates agent-doc frontmatter/schema
+
+### CI, Scaffolding, and Database Tooling
+
+- `scripts/ci.ts`: orchestrates repository checks and tests in CI-like environments
+- `scripts/scaffold.sh`: scaffolds a new ExoFrame workspace folder structure and templates
+- `scripts/setup_db.ts`: initializes `journal.db` schema
+- `scripts/migrate_db.ts` + `migrations/*.sql`: applies incremental database migrations
 
 ---
 

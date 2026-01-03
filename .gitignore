@@ -1,6 +1,10 @@
 /.cache
 dist/
 coverage/
+
+# Allow a checked-in agent-facing coverage snapshot (kept small and human-readable)
+!agents/coverage/
+!agents/coverage/coverage-summary.md
 report/
 
 # Obsidian vault config (user-specific)

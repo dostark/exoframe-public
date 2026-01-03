@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-02T17:15:17.484Z",
+  "generated_at": "2026-01-03T16:02:21.449Z",
   "docs": [
     {
       "path": "agents/docs/documentation.md",
@@ -20,6 +20,13 @@
         "agents/chunks/documentation.md.chunk3.txt",
         "agents/chunks/documentation.md.chunk4.txt",
         "agents/chunks/documentation.md.chunk5.txt"
+      ]
+    },
+    {
+      "path": "agents/coverage/coverage-summary.md",
+      "short_summary": "",
+      "chunks": [
+        "agents/chunks/coverage-summary.md.chunk0.txt"
       ]
     },
     {

@@ -21,6 +21,7 @@ done
 
 COVERAGE_DIR="coverage"
 SRC_PATTERN="^file://$(pwd)/src/"
+EXCLUDE_PATTERN="(^file:///tmp/|test\.(ts|js)$)"
 
 echo "🧪 Running tests with coverage..."
 rm -rf "$COVERAGE_DIR"
@@ -40,13 +41,13 @@ case "$FORMAT" in
   summary)
     deno coverage "$COVERAGE_DIR" \
       --include="$SRC_PATTERN" \
-      --exclude="test\.(ts|js)$"
+      --exclude="$EXCLUDE_PATTERN"
     ;;
 
   html)
     deno coverage "$COVERAGE_DIR" \
       --include="$SRC_PATTERN" \
-      --exclude="test\.(ts|js)$" \
+      --exclude="$EXCLUDE_PATTERN" \
       --html
     echo ""
     echo "✅ HTML report generated: file://$(pwd)/$COVERAGE_DIR/html/index.html"
@@ -55,7 +56,7 @@ case "$FORMAT" in
   lcov)
     deno coverage "$COVERAGE_DIR" \
       --include="$SRC_PATTERN" \
-      --exclude="test\.(ts|js)$" \
+      --exclude="$EXCLUDE_PATTERN" \
       --lcov \
       --output="$COVERAGE_DIR/lcov.info"
     echo ""
@@ -65,7 +66,7 @@ case "$FORMAT" in
   detailed)
     deno coverage "$COVERAGE_DIR" \
       --include="$SRC_PATTERN" \
-      --exclude="test\.(ts|js)$" \
+      --exclude="$EXCLUDE_PATTERN" \
       --detailed
     ;;
 
@@ -74,20 +75,20 @@ case "$FORMAT" in
     echo "Generating summary..."
     deno coverage "$COVERAGE_DIR" \
       --include="$SRC_PATTERN" \
-      --exclude="test\.(ts|js)$"
+      --exclude="$EXCLUDE_PATTERN"
 
     echo ""
     echo "Generating HTML report..."
     deno coverage "$COVERAGE_DIR" \
       --include="$SRC_PATTERN" \
-      --exclude="test\.(ts|js)$" \
+      --exclude="$EXCLUDE_PATTERN" \
       --html
 
     echo ""
     echo "Generating LCOV report..."
     deno coverage "$COVERAGE_DIR" \
       --include="$SRC_PATTERN" \
-      --exclude="test\.(ts|js)$" \
+      --exclude="$EXCLUDE_PATTERN" \
       --lcov \
       --output="$COVERAGE_DIR/lcov.info"
 

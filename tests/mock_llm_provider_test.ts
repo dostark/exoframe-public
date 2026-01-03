@@ -276,12 +276,12 @@ Deno.test("Slow: adds configured delay before response", async () => {
     responses: ["delayed response"],
   });
 
-  const start = Date.now();
+  const start = performance.now();
   await provider.generate("test");
-  const elapsed = Date.now() - start;
+  const elapsed = performance.now() - start;
 
   // Allow for slight variations but expect at least most of the delay
-  assert(elapsed >= 50, `Expected at least 100ms delay, got ${elapsed}ms`);
+  assert(elapsed >= 50, `Expected at least 50ms delay, got ${elapsed}ms`);
 });
 
 Deno.test("Slow: uses default delay when not specified", async () => {
@@ -289,9 +289,9 @@ Deno.test("Slow: uses default delay when not specified", async () => {
     responses: ["response"],
   });
 
-  const start = Date.now();
+  const start = performance.now();
   await provider.generate("test");
-  const elapsed = Date.now() - start;
+  const elapsed = performance.now() - start;
 
   // Default delay should be reasonable (e.g., 500ms)
   assert(elapsed >= 100, `Expected some delay, got ${elapsed}ms`);
