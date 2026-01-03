@@ -70,7 +70,7 @@ if (!IN_TEST_MODE) {
     // and stub services so lightweight commands (version/help) continue.
     config = {
       system: { root: Deno.cwd() },
-      paths: { knowledge: "Knowledge", system: "System" },
+      paths: { memory: "Memory", system: "System", blueprints: "Blueprints", inbox: "Inbox" },
       agents: { default_model: "mock:test" },
     } as any;
     db = {} as any;
@@ -83,7 +83,7 @@ if (!IN_TEST_MODE) {
   // Test mode: provide minimal stubs so the top-level CLI can be exercised
   config = {
     system: { root: Deno.cwd() },
-    paths: { knowledge: "Knowledge", system: "System" },
+    paths: { memory: "Memory", system: "System", blueprints: "Blueprints", inbox: "Inbox" },
     agents: { default_model: "mock:test" },
   };
   db = {} as any;
@@ -164,7 +164,7 @@ export async function __test_initializeServices(opts?: { simulateFail?: boolean;
     // Fallback minimal stubs (same as runtime fallback)
     const cfg = {
       system: { root: Deno.cwd() },
-      paths: { knowledge: "Knowledge", system: "System" },
+      paths: { memory: "Memory", system: "System", blueprints: "Blueprints", inbox: "Inbox" },
       agents: { default_model: "mock:test" },
     } as any;
     const providerLocal = ProviderFactory.createByName(cfg, cfg.agents.default_model);

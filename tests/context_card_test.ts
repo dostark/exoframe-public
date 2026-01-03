@@ -18,8 +18,8 @@ Deno.test("ContextCardGenerator: creates new card", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "card-test-new-" });
   try {
     const config = createMockConfig(tempDir);
-    // Ensure Knowledge/Portals exists (scaffold usually does this, but we are mocking)
-    await Deno.mkdir(join(tempDir, "Knowledge", "Portals"), { recursive: true });
+    // Ensure Memory/Projects exists (scaffold usually does this, but we are mocking)
+    await Deno.mkdir(join(tempDir, "Memory", "Projects"), { recursive: true });
 
     const generator = new ContextCardGenerator(config);
     await generator.generate({
@@ -28,7 +28,7 @@ Deno.test("ContextCardGenerator: creates new card", async () => {
       techStack: ["TypeScript", "Deno"],
     });
 
-    const cardPath = join(tempDir, "Knowledge", "Portals", "MyApp.md");
+    const cardPath = join(tempDir, "Memory", "Projects", "MyApp", "portal.md");
     const content = await Deno.readTextFile(cardPath);
 
     assertExists(content.match(/# Portal: MyApp/));
@@ -44,12 +44,12 @@ Deno.test("ContextCardGenerator: updates card preserving notes", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "card-test-update-" });
   try {
     const config = createMockConfig(tempDir);
-    const portalsDir = join(tempDir, "Knowledge", "Portals");
-    await Deno.mkdir(portalsDir, { recursive: true });
+    const projectsDir = join(tempDir, "Memory", "Projects");
+    await Deno.mkdir(projectsDir, { recursive: true });
 
     // Create existing card with user notes
     const initialContent = `# Portal: MyApp
-- **Path**: /old/path
+- **Path**: \`/old/path\`
 - **Tech Stack**: OldStack
 
 ## User Notes
@@ -57,7 +57,8 @@ Deno.test("ContextCardGenerator: updates card preserving notes", async () => {
 These are my custom notes.
 They should be preserved.
 `;
-    await Deno.writeTextFile(join(portalsDir, "MyApp.md"), initialContent);
+    await Deno.mkdir(join(projectsDir, "MyApp"), { recursive: true });
+    await Deno.writeTextFile(join(projectsDir, "MyApp", "portal.md"), initialContent);
 
     const generator = new ContextCardGenerator(config);
     await generator.generate({
@@ -66,7 +67,7 @@ They should be preserved.
       techStack: ["NewStack"],
     });
 
-    const content = await Deno.readTextFile(join(portalsDir, "MyApp.md"));
+    const content = await Deno.readTextFile(join(projectsDir, "MyApp", "portal.md"));
 
     // Check updates
     assertExists(content.match(/- \*\*Path\*\*: `\/new\/path`/));
@@ -84,7 +85,7 @@ Deno.test("ContextCardGenerator: sanitizes alias", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "card-test-sanitize-" });
   try {
     const config = createMockConfig(tempDir);
-    await Deno.mkdir(join(tempDir, "Knowledge", "Portals"), { recursive: true });
+    await Deno.mkdir(join(tempDir, "Memory", "Projects"), { recursive: true });
 
     const generator = new ContextCardGenerator(config);
     await generator.generate({
@@ -100,7 +101,7 @@ Deno.test("ContextCardGenerator: sanitizes alias", async () => {
     // Actually, let's verify what file was created.
 
     const entries = [];
-    for await (const entry of Deno.readDir(join(tempDir, "Knowledge", "Portals"))) {
+    for await (const entry of Deno.readDir(join(tempDir, "Memory", "Projects"))) {
       entries.push(entry.name);
     }
 
@@ -119,7 +120,7 @@ Deno.test("ContextCardGenerator: logs activity", async () => {
   const { db, tempDir, cleanup } = await initTestDbService();
   try {
     const config = createMockConfig(tempDir);
-    await Deno.mkdir(join(tempDir, "Knowledge", "Portals"), { recursive: true });
+    await Deno.mkdir(join(tempDir, "Memory", "Projects"), { recursive: true });
 
     const generator = new ContextCardGenerator(config, db);
     await generator.generate({

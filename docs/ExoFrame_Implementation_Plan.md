@@ -1,7 +1,7 @@
 # ExoFrame Implementation Plan
 
-- **Version:** 1.7.0
-- **Release Date:** 2025-12-02
+- **Version:** 1.8.0
+- **Release Date:** 2026-01-03
 - **Philosophy:** Walking Skeleton (End-to-End first, features second).
 - **Runtime:** Deno.
 - **Target:** Honest MVP (Personal Developer Tool supporting both local sovereign agents and federated third-party
@@ -9,6 +9,8 @@
 
 ### Change Log
 
+- **v1.8.0 (2026-01-03):** Added Phase 12 (Obsidian Retirement & Memory Banks Migration), renumbered Phase 12 (MCP Server) to Phase 13, marked Phase 5 for deprecation in v1.1.
+- **v1.7.0 (2025-12-02):** Completed Phase 11 (Testing & QA), added comprehensive test coverage documentation.
 - **v1.6.0:** Clarified market positioning vs IDE agents, added Phase 7 Flow orchestration (multi-agent coordination), updated Executive Summary in White Paper.
 - **v1.4.0:** Introduced hybrid agent orchestration, clarified dual-mode context handling, and refreshed documentation
   references.
@@ -41,12 +43,15 @@
 | Phase 2  | 1 week  | Phase 1 exit + watcher harness        | Watcher + parser tests pass                          |
 | Phase 3  | 2 weeks | Validated config + mock LLM           | Request → Plan loop verified                         |
 | Phase 4  | 1 week  | Stable agent runtime                  | Git + tool registry exercised                        |
-| Phase 5  | 1 week  | CLI scaffold merged                   | Obsidian vault validated                             |
+| Phase 5  | 1 week  | CLI scaffold merged                   | Obsidian vault validated (DEPRECATED in v1.1)        |
 | Phase 6  | 2 weeks | Phase 5 complete + portal system      | Plan execution via MCP working end-to-end            |
 | Phase 7  | 1 week  | All prior phases code-complete        | Flow orchestration working                           |
 | Phase 8  | 1 week  | System stable with Ollama             | Cloud LLM providers (Anthropic/OpenAI/Google Gemini) |
 | Phase 9  | 1 week  | Core functionality stable             | UX improvements + UI evaluation done                 |
 | Phase 10 | 2 days  | Testing complete                      | Testing strategy documented                          |
+| Phase 11 | 1 week  | Phases 1-10 complete                  | Comprehensive test coverage achieved                 |
+| Phase 12 | 1 week  | Phase 11 complete                     | Obsidian retired, Memory Banks implemented           |
+| Phase 13 | 1-2 wks | Phases 1-12 complete                  | MCP server operational                               |
 
 Each step lists **Dependencies**, **Rollback/Contingency**, and updated success metrics.
 
@@ -1181,9 +1186,17 @@ PermissionDenied: write access to /etc/passwd is not allowed at PathResolver.val
 
 ---
 
-## Phase 5: Obsidian Setup & Runtime Integration ✅ COMPLETED
+## Phase 5: Obsidian Setup & Runtime Integration ✅ COMPLETED ⚠️ DEPRECATED
+
+> **⚠️ DEPRECATION NOTICE (v1.1):**
+> Phase 5 (Obsidian integration) was deprecated and removed in **v1.1** (Phase 12). With the completion of the TUI dashboard (Phase 9), Obsidian integration is no longer needed and added maintenance burden (~500 LOC in tests, wikilink generation overhead). The Knowledge/ directory was migrated to Memory Banks in Phase 12.
+>
+> **This phase is preserved for historical reference only.**
+> See **Phase 12** for the retirement plan and migration details.
 
 **Goal (Updated):** Provide optional integration with Obsidian for knowledge management and historical auditability. The TUI dashboard and CLI are now the primary user interfaces for ExoFrame. Obsidian is supported as an add-on for users who prefer a knowledge graph or want to visualize agent activity and reports in a familiar environment.
+
+**Status:** ✅ COMPLETED (v1.0) → ⚠️ DEPRECATED (v1.1)
 
 ### Steps Summary
 
@@ -7565,17 +7578,83 @@ Tests for lease acquisition/release are in `tests/execution_loop_test.ts`.
 
 ---
 
-## Phase 12: Model Context Protocol (MCP) Server
+## Phase 12: Obsidian Retirement & Memory Banks Migration
+
+> **Status:** ✅ COMPLETED\
+> **Prerequisites:** Phase 11 (Testing & QA complete)\
+> **Goal:** Remove Obsidian dependency and migrate to Memory Banks architecture\
+> **Target Release:** v1.1\
+> **Completed:** 2026-01-03
+
+📄 **Full Planning Document:** [`agents/planning/phase-12-obsidian-retirement.md`](../agents/planning/phase-12-obsidian-retirement.md)
+
+### Overview
+
+Phase 12 removes Obsidian as a dependency (even optional) and migrates the Knowledge/ directory to a standalone Memory Banks system. With the TUI dashboard (Phase 9) providing real-time monitoring, Obsidian integration is no longer needed and adds maintenance burden.
+
+**Key Changes:**
+
+- Rename `Knowledge/` → `Memory/`
+- Structure: `Memory/{Projects,Execution,Tasks,Index}/`
+- Remove all Obsidian-specific code (~600 LOC)
+- Remove wikilink generation from mission reporter
+- Remove Dataview compatibility requirements
+- Update all documentation (10+ files)
+- No migration needed (clean start with Memory Banks)
+
+**Note:** TUI dashboard integration for Memory Banks browsing will be implemented in a future phase (post-v1.1).
+
+### Steps Summary
+
+| Step | Description                        | Timeline | Status         |
+| ---- | ---------------------------------- | -------- | -------------- |
+| 12.1 | Define Memory Banks Architecture   | 2 days   | ✅ Completed   |
+| 12.2 | Implement Memory Bank Services     | 3 days   | ✅ Completed   |
+| 12.3 | Migrate Mission Reporter           | 2 days   | ✅ Completed   |
+| 12.4 | Remove Obsidian-Specific Code      | 1 day    | ✅ Completed   |
+| 12.5 | Update CLI Commands                | 1 day    | 🚧 In Progress |
+| 12.6 | Comprehensive Documentation Update | 3 days   | 🚧 In Progress |
+| 12.7 | Final Validation & Testing         | 2 days   | 📝 Pending     |
+
+### Exit Criteria
+
+- [x] All Obsidian code removed (tests, wikilink generation, Dataview references)
+- [x] Memory Banks services implemented and tested (23+ tests)
+- [ ] All CLI commands updated for Memory/
+- [ ] All documentation updated (Implementation Plan, User Guide, Architecture, Testing Strategy, Developer Setup, Building with AI Agents, Technical Spec, White Paper, README)
+- [x] Phase 5 marked as DEPRECATED
+- [x] Zero regressions in existing functionality
+- [x] Test coverage maintained (Memory Banks: 18/18 tests, Mission Reporter: 5/5 tests)
+
+### Implementation Details
+
+**Phase 5 Deprecation:**
+Phase 5 (Obsidian Setup & Runtime Integration) will be marked as DEPRECATED in v1.1 but preserved for historical reference. A deprecation notice will be added at the top of Phase 5 explaining the retirement rationale.
+
+**Migration Path:**
+Users upgrading to v1.1 will use the new Memory Banks system directly. No data migration is required as this represents a clean architectural break from Obsidian-based knowledge management to the new Memory Banks approach.
+
+**Breaking Changes:**
+
+- Knowledge/ directory deprecated (users should use Memory/)
+- Directory structure simplified (Memory/Projects/, Memory/Execution/)
+- Wikilinks no longer generated in reports
+- Dataview frontmatter compatibility removed
+- Memory Banks provide structured CLI access
+
+---
+
+## Phase 13: Model Context Protocol (MCP) Server
 
 **Duration:** 1-2 weeks\
-**Prerequisites:** Phases 1–11 (All core features complete, including Polishing)\
+**Prerequisites:** Phases 1–12 (All core features complete, Obsidian retired)\
 **Goal:** Add Model Context Protocol (MCP) server interface for programmatic ExoFrame interaction
 
 ### Overview
 
 Implement an MCP server that exposes ExoFrame operations as standardized tools, enabling external AI assistants (Claude Desktop, Cline, IDE agents) to interact with ExoFrame programmatically while preserving the file-based core architecture.
 
-### Step 12.1: MCP Server Foundation ✅ COMPLETED
+### Step 13.1: MCP Server Foundation ✅ COMPLETED
 
 **Implementation:**
 
@@ -7693,7 +7772,7 @@ export class ExoFrameMCPServer {
 4. [ ] Server metadata includes name and version
 5. [ ] Graceful shutdown on SIGTERM
 
-### Step 12.2: Tool Implementations
+### Step 13.2: Tool Implementations
 
 **Request Creation Tool:**
 
@@ -7771,7 +7850,7 @@ private async queryJournal(args: any) {
 5. [ ] All operations logged to Activity Journal
 6. [ ] Error responses follow MCP error schema
 
-### Step 12.3: Client Integration Examples
+### Step 13.3: Client Integration Examples
 
 **Claude Desktop Configuration:**
 
@@ -7811,7 +7890,7 @@ private async queryJournal(args: any) {
 3. [ ] Example prompts for using MCP tools
 4. [ ] Troubleshooting guide for MCP connections
 
-### Step 12.4: Testing & Documentation
+### Step 13.4: Testing & Documentation
 
 **Test Coverage:**
 
@@ -7850,7 +7929,7 @@ Deno.test("MCP Server - list plans tool", async () => {
 4. [ ] Architecture diagram updated
 5. [ ] Example repository with MCP configurations
 
-### Phase 12 Benefits
+### Phase 13 Benefits
 
 **For Users:**
 
@@ -7871,7 +7950,7 @@ Deno.test("MCP Server - list plans tool", async () => {
 - Works with any MCP client (Claude, Cline, etc.)
 - Positions ExoFrame as infrastructure layer
 
-### Phase 12 Exit Criteria
+### Phase 13 Exit Criteria
 
 [ ] MCP server implemented with stdio transport
 [ ] All core tools implemented (create, list, approve, query)

@@ -7,15 +7,12 @@ coverage/
 !agents/coverage/coverage-summary.md
 report/
 
-# Obsidian vault config (user-specific)
-.obsidian/
-
 # runtime / user data (do not commit runtime DBs or user content)
 /System/*.db*
 /System/activity_export.md
 /System/daemon.pid
 /System/*.log
-/Knowledge/
+/Memory/
 /Inbox/
 /Portals/
 *.log

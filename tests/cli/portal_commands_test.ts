@@ -191,7 +191,7 @@ Deno.test("PortalCommands: removes portal and archives context card", async () =
 
     assertEquals(await verifySymlink(tempRoot, "RemovePortal"), false);
 
-    const archivedDir = join(tempRoot, "Knowledge", "Portals", "_archived");
+    const archivedDir = join(tempRoot, "Memory", "Projects", "_archived");
     const archivedExists = await Deno.stat(archivedDir).then(() => true).catch(() => false);
     assertEquals(archivedExists, true);
 

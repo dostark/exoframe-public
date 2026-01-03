@@ -42,7 +42,7 @@ function createTestConfig(aiConfig?: Partial<AiConfig>): Config {
     },
     paths: {
       inbox: "Inbox",
-      knowledge: "Knowledge",
+      memory: "Memory",
       system: "System",
       blueprints: "Blueprints",
     },

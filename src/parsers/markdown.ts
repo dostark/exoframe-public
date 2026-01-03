@@ -18,8 +18,6 @@ export interface ParsedRequest {
  * - Parses YAML to JavaScript object
  * - Validates against RequestSchema using Zod
  * - Logs validation events to Activity Journal (if database provided)
- *
- * YAML format is used for Dataview compatibility in Obsidian.
  */
 export class FrontmatterParser {
   private db?: DatabaseService;

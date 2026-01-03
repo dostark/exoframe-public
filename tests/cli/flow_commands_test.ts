@@ -9,7 +9,7 @@ import { copySync } from "jsr:@std/fs@1";
 const mockContext = {
   config: {
     system: { root: "/tmp/test-flow-commands" },
-    paths: { knowledge: "Knowledge", system: "System" },
+    paths: { memory: "Memory", system: "System", blueprints: "Blueprints" },
   },
   db: undefined,
   provider: undefined,
@@ -18,14 +18,14 @@ const mockContext = {
 const mockContext2 = {
   config: {
     system: { root: "/tmp/test-flow-commands-2" },
-    paths: { knowledge: "Knowledge", system: "System" },
+    paths: { memory: "Memory", system: "System", blueprints: "Blueprints" },
   },
   db: undefined,
   provider: undefined,
 };
 
 Deno.test("FlowCommands: listFlows returns empty when no flows", async () => {
-  const flowDir = join(mockContext.config.system.root, mockContext.config.paths.knowledge, "Flows");
+  const flowDir = join(mockContext.config.system.root, mockContext.config.paths.blueprints, "Flows");
   await Deno.mkdir(flowDir, { recursive: true });
   try {
     const commands = new FlowCommands(mockContext as any);
@@ -43,14 +43,14 @@ Deno.test("FlowCommands: listFlows returns empty when no flows", async () => {
 });
 
 Deno.test("FlowCommands: listFlows outputs table for valid flows", async () => {
-  const flowDir = join(mockContext.config.system.root, mockContext.config.paths.knowledge, "Flows");
+  const flowDir = join(mockContext.config.system.root, mockContext.config.paths.blueprints, "Flows");
   await Deno.mkdir(flowDir, { recursive: true });
   try {
     // Copy define_flow.ts and schemas to knowledge dir
     copySync("src/flows/define_flow.ts", `${flowDir}/define_flow.ts`);
     copySync(
       "src/schemas",
-      join(mockContext.config.system.root, mockContext.config.paths.knowledge, "schemas"),
+      join(mockContext.config.system.root, mockContext.config.paths.blueprints, "schemas"),
     );
     // Create a valid flow file
     const validFlow = `
@@ -80,12 +80,12 @@ export default defineFlow({
 });
 
 Deno.test("FlowCommands: listFlows outputs JSON when requested", async () => {
-  const flowDir = join(mockContext2.config.system.root, mockContext2.config.paths.knowledge, "Flows");
+  const flowDir = join(mockContext2.config.system.root, mockContext2.config.paths.blueprints, "Flows");
   await Deno.mkdir(flowDir, { recursive: true });
   try {
     // copy schema helpers so define_flow can be used by flow modules
     copySync("src/flows/define_flow.ts", `${flowDir}/define_flow.ts`);
-    copySync("src/schemas", join(mockContext2.config.system.root, mockContext2.config.paths.knowledge, "schemas"));
+    copySync("src/schemas", join(mockContext2.config.system.root, mockContext2.config.paths.blueprints, "schemas"));
 
     const flowModule = `
 import { defineFlow } from "./define_flow.ts";
@@ -114,14 +114,14 @@ export default defineFlow({
 });
 
 Deno.test("FlowCommands: validateFlow returns valid for correct flow", async () => {
-  const flowDir = join(mockContext.config.system.root, mockContext.config.paths.knowledge, "Flows");
+  const flowDir = join(mockContext.config.system.root, mockContext.config.paths.blueprints, "Flows");
   await Deno.mkdir(flowDir, { recursive: true });
   try {
     // Copy define_flow.ts and schemas to knowledge dir
     copySync("src/flows/define_flow.ts", `${flowDir}/define_flow.ts`);
     copySync(
       "src/schemas",
-      join(mockContext.config.system.root, mockContext.config.paths.knowledge, "schemas"),
+      join(mockContext.config.system.root, mockContext.config.paths.blueprints, "schemas"),
     );
     const validFlow = `
 import { defineFlow } from "./define_flow.ts";
@@ -144,13 +144,13 @@ export default defineFlow({
 });
 
 Deno.test("FlowCommands: showFlow outputs JSON when requested (id check)", async () => {
-  const flowDir = join(mockContext.config.system.root, mockContext.config.paths.knowledge, "Flows");
+  const flowDir = join(mockContext.config.system.root, mockContext.config.paths.blueprints, "Flows");
   await Deno.mkdir(flowDir, { recursive: true });
   try {
     copySync("src/flows/define_flow.ts", `${flowDir}/define_flow.ts`);
     copySync(
       "src/schemas",
-      join(mockContext.config.system.root, mockContext.config.paths.knowledge, "schemas"),
+      join(mockContext.config.system.root, mockContext.config.paths.blueprints, "schemas"),
     );
     const flowDef = `
 import { defineFlow } from "./define_flow.ts";
@@ -179,11 +179,11 @@ export default defineFlow({
 });
 
 Deno.test("FlowCommands: showFlow prints JSON when requested (id & name)", async () => {
-  const flowDir = join(mockContext2.config.system.root, mockContext2.config.paths.knowledge, "Flows");
+  const flowDir = join(mockContext2.config.system.root, mockContext2.config.paths.blueprints, "Flows");
   await Deno.mkdir(flowDir, { recursive: true });
   try {
     copySync("src/flows/define_flow.ts", `${flowDir}/define_flow.ts`);
-    copySync("src/schemas", join(mockContext2.config.system.root, mockContext2.config.paths.knowledge, "schemas"));
+    copySync("src/schemas", join(mockContext2.config.system.root, mockContext2.config.paths.blueprints, "schemas"));
 
     const flowModule = `
 import { defineFlow } from "./define_flow.ts";
@@ -212,11 +212,11 @@ export default defineFlow({
 });
 
 Deno.test("FlowCommands: showFlow renders full view (non-JSON)", async () => {
-  const flowDir = join(mockContext2.config.system.root, mockContext2.config.paths.knowledge, "Flows");
+  const flowDir = join(mockContext2.config.system.root, mockContext2.config.paths.blueprints, "Flows");
   await Deno.mkdir(flowDir, { recursive: true });
   try {
     copySync("src/flows/define_flow.ts", `${flowDir}/define_flow.ts`);
-    copySync("src/schemas", join(mockContext2.config.system.root, mockContext2.config.paths.knowledge, "schemas"));
+    copySync("src/schemas", join(mockContext2.config.system.root, mockContext2.config.paths.blueprints, "schemas"));
 
     const flowModule = `
 import { defineFlow } from "./define_flow.ts";

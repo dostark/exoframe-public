@@ -37,7 +37,7 @@ export class PortalCommands {
   private configService?: ConfigService;
   private portalsDir: string;
   private contextCardGenerator: ContextCardGenerator;
-  private reservedNames = ["System", "Inbox", "Knowledge", "Blueprints", "Active", "Archive", "Portals"];
+  private reservedNames = ["System", "Inbox", "Memory", "Blueprints", "Active", "Archive", "Portals"];
 
   constructor(context: PortalCommandsContext) {
     this.config = context.config;
@@ -142,9 +142,10 @@ export class PortalCommands {
         const symlinkPath = join(this.portalsDir, entry.name);
         const contextCardPath = join(
           this.config.system.root,
-          this.config.paths.knowledge,
-          "Portals",
-          `${entry.name}.md`,
+          "Memory",
+          "Projects",
+          entry.name,
+          "portal.md",
         );
 
         let targetPath: string;
@@ -189,9 +190,10 @@ export class PortalCommands {
     const symlinkPath = join(this.portalsDir, alias);
     const contextCardPath = join(
       this.config.system.root,
-      this.config.paths.knowledge,
-      "Portals",
-      `${alias}.md`,
+      this.config.paths.memory,
+      "Projects",
+      alias,
+      "portal.md",
     );
 
     let targetPath: string;
@@ -244,9 +246,10 @@ export class PortalCommands {
     const symlinkPath = join(this.portalsDir, alias);
     const contextCardPath = join(
       this.config.system.root,
-      this.config.paths.knowledge,
-      "Portals",
-      `${alias}.md`,
+      "Memory",
+      "Projects",
+      alias,
+      "portal.md",
     );
 
     // Check portal exists
@@ -268,8 +271,8 @@ export class PortalCommands {
     if (!options?.keepCard) {
       const archivedDir = join(
         this.config.system.root,
-        this.config.paths.knowledge,
-        "Portals",
+        "Memory",
+        "Projects",
         "_archived",
       );
       await Deno.mkdir(archivedDir, { recursive: true });
@@ -307,9 +310,10 @@ export class PortalCommands {
       const symlinkPath = join(this.portalsDir, portalAlias);
       const contextCardPath = join(
         this.config.system.root,
-        this.config.paths.knowledge,
-        "Portals",
-        `${portalAlias}.md`,
+        "Memory",
+        "Projects",
+        portalAlias,
+        "portal.md",
       );
 
       // Check symlink exists

@@ -5,7 +5,7 @@
  * analysis of multi-agent orchestration results.
  */
 
-import { join, relative } from "@std/path";
+import { join } from "@std/path";
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "./db.ts";
 import type { FlowResult } from "../flows/flow_runner.ts";
@@ -19,11 +19,8 @@ import type { Flow } from "../schemas/flow.ts";
  * Configuration for the FlowReporter
  */
 export interface FlowReportConfig {
-  /** Directory where reports are written */
+  /** Directory where reports are written (now Memory/Execution/) */
   reportsDirectory: string;
-
-  /** Knowledge base root for relative path calculation */
-  knowledgeRoot: string;
 
   /** Database service for activity logging */
   db?: DatabaseService;
@@ -288,7 +285,7 @@ export class FlowReporter {
   ): void {
     if (!this.reportConfig.db) return;
 
-    const relativePath = relative(this.reportConfig.knowledgeRoot, reportPath);
+    const fileName = reportPath.split("/").pop() || reportPath;
 
     this.reportConfig.db.logActivity(
       "system",
@@ -296,7 +293,7 @@ export class FlowReporter {
       flow.id,
       {
         flow_run_id: flowResult.flowRunId,
-        report_path: relativePath,
+        report_path: fileName,
         duration_ms: duration,
         steps_completed: Array.from(flowResult.stepResults.values()).filter((s) => s.success).length,
         steps_failed: Array.from(flowResult.stepResults.values()).filter((s) => !s.success).length,

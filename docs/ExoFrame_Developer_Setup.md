@@ -6,16 +6,16 @@ contributors to run the daemon, tests and benchmarks locally.
 
 ### Goals
 
-- Install required tools (Git, Deno, SQLite; Obsidian is optional for knowledge management; VS Code is also optional)
+- Install required tools (Git, Deno, SQLite; VS Code is optional)
 - Create a local repository and initial configuration
-- Initialize the Activity Journal and Knowledge vault
+- Initialize the Activity Journal and Memory Banks
 - Run the daemon in development mode and execute the test suite
 
 ### 0. Preflight (common)
 
 - Ensure you have at least 8GB RAM and 20GB free disk space.
 - Create a user account for development with normal privileges.
-- Recommended editor: VS Code (recommended) or Obsidian (optional, for knowledge management features).
+- Recommended editor: VS Code (recommended).
 
 ### 1. Ubuntu (tested baseline)
 
@@ -77,16 +77,6 @@ ollama run llama3.2 "Hello, world!"
 - Without GPU, stick to smaller models (3b or 7b parameter variants)
 - Ollama uses ~2-4GB base memory plus model size
 
-4. (Optional) Install Obsidian (GUI knowledge management)
-
-Obsidian is not required for ExoFrame operation. Install only if you want to use the knowledge graph, dashboards, or Dataview features.
-
-Download from Obsidian site or install via Snap:
-
-```bash
-sudo snap install obsidian --classic
-```
-
 4. Install VS Code (optional)
 
 ```bash
@@ -128,58 +118,46 @@ deno test --allow-read --allow-write --allow-run
 deno run --watch --allow-read --allow-write --allow-run src/main.ts
 ```
 
-6. (Optional) Initialize Obsidian vault
-
 ```bash
-# If using Obsidian, point it to the Knowledge folder
-# In Obsidian: "Open folder as vault" -> ~/ExoFrame/Knowledge
-
 # Verify the Activity Journal (SQLite) was initialized correctly
 deno test --allow-read --allow-write --allow-run tests/setup_db_test.ts
 ```
 
-7. (Optional) Configure Obsidian for ExoFrame compatibility
+7. Test the Memory Banks system
 
-If you want to use Obsidian for knowledge management, configure the following:
+```bash
+# Test Memory Banks services
+deno test --allow-all tests/services/memory_bank_test.ts
 
-**Recommended Plugin:**
+# Test the complete system end-to-end
+deno test --allow-all tests/
+```
 
-1. Open Obsidian Settings (gear icon)
-2. Go to **Community Plugins**
-3. Click "Turn on Community Plugins" (disables Safe Mode)
-4. Click **Browse** → Search "Dataview"
-5. Click **Install** then **Enable**
+8. Development workflow verification
 
-**Recommended Settings:**
+**Test complete system:**
 
-1. Go to **Settings → Files & Links**:
+```bash
+# Run all tests
+deno test --allow-all
 
-- ☑ **Automatically update internal links** — enables wikilinks like `[[Dashboard]]` to auto-update when files are renamed
-- ☑ **Show all file types** — makes `.toml`, `.json` files visible in the sidebar
+# Start the daemon
+deno task start
 
-2. (Optional) Go to **Settings → Editor**:
+# In another terminal, test CLI
+exoctl daemon status
+exoctl memory projects
+```
 
 - ☑ Auto pair markdown syntax
 
-**Verify Configuration (Optional):**
-
-```bash
-# Run Obsidian integration tests (if using Obsidian)
-deno test --allow-all tests/obsidian/
-
-# Expected: All tests pass, including:
-# - File watcher compatibility tests
-# - Dashboard content tests
-# - Vault structure tests
-```
-
 **Platform-Specific Notes:**
 
-| Platform        | Configuration                                                                                                                           |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **Linux**       | Increase inotify watchers for large vaults: `echo fs.inotify.max_user_watches=524288 \| sudo tee -a /etc/sysctl.conf && sudo sysctl -p` |
-| **macOS**       | FSEvents works well, no special configuration needed                                                                                    |
-| **Windows/WSL** | Run Obsidian as administrator if symlinks don't work properly                                                                           |
+| Platform        | Configuration                                                                                                                             |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **Linux**       | Increase inotify watchers for large projects: `echo fs.inotify.max_user_watches=524288 \| sudo tee -a /etc/sysctl.conf && sudo sysctl -p` |
+| **macOS**       | FSEvents works well, no special configuration needed                                                                                      |
+| **Windows/WSL** | WSL filesystem watching works out of the box                                                                                              |
 
 ### 2. Windows + WSL2 (Ubuntu inside WSL)
 
@@ -194,11 +172,6 @@ Notes specific to WSL2:
 
 - Ensure Git on Windows and Git inside WSL are consistent. Use the WSL-side git for repository work inside `~/ExoFrame`.
 
-- For Obsidian UI on Windows: point Obsidian to the WSL mount (e.g.,
-  `\\wsl$\\Ubuntu-22.04\\home\\<user>\\ExoFrame\\Knowledge`) or use the Windows-side Obsidian and open vault via the WSL
-  path (optional, only if using Obsidian).
-- **If using Obsidian:** Configure with the same settings as step 7 above (Dataview plugin, "Automatically update internal links", "Show all file types").
-
 2. Symlink behavior
 
 - WSL supports Unix symlinks inside the distro. When creating Portals that point to Windows paths, prefer using
@@ -206,7 +179,6 @@ Notes specific to WSL2:
 
 3. Windows-side utilities (optional convenience)
 
-- (Optional) Install Obsidian on Windows and open the WSL vault via `\\wsl$` share.
 - If you expect to run UI workflows from Windows, install the Windows Git client and ensure `core.autocrlf` matches your
   team policy.
 
@@ -222,19 +194,20 @@ Notes specific to WSL2:
 exoctl portal add ~/Dev/MyProject MyProject
 echo "# Test Request" > ~/ExoFrame/Inbox/Requests/test.md
 
-# Observe daemon logs (or, if using Obsidian, view in Dashboard)
+# Observe daemon logs in real time
+exoctl daemon logs --follow
 ```
 
 ### 4. File Format Standards (Developer Reference)
 
 ExoFrame uses a **hybrid format strategy**:
 
-| File Type                | Format   | Reason                                                  |
-| ------------------------ | -------- | ------------------------------------------------------- |
-| System config            | TOML     | Token-efficient for LLM context                         |
-| Agent blueprints         | TOML     | Complex nested structures                               |
-| **Markdown frontmatter** | **YAML** | **Dataview plugin compatibility (Obsidian users only)** |
-| Deno config              | JSON     | Runtime requirement                                     |
+| File Type                | Format   | Reason                                             |
+| ------------------------ | -------- | -------------------------------------------------- |
+| System config            | TOML     | Token-efficient for LLM context                    |
+| Agent blueprints         | TOML     | Complex nested structures                          |
+| **Markdown frontmatter** | **YAML** | **Memory Banks compatibility and search indexing** |
+| Deno config              | JSON     | Runtime requirement                                |
 
 #### YAML Frontmatter (Requests, Plans, Reports)
 
@@ -256,10 +229,9 @@ created_by: user@example.com
 
 **Why YAML for frontmatter?**
 
-- Obsidian's **Dataview plugin only parses YAML** frontmatter natively (relevant only if using Obsidian)
-
-* Standard Dataview `TABLE` queries work without custom JavaScript
-* Dashboard shows proper field values (not `-` placeholders)
+- **Memory Banks indexing** parses YAML frontmatter for structured search
+- **Standard CLI tools** can extract metadata from YAML frontmatter efficiently
+- **Industry standard** for markdown frontmatter across many tools and platforms
 
 #### Test Fixture Format
 
@@ -278,7 +250,7 @@ agent: default
 
 # Test Request`;
 
-// ❌ WRONG - TOML frontmatter (won't work with Dataview)
+// ❌ WRONG - TOML frontmatter
 const badContent = `+++
 trace_id = "test-uuid-1234"
 status = "pending"
@@ -398,7 +370,7 @@ This ensures downstream tools and agents always have access to the latest docume
 
 This Implementation Plan documents work for the _ExoFrame development repository_ — the source repository containing
 `src/`, tests, CI, and developer tooling. The _deployed workspace_ (where end-users run the ExoFrame daemon and keep
-their Knowledge vault) is a distinct runtime instance that can be created from the development repository.
+their Memory scaffold) is a distinct runtime instance that can be created from the development repository.
 
 Recommended workflow:
 

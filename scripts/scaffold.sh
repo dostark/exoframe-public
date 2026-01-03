@@ -41,11 +41,6 @@ if [ -f "$ROOT_DIR/templates/README.template.md" ] && [ ! -f "$TARGET/README.md"
   echo "Copied README template"
 fi
 
-if [ -f "$ROOT_DIR/templates/Knowledge_README.md" ] && [ ! -f "$TARGET/Knowledge/README.md" ]; then
-  cp "$ROOT_DIR/templates/Knowledge_README.md" "$TARGET/Knowledge/README.md"
-  echo "Copied Knowledge/README.md"
-fi
-
 if [ -f "$ROOT_DIR/templates/Knowledge_Dashboard.md" ] && [ ! -f "$TARGET/Knowledge/Dashboard.md" ]; then
   cp "$ROOT_DIR/templates/Knowledge_Dashboard.md" "$TARGET/Knowledge/Dashboard.md"
   echo "Copied Knowledge/Dashboard.md"

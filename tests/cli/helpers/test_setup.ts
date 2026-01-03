@@ -83,7 +83,7 @@ export async function verifySymlink(tempRoot: string, alias: string): Promise<bo
  * Verifies a portal's context card exists
  */
 export async function verifyContextCard(tempRoot: string, alias: string): Promise<boolean> {
-  const cardPath = join(tempRoot, "Knowledge", "Portals", `${alias}.md`);
+  const cardPath = join(tempRoot, "Memory", "Projects", alias, "portal.md");
   try {
     await Deno.stat(cardPath);
     return true;
@@ -103,7 +103,7 @@ export function getPortalSymlinkPath(tempRoot: string, alias: string): string {
  * Gets the path to a portal's context card
  */
 export function getPortalCardPath(tempRoot: string, alias: string): string {
-  return join(tempRoot, "Knowledge", "Portals", `${alias}.md`);
+  return join(tempRoot, "Memory", "Projects", alias, "portal.md");
 }
 
 /**

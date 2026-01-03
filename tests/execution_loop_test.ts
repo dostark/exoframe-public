@@ -227,10 +227,10 @@ agent_id: test-agent
     assert(movedExists, "Plan should be moved back to /Inbox/Requests on failure");
 
     // Failure report should be generated
-    const reportsDir = join(tempDir, "Knowledge", "Reports");
-    const files = await Array.fromAsync(Deno.readDir(reportsDir));
-    const failureReport = files.find((f) => f.name.includes("fail-test") && f.name.includes("failure"));
-    assertExists(failureReport, "Failure report should be generated");
+    const reportsDir = join(tempDir, "Memory", "Execution", "test-trace-fail");
+    const failureReportPath = join(reportsDir, "failure.md");
+    const failureReportExists = await Deno.stat(failureReportPath).then(() => true).catch(() => false);
+    assert(failureReportExists, "Failure report should be generated");
 
     // Activity should log failure
     await new Promise((resolve) => setTimeout(resolve, 150));
@@ -274,13 +274,12 @@ agent_id: test-agent
     assertEquals(result.success, true);
 
     // Mission report should be generated
-    const reportsDir = join(tempDir, "Knowledge", "Reports");
-    const files = await Array.fromAsync(Deno.readDir(reportsDir));
-    const missionReport = files.find((f) => f.name.includes("report-test") && !f.name.includes("failure"));
-    assertExists(missionReport, "Mission report should be generated on success");
+    const reportsDir = join(tempDir, "Memory", "Execution", "test-trace-report");
+    const reportPath = join(reportsDir, "summary.md");
+    const reportExists = await Deno.stat(reportPath).then(() => true).catch(() => false);
+    assert(reportExists, "Mission report should be generated on success");
 
     // Report should contain trace_id
-    const reportPath = join(reportsDir, missionReport!.name);
     const reportContent = await Deno.readTextFile(reportPath);
     assert(reportContent.includes("test-trace-report"), "Report should include trace_id");
   } finally {
@@ -1092,18 +1091,10 @@ Intentionally fail
     assertEquals(result.success, false);
 
     // Verify failure report was generated
-    const reportsDir = join(tempDir, "Knowledge", "Reports");
-    const files = [];
-    try {
-      for await (const entry of Deno.readDir(reportsDir)) {
-        files.push(entry.name);
-      }
-    } catch {
-      // Directory may not exist
-    }
-
-    const failureReport = files.find((f) => f.includes("failure"));
-    assertExists(failureReport, "Failure report should be generated");
+    const reportsDir = join(tempDir, "Memory", "Execution", "test-trace-failreport");
+    const failureReportPath = join(reportsDir, "failure.md");
+    const failureReportExists = await Deno.stat(failureReportPath).then(() => true).catch(() => false);
+    assert(failureReportExists, "Failure report should be generated");
 
     // Verify plan moved back to Requests with error status
     const requestsDir = join(tempDir, "Inbox", "Requests");

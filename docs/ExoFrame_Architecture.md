@@ -65,7 +65,7 @@ graph TB
         FS[/File System<br/>~/ExoFrame/]
         Inbox[/Inbox/<br/>Requests & Plans/]
         Blueprint[/Blueprints/<br/>Agents & Flows/]
-        Knowledge[/Knowledge/<br/>Context Cards/]
+        Memory[/Memory/<br/>Memory Banks/]
         Portals[/Portals/<br/>External Projects/]
         System[/System/<br/>Active & Archive/]
     end
@@ -132,7 +132,7 @@ graph TB
     AgentRun --> EventLog
     ExecLoop --> ToolReg
     ExecLoop --> GitSvc
-    ContextLoad --> Knowledge
+    ContextLoad --> Memory
     ContextLoad --> Portals
     PlanWriter --> Inbox
     PlanWriter --> PlanAdapter
@@ -166,7 +166,7 @@ graph TB
     class Exoctl,ReqCmd,PlanCmd,ChangeCmd,GitCmd,DaemonCmd,PortalCmd,BlueprintCmd,DashCmd cli
     class Main,ReqWatch,PlanWatch,ReqProc,ReqRouter,PlanExec,AgentRun,FlowEng,FlowRun,ExecLoop core
     class ConfigSvc,DBSvc,GitSvc,EventLog,ContextLoad,PlanWriter,MissionRpt,PathRes,ToolReg,CtxCard service
-    class DB,FS,Inbox,Blueprint,Knowledge,Portals,System storage
+    class DB,FS,Inbox,Blueprint,Memory,Portals,System storage
     class Factory,Ollama,Claude,GPT,Gemini,Mock ai
 
     class TuiDash,TuiViews cli
@@ -695,7 +695,7 @@ graph TB
     subgraph FileSystem["File System (~/ExoFrame)"]
         Inbox["Inbox<br/>Requests & Plans"]
         Blueprint["Blueprints<br/>Agents & Flows"]
-        Knowledge["Knowledge<br/>Context Cards"]
+        Memory["Memory<br/>Memory Banks"]
         Portals["Portals<br/>Symlinks"]
         System["System<br/>Active & Archive"]
     end
@@ -715,7 +715,7 @@ graph TB
 
     Inbox -->|Watch| Watcher["File Watcher"]
     Blueprint -->|Read| ReqProc["Request Processor"]
-    Knowledge -->|Generate| CtxCard["Context Card Gen"]
+    Memory -->|Generate| CtxCard["Context Card Gen"]
     Portals -->|Access| AgentRun["Agent Runner"]
     System -->|Store| Archive["Archive Service"]
 
@@ -731,7 +731,7 @@ graph TB
     classDef db fill:#b2dfdb,stroke:#00695c,stroke-width:2px
     classDef service fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
 
-    class Inbox,Blueprint,Knowledge,Portals,System storage
+    class Inbox,Blueprint,Memory,Portals,System storage
     class Journal,Activities,Schema db
     class DB,Event,Config,Git service
 ```
@@ -754,7 +754,7 @@ graph TB
         Link3[Backend →]
     end
 
-    subgraph Knowledge["Knowledge/Portals"]
+    subgraph Memory["Memory/Banks"]
         Card1[MyWebsite.md<br/>Context Card]
         Card2[MyAPI.md<br/>Context Card]
         Card3[Backend.md<br/>Context Card]
@@ -798,13 +798,13 @@ graph TB
 
     classDef external fill:#e1f5ff,stroke:#01579b,stroke-width:2px
     classDef portal fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef knowledge fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef memory fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
     classDef config fill:#fff9c4,stroke:#f57f17,stroke-width:2px
     classDef cli fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
 
     class Proj1,Proj2,Proj3 external
     class Link1,Link2,Link3 portal
-    class Card1,Card2,Card3 knowledge
+    class Card1,Card2,Card3 memory
     class TOML,Deno config
     class Add,List,Show,Remove,Verify,Refresh cli
 ```

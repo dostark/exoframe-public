@@ -1,5 +1,5 @@
 ### Business Logic Rules
 - **Plan Approval**: `exoctl plan approve` must never fail due to existing files. It should archive the previous state to `System/Archive/` before writing the new plan.
-- **Data Formats**: Use **YAML Frontmatter** for all markdown metadata (Obsidian compatibility). Do NOT use TOML or JSON for frontmatter.
+- **Data Formats**: Use **YAML Frontmatter** for all markdown metadata. Do NOT use TOML or JSON for frontmatter.
 
 ---

@@ -22,8 +22,7 @@ describe("FlowReporter", () => {
     config = createMockConfig(tempDir);
 
     reportConfig = {
-      reportsDirectory: join(tempDir, "Knowledge", "Reports"),
-      knowledgeRoot: join(tempDir, "Knowledge"),
+      reportsDirectory: join(tempDir, "Memory", "Reports"),
       db: dbResult.db,
     };
 

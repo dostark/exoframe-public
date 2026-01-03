@@ -53,32 +53,32 @@ ExoFrame follows a **test pyramid** approach:
 
 **Purpose:** Verify individual components work correctly in isolation.
 
-**Location:** `tests/` (flat structure with `cli/`, `docs/`, `obsidian/` subdirs)
+**Location:** `tests/` (flat structure with `cli/`, `docs/`, subdirs)
 
 **Coverage Target:** 70% for core modules
 
-| Module                          | Test File                          | Priority | Status      |
-| ------------------------------- | ---------------------------------- | -------- | ----------- |
-| Config loader                   | `tests/config_test.ts`             | P0       | ✅ Complete |
-| Frontmatter/YAML parser         | `tests/frontmatter_test.ts`        | P0       | ✅ Complete |
-| Database service                | `tests/db_test.ts`                 | P0       | ✅ Complete |
-| File watcher                    | `tests/watcher_test.ts`            | P1       | ✅ Complete |
-| Context loader                  | `tests/context_loader_test.ts`     | P1       | ✅ Complete |
-| Git service                     | `tests/git_service_test.ts`        | P1       | ✅ Complete |
-| Agent runner                    | `tests/agent_runner_test.ts`       | P1       | ✅ Complete |
-| Execution loop                  | `tests/execution_loop_test.ts`     | P1       | ✅ Complete |
-| MCP server                      | `tests/mcp/server_test.ts`         | P1       | 📋 Planned  |
-| MCP tools                       | `tests/mcp/tools_test.ts`          | P1       | 📋 Planned  |
-| Agent executor (MCP)            | `tests/agent_executor_test.ts`     | P1       | 📋 Planned  |
-| Portal permissions              | `tests/portal_permissions_test.ts` | P1       | 📋 Planned  |
-| Mission reporter                | `tests/mission_reporter_test.ts`   | P1       | ✅ Complete |
-| Plan writer                     | `tests/plan_writer_test.ts`        | P1       | ✅ Complete |
-| Tool registry                   | `tests/tool_registry_test.ts`      | P1       | ✅ Complete |
-| Path resolver                   | `tests/path_resolver_test.ts`      | P1       | ✅ Complete |
-| Context card generator          | `tests/context_card_test.ts`       | P2       | ✅ Complete |
-| Model adapter                   | `tests/model_adapter_test.ts`      | P2       | ✅ Complete |
-| CLI commands                    | `tests/cli/*_test.ts`              | P2       | ✅ Complete |
-| Obsidian integration (optional) | `tests/obsidian/*_test.ts`         | P2       | ✅ Complete |
+| Module                  | Test File                            | Priority | Status      |
+| ----------------------- | ------------------------------------ | -------- | ----------- |
+| Config loader           | `tests/config_test.ts`               | P0       | ✅ Complete |
+| Frontmatter/YAML parser | `tests/frontmatter_test.ts`          | P0       | ✅ Complete |
+| Database service        | `tests/db_test.ts`                   | P0       | ✅ Complete |
+| File watcher            | `tests/watcher_test.ts`              | P1       | ✅ Complete |
+| Context loader          | `tests/context_loader_test.ts`       | P1       | ✅ Complete |
+| Git service             | `tests/git_service_test.ts`          | P1       | ✅ Complete |
+| Agent runner            | `tests/agent_runner_test.ts`         | P1       | ✅ Complete |
+| Execution loop          | `tests/execution_loop_test.ts`       | P1       | ✅ Complete |
+| MCP server              | `tests/mcp/server_test.ts`           | P1       | 📋 Planned  |
+| MCP tools               | `tests/mcp/tools_test.ts`            | P1       | 📋 Planned  |
+| Agent executor (MCP)    | `tests/agent_executor_test.ts`       | P1       | 📋 Planned  |
+| Portal permissions      | `tests/portal_permissions_test.ts`   | P1       | 📋 Planned  |
+| Mission reporter        | `tests/mission_reporter_test.ts`     | P1       | ✅ Complete |
+| Plan writer             | `tests/plan_writer_test.ts`          | P1       | ✅ Complete |
+| Tool registry           | `tests/tool_registry_test.ts`        | P1       | ✅ Complete |
+| Path resolver           | `tests/path_resolver_test.ts`        | P1       | ✅ Complete |
+| Context card generator  | `tests/context_card_test.ts`         | P2       | ✅ Complete |
+| Model adapter           | `tests/model_adapter_test.ts`        | P2       | ✅ Complete |
+| CLI commands            | `tests/cli/*_test.ts`                | P2       | ✅ Complete |
+| Memory Banks services   | `tests/services/memory_bank_test.ts` | P1       | ✅ Complete |
 
 **Running Unit Tests:**
 

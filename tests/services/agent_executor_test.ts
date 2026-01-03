@@ -86,7 +86,7 @@ async function setup() {
     },
     paths: {
       inbox: join(testDir, "Inbox"),
-      knowledge: join(testDir, "Knowledge"),
+      memory: join(testDir, "Memory"),
       system: join(testDir, "System"),
       blueprints: join(testDir, "Blueprints"),
     },

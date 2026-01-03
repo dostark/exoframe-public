@@ -242,7 +242,7 @@ Deno.test("PathResolver: handles non-existent file in valid directory", async ()
 Deno.test("PathResolver: resolves nested directories", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-nested-" });
   try {
-    const nestedDir = join(tempDir, "Knowledge", "deep", "nested");
+    const nestedDir = join(tempDir, "Memory", "deep", "nested");
     await Deno.mkdir(nestedDir, { recursive: true });
     const testFile = join(nestedDir, "file.md");
     await Deno.writeTextFile(testFile, "content");
@@ -250,7 +250,7 @@ Deno.test("PathResolver: resolves nested directories", async () => {
     const config = createMockConfig(tempDir);
     const resolver = new PathResolver(config);
 
-    const resolved = await resolver.resolve("@Knowledge/deep/nested/file.md");
+    const resolved = await resolver.resolve("@Memory/deep/nested/file.md");
     assertEquals(resolved, await Deno.realPath(testFile));
   } finally {
     await Deno.remove(tempDir, { recursive: true });
@@ -262,18 +262,19 @@ Deno.test("PathResolver: resolves all valid aliases", async () => {
   try {
     // Create all directories
     const inboxDir = join(tempDir, "Inbox");
-    const knowledgeDir = join(tempDir, "Knowledge");
+    const memoryDir = join(tempDir, "Memory");
     const systemDir = join(tempDir, "System");
     const blueprintsDir = join(tempDir, "Blueprints");
 
     await Deno.mkdir(inboxDir);
-    await Deno.mkdir(knowledgeDir);
+    await Deno.mkdir(memoryDir);
     await Deno.mkdir(systemDir);
     await Deno.mkdir(blueprintsDir);
 
     // Create test files
     await Deno.writeTextFile(join(inboxDir, "inbox.md"), "inbox");
-    await Deno.writeTextFile(join(knowledgeDir, "knowledge.md"), "knowledge");
+    await Deno.writeTextFile(join(memoryDir, "memory.md"), "memory");
+    await Deno.writeTextFile(join(memoryDir, "knowledge.md"), "knowledge");
     await Deno.writeTextFile(join(systemDir, "system.md"), "system");
     await Deno.writeTextFile(join(blueprintsDir, "blueprint.md"), "blueprint");
 
@@ -282,12 +283,12 @@ Deno.test("PathResolver: resolves all valid aliases", async () => {
 
     // Test all aliases
     const inboxResolved = await resolver.resolve("@Inbox/inbox.md");
-    const knowledgeResolved = await resolver.resolve("@Knowledge/knowledge.md");
+    const knowledgeResolved = await resolver.resolve("@Memory/knowledge.md");
     const systemResolved = await resolver.resolve("@System/system.md");
     const blueprintsResolved = await resolver.resolve("@Blueprints/blueprint.md");
 
     assertEquals(inboxResolved, await Deno.realPath(join(inboxDir, "inbox.md")));
-    assertEquals(knowledgeResolved, await Deno.realPath(join(knowledgeDir, "knowledge.md")));
+    assertEquals(knowledgeResolved, await Deno.realPath(join(memoryDir, "knowledge.md")));
     assertEquals(systemResolved, await Deno.realPath(join(systemDir, "system.md")));
     assertEquals(blueprintsResolved, await Deno.realPath(join(blueprintsDir, "blueprint.md")));
   } finally {

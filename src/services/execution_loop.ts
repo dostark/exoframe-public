@@ -10,6 +10,8 @@ import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "./db.ts";
 import { GitService } from "./git_service.ts";
 import { ToolRegistry } from "./tool_registry.ts";
+import { MemoryBankService } from "./memory_bank.ts";
+import { MissionReporter } from "./mission_reporter.ts";
 
 // ============================================================================
 // Types
@@ -21,7 +23,7 @@ export interface ExecutionLoopConfig {
   agentId: string;
 }
 
-export interface TaskResult {
+export interface ExecutionResult {
   success: boolean;
   traceId?: string;
   error?: string;
@@ -30,20 +32,24 @@ export interface TaskResult {
 interface PlanFrontmatter {
   trace_id: string;
   request_id: string;
-  status: string;
   agent_id?: string;
-}
-
-interface Lease {
-  filePath: string;
-  holder: string;
-  acquiredAt: Date;
+  priority?: number;
+  timeout?: string;
+  status: "pending" | "active" | "completed" | "failed";
+  created_at: string;
+  updated_at?: string;
 }
 
 interface PlanAction {
   tool: string;
   params: Record<string, unknown>;
   description?: string;
+}
+
+interface TaskLease {
+  filePath: string;
+  holder: string;
+  acquiredAt: Date;
 }
 
 // ============================================================================
@@ -54,28 +60,30 @@ export class ExecutionLoop {
   private config: Config;
   private db?: DatabaseService;
   private agentId: string;
-  private leases: Map<string, Lease> = new Map();
+  private plansDir: string;
+  private leases = new Map<string, TaskLease>();
 
-  constructor(options: ExecutionLoopConfig) {
-    this.config = options.config;
-    this.db = options.db;
-    this.agentId = options.agentId;
+  constructor({ config, db, agentId }: ExecutionLoopConfig) {
+    this.config = config;
+    this.db = db;
+    this.agentId = agentId;
+    this.plansDir = join(config.system.root, "Inbox", "Plans");
   }
 
   /**
    * Process a single task from /System/Active
    */
-  async processTask(planPath: string): Promise<TaskResult> {
+  async processTask(planPath: string): Promise<ExecutionResult> {
     let traceId: string | undefined;
     let requestId: string | undefined;
 
     try {
       // Parse plan frontmatter first (validates before lease)
-      const plan = await this.parsePlan(planPath);
-      traceId = plan.trace_id;
-      requestId = plan.request_id;
+      const frontmatter = await this.parsePlan(planPath);
+      traceId = frontmatter.trace_id;
+      requestId = frontmatter.request_id;
 
-      // Acquire lease
+      // Acquire lease on the plan
       this.ensureLease(planPath, traceId);
 
       // Log execution start
@@ -85,26 +93,25 @@ export class ExecutionLoop {
       });
 
       // Initialize Git
-      const git = new GitService({
+      const gitService = new GitService({
         config: this.config,
         db: this.db,
         traceId,
         agentId: this.agentId,
       });
-
-      await git.ensureRepository();
-      await git.ensureIdentity();
+      await gitService.ensureRepository();
+      await gitService.ensureIdentity();
 
       // Create feature branch
-      const _branchName = await git.createBranch({
+      await gitService.createBranch({
         requestId,
         traceId,
       });
 
       // Execute plan
-      // Check for special failure markers for testing
       const planContent = await Deno.readTextFile(planPath);
 
+      // Check for special failure markers for testing
       if (planContent.includes("path traversal: ../../")) {
         throw new Error("Path traversal attempt detected");
       }
@@ -113,7 +120,7 @@ export class ExecutionLoop {
         throw new Error("Simulated execution failure");
       }
 
-      // Execute plan actions
+      // Parse and execute plan actions
       const actions = this.parsePlanActions(planContent);
 
       if (actions.length > 0) {
@@ -126,7 +133,7 @@ export class ExecutionLoop {
 
       // Commit changes
       try {
-        await git.commit({
+        await gitService.commit({
           message: `Execute plan: ${requestId}`,
           description: `Executed by agent ${this.agentId}`,
           traceId,
@@ -168,6 +175,136 @@ export class ExecutionLoop {
       if (planPath) {
         this.releaseLease(planPath);
       }
+    }
+  }
+
+  /**
+   * Execute next available plan file
+   */
+  async executeNext(): Promise<ExecutionResult> {
+    let planPath: string | null = null;
+    let traceId: string | undefined;
+    let requestId: string | undefined;
+
+    try {
+      // Find the next plan to execute
+      planPath = await this.findNextPlan();
+      if (!planPath) {
+        return { success: true }; // No work to do
+      }
+
+      // Parse plan frontmatter
+      const frontmatter = await this.parsePlan(planPath);
+      traceId = frontmatter.trace_id;
+      requestId = frontmatter.request_id;
+
+      // Acquire lease on the plan
+      this.ensureLease(planPath, traceId);
+
+      // Log execution start
+      this.logActivity("execution.started", traceId, {
+        request_id: requestId,
+        plan_path: planPath,
+      });
+
+      // Parse plan actions
+      const planContent = await Deno.readTextFile(planPath);
+      const actions = this.parsePlanActions(planContent);
+
+      if (actions.length === 0) {
+        throw new Error("Plan contains no executable actions");
+      }
+
+      // Execute actions
+      await this.executePlanActions(actions, traceId, requestId);
+
+      // Commit changes to git
+      const gitService = new GitService({
+        config: this.config,
+        db: this.db,
+        traceId,
+        agentId: this.agentId,
+      });
+      try {
+        await gitService.commit({
+          message: `Execute plan: ${requestId}`,
+          description: `Executed by agent ${this.agentId}`,
+          traceId,
+        });
+      } catch (error) {
+        // If no changes to commit, that's actually a success (nothing needed to be done)
+        if (error instanceof Error && error.message.includes("nothing to commit")) {
+          // Log but don't fail
+          this.logActivity("execution.no_changes", traceId, {
+            request_id: requestId,
+          });
+        } else {
+          throw error;
+        }
+      }
+
+      // Handle success
+      await this.handleSuccess(planPath, traceId, requestId);
+
+      return {
+        success: true,
+        traceId,
+      };
+    } catch (error) {
+      // Handle failure
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      if (traceId && requestId && planPath) {
+        await this.handleFailure(planPath, traceId, requestId, errorMessage);
+      }
+
+      return {
+        success: false,
+        traceId,
+        error: errorMessage,
+      };
+    } finally {
+      // Always release lease
+      if (planPath) {
+        this.releaseLease(planPath);
+      }
+    }
+  }
+
+  /**
+   * Find the next available plan file to execute
+   */
+  private async findNextPlan(): Promise<string | null> {
+    try {
+      const entries = await Array.fromAsync(Deno.readDir(this.plansDir));
+      const planFiles = entries
+        .filter((entry) => entry.isFile && entry.name.endsWith(".md"))
+        .map((entry) => join(this.plansDir, entry.name));
+
+      for (const planPath of planFiles) {
+        // Skip if already leased
+        if (this.leases.has(planPath)) {
+          continue;
+        }
+
+        // Read frontmatter to check status
+        try {
+          const frontmatter = await this.parsePlan(planPath);
+          if (frontmatter.status === "pending") {
+            return planPath;
+          }
+        } catch {
+          // Skip plans with invalid frontmatter
+          continue;
+        }
+      }
+
+      return null; // No available plans
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) {
+        return null; // Plans directory doesn't exist
+      }
+      throw error;
     }
   }
 
@@ -421,112 +558,110 @@ export class ExecutionLoop {
   }
 
   /**
-   * Generate mission report for successful execution
+   * Generate mission report for successful execution using Memory Banks
    */
   private async generateMissionReport(
     traceId: string,
     requestId: string,
   ): Promise<void> {
-    const reportsDir = join(this.config.system.root, "Knowledge", "Reports");
-    await Deno.mkdir(reportsDir, { recursive: true });
+    try {
+      // Create memory bank service for this execution
+      const memoryBank = new MemoryBankService(this.config, this.db!);
 
-    const timestamp = new Date().toISOString().split("T")[0];
-    const shortTrace = traceId.substring(0, 8);
-    const reportName = `${timestamp}_${shortTrace}_${requestId}.md`;
-    const reportPath = join(reportsDir, reportName);
+      // Create mission reporter with updated config
+      const reportConfig = {
+        reportsDirectory: join(this.config.system.root, "Memory", "Execution"),
+      };
 
-    const report = `---
-trace_id: "${traceId}"
-request_id: ${requestId}
-status: completed
-completed_at: "${new Date().toISOString()}"
-agent_id: ${this.agentId}
----
+      const reporter = new MissionReporter(this.config, reportConfig, memoryBank, this.db);
 
-# Mission Report: ${requestId}
+      // Prepare trace data
+      const traceData = {
+        traceId,
+        requestId,
+        agentId: this.agentId,
+        status: "completed" as const,
+        branch: `feat/${requestId}-${traceId.substring(0, 8)}`,
+        completedAt: new Date(),
+        contextFiles: [], // TODO: Extract from plan execution context
+        reasoning: "Plan execution completed successfully",
+        summary: `Successfully executed plan for request: ${requestId}`,
+      };
 
-## Execution Summary
+      await reporter.generate(traceData);
 
-Successfully executed plan for request: ${requestId}
-
-## Trace Information
-
-- Trace ID: ${traceId}
-- Agent: ${this.agentId}
-- Completed: ${new Date().toISOString()}
-
-## Changes Made
-
-(See git commit for full details)
-
-## Next Steps
-
-Review changes in git branch and merge if approved.
-`;
-
-    await Deno.writeTextFile(reportPath, report);
-
-    this.logActivity("report.generated", traceId, {
-      request_id: requestId,
-      report_path: reportPath,
-      report_type: "mission",
-    });
+      this.logActivity("report.generated", traceId, {
+        request_id: requestId,
+        report_type: "mission",
+        reporter: "memory_banks",
+      });
+    } catch (error) {
+      this.logActivity("report.error", traceId, {
+        request_id: requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   /**
-   * Generate failure report
+   * Generate failure report using Memory Banks
    */
   private async generateFailureReport(
     traceId: string,
     requestId: string,
     error: string,
   ): Promise<void> {
-    const reportsDir = join(this.config.system.root, "Knowledge", "Reports");
-    await Deno.mkdir(reportsDir, { recursive: true });
+    try {
+      // Create memory bank service for this execution
+      const memoryBank = new MemoryBankService(this.config, this.db!);
 
-    const timestamp = new Date().toISOString().split("T")[0];
-    const shortTrace = traceId.substring(0, 8);
-    const reportName = `${timestamp}_${shortTrace}_${requestId}_failure.md`;
-    const reportPath = join(reportsDir, reportName);
+      // Create mission reporter with updated config
+      const reportConfig = {
+        reportsDirectory: join(this.config.system.root, "Memory", "Execution"),
+      };
 
-    const report = `---
-trace_id: "${traceId}"
-request_id: ${requestId}
-status: failed
-failed_at: "${new Date().toISOString()}"
-agent_id: ${this.agentId}
----
+      const reporter = new MissionReporter(this.config, reportConfig, memoryBank, this.db);
 
-# Failure Report: ${requestId}
+      // Prepare trace data for failure
+      const traceData = {
+        traceId,
+        requestId,
+        agentId: this.agentId,
+        status: "failed" as const,
+        branch: `feat/${requestId}-${traceId.substring(0, 8)}`,
+        completedAt: new Date(),
+        contextFiles: [], // TODO: Extract from plan execution context
+        reasoning: `Plan execution failed: ${error}`,
+        summary: `Execution failed for request: ${requestId}`,
+      };
 
-## Error Summary
+      await reporter.generate(traceData);
 
-Execution failed with error:
+      // Also write a human-readable failure.md file for easy access (tests expect this file)
+      try {
+        const failureDir = join(this.config.system.root, "Memory", "Execution", traceId);
+        await Deno.mkdir(failureDir, { recursive: true });
+        const failureContent =
+          `# Failure Report\n\n**Trace ID:** ${traceId}\n**Request ID:** ${requestId}\n**Agent:** ${this.agentId}\n**Error:** ${error}\n\n**Summary:** ${traceData.summary}\n**Reasoning:** ${traceData.reasoning}\n\nGenerated at ${
+            new Date().toISOString()
+          }`;
+        await Deno.writeTextFile(join(failureDir, "failure.md"), failureContent);
+      } catch (_e) {
+        // Non-fatal - logging already handled below
+      }
 
-\`\`\`
-${error}
-\`\`\`
-
-## Trace Information
-
-- Trace ID: ${traceId}
-- Agent: ${this.agentId}
-- Failed: ${new Date().toISOString()}
-
-## Next Steps
-
-1. Review the error and adjust the request
-2. Move corrected request back to /Inbox/Requests
-3. System will retry execution
-`;
-
-    await Deno.writeTextFile(reportPath, report);
-
-    this.logActivity("report.generated", traceId, {
-      request_id: requestId,
-      report_path: reportPath,
-      report_type: "failure",
-    });
+      this.logActivity("report.generated", traceId, {
+        request_id: requestId,
+        report_type: "failure",
+        reporter: "memory_banks",
+        error,
+      });
+    } catch (reportError) {
+      this.logActivity("report.error", traceId, {
+        request_id: requestId,
+        error: reportError instanceof Error ? reportError.message : String(reportError),
+      });
+    }
   }
 
   /**

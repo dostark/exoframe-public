@@ -121,7 +121,7 @@ Deno.test("ConfigService handles missing config file", async (t) => {
 
     // Verify config has defaults (from the created default file)
     assertEquals(config.system.log_level, "info");
-    assertEquals(config.paths.knowledge, "./Knowledge"); // From file
+    assertEquals(config.paths.memory, "./Memory"); // From file
     assertEquals(config.paths.blueprints, "./Blueprints"); // From file
 
     // Verify file was created
@@ -431,7 +431,7 @@ version = "1.0.0"
 log_level = "info"
 
 [paths]
-knowledge = "./Знание"
+memory = "./记忆"
 blueprints = "./蓝图"
 system = "./系統"
     `.trim(),
@@ -441,7 +441,7 @@ system = "./系統"
       const service = new ConfigService("test-unicode-config.toml");
       const config = service.get();
 
-      assertEquals(config.paths.knowledge, "./Знание");
+      assertEquals(config.paths.memory, "./记忆");
       assertEquals(config.paths.blueprints, "./蓝图");
       assertEquals(config.paths.system, "./系統");
     } finally {
@@ -641,7 +641,7 @@ Deno.test("[security] Env Variable Security: Config doesn't expand env vars in p
 log_level = "info"
 
 [paths]
-knowledge = "$MALICIOUS_PATH"
+memory = "$MALICIOUS_PATH"
 blueprints = "./Blueprints"
 system = "./System"`,
     );
@@ -651,13 +651,13 @@ system = "./System"`,
 
     // Path should be literal "$MALICIOUS_PATH", not expanded to /etc/passwd
     assertEquals(
-      config.paths.knowledge.includes("/etc/passwd"),
+      config.paths.memory.includes("/etc/passwd"),
       false,
       "Env vars in paths should not be expanded",
     );
     assertEquals(
-      config.paths.knowledge.includes("$MALICIOUS_PATH") ||
-        config.paths.knowledge.includes("MALICIOUS_PATH"),
+      config.paths.memory.includes("$MALICIOUS_PATH") ||
+        config.paths.memory.includes("MALICIOUS_PATH"),
       true,
       "Path should contain literal string, not expanded value",
     );

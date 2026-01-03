@@ -62,7 +62,6 @@ describe("PlanWriter - JSON Integration", () => {
       plansDirectory: plansDir,
       includeReasoning: true,
       generateWikiLinks: true,
-      knowledgeRoot: knowledgeDir,
       systemRoot: `${testDir}/System`,
     };
 

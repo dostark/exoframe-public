@@ -106,15 +106,14 @@ export class RequestProcessor {
     this.planWriter = new PlanWriter({
       plansDirectory: this.plansDir,
       includeReasoning: processorConfig.includeReasoning,
-      generateWikiLinks: true,
-      knowledgeRoot: join(config.system.root, config.paths.knowledge),
+      generateWikiLinks: true, // Enable for Memory Banks compatibility
       systemRoot: join(config.system.root, config.paths.system),
       db,
     });
 
     // Initialize FlowValidator (lazy initialization for test compatibility)
     // this.flowValidator = new FlowValidatorImpl(
-    //   new FlowLoader(join(config.system.root, config.paths.knowledge, "Flows")),
+    //   new FlowLoader(join(config.system.root, config.paths.memory, "Projects")),
     //   join(config.system.root, processorConfig.blueprintsPath)
     // );
     this.flowValidator = null as any; // Temporary for testing

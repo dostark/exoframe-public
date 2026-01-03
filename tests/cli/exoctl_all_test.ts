@@ -754,6 +754,6 @@ Deno.test("__test_initializeServices returns fallback when simulated failure", a
     const res = await mod.__test_initializeServices({ simulateFail: true });
     assertEquals(res.success, false);
     assertStringIncludes(res.error, "simulate-failure");
-    assertEquals(res.config.paths.knowledge, "Knowledge");
+    assertEquals(res.config.paths.memory, "Memory");
   });
 });

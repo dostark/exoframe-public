@@ -110,7 +110,7 @@ exoctl daemon restart  # Restart daemon
 
 - `Blueprints/` - Agent definitions
 - `Inbox/` - Request and plan queue
-- `Knowledge/` - Obsidian vault for context and reports
+- `Knowledge/` - Memory Banks for execution history and project context
 - `System/` - Database and active tasks
 - `Portals/` - Symlinks to external projects
 
@@ -130,11 +130,11 @@ if [ "$NORUN" -eq 0 ]; then
   echo "Running deno task cache and setup in $DEST (requires deno in PATH)"
   ( cd "$DEST" && deno task cache || true )
   ( cd "$DEST" && deno task setup || true )
-  
+
   # Install exoctl CLI globally (include config for import map resolution)
   echo "Installing exoctl CLI..."
   ( cd "$DEST" && deno install --global --allow-all --force --config deno.json -n exoctl src/cli/exoctl.ts 2>/dev/null || true )
-  
+
   # Check if ~/.deno/bin is in PATH
   if [[ ":$PATH:" != *":$HOME/.deno/bin:"* ]]; then
     echo ""

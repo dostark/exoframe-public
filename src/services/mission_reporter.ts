@@ -1,14 +1,9 @@
-/**
- * Mission Reporter - Step 4.5 of Implementation Plan
- *
- * Generates comprehensive mission reports after successful task execution.
- * Creates episodic memory for agents, enables learning from past executions,
- * and provides an audit trail.
- */
-
-import { basename, join, relative } from "@std/path";
+// Removed unused imports
+// import { basename, join, relative } from "@std/path";
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "./db.ts";
+import { MemoryBankService } from "./memory_bank.ts";
+import type { ExecutionMemory } from "../schemas/memory_bank.ts";
 
 // ============================================================================
 // Types and Interfaces
@@ -50,34 +45,40 @@ export interface TraceData {
  * Configuration for the MissionReporter
  */
 export interface ReportConfig {
-  /** Directory where reports are written */
+  /** Directory where reports are written (now Memory/Execution/) */
   reportsDirectory: string;
-
-  /** Knowledge base root for relative path calculation */
-  knowledgeRoot: string;
-
-  /** Database service for activity logging */
-  db?: DatabaseService;
 }
 
 /**
  * Result of report generation
  */
 export interface ReportResult {
-  /** Absolute path to the generated report */
-  reportPath: string;
+  /** Whether the report generation succeeded */
+  success: boolean;
 
-  /** Generated report content */
-  content: string;
+  /** Absolute path to the generated report directory */
+  reportPath?: string;
+
+  /** Error message if generation failed */
+  error?: string;
+
+  /** Trace ID for the execution */
+  traceId: string;
 
   /** Timestamp when report was created */
   createdAt: Date;
+
+  /** Size of generated files in bytes */
+  fileSize?: number;
+
+  /** Git change statistics */
+  gitStats?: GitChangeStats;
 }
 
 /**
  * Git change statistics from diff analysis
  */
-interface GitChangeStats {
+export interface GitChangeStats {
   filesCreated: string[];
   filesModified: string[];
   filesDeleted: string[];
@@ -94,130 +95,178 @@ interface GitChangeStats {
 export class MissionReporter {
   private config: Config;
   private reportConfig: ReportConfig;
+  private memoryBank: MemoryBankService;
+  private db?: DatabaseService;
 
-  constructor(config: Config, reportConfig: ReportConfig) {
+  constructor(
+    config: Config,
+    reportConfig: ReportConfig,
+    memoryBank: MemoryBankService,
+    db?: DatabaseService,
+  ) {
     this.config = config;
     this.reportConfig = reportConfig;
+    this.memoryBank = memoryBank;
+    this.db = db;
   }
 
   /**
-   * Generate a mission report for a completed trace
+   * Generate a mission report for a completed trace using Memory Banks
    */
   async generate(traceData: TraceData): Promise<ReportResult> {
     const startTime = Date.now();
 
     try {
-      // Build the report content
-      const content = await this.buildReport(traceData);
+      // Get git changes for this trace
+      const gitStats = await this.getGitStats(traceData.branch, traceData.traceId);
 
-      // Generate filename: {date}_{shortTraceId}_{requestId}.md
-      const filename = this.generateFilename(traceData);
-      const reportPath = join(this.reportConfig.reportsDirectory, filename);
+      // Extract lessons learned from reasoning and summary
+      const lessonsLearned = this.extractLessonsLearned(traceData.reasoning, traceData.summary);
 
-      // Write report to file
-      await Deno.writeTextFile(reportPath, content);
+      // Create execution memory record
+      const executionMemory: ExecutionMemory = {
+        trace_id: traceData.traceId,
+        request_id: traceData.requestId,
+        started_at: new Date(Date.now() - (5 * 60 * 1000)).toISOString(), // Approximate start time
+        completed_at: traceData.completedAt.toISOString(),
+        status: traceData.status,
+        portal: this.extractPortalFromContext(traceData.contextFiles),
+        agent: traceData.agentId,
+        summary: traceData.summary,
+        context_files: traceData.contextFiles,
+        context_portals: [this.extractPortalFromContext(traceData.contextFiles)],
+        changes: {
+          files_created: gitStats.filesCreated,
+          files_modified: gitStats.filesModified,
+          files_deleted: gitStats.filesDeleted,
+        },
+        lessons_learned: lessonsLearned,
+        error_message: traceData.status === "failed" ? "Execution failed" : undefined,
+      };
+
+      // Create execution record using Memory Bank service
+      await this.memoryBank.createExecutionRecord(executionMemory);
 
       const createdAt = new Date();
+      const reportPath = `Memory/Execution/${traceData.traceId}/summary.md`;
 
-      // Log success to Activity Journal
-      this.logReportGenerated(traceData, reportPath, Date.now() - startTime);
+      // Log success
+      this.logActivity({
+        event_type: "report.generated",
+        target: traceData.requestId,
+        trace_id: traceData.traceId,
+        metadata: {
+          agent: traceData.agentId,
+          status: traceData.status,
+          context_files_count: traceData.contextFiles.length,
+          files_changed: gitStats.totalFilesChanged,
+          generation_time_ms: Date.now() - startTime,
+        },
+      });
 
       return {
+        success: true,
         reportPath,
-        content,
+        traceId: traceData.traceId,
         createdAt,
+        fileSize: 0, // Will be calculated by memory bank service
+        gitStats,
       };
     } catch (error) {
-      // Log failure to Activity Journal
-      this.logReportFailed(traceData, error as Error, Date.now() - startTime);
-      throw error;
+      // Log error
+      this.logActivity({
+        event_type: "report.error",
+        target: traceData.requestId,
+        trace_id: traceData.traceId,
+        metadata: {
+          error: (error as Error).message,
+          generation_time_ms: Date.now() - startTime,
+        },
+      });
+
+      return {
+        success: false,
+        error: `Failed to generate mission report: ${(error as Error).message}`,
+        traceId: traceData.traceId,
+        createdAt: new Date(),
+      };
     }
   }
 
   /**
-   * Build the complete report content
+   * Extract lessons learned from reasoning and summary text
    */
-  private async buildReport(traceData: TraceData): Promise<string> {
-    const sections: string[] = [];
+  private extractLessonsLearned(reasoning: string, summary: string): string[] {
+    const lessons: string[] = [];
+    const text = `${reasoning} ${summary}`.toLowerCase();
 
-    // 1. YAML Frontmatter
-    sections.push(this.buildFrontmatter(traceData));
+    // Look for common lesson patterns
+    const patterns = [
+      /learned that (.+?)[\\.!\\?]/g,
+      /discovered (.+?)[\\.!\\?]/g,
+      /found that (.+?)[\\.!\\?]/g,
+      /realized (.+?)[\\.!\\?]/g,
+      /important to (.+?)[\\.!\\?]/g,
+    ];
 
-    // 2. Title
-    sections.push(this.buildTitle(traceData));
-
-    // 3. Summary Section
-    sections.push(this.buildSummarySection(traceData));
-
-    // 4. Changes Made Section
-    const changes = await this.analyzeGitChanges(traceData);
-    sections.push(this.buildChangesSection(changes));
-
-    // 5. Git Summary Section
-    sections.push(this.buildGitSummary(traceData, changes));
-
-    // 6. Context Used Section
-    sections.push(this.buildContextSection(traceData));
-
-    // 7. Reasoning Section
-    sections.push(this.buildReasoningSection(traceData));
-
-    // 8. Next Steps Section
-    sections.push(this.buildNextStepsSection(traceData));
-
-    return sections.join("\n");
-  }
-
-  /**
-   * Generate YAML frontmatter for the report
-   */
-  private buildFrontmatter(traceData: TraceData): string {
-    const completedAt = traceData.completedAt.toISOString();
-
-    return `---
-trace_id: "${traceData.traceId}"
-request_id: "${traceData.requestId}"
-status: ${traceData.status}
-completed_at: ${completedAt}
-agent_id: "${traceData.agentId}"
-branch: "${traceData.branch}"
----
-
-`;
-  }
-
-  /**
-   * Generate title from request ID (convert kebab-case to Title Case)
-   */
-  private buildTitle(traceData: TraceData): string {
-    const title = this.formatTitle(traceData.requestId);
-    return `# Mission Report: ${title}\n\n`;
-  }
-
-  /**
-   * Convert kebab-case to Title Case
-   */
-  private formatTitle(requestId: string): string {
-    return requestId
-      .split("-")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  }
-
-  /**
-   * Build the summary section
-   */
-  private buildSummarySection(traceData: TraceData): string {
-    if (!traceData.summary) {
-      return "## Summary\n\nNo summary provided.\n\n";
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        const lesson = match[1].trim();
+        if (lesson.length > 10 && lesson.length < 200) {
+          lessons.push(lesson.charAt(0).toUpperCase() + lesson.slice(1));
+        }
+      }
     }
-    return `## Summary\n\n${traceData.summary}\n\n`;
+
+    return lessons.slice(0, 5); // Limit to 5 lessons
   }
 
   /**
-   * Analyze git changes for the trace's branch
+   * Extract portal name from context files
    */
-  private async analyzeGitChanges(_traceData: TraceData): Promise<GitChangeStats> {
+  private extractPortalFromContext(contextFiles: string[]): string {
+    for (const file of contextFiles) {
+      if (file.includes("Portals/")) {
+        const parts = file.split("/");
+        const portalIndex = parts.indexOf("Portals");
+        if (portalIndex >= 0 && portalIndex + 1 < parts.length) {
+          return parts[portalIndex + 1];
+        }
+      }
+    }
+    return "unknown"; // Default portal name
+  }
+
+  /**
+   * Log activity to database if available
+   */
+  private logActivity(activityData: {
+    event_type: string;
+    target: string;
+    trace_id: string;
+    metadata: Record<string, unknown>;
+  }): void {
+    if (!this.db) return;
+
+    try {
+      this.db.logActivity(
+        "system",
+        activityData.event_type,
+        activityData.target,
+        activityData.metadata,
+        activityData.trace_id,
+        "mission_reporter",
+      );
+    } catch (error) {
+      console.error("Failed to log activity:", error);
+    }
+  }
+
+  /**
+   * Get git statistics for the trace's branch
+   */
+  private async getGitStats(_branch: string, _traceId: string): Promise<GitChangeStats> {
     const repoPath = this.config.system.root;
     const defaultStats: GitChangeStats = {
       filesCreated: [],
@@ -251,10 +300,10 @@ branch: "${traceData.branch}"
    */
   private parseDiffOutput(output: string, defaults: GitChangeStats): GitChangeStats {
     const stats = { ...defaults };
-    const lines = output.trim().split("\n");
+    const lines = output.trim().split("\\n");
 
     for (const line of lines) {
-      const parts = line.split(/\s+/);
+      const parts = line.split(/\\s+/);
       if (parts.length < 2) continue;
 
       const status = parts[0];
@@ -276,8 +325,8 @@ branch: "${traceData.branch}"
     stats.totalFilesChanged = stats.filesCreated.length + stats.filesModified.length + stats.filesDeleted.length;
 
     // Try to get insertion/deletion stats
-    const summaryMatch = output.match(/(\d+) insertions?\(\+\)/);
-    const deletionsMatch = output.match(/(\d+) deletions?\(-\)/);
+    const summaryMatch = output.match(/(\\d+) insertions?\\(\\+\\)/);
+    const deletionsMatch = output.match(/(\\d+) deletions?\\(-\\)/);
 
     if (summaryMatch) stats.insertions = parseInt(summaryMatch[1], 10);
     if (deletionsMatch) stats.deletions = parseInt(deletionsMatch[1], 10);
@@ -286,223 +335,23 @@ branch: "${traceData.branch}"
   }
 
   /**
-   * Build the Changes Made section
-   */
-  private buildChangesSection(changes: GitChangeStats): string {
-    const sections: string[] = ["## Changes Made\n"];
-
-    if (changes.filesCreated.length > 0) {
-      sections.push(`### Files Created (${changes.filesCreated.length})\n`);
-      for (const file of changes.filesCreated) {
-        sections.push(`- \`${file}\``);
-      }
-      sections.push("");
-    }
-
-    if (changes.filesModified.length > 0) {
-      sections.push(`### Files Modified (${changes.filesModified.length})\n`);
-      for (const file of changes.filesModified) {
-        sections.push(`- \`${file}\``);
-      }
-      sections.push("");
-    }
-
-    if (changes.filesDeleted.length > 0) {
-      sections.push(`### Files Deleted (${changes.filesDeleted.length})\n`);
-      for (const file of changes.filesDeleted) {
-        sections.push(`- \`${file}\``);
-      }
-      sections.push("");
-    }
-
-    if (changes.totalFilesChanged === 0) {
-      sections.push("No file changes detected.\n");
-    }
-
-    sections.push("");
-    return sections.join("\n");
-  }
-
-  /**
-   * Build the Git Summary section
-   */
-  private buildGitSummary(traceData: TraceData, changes: GitChangeStats): string {
-    const sections: string[] = ["## Git Summary\n"];
-
-    sections.push("```");
-    sections.push(
-      `${changes.totalFilesChanged} files changed, ${changes.insertions} insertions(+), ${changes.deletions} deletions(-)`,
-    );
-    sections.push(`Branch: ${traceData.branch}`);
-    if (changes.commitSha) {
-      sections.push(`Commit: ${changes.commitSha}`);
-    }
-    sections.push("```\n");
-
-    return sections.join("\n");
-  }
-
-  /**
-   * Build the Context Used section with Obsidian wiki links
-   */
-  private buildContextSection(traceData: TraceData): string {
-    const sections: string[] = ["## Context Used\n"];
-
-    if (traceData.contextFiles.length === 0) {
-      sections.push("No context files were used.\n");
-      return sections.join("\n");
-    }
-
-    for (const file of traceData.contextFiles) {
-      const wikiLink = this.toWikiLink(file);
-      sections.push(`- ${wikiLink}`);
-    }
-    sections.push("\n");
-
-    return sections.join("\n");
-  }
-
-  /**
-   * Convert file path to Obsidian wiki link
-   */
-  private toWikiLink(filePath: string): string {
-    // Get relative path from knowledge root
-    let relativePath: string;
-    try {
-      relativePath = relative(this.reportConfig.knowledgeRoot, filePath);
-    } catch {
-      // If relative fails, use basename
-      relativePath = basename(filePath);
-    }
-
-    // Remove .md extension for wiki link
-    const linkPath = relativePath.replace(/\.md$/, "");
-
-    return `[[${linkPath}]]`;
-  }
-
-  /**
-   * Build the Reasoning section
-   */
-  private buildReasoningSection(traceData: TraceData): string {
-    if (!traceData.reasoning) {
-      return "## Reasoning\n\nNo reasoning provided.\n\n";
-    }
-    return `## Reasoning\n\n${traceData.reasoning}\n\n`;
-  }
-
-  /**
-   * Build the Next Steps section
-   */
-  private buildNextStepsSection(traceData: TraceData): string {
-    const sections = ["## Next Steps\n"];
-
-    if (traceData.status === "completed") {
-      sections.push("- Review the changes in the pull request");
-      sections.push("- Test the implemented functionality");
-      sections.push("- Merge to main after approval");
-    } else {
-      sections.push("- Review the error and adjust the request");
-      sections.push("- Move corrected request back to /Inbox/Requests");
-      sections.push("- System will retry execution");
-    }
-
-    sections.push("\n");
-    return sections.join("\n");
-  }
-
-  /**
-   * Generate filename following naming convention: {date}_{shortTraceId}_{requestId}.md
-   */
-  private generateFilename(traceData: TraceData): string {
-    const date = this.formatDate(traceData.completedAt);
-    const shortTraceId = traceData.traceId.substring(0, 8);
-    return `${date}_${shortTraceId}_${traceData.requestId}.md`;
-  }
-
-  /**
-   * Format date as YYYY-MM-DD
-   */
-  private formatDate(date: Date): string {
-    return date.toISOString().split("T")[0];
-  }
-
-  /**
-   * Run a git command and return output
+   * Run git command and return output
    */
   private async runGitCommand(cwd: string, args: string[]): Promise<string> {
-    const cmd = new Deno.Command("git", {
-      args,
-      cwd,
-      stdout: "piped",
-      stderr: "piped",
-    });
-
-    const { stdout, code } = await cmd.output();
-
-    if (code !== 0) {
-      throw new Error(`Git command failed: git ${args.join(" ")}`);
-    }
-
-    return new TextDecoder().decode(stdout);
-  }
-
-  /**
-   * Log successful report generation to Activity Journal
-   */
-  private logReportGenerated(
-    traceData: TraceData,
-    reportPath: string,
-    durationMs: number,
-  ): void {
-    if (!this.reportConfig.db) return;
-
     try {
-      this.reportConfig.db.logActivity(
-        "system",
-        "report.generated",
-        reportPath,
-        {
-          report_path: reportPath,
-          status: traceData.status,
-          duration_ms: durationMs,
-          request_id: traceData.requestId,
-          agent_id: traceData.agentId,
-        },
-        traceData.traceId,
-        traceData.agentId,
-      );
-    } catch (error) {
-      console.error("Failed to log report generation:", error);
-    }
-  }
-
-  /**
-   * Log failed report generation to Activity Journal
-   */
-  private logReportFailed(
-    traceData: TraceData,
-    error: Error,
-    durationMs: number,
-  ): void {
-    if (!this.reportConfig.db) return;
-
-    try {
-      this.reportConfig.db.logActivity(
-        "system",
-        "report.failed",
-        null,
-        {
-          error: error.message,
-          duration_ms: durationMs,
-          request_id: traceData.requestId,
-          agent_id: traceData.agentId,
-        },
-        traceData.traceId,
-        traceData.agentId,
-      );
-    } catch (err) {
-      console.error("Failed to log report failure:", err);
+      const cmd = new Deno.Command("git", {
+        args,
+        cwd,
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const { stdout, code } = await cmd.output();
+      if (code !== 0) {
+        return "";
+      }
+      return new TextDecoder().decode(stdout);
+    } catch {
+      return "";
     }
   }
 }

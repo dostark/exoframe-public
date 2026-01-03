@@ -14,6 +14,7 @@
 import { assert, assertEquals, assertStringIncludes } from "https://deno.land/std@0.201.0/testing/asserts.ts";
 import { dirname, fromFileUrl, join } from "https://deno.land/std@0.201.0/path/mod.ts";
 import { exists } from "https://deno.land/std@0.201.0/fs/mod.ts";
+import { Database } from "@db/sqlite";
 
 const __dirname = dirname(fromFileUrl(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
@@ -47,15 +48,27 @@ async function runMigrate(
   };
 }
 
-// Helper to query database using sqlite3 CLI
-async function queryDb(dbPath: string, sql: string): Promise<string> {
-  const cmd = new Deno.Command("sqlite3", {
-    args: [dbPath, sql],
-    stdout: "piped",
-    stderr: "piped",
-  });
-  const res = await cmd.output();
-  return new TextDecoder().decode(res.stdout);
+// Helper to query database using @db/sqlite library
+function queryDb(dbPath: string, sql: string): string {
+  const db = new Database(dbPath);
+  try {
+    const stmt = db.prepare(sql);
+    const rows = stmt.all() as Array<Record<string, unknown>>;
+    const results: string[] = [];
+    for (const row of rows) {
+      const values = Object.values(row).map((v) => String(v ?? ""));
+      // For single-column queries, output value directly (matching sqlite3 CLI behavior)
+      // For multi-column queries, use pipe separator
+      if (values.length === 1) {
+        results.push(values[0]);
+      } else {
+        results.push(values.join("|"));
+      }
+    }
+    return results.join("\n");
+  } finally {
+    db.close();
+  }
 }
 
 // Setup a temporary workspace with migrations
@@ -116,14 +129,14 @@ Deno.test("migrate_db.ts up creates database and applies migrations", async () =
     assert(await exists(dbPath), "journal.db should be created");
 
     // Verify schema_migrations table has entries
-    const migrations = await queryDb(
+    const migrations = queryDb(
       dbPath,
       "SELECT version FROM schema_migrations;",
     );
     assertStringIncludes(migrations, "001_init.sql");
 
     // Verify activity table was created (from 001_init.sql)
-    const tables = await queryDb(
+    const tables = queryDb(
       dbPath,
       "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;",
     );
@@ -147,7 +160,7 @@ Deno.test("migrate_db.ts up is idempotent", async () => {
 
     // Should not have duplicate migrations
     const dbPath = join(tmp, "System", "journal.db");
-    const count = await queryDb(
+    const count = queryDb(
       dbPath,
       "SELECT COUNT(*) FROM schema_migrations;",
     );
@@ -171,7 +184,7 @@ Deno.test("migrate_db.ts down reverts last migration", async () => {
 
     // Verify migration was removed from tracking table
     const dbPath = join(tmp, "System", "journal.db");
-    const count = await queryDb(
+    const count = queryDb(
       dbPath,
       "SELECT COUNT(*) FROM schema_migrations;",
     );
@@ -240,7 +253,7 @@ DROP TABLE IF EXISTS test_order_table;
 
     // Verify all migrations were applied in order
     const dbPath = join(tmp, "System", "journal.db");
-    const migrations = await queryDb(
+    const migrations = queryDb(
       dbPath,
       "SELECT version FROM schema_migrations ORDER BY id;",
     );
@@ -251,7 +264,7 @@ DROP TABLE IF EXISTS test_order_table;
     assertEquals(versions[2], "002_test_order.sql");
 
     // Verify test table was created
-    const tables = await queryDb(
+    const tables = queryDb(
       dbPath,
       "SELECT name FROM sqlite_master WHERE type='table' AND name='test_order_table';",
     );
@@ -287,7 +300,7 @@ DROP TABLE IF EXISTS good_table;
 
     // Verify first migration was applied
     const dbPath = join(tmp, "System", "journal.db");
-    const count = await queryDb(
+    const count = queryDb(
       dbPath,
       "SELECT COUNT(*) FROM schema_migrations;",
     );

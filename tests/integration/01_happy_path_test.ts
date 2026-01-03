@@ -17,6 +17,7 @@ import { join as _join } from "@std/path";
 import { TestEnvironment } from "./helpers/test_environment.ts";
 import { ExecutionLoop } from "../../src/services/execution_loop.ts";
 import { MissionReporter } from "../../src/services/mission_reporter.ts";
+import { MemoryBankService } from "../../src/services/memory_bank.ts";
 
 Deno.test("Integration: Happy Path - Request to Report", async (t) => {
   const env = await TestEnvironment.create();
@@ -174,11 +175,12 @@ Deno.test("Integration: Happy Path - Request to Report", async (t) => {
     await t.step("Test 6: Report generated with execution summary", async () => {
       // Generate report (normally done by execution loop on success)
       const reportConfig = {
-        reportsDirectory: `${env.tempDir}/Knowledge/Reports`,
-        knowledgeRoot: `${env.tempDir}/Knowledge`,
+        reportsDirectory: `${env.tempDir}/Memory/Execution`,
+        memoryRoot: `${env.tempDir}/Memory`,
         db: env.db,
       };
-      const reporter = new MissionReporter(env.config, reportConfig);
+      const memoryBank = new MemoryBankService(env.config, env.db);
+      const reporter = new MissionReporter(env.config, reportConfig, memoryBank, env.db);
 
       const reportResult = await reporter.generate({
         traceId,
@@ -194,7 +196,8 @@ Deno.test("Integration: Happy Path - Request to Report", async (t) => {
 
       // Verify report exists
       assertExists(reportResult.reportPath);
-      const reportContent = await Deno.readTextFile(reportResult.reportPath);
+      const fullReportPath = _join(env.tempDir, reportResult.reportPath);
+      const reportContent = await Deno.readTextFile(fullReportPath);
 
       // Verify report structure
       assertStringIncludes(reportContent, traceId);

@@ -10,13 +10,6 @@ export async function readUserGuide(): Promise<string> {
 }
 
 /**
- * Read the Knowledge README template
- */
-export async function readKnowledgeReadme(): Promise<string> {
-  return await Deno.readTextFile("templates/Knowledge_README.md");
-}
-
-/**
  * Check if a template file exists
  */
 export async function templateExists(filename: string): Promise<boolean> {

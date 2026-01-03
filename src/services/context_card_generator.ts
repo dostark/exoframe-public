@@ -1,4 +1,5 @@
-import { join } from "@std/path";
+import { dirname, join } from "@std/path";
+import { ensureDir } from "@std/fs/ensure-dir";
 import type { DatabaseService } from "./db.ts";
 import type { Config } from "../config/schema.ts";
 
@@ -18,8 +19,9 @@ export class ContextCardGenerator {
   }
 
   async generate(info: PortalInfo): Promise<void> {
-    const { system, paths } = this.config;
-    const portalsDir = join(system.root, paths.knowledge, "Portals");
+    const { system } = this.config;
+    // Put portal documentation in Memory/Projects instead of Knowledge/Portals
+    const portalsDir = join(system.root, "Memory", "Projects");
 
     // Ensure directory exists
     await Deno.mkdir(portalsDir, { recursive: true });
@@ -27,7 +29,7 @@ export class ContextCardGenerator {
     // Sanitize alias for filename
     // Replace spaces with underscores, remove non-alphanumeric chars (except _ and -)
     const safeAlias = info.alias.replace(/[^a-zA-Z0-9_-]/g, "_");
-    const cardPath = join(portalsDir, `${safeAlias}.md`);
+    const cardPath = join(portalsDir, `${safeAlias}`, "portal.md");
 
     let userNotes = "";
     let isUpdate = false;
@@ -60,6 +62,8 @@ export class ContextCardGenerator {
       ``,
     ].join("\n");
 
+    // Ensure directory exists
+    await ensureDir(dirname(cardPath));
     await Deno.writeTextFile(cardPath, content);
 
     // Log activity

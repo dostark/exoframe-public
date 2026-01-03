@@ -16,7 +16,7 @@
 - **Request:** A markdown file in `/Inbox/Requests` containing user intent
 - **Plan:** An agent-generated proposal in `/Inbox/Plans`
 - **Active Task:** An approved request in `/System/Active` being executed
-- **Report:** An agent-generated summary in `/Knowledge/Reports` after completion
+- **Report:** An agent-generated summary in `/Memory/Execution` after completion
 - **Trace ID:** UUID linking request → plan → execution → report
 - **Lease:** Exclusive lock on a file (stored in `leases` table)
 - **Actor:** Entity performing action (agent name, "system", or "user")
@@ -50,14 +50,14 @@ permission governance across CLI, daemon, and agents.
 
 ## 2. Core Technical Stack
 
-| Component        | Technology            | Justification                                                                    |
-| :--------------- | :-------------------- | :------------------------------------------------------------------------------- |
-| **Runtime**      | **Deno** (v2.0+)      | Native TypeScript, Web Standards, and **Permission System**.                     |
-| **Language**     | **TypeScript**        | No transpilation needed. Strict typing via Zod.                                  |
-| **Config**       | **TOML**              | All config & metadata uses TOML. Token-efficient for LLM context.                |
-| **Journal**      | **SQLite**            | Accessible via `jsr:@db/sqlite` (WASM) or FFI for performance.                   |
-| **Dependencies** | **ES Modules**        | No `node_modules`. Dependencies cached globally or in vendor dir.                |
-| **Interface**    | **Obsidian**, **TUI** | Obsidian for knowledge management; TUI (exoctl dashboard) for real-time cockpit. |
+| Component        | Technology       | Justification                                                                        |
+| :--------------- | :--------------- | :----------------------------------------------------------------------------------- |
+| **Runtime**      | **Deno** (v2.0+) | Native TypeScript, Web Standards, and **Permission System**.                         |
+| **Language**     | **TypeScript**   | No transpilation needed. Strict typing via Zod.                                      |
+| **Config**       | **TOML**         | All config & metadata uses TOML. Token-efficient for LLM context.                    |
+| **Journal**      | **SQLite**       | Accessible via `jsr:@db/sqlite` (WASM) or FFI for performance.                       |
+| **Dependencies** | **ES Modules**   | No `node_modules`. Dependencies cached globally or in vendor dir.                    |
+| **Interface**    | **TUI**, **CLI** | TUI dashboard (exoctl dashboard) for real-time cockpit; CLI for Memory Banks access. |
 
 ## 2.2. TUI Dashboard Architecture (`exoctl dashboard`)
 
@@ -163,36 +163,36 @@ model = "llama3.2"
 ExoFrame uses a **hybrid format strategy** optimized for different use cases:
 
 - **TOML** for system configuration and agent blueprints (token-efficient, robust)
-- **YAML** for markdown frontmatter (Dataview compatibility in Obsidian)
+- **YAML** for markdown frontmatter
 
 ### Format Selection Rationale
 
-| Use Case             | Format | Reason                                                     |
-| -------------------- | ------ | ---------------------------------------------------------- |
-| System config        | TOML   | Token-efficient for LLM context, no indentation bugs       |
-| Agent blueprints     | TOML   | Complex nested structures, explicit typing                 |
-| Markdown frontmatter | YAML   | **Dataview plugin compatibility** (required for Dashboard) |
-| Deno configuration   | JSON   | Deno runtime requirement                                   |
+| Use Case             | Format | Reason                                               |
+| -------------------- | ------ | ---------------------------------------------------- |
+| System config        | TOML   | Token-efficient for LLM context, no indentation bugs |
+| Agent blueprints     | TOML   | Complex nested structures, explicit typing           |
+| Markdown frontmatter | YAML   | **Memory Banks indexing and search compatibility**   |
+| Deno configuration   | JSON   | Deno runtime requirement                             |
 
 ### Complete Format Reference
 
-| Category                 | Format                      | Extension | Location             | Purpose                                    |
-| ------------------------ | --------------------------- | --------- | -------------------- | ------------------------------------------ |
-| **System Config**        | TOML                        | `.toml`   | `exo.config.toml`    | Main configuration                         |
-| **Deno Config**          | JSON                        | `.json`   | `deno.json`          | Runtime, imports, tasks (Deno requirement) |
-| **Agent Blueprints**     | TOML                        | `.toml`   | `Blueprints/Agents/` | Agent definitions                          |
-| **Flow Definitions**     | TypeScript                  | `.ts`     | `Blueprints/Flows/`  | Orchestration logic                        |
-| **Requests**             | Markdown + YAML frontmatter | `.md`     | `Inbox/Requests/`    | User task requests                         |
-| **Plans**                | Markdown + YAML frontmatter | `.md`     | `Inbox/Plans/`       | Agent proposals                            |
-| **Reports**              | Markdown + YAML frontmatter | `.md`     | `Knowledge/Reports/` | Mission completion reports                 |
-| **Knowledge**            | Markdown                    | `.md`     | `Knowledge/`         | Reference docs                             |
-| **Portal Context Cards** | Markdown                    | `.md`     | `Knowledge/Portals/` | Auto-generated project context             |
-| **Activity Journal**     | SQLite                      | `.db`     | `System/exo.db`      | Audit log & file locks                     |
-| **Migrations**           | SQL                         | `.sql`    | `migrations/`        | Database schema changes                    |
+| Category             | Format                      | Extension      | Location             | Purpose                                    |
+| -------------------- | --------------------------- | -------------- | -------------------- | ------------------------------------------ |
+| **System Config**    | TOML                        | `.toml`        | `exo.config.toml`    | Main configuration                         |
+| **Deno Config**      | JSON                        | `.json`        | `deno.json`          | Runtime, imports, tasks (Deno requirement) |
+| **Agent Blueprints** | TOML                        | `.toml`        | `Blueprints/Agents/` | Agent definitions                          |
+| **Flow Definitions** | TypeScript                  | `.ts`          | `Blueprints/Flows/`  | Orchestration logic                        |
+| **Requests**         | Markdown + YAML frontmatter | `.md`          | `Inbox/Requests/`    | User task requests                         |
+| **Plans**            | Markdown + YAML frontmatter | `.md`          | `Inbox/Plans/`       | Agent proposals                            |
+| **Reports**          | Markdown + JSON metadata    | `.md`, `.json` | `Memory/Execution/`  | Mission completion reports                 |
+| **Memory Banks**     | Markdown + JSON             | `.md`, `.json` | `Memory/`            | Execution history and project context      |
+| **Project Memory**   | Markdown                    | `.md`          | `Memory/Projects/`   | Auto-generated project context             |
+| **Activity Journal** | SQLite                      | `.db`          | `System/exo.db`      | Audit log & file locks                     |
+| **Migrations**       | SQL                         | `.sql`         | `migrations/`        | Database schema changes                    |
 
 ### YAML Frontmatter Format (Requests, Plans, Reports)
 
-Request, Plan, and Report files use **YAML frontmatter** (delimited by `---`) for Obsidian Dataview compatibility:
+Request, Plan, and Report files use **YAML frontmatter** (delimited by `---`):
 
 ```markdown
 ---
@@ -213,8 +213,6 @@ Implement user authentication for the API...
 
 **Why YAML for frontmatter?**
 
-- **Dataview compatibility**: Obsidian's Dataview plugin only parses YAML frontmatter natively
-- **Dashboard functionality**: Enables live TABLE queries with filtering and sorting
 - **Standard format**: Most markdown tools expect YAML frontmatter (`---` delimiters)
 
 **YAML Frontmatter Rules:**
@@ -262,7 +260,7 @@ model = "llama3.2"
 | JSON   | ~55 tokens               | Braces, quotes, commas      |
 | TOML   | ~35 tokens               | Minimal punctuation         |
 
-_Note: YAML is used for frontmatter despite token overhead because Dataview compatibility is essential for the Dashboard UI._
+_Note: YAML is used for frontmatter to enable structured metadata for Memory Banks search and CLI filtering._
 
 ---
 
@@ -287,14 +285,14 @@ folders are treated as fatal errors during daemon startup so that watchers do no
 │   ├── /Requests               <-- User drops ideas here
 │   ├── /Plans                  <-- Agents submit proposals
 │   └── /Archive                <-- Processed requests/plans
-├── /Knowledge                  <-- User Content (Obsidian Vault)
+├── /Memory                     <-- Memory Banks (execution history & project context)
 │   ├── /Context                <-- Curated reference docs
 │   ├── /Reports                <-- Agent-authored reports
 │   └── /Portals                <-- Auto-generated context cards
-├── /Knowledge/README.md        <-- Obsidian usage guide
+├── /Memory/README.md           <-- Memory Banks usage guide
 ├── /Portals                    <-- VIRTUAL OVERLAY (Symlinks)
 │   └── <Alias> -> /home/user/Dev/Project_X
-Note: the tree above describes the *deployed workspace* layout used at runtime. The *development repository* (the Git checkout developers work in) contains the same folders plus development-only artifacts such as `tests/`, `.github/`, `docs/`, and the full `src/` codebase. Do not treat your deployed workspace as a development checkout — deploy workspaces are intended for runtime and user data (Knowledge, System/journal.db) and are created from the development repo via the provided deploy script.
+Note: the tree above describes the *deployed workspace* layout used at runtime. The *development repository* (the Git checkout developers work in) contains the same folders plus development-only artifacts such as `tests/`, `.github/`, `docs/`, and the full `src/` codebase. Do not treat your deployed workspace as a development checkout — deploy workspaces are intended for runtime and user data (Memory, System/journal.db) and are created from the development repo via the provided deploy script.
 ```
 
 ---
@@ -347,7 +345,7 @@ interface IExoRuntime {
 
 ### 5.1. Purpose
 
-The `HumanActionTracker` service provides a safe, validated interface for human interactions with plans through CLI commands and Obsidian UI integration. It enforces proper validation, prevents file corruption, and ensures all actions are logged to the Activity Journal.
+The `HumanActionTracker` service provides a safe, validated interface for human interactions with plans through CLI commands and TUI dashboard integration. It enforces proper validation, prevents file corruption, and ensures all actions are logged to the Activity Journal.
 
 ### 5.2. User Interface Options
 
@@ -367,17 +365,17 @@ exoctl plan revise implement-auth --comment "Add error handling" --comment "Incl
 exoctl plan list --status=review
 ```
 
-**Option 2: Obsidian Command Palette Integration**
+**Option 2: TUI Dashboard Integration**
 
-- ExoFrame provides an Obsidian plugin that adds commands to the Command Palette
-- Commands appear when viewing plan files: "ExoFrame: Approve Plan", "ExoFrame: Reject Plan", etc.
-- Plugin communicates with daemon via Unix socket or HTTP API
+- ExoFrame TUI dashboard provides interactive plan review with real-time updates
+- Commands available via keyboard shortcuts: "Approve Plan", "Reject Plan", etc.
+- Dashboard communicates with daemon via direct file operations
 
-**Option 3: Plan File Action Buttons**
+**Option 3: Plan File Direct Edit**
 
-- Plans include clickable dataview buttons in Obsidian
-- Buttons execute CLI commands via Obsidian's shell integration
-- Example: `[Approve](exoctl://plan/approve/implement-auth)` becomes clickable link
+- Plans include clickable action metadata in frontmatter
+- TUI dashboard renders these as interactive buttons
+- Example: `action_buttons: ["approve", "reject", "revise"]` becomes clickable controls
 
 ### 5.3. Tracked Actions
 
@@ -611,67 +609,45 @@ CLI commands automatically capture user identity:
 - Stored in `payload.approved_by`, `payload.rejected_by`, or `payload.reviewed_by`
 - Multi-user support built-in (each user's actions tagged with their identity)
 
-### 5.7. Obsidian Plugin Integration
+### 5.7. TUI Dashboard Integration
 
-**Plugin Architecture:**
+**Dashboard Architecture:**
 
 ```typescript
-// obsidian-plugin/main.ts (separate repo)
+// src/tui/plan_reviewer.ts (integrated into dashboard)
 
-import { Notice, Plugin } from "obsidian";
+export class PlanReviewer {
+  constructor(
+    private config: Config,
+    private db: DatabaseService,
+  ) {}
 
-export default class ExoFramePlugin extends Plugin {
-  async onload() {
-    // Add command: Approve Plan
-    this.addCommand({
-      id: "approve-plan",
-      name: "Approve Plan",
-      checkCallback: (checking: boolean) => {
-        const file = this.app.workspace.getActiveFile();
-        if (file?.path.includes("/Inbox/Plans/")) {
-          if (!checking) {
-            this.approvePlan(file.basename);
-          }
-          return true;
-        }
-        return false;
-      },
-    });
-
-    // Add command: Reject Plan
-    this.addCommand({
-      id: "reject-plan",
-      name: "Reject Plan",
-      checkCallback: (checking: boolean) => {
-        const file = this.app.workspace.getActiveFile();
-        if (file?.path.includes("/Inbox/Plans/")) {
-          if (!checking) {
-            this.rejectPlan(file.basename);
-          }
-          return true;
-        }
-        return false;
-      },
-    });
+  async renderPlanReview(planId: string): Promise<void> {
+    // 1. Display plan content with syntax highlighting
+    // 2. Show approve/reject/revise action buttons
+    // 3. Handle keyboard shortcuts (A=approve, R=reject, V=revise)
+    // 4. Update display in real-time when actions complete
   }
 
-  async approvePlan(planId: string) {
-    const result = await this.executeCommand(`exoctl plan approve ${planId}`);
-    new Notice(result.success ? "✓ Plan approved" : `✗ Error: ${result.error}`);
+  async approvePlan(planId: string): Promise<void> {
+    // Delegate to CLI command implementation
+    const commands = new PlanCommands(this.config, this.db);
+    await commands.approve(planId);
+
+    // Update TUI display
+    this.showNotification("✓ Plan approved and moved to /System/Active");
+    this.refreshPlanList();
   }
 
-  async rejectPlan(planId: string) {
+  async rejectPlan(planId: string): Promise<void> {
     const reason = await this.promptForReason();
     if (!reason) return;
 
-    const result = await this.executeCommand(`exoctl plan reject ${planId} --reason "${reason}"`);
-    new Notice(result.success ? "✗ Plan rejected" : `✗ Error: ${result.error}`);
-  }
+    const commands = new PlanCommands(this.config, this.db);
+    await commands.reject(planId, reason);
 
-  private async executeCommand(cmd: string): Promise<{ success: boolean; error?: string }> {
-    // Option 1: Execute CLI via child process (requires Obsidian permissions)
-    // Option 2: Call daemon HTTP API directly
-    // Option 3: Write to Unix socket
+    this.showNotification("✗ Plan rejected");
+    this.refreshPlanList();
   }
 }
 ```
@@ -685,7 +661,7 @@ export default class ExoFramePlugin extends Plugin {
 - ✓ **Activity Logging:** Guaranteed log entry (no detection heuristics)
 - ✓ **Type Safety:** CLI validates arguments before execution
 - ✓ **Auditability:** All actions go through single code path
-- ✓ **Obsidian Integration:** Plugin provides GUI for common actions
+- ✓ **TUI Dashboard Integration:** Real-time interface for common actions
 
 ---
 
@@ -1236,7 +1212,7 @@ exoctl portal show MyProject              # Shows path, status, context card loc
 # Remove a portal (deletes symlink, removes from config, archives context card)
 exoctl portal remove <alias>
 exoctl portal remove MyProject
-exoctl portal remove <alias> --keep-card  # Keep context card in Knowledge/Portals
+exoctl portal remove <alias> --keep-context  # Keep project memory in Memory/Projects
 
 # Verify portal integrity (checks symlink, target existence, permissions)
 exoctl portal verify
@@ -1249,10 +1225,10 @@ exoctl portal refresh MyProject           # Re-scans project and updates context
 
 **Portal Command Behavior:**
 
-- **add:** Creates symlink at `/Portals/<alias>`, generates context card at `/Knowledge/Portals/<alias>.md`, updates `exo.config.toml` with portal path, validates config, restarts daemon if running
+- **add:** Creates symlink at `/Portals/<alias>`, generates project memory at `/Memory/Projects/<alias>/`, updates `exo.config.toml` with portal path, validates config, restarts daemon if running
 - **list:** Shows all portals from config with status (active, broken, missing)
 - **show:** Displays portal details including target path, symlink status, context card location, file permissions
-- **remove:** Safely removes portal by deleting symlink, removing from config, moving context card to `/Knowledge/Portals/_archived/`
+- **remove:** Safely removes portal by deleting symlink, removing from config, archiving project memory to `/Memory/Projects/_archived/`
 - **verify:** Checks symlink integrity, target accessibility, permission validity, reports issues
 - **refresh:** Re-generates context card by scanning target directory for tech stack, file structure changes
 
@@ -1287,7 +1263,7 @@ All portal operations are logged to Activity Journal:
 - **Windows:** Symlink creation requires Developer Mode or elevated PowerShell. When unavailable, `exoctl` falls back to
   NTFS junctions and records the deviation in Activity Journal.
 - **macOS:** First-time portal creation triggers System Settings > Privacy prompt; instructions are logged to
-  `/Knowledge/README.md`.
+  `/Memory/README.md`.
 - **Linux:** Ensure `inotify` watch limits (`fs.inotify.max_user_watches`) include portal paths; setup script adjusts
   when possible.
 

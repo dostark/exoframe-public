@@ -1316,6 +1316,8 @@ Refinement isn't a phase—it's a continuous process. Be ready to elaborate:
 
 ## Part X: The Great YAML Migration (November 28, 2025)
 
+> **Historical Note (January 2026):** This section documents ExoFrame's Obsidian integration experiment, which was implemented in Phase 5 and later retired in Phase 12 (v1.1). While Obsidian provided excellent knowledge management features, maintaining compatibility added complexity (~600 LOC in tests, wikilink generation overhead) without sufficient value after the TUI dashboard was implemented. The lessons learned about user interface pragmatism remain valuable.
+
 ### The Plot Twist Nobody Asked For
 
 **The Setup**: ExoFrame was happily using TOML frontmatter (`+++` delimiters). Everything worked. Tests passed. Life was good.
@@ -2945,11 +2947,13 @@ Adding a new provider (like Google Gemini) took less than an hour because 80% of
 
 ### Pattern 31: Activity Export for Observability
 
+> **Historical Note (January 2026):** This pattern was implemented for Obsidian Dashboard integration (Phase 5), which was later retired in Phase 12. The TUI dashboard now provides real-time observability without requiring export scripts. The pattern remains instructive for bridging internal state with external UI tools.
+
 **The Problem**:
-The Activity Journal (SQLite) is great for machines, but humans can't "see" what the daemon is doing without running SQL queries. We needed a way to bridge the gap between the CLI/Daemon and the Obsidian Dashboard.
+The Activity Journal (SQLite) is great for machines, but humans can't "see" what the daemon is doing without running SQL queries. We needed a way to bridge the gap between the CLI/Daemon and the dashboard interface.
 
 **The Solution**:
-The "Export Pattern." Create a script that periodically (or on-demand) exports the internal state to a human-readable format that the existing UI (Obsidian) already understands.
+The "Export Pattern." Create a script that periodically (or on-demand) exports the internal state to a human-readable format that the existing UI already understands.
 
 ```typescript
 // scripts/export_activity.ts
@@ -2958,7 +2962,7 @@ const markdown = formatAsDataviewTable(logs);
 await Deno.writeTextFile("System/activity_export.md", markdown);
 ```
 
-**The Lesson**: You don't always need a custom Web UI. If your users already use a tool (like Obsidian), export your data into their format. It's faster to build and provides a better user experience.
+**The Lesson**: You don't always need a custom Web UI. If your users already use a tool, export your data into their format. It's faster to build and provides a better user experience. (Note: ExoFrame v1.1+ uses a real-time TUI dashboard instead of this export approach.)
 
 ### Pattern 32: User-Defined Portals & Security
 
@@ -3148,7 +3152,7 @@ _The recursion continues. The patterns emerge. The meta-framework takes shape._
 | **Format Migration**           | "Migrate frontmatter to YAML for Dataview"             | Consistent format, ecosystem compatibility     |
 | **Named Model Abstraction**    | "Use model: fast in request frontmatter"               | Decouple intent from implementation            |
 | **Multi-Provider Resilience**  | Shared `withRetry` in `common.ts`                      | Robust error handling across all clouds        |
-| **Activity Export**            | `deno task export-activity`                            | Bridge SQLite to Obsidian Dataview             |
+| **Activity Export**            | `deno task export-activity` (historical)               | Bridge SQLite to dashboard UI (v1.0 only)      |
 | **User-Defined Portals**       | Define `@Alias` in `exo.config.toml`                   | Secure, flexible project boundaries            |
 | **Full Verification**          | "Run all tests"                                        | Verify nothing broke                           |
 | **Agent Instructions**         | Create `agents/` files in key directories              | AI helpers follow same patterns                |

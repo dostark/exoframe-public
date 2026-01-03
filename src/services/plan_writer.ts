@@ -48,11 +48,8 @@ export interface PlanWriterConfig {
   /** Whether to include reasoning section */
   includeReasoning: boolean;
 
-  /** Whether to generate Obsidian wiki links */
+  /** Whether to generate wiki links (deprecated - should be false for Memory Banks) */
   generateWikiLinks: boolean;
-
-  /** Knowledge base root for relative path calculation */
-  knowledgeRoot: string;
 
   /** System directory root for database access (default: /System) */
   systemRoot: string;
@@ -260,18 +257,14 @@ export class PlanWriter {
   }
 
   /**
-   * Generate Obsidian wiki links from file paths
+   * Generate wiki links from file paths
    */
   private generateWikiLinks(filePaths: string[]): string[] {
     return filePaths.map((path) => {
-      // Convert absolute path to relative to knowledge base
-      const relativePath = path.replace(this.config.knowledgeRoot + "/", "");
+      // Extract filename without extension for simple link
+      const filename = path.split("/").pop()?.replace(/\.md$/, "") || path;
 
-      // Extract filename without extension for wiki link
-      const filename = relativePath.split("/").pop()?.replace(/\.md$/, "") ||
-        relativePath;
-
-      // Generate wiki link: [[filename]]
+      // Return wiki link format [[filename]]
       return `[[${filename}]]`;
     });
   }

@@ -141,22 +141,22 @@ Deno.test("scaffold.sh does not create src directory", async () => {
   }
 });
 
-Deno.test("scaffold.sh copies Knowledge/README.md template", async () => {
+Deno.test("scaffold.sh copies Knowledge/Dashboard.md template", async () => {
   const tmp = await Deno.makeTempDir({ prefix: "exoframe-scaffold-test-" });
   try {
     const result = await runScaffold(tmp);
     assert(result.code === 0, `scaffold.sh failed: ${result.stderr}`);
-    assertStringIncludes(result.stdout, "Copied Knowledge/README.md");
+    assertStringIncludes(result.stdout, "Copied Knowledge/Dashboard.md");
 
-    const readmePath = join(tmp, "Knowledge", "README.md");
+    const dashboardPath = join(tmp, "Knowledge", "Dashboard.md");
     assert(
-      await exists(readmePath),
-      "Knowledge/README.md should be copied",
+      await exists(dashboardPath),
+      "Knowledge/Dashboard.md should be copied",
     );
 
     // Verify it has expected content
-    const content = await Deno.readTextFile(readmePath);
-    assert(content.length > 0, "Knowledge/README.md should not be empty");
+    const content = await Deno.readTextFile(dashboardPath);
+    assert(content.length > 0, "Knowledge/Dashboard.md should not be empty");
   } finally {
     await Deno.remove(tmp, { recursive: true }).catch(() => {});
   }

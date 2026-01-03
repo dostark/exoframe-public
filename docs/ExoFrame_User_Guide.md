@@ -243,123 +243,56 @@ deno task start
 ### 3.1 Directory Structure
 
 - **Inbox/**: Drop requests here.
-- **Knowledge/**: Your Obsidian vault.
+- **Memory/**: Memory Banks for execution history and project knowledge.
 - **System/**: Database and logs (do not touch manually).
 - **Portals/**: Symlinks to your projects.
 
-### 3.2 Obsidian Integration
+### 3.2 Memory Banks
 
-ExoFrame's Knowledge folder is designed to work as an Obsidian vault. While Obsidian is optional, it provides the best experience for viewing dashboards and navigating your workspace.
+Memory Banks provide structured storage for ExoFrame's execution history and project context. This system offers CLI-based access to your workspace's knowledge.
 
-#### Required Plugins
+#### Directory Structure
 
-1. **Dataview** (required for dashboards)
-   - Enables live queries for dashboard tables
-   - Open Obsidian Settings → Community Plugins
-   - Disable Safe Mode if prompted
-   - Browse → Search "Dataview"
-   - Install and Enable
+```
+Memory/
+├── Execution/          # Execution history (agent runs)
+│   ├── trace-abc123/
+│   │   ├── summary.md
+│   │   ├── context.json
+│   │   ├── changes.diff
+│   │   └── lessons_learned.md
+└── Projects/           # Project-specific knowledge
+    ├── MyProject/
+    │   ├── README.md
+    │   ├── context.md
+    │   └── history/
+```
 
-#### Optional Plugins
+#### CLI Access
 
-2. **Templater** (optional)
-   - Enables template-based file creation
-   - Useful for creating new requests with consistent frontmatter
+Use the `exoctl memory` commands to interact with Memory Banks:
 
-3. **File Tree Alternative** (optional)
-   - Better folder structure visibility
-   - Enables sidebar navigation of ExoFrame folders
+```bash
+# List all projects
+exoctl memory projects
 
-#### Plugin Installation Steps
+# Get project details
+exoctl memory project MyProject
 
-1. Open Obsidian and open the Knowledge folder as a vault
-2. Go to Obsidian Settings (gear icon)
-3. Select "Community Plugins" in the left sidebar
-4. Click "Turn on Community Plugins" (disables Safe Mode)
-5. Click "Browse" to open the plugin marketplace
-6. Search for "Dataview"
-7. Click "Install" then "Enable"
-8. Repeat for optional plugins (Templater, File Tree Alternative)
+# List execution history
+exoctl memory execution
 
-#### Configuring Dataview Settings
+# Search across memory banks
+exoctl memory search "database migration"
+```
 
-After installing Dataview, configure these important settings:
+#### Features
 
-1. Go to **Settings → Community Plugins → Dataview** (click the gear icon)
-2. Configure the following options:
-
-**Required Settings:**
-
-| Setting                              | Value | Purpose                                       |
-| ------------------------------------ | ----- | --------------------------------------------- |
-| **Enable JavaScript Queries**        | ☑ ON  | Required for `dataviewjs` blocks in Dashboard |
-| **Enable Inline JavaScript Queries** | ☑ ON  | Allows inline JS expressions                  |
-
-**Recommended Settings:**
-
-| Setting                       | Value              | Purpose                        |
-| ----------------------------- | ------------------ | ------------------------------ |
-| **Automatic View Refreshing** | ☑ ON               | Auto-refresh when files change |
-| **Refresh Interval**          | 2500 ms            | How often to refresh queries   |
-| **Date Format**               | `yyyy-MM-dd`       | Consistent date display        |
-| **Date + Time Format**        | `yyyy-MM-dd HH:mm` | Include time in timestamps     |
-
-**Important:** Without "Enable JavaScript Queries" turned ON, the Dashboard's `dataviewjs` code blocks will not execute, and you'll see raw code instead of live tables.
-
-#### Verifying Installation
-
-After installing Dataview, open `Knowledge/Dashboard.md`. You should see:
-
-- Live tables showing pending requests
-- Recent activity summaries
-- Plan status overview
-
-**Troubleshooting Dashboard Display Issues:**
-
-| Symptom                           | Cause                              | Solution                                         |
-| --------------------------------- | ---------------------------------- | ------------------------------------------------ |
-| Raw code blocks instead of tables | Dataview not installed or disabled | Enable Dataview in Community Plugins             |
-| `dataviewjs` blocks show errors   | JavaScript Queries disabled        | Enable in Dataview settings → JavaScript Queries |
-| Tables show stale data            | Refresh interval too long          | Lower refresh interval in Dataview settings      |
-| Inline fields not rendering       | Inline Queries disabled            | Enable in Dataview settings                      |
-
-#### Pinning the Dashboard
-
-To make Dashboard.md your default view when opening the vault:
-
-1. Open `Knowledge/Dashboard.md`
-2. Right-click the tab → **Pin**
-3. (Optional) Save workspace layout:
-   - Press `Ctrl/Cmd + P` → "Manage workspaces"
-   - Save current layout as "ExoFrame"
-   - Set as default workspace
-
-The Dashboard will now open automatically and stay pinned even when browsing other files.
-
-#### Handling External File Changes
-
-ExoFrame agents create and modify files in your vault. Configure Obsidian to handle these external changes smoothly:
-
-**Recommended Settings:**
-
-1. Go to **Settings → Files & Links**:
-   - ☑ Automatically update internal links
-   - ☑ Show all file types (to see .toml, .json files in sidebar)
-
-2. Go to **Settings → Editor**:
-   - ☑ Auto pair markdown syntax (optional)
-
-**Expected Behavior:**
-
-When agents write files, Obsidian may briefly show a "file changed externally" notification. This is normal - Obsidian will auto-reload the content.
-
-**Platform-Specific Notes:**
-
-| Platform    | Consideration                                                                                                                                  |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Linux**   | If you have many files, increase inotify watchers: `echo fs.inotify.max_user_watches=524288 \| sudo tee -a /etc/sysctl.conf && sudo sysctl -p` |
-| **macOS**   | FSEvents works well, no special configuration needed                                                                                           |
-| **Windows** | Run Obsidian as administrator if symlinks don't work properly                                                                                  |
+- **Execution History**: Every agent run is automatically stored with context
+- **Project Memory**: Persistent knowledge for ongoing projects
+- **Search**: Full-text search across all memory banks
+- **Structured Data**: JSON metadata alongside human-readable markdown
+- **CLI Integration**: Direct access without external dependencies
 
 ## 4. CLI Reference
 
@@ -1127,29 +1060,39 @@ exoctl daemon logs --lines 100           # Show last 100 lines
 exoctl daemon logs --follow              # Stream logs (like tail -f)
 ```
 
-#### **Obsidian Dashboard** - Visual Workspace Monitoring
+#### **Memory Banks CLI** - Access Execution History and Project Knowledge
 
-ExoFrame includes a pre-configured Obsidian Dashboard to monitor your workspace activity visually.
+ExoFrame provides comprehensive CLI commands to access your workspace's memory banks.
 
-**Setup:**
+**Memory Commands:**
 
-1. Install the [Dataview](https://github.com/blacksmithgu/obsidian-dataview) plugin in Obsidian.
-2. Open `Knowledge/Dashboard.md` in your Obsidian vault.
+```bash
+# List all projects
+exoctl memory projects
+
+# Get project details
+exoctl memory project MyProject
+
+# List execution history
+exoctl memory execution
+
+# Get specific execution details
+exoctl memory execution trace-abc123
+
+# Search across all memory banks
+exoctl memory search "database migration"
+
+# Search within specific project
+exoctl memory search --project MyProject "API changes"
+```
 
 **Features:**
 
-- **Daemon Status:** Real-time check if the ExoFrame daemon is running.
-- **Pending Plans:** List of plans awaiting your review.
-- **Recent Activity:** Audit log of recent agent actions (requires activity export).
-- **Active Portals:** Overview of all connected external projects.
-
-**Updating Activity Log:**
-The activity log in the dashboard is populated from the SQLite journal. To update the markdown export, run:
-
-```bash
-# Manually export activity log
-deno task export-activity
-```
+- **Execution History:** Every agent run automatically stored with full context
+- **Project Knowledge:** Persistent context for ongoing projects
+- **Full-text Search:** Find patterns across all memory banks
+- **Structured Data:** JSON metadata alongside human-readable summaries
+- **No Dependencies:** Direct CLI access without external tools
 
 ---
 
@@ -1249,7 +1192,7 @@ exoctl plan list --json
 
 ### 4.6 File Format Reference
 
-ExoFrame uses **YAML frontmatter** for all markdown files (requests, plans, reports). This format is required for **Obsidian Dataview compatibility**.
+ExoFrame uses **YAML frontmatter** for all markdown files (requests, plans, reports). This format provides structured metadata for processing and search.
 
 #### YAML Frontmatter Format
 
@@ -1274,12 +1217,12 @@ Implement user authentication for the API...
 
 #### Why YAML Frontmatter?
 
-| Benefit                    | Description                                               |
-| -------------------------- | --------------------------------------------------------- |
-| **Dataview compatibility** | Obsidian's Dataview plugin only parses YAML frontmatter   |
-| **Dashboard queries work** | TABLE queries can filter/sort by status, priority, agent  |
-| **Standard format**        | Most markdown tools expect YAML (`---` delimiters)        |
-| **Auto-generated**         | `exoctl request` creates proper frontmatter automatically |
+| Benefit                 | Description                                               |
+| ----------------------- | --------------------------------------------------------- |
+| **Memory Banks search** | Structured metadata enables powerful search and filtering |
+| **CLI commands work**   | CLI can filter/sort by status, priority, agent            |
+| **Standard format**     | Most markdown tools expect YAML (`---` delimiters)        |
+| **Auto-generated**      | `exoctl request` creates proper frontmatter automatically |
 
 #### Frontmatter Fields Reference
 
@@ -1340,22 +1283,6 @@ approved: true
 ```
 
 > **💡 TIP:** Use `exoctl request` to create requests with proper frontmatter automatically. Manual file creation is error-prone.
-
-#### Dataview Dashboard Queries
-
-With YAML frontmatter, Dataview queries work natively:
-
-```dataview
-TABLE
-  status AS "Status",
-  priority AS "Priority",
-  agent AS "Agent",
-  created AS "Created"
-FROM "Inbox/Requests"
-WHERE status = "pending"
-SORT created DESC
-LIMIT 10
-```
 
 ### 4.7 Bootstrap (Reference Implementation)
 

@@ -17,7 +17,7 @@ export function createMockConfig(root: string, overrides: Partial<Config> = {}):
     },
     paths: {
       inbox: "Inbox",
-      knowledge: "Knowledge",
+      memory: "Memory",
       system: "System",
       blueprints: "Blueprints",
       ...overrides.paths,

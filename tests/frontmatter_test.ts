@@ -13,7 +13,7 @@ import { initTestDbService } from "./helpers/db.ts";
  * - Test 4: Extra fields in frontmatter → Ignored (Zod strips unknown keys by default)
  * - Test 5: No frontmatter delimiters → Throws "No frontmatter found" error
  *
- * Uses YAML frontmatter format (--- delimiters) for Dataview compatibility.
+ * Uses YAML frontmatter format (--- delimiters).
  */
 
 Deno.test("RequestSchema: valid frontmatter object passes validation", () => {

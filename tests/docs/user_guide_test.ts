@@ -46,54 +46,52 @@ Deno.test("User Guide has CLI Reference section", async () => {
 });
 
 // ============================================================================
-// Obsidian Integration Documentation Tests
+// Memory Banks Documentation Tests
 // ============================================================================
 
-Deno.test("User Guide documents Dataview plugin requirement", async () => {
+Deno.test("User Guide documents Memory Banks", async () => {
   const guide = await readUserGuide();
 
-  assertStringIncludes(guide, "Dataview");
-  assertStringIncludes(guide, "Community Plugins");
+  assertStringIncludes(guide, "Memory Banks");
+  assertStringIncludes(guide, "Memory/");
 });
 
-Deno.test("User Guide documents plugin installation steps", async () => {
+Deno.test("User Guide documents Memory Banks CLI commands", async () => {
   const guide = await readUserGuide();
 
-  assertStringIncludes(guide, "Obsidian Settings");
-  assertStringIncludes(guide, "Safe Mode");
-  assertStringIncludes(guide, "Install and Enable");
+  assertStringIncludes(guide, "exoctl memory");
+  assertStringIncludes(guide, "memory projects");
+  assertStringIncludes(guide, "memory execution");
 });
 
-Deno.test("User Guide lists required vs optional plugins", async () => {
+Deno.test("User Guide documents Memory Banks directory structure", async () => {
   const guide = await readUserGuide();
 
-  // Required plugins
-  assertStringIncludes(guide, "Dataview");
-
-  // Optional plugins
-  assertStringIncludes(guide, "Templater");
+  assertStringIncludes(guide, "Memory/");
+  assertStringIncludes(guide, "Execution/");
+  assertStringIncludes(guide, "Projects/");
 });
 
-Deno.test("User Guide documents Dashboard usage", async () => {
+Deno.test("User Guide documents TUI Dashboard usage", async () => {
   const guide = await readUserGuide();
   const lower = guide.toLowerCase();
 
   const hasDashboardDocs = lower.includes("dashboard") &&
-    (lower.includes("obsidian") || lower.includes("dataview"));
+    lower.includes("tui");
 
-  assert(hasDashboardDocs, "User Guide should document Dashboard usage");
+  assert(hasDashboardDocs, "User Guide should document TUI Dashboard usage");
 });
 
-Deno.test("User Guide documents how to pin Dashboard", async () => {
+Deno.test("User Guide documents Memory Banks search functionality", async () => {
   const guide = await readUserGuide();
   const lower = guide.toLowerCase();
 
-  const hasPinning = lower.includes("pin") && lower.includes("dashboard");
+  const hasSearch = lower.includes("memory") && lower.includes("search");
 
-  assert(hasPinning, "User Guide should explain how to pin Dashboard");
+  assert(hasSearch, "User Guide should explain Memory Banks search");
 });
 
-Deno.test("User Guide documents workspace layout saving", async () => {
+Deno.test("User Guide documents structured data features", async () => {
   const guide = await readUserGuide();
   const lower = guide.toLowerCase();
 

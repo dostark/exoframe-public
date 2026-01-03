@@ -92,7 +92,7 @@ export class ToolRegistry {
   constructor(options?: ToolRegistryConfig) {
     this.config = options?.config || {
       system: { root: Deno.cwd(), log_level: "info" },
-      paths: { inbox: "Inbox", knowledge: "Knowledge", system: "System", blueprints: "Blueprints" },
+      paths: { inbox: "Inbox", memory: "Memory", system: "System", blueprints: "Blueprints" },
       database: { batch_flush_ms: 100, batch_max_size: 100 },
       watcher: { debounce_ms: 200, stability_check: true },
       agents: { default_model: "default", timeout_sec: 60 },
@@ -371,7 +371,7 @@ export class ToolRegistry {
     // Check if path is within allowed roots
     const allowedRoots = [
       join(this.config.system.root, this.config.paths.inbox),
-      join(this.config.system.root, this.config.paths.knowledge),
+      join(this.config.system.root, this.config.paths.memory),
       join(this.config.system.root, this.config.paths.blueprints),
       this.config.system.root, // Allow workspace root itself
     ];

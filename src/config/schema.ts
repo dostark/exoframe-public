@@ -10,9 +10,9 @@ export const ConfigSchema = z.object({
   }),
   paths: z.object({
     inbox: z.string().default("Inbox"),
-    knowledge: z.string().default("Knowledge"),
     system: z.string().default("System"),
     blueprints: z.string().default("Blueprints"),
+    memory: z.string().default("Memory"),
   }),
   database: z.object({
     batch_flush_ms: z.number().min(10).max(10000).default(100),

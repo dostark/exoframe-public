@@ -77,8 +77,8 @@ export class PathResolver {
     switch (alias) {
       case "@Inbox":
         return join(system.root, paths.inbox);
-      case "@Knowledge":
-        return join(system.root, paths.knowledge);
+      case "@Memory":
+        return join(system.root, paths.memory);
       case "@System":
         return join(system.root, paths.system);
       case "@Blueprints":

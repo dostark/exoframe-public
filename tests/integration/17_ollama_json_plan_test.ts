@@ -174,7 +174,6 @@ Deno.test({
       plansDirectory: planDir,
       includeReasoning: true,
       generateWikiLinks: false,
-      knowledgeRoot: tempDir,
       systemRoot: join(tempDir, "System"),
       db,
     });
