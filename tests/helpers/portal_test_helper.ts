@@ -34,6 +34,8 @@ export class PortalConfigTestHelper {
     const configService = await createTestConfigService(tempRoot);
     const config = configService.get();
 
+    // Create portal symlink directory (Portals/) for mounted projects
+    // and portal context store (Memory/Portals/) for portal context cards (Markdown)
     await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
     await Deno.mkdir(join(tempRoot, "Memory", "Portals"), { recursive: true });
 
