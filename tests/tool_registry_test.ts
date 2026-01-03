@@ -38,7 +38,7 @@ Deno.test("ToolRegistry: read_file - successful read", async () => {
   const { helper, cleanup } = await createToolRegistryTestContext("tool-test-read-");
 
   try {
-    const testFile = await helper.createKnowledgeFile("test.txt", "Hello, World!");
+    const testFile = await helper.createMemoryProjectFile("test.txt", "Hello, World!");
 
     const result = await helper.execute("read_file", { path: testFile });
 
