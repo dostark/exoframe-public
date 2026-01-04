@@ -34,6 +34,7 @@ import {
   type DialogBase,
   PromoteDialog,
 } from "./dialogs/memory_dialogs.ts";
+import { renderCategoryBadge, renderConfidence, renderMarkdown, renderSpinner } from "./utils/markdown_renderer.ts";
 
 // ===== Types =====
 
@@ -60,6 +61,11 @@ export interface MemoryViewState {
   detailContent: string;
   pendingCount: number;
   activeDialog: DialogBase | null;
+  isLoading: boolean;
+  loadingMessage: string;
+  spinnerFrame: number;
+  useColors: boolean;
+  lastRefresh: number;
 }
 
 export interface MemoryServiceInterface {
@@ -174,6 +180,11 @@ export class MemoryViewTuiSession extends TuiSessionBase {
       detailContent: "",
       pendingCount: 0,
       activeDialog: null,
+      isLoading: false,
+      loadingMessage: "",
+      spinnerFrame: 0,
+      useColors: true,
+      lastRefresh: Date.now(),
     };
   }
 
@@ -203,6 +214,23 @@ export class MemoryViewTuiSession extends TuiSessionBase {
     return this.state.pendingCount;
   }
 
+  isLoading(): boolean {
+    return this.state.isLoading;
+  }
+
+  getLoadingMessage(): string {
+    return this.state.loadingMessage;
+  }
+
+  setUseColors(useColors: boolean): void {
+    this.state.useColors = useColors;
+  }
+
+  /** Advance spinner animation frame */
+  tickSpinner(): void {
+    this.state.spinnerFrame = (this.state.spinnerFrame + 1) % 10;
+  }
+
   isSearchActive(): boolean {
     return this.state.searchActive;
   }
@@ -225,13 +253,49 @@ export class MemoryViewTuiSession extends TuiSessionBase {
    * Initialize the view by loading memory bank data
    */
   async initialize(): Promise<void> {
-    await this.loadTree();
-    await this.loadPendingCount();
+    this.state.isLoading = true;
+    this.state.loadingMessage = "Loading memory banks...";
 
-    // Select first node if available
-    if (this.flatNodes.length > 0) {
-      this.state.selectedNodeId = this.flatNodes[0].id;
-      await this.loadDetailForNode(this.flatNodes[0]);
+    try {
+      await this.loadTree();
+      await this.loadPendingCount();
+
+      // Select first node if available
+      if (this.flatNodes.length > 0) {
+        this.state.selectedNodeId = this.flatNodes[0].id;
+        await this.loadDetailForNode(this.flatNodes[0]);
+      }
+    } finally {
+      this.state.isLoading = false;
+      this.state.loadingMessage = "";
+      this.state.lastRefresh = Date.now();
+    }
+  }
+
+  /**
+   * Refresh data if stale (>30 seconds)
+   */
+  async refreshIfStale(): Promise<void> {
+    const staleMs = 30000; // 30 seconds
+    if (Date.now() - this.state.lastRefresh > staleMs) {
+      await this.refresh();
+    }
+  }
+
+  /**
+   * Force refresh all data
+   */
+  async refresh(): Promise<void> {
+    this.state.isLoading = true;
+    this.state.loadingMessage = "Refreshing...";
+
+    try {
+      await this.loadTree();
+      await this.loadPendingCount();
+      this.state.lastRefresh = Date.now();
+    } finally {
+      this.state.isLoading = false;
+      this.state.loadingMessage = "";
     }
   }
 
@@ -432,6 +496,9 @@ export class MemoryViewTuiSession extends TuiSessionBase {
         return;
       case "P":
         this.promoteSelectedLearning();
+        return;
+      case "R":
+        await this.refresh();
         return;
     }
 
@@ -889,11 +956,17 @@ export class MemoryViewTuiSession extends TuiSessionBase {
     if (!proposal) return `Learning: ${node.label}`;
 
     const learning = proposal.learning;
-    return [
+    const useColors = this.state.useColors;
+
+    // Build content with color badges
+    const categoryBadge = renderCategoryBadge(learning.category, useColors);
+    const confidenceBadge = renderConfidence(learning.confidence, useColors);
+
+    const content = [
       `# ${learning.title}`,
       "",
-      `**Category:** ${learning.category}`,
-      `**Confidence:** ${learning.confidence}`,
+      `**Category:** ${categoryBadge}`,
+      `**Confidence:** ${confidenceBadge}`,
       `**Scope:** ${proposal.target_scope}`,
       proposal.target_project ? `**Project:** ${proposal.target_project}` : "",
       `**Tags:** ${learning.tags?.join(", ") ?? "none"}`,
@@ -906,6 +979,8 @@ export class MemoryViewTuiSession extends TuiSessionBase {
       "",
       `[a] Approve  [r] Reject`,
     ].filter((l) => l !== "").join("\n");
+
+    return renderMarkdown(content, { useColors });
   }
 
   // ===== Search =====
@@ -980,6 +1055,7 @@ export class MemoryViewTuiSession extends TuiSessionBase {
       "- e: Jump to Executions",
       "- n: Jump to Pending",
       "- s or /: Search",
+      "- R: Refresh data",
       "- ?: Show this help",
       "",
       "## Actions",
@@ -999,6 +1075,12 @@ export class MemoryViewTuiSession extends TuiSessionBase {
    * Render the tree panel
    */
   renderTreePanel(): string {
+    // Show loading state
+    if (this.state.isLoading) {
+      const spinner = renderSpinner(this.state.spinnerFrame);
+      return `${spinner} ${this.state.loadingMessage}`;
+    }
+
     const lines: string[] = [];
     const renderNode = (node: TreeNode, indent: number) => {
       const prefix = "  ".repeat(indent);
@@ -1025,11 +1107,15 @@ export class MemoryViewTuiSession extends TuiSessionBase {
    * Render the status bar
    */
   renderStatusBar(): string {
+    if (this.state.isLoading) {
+      const spinner = renderSpinner(this.state.spinnerFrame);
+      return `${spinner} ${this.state.loadingMessage}`;
+    }
     if (this.state.searchActive) {
       return `Search: ${this.state.searchQuery}█`;
     }
     const pending = this.state.pendingCount > 0 ? ` | ${this.state.pendingCount} pending` : "";
-    return `[g]lobal [p]rojects [e]xecutions [s]earch [?]help${pending}`;
+    return `[g]lobal [p]rojects [e]xecutions [s]earch [R]efresh [?]help${pending}`;
   }
 
   /**
