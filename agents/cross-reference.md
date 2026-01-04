@@ -29,6 +29,7 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 | Google integration                  | [providers/google.md](providers/google.md)                                      | [README.md](README.md)                                               |
 | Gemini Long-Context                 | [providers/google-long-context.md](providers/google-long-context.md)            | [providers/google.md](providers/google.md)                           |
 | Instruction gaps / self-improvement | [process/self-improvement.md](process/self-improvement.md)                      | [prompts/self-improvement-loop.md](prompts/self-improvement-loop.md) |
+| Architecture review / improvement   | [process/review-research-improvement.md](process/review-research-improvement.md) | [planning/](planning/)                                               |
 
 ## Search by Topic
 
@@ -48,6 +49,8 @@ topics: ["navigation", "quick-reference", "task-mapping"]
 - **`gemini`** → [providers/google.md](providers/google.md), [providers/google-long-context.md](providers/google-long-context.md)
 - **`long-context`** → [providers/google-long-context.md](providers/google-long-context.md)
 - **`self-improvement`** → [process/self-improvement.md](process/self-improvement.md), [prompts/self-improvement-loop.md](prompts/self-improvement-loop.md)
+- **`architecture`** → [process/review-research-improvement.md](process/review-research-improvement.md)
+- **`improvement-planning`** → [process/review-research-improvement.md](process/review-research-improvement.md), [planning/](planning/)
 
 ## Workflow Examples
 

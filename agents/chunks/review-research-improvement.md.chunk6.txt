@@ -1,0 +1,29 @@
+## Implementation Priority
+[Dependency graph, recommended order]
+
+## Risk Assessment
+[Risk/impact/mitigation table]
+
+## Success Metrics
+[How to measure improvement]
+```
+
+### 3.2 Sub-Phase Design
+
+Each sub-phase should have:
+- **Goal:** Single-sentence objective
+- **Tasks:** Numbered implementation steps
+- **Success Criteria:** Checkboxes for completion
+- **Effort Estimate:** Days/hours
+- **Dependencies:** Which phases must complete first
+
+### 3.3 Prioritization Matrix
+
+| Priority | Criteria |
+|----------|----------|
+| Critical | Blocking issues, security, data integrity |
+| High | Major quality/reliability improvements |
+| Medium | Important features, moderate impact |
+| Low | Nice-to-have, polish, minor improvements |
+
+## Phase 4: Artifacts (Create Concrete Deliverables)

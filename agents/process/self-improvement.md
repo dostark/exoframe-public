@@ -101,3 +101,6 @@ Examples
   - Task: “Perform a multi-file refactor with OpenAI.”
   - Gap: provider doc doesn’t enforce diff-first structure.
   - Patch: add/update a prompt template under `agents/prompts/` requiring Files → Plan → Diffs → Verification.
+## Related Documents
+
+- [Review-Research-Improvement Pattern](./review-research-improvement.md) - For architectural reviews and improvement planning (larger scope than instruction gaps)

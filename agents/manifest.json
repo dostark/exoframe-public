@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-04T21:12:22.942Z",
+  "generated_at": "2026-01-04T22:03:16.180Z",
   "docs": [
     {
       "path": "agents/docs/documentation.md",
@@ -477,7 +477,33 @@
         "agents/chunks/self-improvement.md.chunk3.txt",
         "agents/chunks/self-improvement.md.chunk4.txt",
         "agents/chunks/self-improvement.md.chunk5.txt",
-        "agents/chunks/self-improvement.md.chunk6.txt"
+        "agents/chunks/self-improvement.md.chunk6.txt",
+        "agents/chunks/self-improvement.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/process/review-research-improvement.md",
+      "agent": "general",
+      "scope": "dev",
+      "title": "Review-Research-Improvement Pattern",
+      "short_summary": "Systematic approach to evaluate ExoFrame subsystems, identify weaknesses, and create actionable improvement plans.",
+      "version": "1.0",
+      "topics": [
+        "architecture-review",
+        "improvement-planning",
+        "patterns",
+        "refactoring",
+        "quality"
+      ],
+      "chunks": [
+        "agents/chunks/review-research-improvement.md.chunk0.txt",
+        "agents/chunks/review-research-improvement.md.chunk1.txt",
+        "agents/chunks/review-research-improvement.md.chunk2.txt",
+        "agents/chunks/review-research-improvement.md.chunk3.txt",
+        "agents/chunks/review-research-improvement.md.chunk4.txt",
+        "agents/chunks/review-research-improvement.md.chunk5.txt",
+        "agents/chunks/review-research-improvement.md.chunk6.txt",
+        "agents/chunks/review-research-improvement.md.chunk7.txt"
       ]
     },
     {
