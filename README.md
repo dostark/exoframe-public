@@ -45,7 +45,12 @@ ExoFrame is not competing with IDE agents for real-time assistance. It provides 
 - **Portals**: Securely link multiple external repositories into a single agent context.
 - **Deno-Powered Security**: Leverages Deno's granular permission system to sandbox agent operations (no unauthorized network or filesystem access).
 - **Files-as-API**: Interact with the system by dropping Markdown files into folders or using the `exoctl` CLI.
-- **Memory Banks**: The `Memory/` directory stores structured execution history and project knowledge with CLI access for search and retrieval. Provides persistent storage for agent activities without external dependencies.
+- **Memory Banks**: The `Memory/` directory provides structured knowledge management:
+  - **Global Learnings**: Cross-project insights and patterns
+  - **Project Memory**: Portal-specific knowledge, decisions, and patterns
+  - **Execution History**: Complete audit trail with lessons learned
+  - **Pending Workflow**: Auto-extracted learnings require human approval
+  - **Search**: Tag-based, keyword, and semantic search capabilities
 
 ---
 
@@ -94,7 +99,7 @@ ExoFrame is built on a "Files-as-API" philosophy:
 
 - **`Inbox/`**: Where new **Requests** and AI-generated **Plans** live.
 - **`Portals/`**: Symlinks to your actual project repositories.
-- **`Memory/`**: Memory Banks containing execution history, project context, and structured knowledge with CLI search capabilities.
+- **`Memory/`**: Memory Banks containing execution history, project context, global learnings, and structured knowledge with CLI search capabilities. Learnings are auto-extracted from executions and require approval.
 - **`System/`**: Internal state, SQLite database, and active task tracking.
 
 ---

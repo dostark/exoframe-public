@@ -845,12 +845,14 @@ exoctl memory
 
 ### Key Components
 
-| Component         | Location                           | Purpose                       |
-| ----------------- | ---------------------------------- | ----------------------------- |
-| MemoryBankService | `src/services/memory_bank.ts`      | Core CRUD operations          |
-| Memory Schemas    | `src/schemas/memory_bank.ts`       | Zod validation schemas        |
-| Memory Extractor  | `src/services/memory_extractor.ts` | Learning extraction (planned) |
-| Memory CLI        | `src/cli/memory_commands.ts`       | CLI interface (planned)       |
+| Component         | Location                                       | Purpose                      | Status      |
+| ----------------- | ---------------------------------------------- | ---------------------------- | ----------- |
+| MemoryBankService | `src/services/memory_bank.ts`                  | Core CRUD operations         | ✅ Complete |
+| Memory Schemas    | `src/schemas/memory_bank.ts`                   | Zod validation schemas       | ✅ Complete |
+| Memory Extractor  | `src/services/memory_extractor.ts`             | Learning extraction          | ✅ Complete |
+| Memory Embedding  | `src/services/memory_embedding.ts`             | Vector embeddings for search | ✅ Complete |
+| Memory CLI        | `src/cli/memory_commands.ts`                   | CLI interface                | ✅ Complete |
+| Integration Tests | `tests/integration/memory_integration_test.ts` | End-to-end tests             | ✅ Complete |
 
 ---
 

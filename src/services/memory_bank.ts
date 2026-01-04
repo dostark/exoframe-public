@@ -1037,7 +1037,16 @@ export class MemoryBankService {
     }
     try {
       const content = await Deno.readTextFile(learningsPath);
-      return JSON.parse(content);
+      const parsed = JSON.parse(content);
+      // Handle both flat array and GlobalMemory structure
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+      // GlobalMemory structure with learnings property
+      if (parsed.learnings && Array.isArray(parsed.learnings)) {
+        return parsed.learnings;
+      }
+      return [];
     } catch {
       return [];
     }

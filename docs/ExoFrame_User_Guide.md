@@ -249,23 +249,31 @@ deno task start
 
 ### 3.2 Memory Banks
 
-Memory Banks provide structured storage for ExoFrame's execution history and project context. This system offers CLI-based access to your workspace's knowledge.
+Memory Banks provide structured storage for ExoFrame's execution history, project context, and cross-project learnings. This system offers CLI-based access to your workspace's knowledge with automatic learning extraction.
 
 #### Directory Structure
 
 ```
 Memory/
+├── Global/             # Cross-project learnings
+│   ├── learnings.json  # Global insights and patterns
+│   └── learnings.md    # Human-readable learnings
+├── Pending/            # Memory updates awaiting approval
+│   └── {proposal-id}.json
 ├── Execution/          # Execution history (agent runs)
-│   ├── trace-abc123/
+│   ├── {trace-id}/
 │   │   ├── summary.md
 │   │   ├── context.json
-│   │   ├── changes.diff
-│   │   └── lessons_learned.md
-└── Projects/           # Project-specific knowledge
-    ├── MyProject/
-    │   ├── README.md
-    │   ├── context.md
-    │   └── history/
+│   │   └── changes.diff
+├── Projects/           # Project-specific knowledge
+│   ├── {portal-name}/
+│   │   ├── overview.md
+│   │   ├── patterns.md
+│   │   ├── decisions.md
+│   │   └── references.md
+└── Index/              # Search indices
+    ├── tags.json
+    └── embeddings/     # Semantic search vectors
 ```
 
 #### CLI Access
@@ -273,26 +281,58 @@ Memory/
 Use the `exoctl memory` commands to interact with Memory Banks:
 
 ```bash
-# List all projects
-exoctl memory projects
+# List all global learnings
+exoctl memory list
 
-# Get project details
-exoctl memory project MyProject
+# List project memory banks
+exoctl memory project list
+
+# Show project details
+exoctl memory project show MyProject
+
+# Search across all memory (keyword)
+exoctl memory search "database migration"
+
+# Search by tags
+exoctl memory search --tags "error-handling,async"
 
 # List execution history
-exoctl memory execution
+exoctl memory execution list --limit 10
 
-# Search across memory banks
-exoctl memory search "database migration"
+# View pending memory updates
+exoctl memory pending list
+
+# Approve a pending update
+exoctl memory pending approve <proposal-id>
+
+# Reject with reason
+exoctl memory pending reject <proposal-id> --reason "Duplicate"
+
+# Rebuild search indices
+exoctl memory rebuild-index
 ```
 
 #### Features
 
-- **Execution History**: Every agent run is automatically stored with context
-- **Project Memory**: Persistent knowledge for ongoing projects
-- **Search**: Full-text search across all memory banks
+- **Automatic Learning Extraction**: Insights are extracted from agent executions
+- **Pending Workflow**: Review and approve/reject proposed learnings
+- **Global + Project Scope**: Learnings can be global or project-specific
+- **Tag-Based Search**: Filter by tags for precise results
+- **Keyword Search**: Full-text search with frequency ranking
+- **Embedding Search**: Semantic similarity search (deterministic mock vectors)
 - **Structured Data**: JSON metadata alongside human-readable markdown
 - **CLI Integration**: Direct access without external dependencies
+
+#### Pending Workflow
+
+When an agent execution completes, ExoFrame automatically extracts learnings:
+
+1. **Extract**: Insights from `lessons_learned` and execution patterns
+2. **Propose**: Create pending proposal in `Memory/Pending/`
+3. **Review**: User reviews via `exoctl memory pending list`
+4. **Approve/Reject**: Merge to memory or discard with reason
+
+This ensures quality control over what enters the knowledge base.
 
 ## 4. CLI Reference
 
