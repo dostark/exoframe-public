@@ -199,3 +199,155 @@ export function createPlanReviewerSession(plans: Array<Record<string, any>> = []
   const session = new PlanReviewerTuiSession(plans as unknown as any, mock);
   return { mock, session };
 }
+
+// -------------------------
+// Tree view helpers
+// -------------------------
+import type { TreeNode } from "../../src/tui/utils/tree_view.ts";
+
+export function createTestTree(): TreeNode[] {
+  return [
+    {
+      id: "root1",
+      label: "Root 1",
+      type: "root",
+      expanded: true,
+      children: [
+        {
+          id: "child1-1",
+          label: "Child 1.1",
+          type: "item",
+          expanded: false,
+          children: [],
+        },
+        {
+          id: "child1-2",
+          label: "Child 1.2",
+          type: "item",
+          expanded: true,
+          children: [
+            {
+              id: "grandchild1-2-1",
+              label: "Grandchild 1.2.1",
+              type: "leaf",
+              expanded: false,
+              children: [],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "root2",
+      label: "Root 2",
+      type: "root",
+      expanded: false,
+      children: [
+        {
+          id: "child2-1",
+          label: "Child 2.1",
+          type: "item",
+          expanded: false,
+          children: [],
+        },
+      ],
+    },
+  ];
+}
+
+export function createLargeTestTree(depth: number = 3, breadth: number = 5): TreeNode[] {
+  function createLevel(currentDepth: number, prefix: string): TreeNode[] {
+    if (currentDepth >= depth) return [];
+
+    const nodes: TreeNode[] = [];
+    for (let i = 0; i < breadth; i++) {
+      const id = `${prefix}${i}`;
+      nodes.push({
+        id,
+        label: `Node ${id}`,
+        type: currentDepth === 0 ? "root" : "item",
+        expanded: currentDepth === 0,
+        children: createLevel(currentDepth + 1, `${id}-`),
+      });
+    }
+    return nodes;
+  }
+
+  return createLevel(0, "node-");
+}
+
+// -------------------------
+// Key simulation helpers
+// -------------------------
+export async function simulateKeySequence(
+  handler: (key: string) => void | Promise<void>,
+  keys: string[],
+  delayMs: number = 0,
+): Promise<void> {
+  for (const key of keys) {
+    await handler(key);
+    if (delayMs > 0) {
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+}
+
+export function typeString(text: string): string[] {
+  return text.split("");
+}
+
+// -------------------------
+// Render assertion helpers
+// -------------------------
+export function getVisibleText(lines: string[]): string[] {
+  // Strip ANSI codes for easier assertions
+  // deno-lint-ignore no-control-regex
+  const ansiRegex = /\x1b\[[0-9;]*m/g;
+  return lines.map((line) => line.replace(ansiRegex, ""));
+}
+
+export function findLineContaining(lines: string[], text: string): number {
+  const visibleLines = getVisibleText(lines);
+  return visibleLines.findIndex((line) => line.includes(text));
+}
+
+export function hasLineContaining(lines: string[], text: string): boolean {
+  return findLineContaining(lines, text) !== -1;
+}
+
+export function countLinesContaining(lines: string[], text: string): number {
+  const visibleLines = getVisibleText(lines);
+  return visibleLines.filter((line) => line.includes(text)).length;
+}
+
+// -------------------------
+// Dialog test helpers
+// -------------------------
+export function createMockDialogRenderOptions(width: number = 60, height: number = 20) {
+  return {
+    useColors: false,
+    width,
+    height,
+  };
+}
+
+// -------------------------
+// Spinner/Loading test helpers
+// -------------------------
+export function createMockSpinnerState(active: boolean = false, frame: number = 0) {
+  return {
+    active,
+    frame,
+    message: active ? "Loading..." : "",
+    startTime: active ? Date.now() : 0,
+  };
+}
+
+export function createMockProgressState(current: number = 0, total: number = 100) {
+  return {
+    current,
+    total,
+    message: "Processing...",
+    startTime: Date.now(),
+  };
+}

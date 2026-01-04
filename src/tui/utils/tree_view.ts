@@ -1,0 +1,512 @@
+/**
+ * TUI Tree View Rendering Utilities
+ *
+ * Part of Phase 13.1: Shared TUI Infrastructure
+ *
+ * Provides tree structure rendering for hierarchical data.
+ * Used by Memory View, Portal Manager, and other tree-based views.
+ */
+
+import { colorize, getTheme, padEnd, visibleLength } from "./colors.ts";
+
+// ===== Tree Node Types =====
+
+export interface TreeNode<T = unknown> {
+  id: string;
+  label: string;
+  type: string;
+  expanded: boolean;
+  children: TreeNode<T>[];
+  data?: T;
+  badge?: number | string;
+  icon?: string;
+  selected?: boolean;
+  disabled?: boolean;
+}
+
+export interface TreeRenderOptions {
+  useColors: boolean;
+  showIcons: boolean;
+  showBadges: boolean;
+  indentSize: number;
+  maxWidth: number;
+  selectedId?: string;
+  focusedId?: string;
+}
+
+export const defaultTreeOptions: TreeRenderOptions = {
+  useColors: true,
+  showIcons: true,
+  showBadges: true,
+  indentSize: 2,
+  maxWidth: 50,
+  selectedId: undefined,
+  focusedId: undefined,
+};
+
+// ===== Tree Icons =====
+
+export const TREE_ICONS = {
+  expanded: "▼",
+  collapsed: "▶",
+  leaf: "•",
+  file: "📄",
+  folder: "📁",
+  folderOpen: "📂",
+  root: "🏠",
+  project: "📦",
+  execution: "⚡",
+  pattern: "🔷",
+  decision: "✓",
+  learning: "💡",
+  pending: "⏳",
+  search: "🔍",
+  global: "🌐",
+  agent: "🤖",
+  portal: "🚪",
+  daemon: "👻",
+  request: "📝",
+  log: "📋",
+} as const;
+
+export type TreeIconType = keyof typeof TREE_ICONS;
+
+// ===== Tree Line Characters =====
+
+const TREE_CHARS = {
+  vertical: "│",
+  horizontal: "─",
+  corner: "└",
+  tee: "├",
+  space: " ",
+} as const;
+
+// ===== Flat Node (for rendering) =====
+
+export interface FlatTreeNode<T = unknown> {
+  node: TreeNode<T>;
+  depth: number;
+  isLast: boolean;
+  prefix: string;
+  index: number;
+}
+
+// ===== Tree Utilities =====
+
+/**
+ * Flatten tree to array for rendering
+ */
+export function flattenTree<T>(
+  nodes: TreeNode<T>[],
+  depth: number = 0,
+  prefix: string = "",
+  isParentLast: boolean = true,
+): FlatTreeNode<T>[] {
+  const result: FlatTreeNode<T>[] = [];
+  let globalIndex = 0;
+
+  function flatten(
+    currentNodes: TreeNode<T>[],
+    currentDepth: number,
+    currentPrefix: string,
+    _parentIsLast: boolean,
+  ): void {
+    currentNodes.forEach((node, index) => {
+      const isLast = index === currentNodes.length - 1;
+      const nodePrefix = currentDepth === 0 ? "" : currentPrefix;
+
+      result.push({
+        node,
+        depth: currentDepth,
+        isLast,
+        prefix: nodePrefix,
+        index: globalIndex++,
+      });
+
+      if (node.expanded && node.children.length > 0) {
+        const childPrefix = currentDepth === 0 ? "" : nodePrefix + (isLast ? "  " : TREE_CHARS.vertical + " ");
+        flatten(node.children, currentDepth + 1, childPrefix, isLast);
+      }
+    });
+  }
+
+  flatten(nodes, depth, prefix, isParentLast);
+  return result;
+}
+
+/**
+ * Get a node by ID from tree
+ */
+export function findNode<T>(
+  nodes: TreeNode<T>[],
+  id: string,
+): TreeNode<T> | null {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (node.children.length > 0) {
+      const found = findNode(node.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * Get parent of a node by ID
+ */
+export function findParent<T>(
+  nodes: TreeNode<T>[],
+  id: string,
+  parent: TreeNode<T> | null = null,
+): TreeNode<T> | null {
+  for (const node of nodes) {
+    if (node.id === id) return parent;
+    if (node.children.length > 0) {
+      const found = findParent(node.children, id, node);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * Toggle node expanded state (immutable)
+ */
+export function toggleNode<T>(nodes: TreeNode<T>[], id: string): TreeNode<T>[] {
+  return nodes.map((node) => {
+    if (node.id === id) {
+      return { ...node, expanded: !node.expanded };
+    }
+    if (node.children.length > 0) {
+      return { ...node, children: toggleNode(node.children, id) };
+    }
+    return node;
+  });
+}
+
+/**
+ * Expand all nodes (immutable)
+ */
+export function expandAll<T>(nodes: TreeNode<T>[]): TreeNode<T>[] {
+  return nodes.map((node) => ({
+    ...node,
+    expanded: node.children.length > 0 ? true : node.expanded,
+    children: node.children.length > 0 ? expandAll(node.children) : [],
+  }));
+}
+
+/**
+ * Collapse all nodes (immutable)
+ */
+export function collapseAll<T>(nodes: TreeNode<T>[]): TreeNode<T>[] {
+  return nodes.map((node) => ({
+    ...node,
+    expanded: false,
+    children: node.children.length > 0 ? collapseAll(node.children) : [],
+  }));
+}
+
+/**
+ * Expand path to node (immutable)
+ */
+export function expandTo<T>(nodes: TreeNode<T>[], id: string): TreeNode<T>[] {
+  function findPath(
+    nodes: TreeNode<T>[],
+    id: string,
+    path: string[] = [],
+  ): string[] | null {
+    for (const node of nodes) {
+      if (node.id === id) return [...path, node.id];
+      if (node.children.length > 0) {
+        const found = findPath(node.children, id, [...path, node.id]);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  const path = findPath(nodes, id);
+  if (!path) return nodes;
+
+  function expandPath(nodes: TreeNode<T>[], path: string[]): TreeNode<T>[] {
+    return nodes.map((node) => {
+      const inPath = path.includes(node.id);
+      return {
+        ...node,
+        expanded: inPath ? true : node.expanded,
+        children: node.children.length > 0 ? expandPath(node.children, path) : [],
+      };
+    });
+  }
+
+  return expandPath(nodes, path);
+}
+
+/**
+ * Count visible (expanded) nodes
+ */
+export function countVisibleNodes<T>(nodes: TreeNode<T>[]): number {
+  let count = 0;
+  for (const node of nodes) {
+    count++;
+    if (node.expanded && node.children.length > 0) {
+      count += countVisibleNodes(node.children);
+    }
+  }
+  return count;
+}
+
+/**
+ * Get node at visible index
+ */
+export function getNodeAtIndex<T>(
+  nodes: TreeNode<T>[],
+  index: number,
+): TreeNode<T> | null {
+  const flat = flattenTree(nodes);
+  return flat[index]?.node ?? null;
+}
+
+/**
+ * Get index of node in flattened tree
+ */
+export function getNodeIndex<T>(nodes: TreeNode<T>[], id: string): number {
+  const flat = flattenTree(nodes);
+  return flat.findIndex((f) => f.node.id === id);
+}
+
+// ===== Rendering =====
+
+/**
+ * Render a tree node line
+ */
+export function renderTreeLine<T>(
+  flat: FlatTreeNode<T>,
+  options: TreeRenderOptions,
+): string {
+  const theme = getTheme(options.useColors);
+  const { node, depth, isLast, prefix } = flat;
+  const { showIcons, showBadges, maxWidth, selectedId } = options;
+
+  const parts: string[] = [];
+
+  // Prefix (tree lines)
+  if (depth > 0) {
+    const connector = isLast ? TREE_CHARS.corner : TREE_CHARS.tee;
+    const connectorColored = colorize(
+      prefix + connector + TREE_CHARS.horizontal,
+      theme.border,
+      theme.reset,
+    );
+    parts.push(connectorColored);
+  }
+
+  // Expand/collapse indicator
+  if (node.children.length > 0) {
+    const expandIcon = node.expanded ? TREE_ICONS.expanded : TREE_ICONS.collapsed;
+    const expandColor = node.expanded ? theme.treeExpanded : theme.treeCollapsed;
+    parts.push(colorize(expandIcon, expandColor, theme.reset));
+  } else if (showIcons && node.icon) {
+    parts.push(node.icon);
+  } else {
+    parts.push(colorize(TREE_ICONS.leaf, theme.treeLeaf, theme.reset));
+  }
+
+  // Label
+  const isSelected = node.id === selectedId;
+  let label = " " + node.label;
+
+  if (isSelected) {
+    label = colorize(label, theme.treeSelected, theme.reset);
+  } else if (node.disabled) {
+    label = colorize(label, theme.textDim, theme.reset);
+  }
+  parts.push(label);
+
+  // Badge
+  if (showBadges && node.badge !== undefined) {
+    const badgeStr = typeof node.badge === "number" ? "(" + node.badge + ")" : "[" + node.badge + "]";
+    const badgeColored = colorize(badgeStr, theme.textDim, theme.reset);
+    parts.push(" " + badgeColored);
+  }
+
+  let line = parts.join("");
+
+  // Truncate if too long
+  if (visibleLength(line) > maxWidth) {
+    const truncated = truncateLine(line, maxWidth - 1);
+    line = truncated + colorize("…", theme.textDim, theme.reset);
+  }
+
+  return line;
+}
+
+/**
+ * Truncate a line with ANSI codes to visible length
+ */
+function truncateLine(line: string, maxLength: number): string {
+  let visibleLen = 0;
+  let i = 0;
+
+  while (i < line.length && visibleLen < maxLength) {
+    if (line[i] === "\x1b" && line[i + 1] === "[") {
+      let j = i + 2;
+      while (j < line.length && line[j] !== "m") j++;
+      i = j + 1;
+    } else {
+      visibleLen++;
+      i++;
+    }
+  }
+
+  return line.slice(0, i);
+}
+
+/**
+ * Render entire tree to array of lines
+ */
+export function renderTree<T>(
+  nodes: TreeNode<T>[],
+  options: Partial<TreeRenderOptions> = {},
+): string[] {
+  const opts = { ...defaultTreeOptions, ...options };
+  const flat = flattenTree(nodes);
+  return flat.map((f) => renderTreeLine(f, opts));
+}
+
+/**
+ * Render tree panel with border
+ */
+export function renderTreePanel<T>(
+  nodes: TreeNode<T>[],
+  options: Partial<TreeRenderOptions> & {
+    title?: string;
+    height?: number;
+    scrollOffset?: number;
+  } = {},
+): string[] {
+  const {
+    title,
+    height = 20,
+    scrollOffset = 0,
+    ...treeOptions
+  } = options;
+
+  const opts = { ...defaultTreeOptions, ...treeOptions };
+  const theme = getTheme(opts.useColors);
+  const width = opts.maxWidth;
+
+  const lines: string[] = [];
+
+  // Top border with title
+  const titleStr = title ? " " + title + " " : "";
+  const topBorder = TREE_CHARS.corner + titleStr +
+    TREE_CHARS.horizontal.repeat(Math.max(0, width - titleStr.length - 2));
+  lines.push(colorize(topBorder, theme.border, theme.reset));
+
+  // Tree content
+  const treeLines = renderTree(nodes, opts);
+  const visibleLines = treeLines.slice(scrollOffset, scrollOffset + height - 2);
+
+  for (const line of visibleLines) {
+    lines.push(padEnd(line, width));
+  }
+
+  // Pad remaining height
+  const emptyLines = height - 2 - visibleLines.length;
+  for (let i = 0; i < emptyLines; i++) {
+    lines.push(" ".repeat(width));
+  }
+
+  // Bottom border
+  const bottomBorder = TREE_CHARS.corner +
+    TREE_CHARS.horizontal.repeat(width - 1);
+  lines.push(colorize(bottomBorder, theme.border, theme.reset));
+
+  return lines;
+}
+
+// ===== Navigation Helpers =====
+
+/**
+ * Get next visible node ID
+ */
+export function getNextNodeId<T>(
+  nodes: TreeNode<T>[],
+  currentId: string,
+): string | null {
+  const flat = flattenTree(nodes);
+  const currentIndex = flat.findIndex((f) => f.node.id === currentId);
+  if (currentIndex === -1 || currentIndex >= flat.length - 1) return null;
+  return flat[currentIndex + 1].node.id;
+}
+
+/**
+ * Get previous visible node ID
+ */
+export function getPrevNodeId<T>(
+  nodes: TreeNode<T>[],
+  currentId: string,
+): string | null {
+  const flat = flattenTree(nodes);
+  const currentIndex = flat.findIndex((f) => f.node.id === currentId);
+  if (currentIndex <= 0) return null;
+  return flat[currentIndex - 1].node.id;
+}
+
+/**
+ * Get first visible node ID
+ */
+export function getFirstNodeId<T>(nodes: TreeNode<T>[]): string | null {
+  const flat = flattenTree(nodes);
+  return flat.length > 0 ? flat[0].node.id : null;
+}
+
+/**
+ * Get last visible node ID
+ */
+export function getLastNodeId<T>(nodes: TreeNode<T>[]): string | null {
+  const flat = flattenTree(nodes);
+  return flat.length > 0 ? flat[flat.length - 1].node.id : null;
+}
+
+// ===== Factory Functions =====
+
+/**
+ * Create a tree node
+ */
+export function createNode<T>(
+  id: string,
+  label: string,
+  type: string,
+  options: Partial<TreeNode<T>> = {},
+): TreeNode<T> {
+  return {
+    id,
+    label,
+    type,
+    expanded: false,
+    children: [],
+    ...options,
+  };
+}
+
+/**
+ * Create a group node (with children)
+ */
+export function createGroupNode<T>(
+  id: string,
+  label: string,
+  type: string,
+  children: TreeNode<T>[],
+  options: Partial<TreeNode<T>> = {},
+): TreeNode<T> {
+  return {
+    id,
+    label,
+    type,
+    expanded: true,
+    children,
+    ...options,
+  };
+}
