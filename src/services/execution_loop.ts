@@ -132,23 +132,7 @@ export class ExecutionLoop {
       }
 
       // Commit changes
-      try {
-        await gitService.commit({
-          message: `Execute plan: ${requestId}`,
-          description: `Executed by agent ${this.agentId}`,
-          traceId,
-        });
-      } catch (error) {
-        // If no changes to commit, that's actually a success (nothing needed to be done)
-        if (error instanceof Error && error.message.includes("nothing to commit")) {
-          // Log but don't fail
-          this.logActivity("execution.no_changes", traceId, {
-            request_id: requestId,
-          });
-        } else {
-          throw error;
-        }
-      }
+      await this.commitChanges(gitService, requestId!, traceId!);
 
       // Handle success
       await this.handleSuccess(planPath, traceId, requestId);
@@ -225,23 +209,7 @@ export class ExecutionLoop {
         traceId,
         agentId: this.agentId,
       });
-      try {
-        await gitService.commit({
-          message: `Execute plan: ${requestId}`,
-          description: `Executed by agent ${this.agentId}`,
-          traceId,
-        });
-      } catch (error) {
-        // If no changes to commit, that's actually a success (nothing needed to be done)
-        if (error instanceof Error && error.message.includes("nothing to commit")) {
-          // Log but don't fail
-          this.logActivity("execution.no_changes", traceId, {
-            request_id: requestId,
-          });
-        } else {
-          throw error;
-        }
-      }
+      await this.commitChanges(gitService, requestId!, traceId!);
 
       // Handle success
       await this.handleSuccess(planPath, traceId, requestId);
@@ -558,6 +526,44 @@ export class ExecutionLoop {
   }
 
   /**
+   * Create a MissionReporter instance with Memory Bank integration
+   */
+  private createMissionReporter(): MissionReporter {
+    const memoryBank = new MemoryBankService(this.config, this.db!);
+    const reportConfig = {
+      reportsDirectory: join(this.config.system.root, "Memory", "Execution"),
+    };
+    return new MissionReporter(this.config, reportConfig, memoryBank, this.db);
+  }
+
+  /**
+   * Commit changes to git, handling "nothing to commit" gracefully
+   */
+  private async commitChanges(
+    gitService: GitService,
+    requestId: string,
+    traceId: string,
+  ): Promise<void> {
+    try {
+      await gitService.commit({
+        message: `Execute plan: ${requestId}`,
+        description: `Executed by agent ${this.agentId}`,
+        traceId,
+      });
+    } catch (error) {
+      // If no changes to commit, that's actually a success (nothing needed to be done)
+      if (error instanceof Error && error.message.includes("nothing to commit")) {
+        // Log but don't fail
+        this.logActivity("execution.no_changes", traceId, {
+          request_id: requestId,
+        });
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
    * Generate mission report for successful execution using Memory Banks
    */
   private async generateMissionReport(
@@ -565,15 +571,7 @@ export class ExecutionLoop {
     requestId: string,
   ): Promise<void> {
     try {
-      // Create memory bank service for this execution
-      const memoryBank = new MemoryBankService(this.config, this.db!);
-
-      // Create mission reporter with updated config
-      const reportConfig = {
-        reportsDirectory: join(this.config.system.root, "Memory", "Execution"),
-      };
-
-      const reporter = new MissionReporter(this.config, reportConfig, memoryBank, this.db);
+      const reporter = this.createMissionReporter();
 
       // Prepare trace data
       const traceData = {
@@ -612,15 +610,7 @@ export class ExecutionLoop {
     error: string,
   ): Promise<void> {
     try {
-      // Create memory bank service for this execution
-      const memoryBank = new MemoryBankService(this.config, this.db!);
-
-      // Create mission reporter with updated config
-      const reportConfig = {
-        reportsDirectory: join(this.config.system.root, "Memory", "Execution"),
-      };
-
-      const reporter = new MissionReporter(this.config, reportConfig, memoryBank, this.db);
+      const reporter = this.createMissionReporter();
 
       // Prepare trace data for failure
       const traceData = {

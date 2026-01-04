@@ -95,3 +95,33 @@ export function sampleRouterRequest(overrides: Record<string, any> = {}) {
     ...overrides,
   };
 }
+
+/**
+ * Creates a complete test context for RequestRouter tests with all mocks wired up.
+ * Reduces boilerplate in tests that repeat the same setup pattern.
+ */
+export function createRouterTestContext(overrides: {
+  defaultAgent?: string;
+  blueprintsPath?: string;
+} = {}) {
+  const mockFlowRunner = createMockFlowRunner();
+  const mockAgentRunner = createMockAgentRunner();
+  const mockFlowValidator = createMockFlowValidator();
+  const mockLogger = createMockEventLogger();
+  const router = createTestRequestRouter({
+    flowRunner: mockFlowRunner,
+    agentRunner: mockAgentRunner,
+    flowValidator: mockFlowValidator,
+    logger: mockLogger,
+    defaultAgent: overrides.defaultAgent ?? "default-agent",
+    blueprintsPath: overrides.blueprintsPath ?? "/tmp/blueprints",
+  });
+
+  return {
+    mockFlowRunner,
+    mockAgentRunner,
+    mockFlowValidator,
+    mockLogger,
+    router,
+  };
+}
