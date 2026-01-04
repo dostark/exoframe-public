@@ -677,6 +677,35 @@ Review this authentication module for production readiness.
 - [ ] Manual skills override auto-matched
 - [ ] Documentation updated
 
+### Phase 17.10: Documentation Update (1 day)
+
+**Goal:** Update user-facing documentation to reflect Skills architecture.
+
+**Files to Update:**
+
+| File | Updates Required |
+|------|------------------|
+| `docs/ExoFrame_User_Guide.md` | Skills section: concept, usage, CLI commands |
+| `docs/Building_with_AI_Agents.md` | Skill integration with agents and flows |
+| `docs/ExoFrame_Implementation_Plan.md` | Phase 17 completion status |
+| `Memory/Skills/README.md` | Skill authoring guide, core skill catalog |
+
+**Tasks:**
+1. Document Skills as procedural memory concept
+2. Add skill authoring guide with best practices
+3. Document trigger matching algorithm
+4. Add CLI reference for `exoctl memory skill` commands
+5. Document learning-to-skill derivation workflow
+6. Create core skill catalog with descriptions
+7. Add troubleshooting for skill matching issues
+
+**Success Criteria:**
+- [ ] User guide has complete Skills documentation
+- [ ] Each core skill has description and example
+- [ ] CLI commands fully documented
+- [ ] Skill authoring best practices included
+- [ ] Memory Bank docs updated with Skills type
+
 ---
 
 ## Skill Definition Best Practices

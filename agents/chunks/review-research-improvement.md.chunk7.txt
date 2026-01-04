@@ -1,43 +1,19 @@
-### 4.1 Templates
+| Document | Purpose |
+|----------|----------|
+| `docs/ExoFrame_User_Guide.md` | User-facing feature documentation |
+| `docs/Building_with_AI_Agents.md` | Patterns and best practices |
+| `docs/ExoFrame_Implementation_Plan.md` | Phase completion status |
+| Subsystem README | Template catalog, configuration reference |
 
-Create reusable templates that encode best practices:
-- Place in appropriate `templates/` directory
-- Include inline documentation
-- Provide customization points with placeholders
-- Add usage examples
-
-**Template Structure:**
+**Documentation Phase Template:**
 ```markdown
----
-[frontmatter with metadata]
----
+### Phase N.X: Documentation Update (1 day)
 
-# Template Name
+**Goal:** Update user-facing documentation to reflect new capabilities.
 
-## Overview
-[What this template is for]
-
-## Instructions
-[How to use it]
-
-## Output Format
-[Expected structure]
-
-## Example
-[Complete worked example]
-
-## Customization Points
-[Table of placeholders]
-
-## When to Use
-[✅ Good for / ❌ Not ideal for]
-```
-
-### 4.2 Example Implementations
-
-Create concrete examples showing the pattern in action:
-- Real scenarios, not toy examples
-- Complete implementations
-- Comments explaining key decisions
-
-### 4.3 Documentation Updates
+**Files to Update:**
+| File | Updates Required |
+|------|------------------|
+| docs/ExoFrame_User_Guide.md | [Section]: [features] |
+| docs/Building_with_AI_Agents.md | [patterns, examples] |
+| [Subsystem]/README.md | [templates, config] |

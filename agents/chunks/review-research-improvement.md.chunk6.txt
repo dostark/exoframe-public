@@ -17,13 +17,8 @@ Each sub-phase should have:
 - **Effort Estimate:** Days/hours
 - **Dependencies:** Which phases must complete first
 
-### 3.3 Prioritization Matrix
+### 3.3 Documentation Phase (REQUIRED)
 
-| Priority | Criteria |
-|----------|----------|
-| Critical | Blocking issues, security, data integrity |
-| High | Major quality/reliability improvements |
-| Medium | Important features, moderate impact |
-| Low | Nice-to-have, polish, minor improvements |
+**Every improvement plan MUST include a dedicated Documentation Update phase.**
 
-## Phase 4: Artifacts (Create Concrete Deliverables)
+This phase should update:

@@ -351,7 +351,36 @@ return { systemPrompt: content, agentId }; // Entire file becomes prompt!
 | 16.7 | Confidence Scoring | Medium | 1 day | 16.2 |
 | 16.8 | New Templates | High | 2 days | 16.4 |
 
-**Recommended Order:** 16.1 → 16.3 → 16.2 → 16.4 → 16.7 → 16.8 → 16.5 → 16.6
+**Recommended Order:** 16.1 → 16.3 → 16.2 → 16.4 → 16.7 → 16.8 → 16.5 → 16.6 → 16.9
+
+---
+
+### Phase 16.9: Documentation Update (1 day)
+
+**Goal:** Update user-facing documentation to reflect new Agent capabilities.
+
+**Files to Update:**
+
+| File | Updates Required |
+|------|------------------|
+| `docs/ExoFrame_User_Guide.md` | Agent section: reflexion, confidence, session memory |
+| `docs/Building_with_AI_Agents.md` | New agent patterns, template guide |
+| `docs/ExoFrame_Implementation_Plan.md` | Phase 16 completion status |
+| `Blueprints/Agents/README.md` | New templates, configuration options |
+
+**Tasks:**
+1. Document Reflexion pattern configuration
+2. Add confidence scoring interpretation guide
+3. Document session memory usage
+4. Update template catalog with new templates
+5. Add troubleshooting for retry/recovery
+6. Include best practices for template selection
+
+**Success Criteria:**
+- [ ] User guide has complete Agent feature documentation
+- [ ] Each new template has usage example
+- [ ] Configuration reference updated
+- [ ] Migration guide for existing agents (if needed)
 
 ---
 

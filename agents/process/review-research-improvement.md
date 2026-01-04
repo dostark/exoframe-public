@@ -165,7 +165,45 @@ Each sub-phase should have:
 - **Effort Estimate:** Days/hours
 - **Dependencies:** Which phases must complete first
 
-### 3.3 Prioritization Matrix
+### 3.3 Documentation Phase (REQUIRED)
+
+**Every improvement plan MUST include a dedicated Documentation Update phase.**
+
+This phase should update:
+
+| Document | Purpose |
+|----------|----------|
+| `docs/ExoFrame_User_Guide.md` | User-facing feature documentation |
+| `docs/Building_with_AI_Agents.md` | Patterns and best practices |
+| `docs/ExoFrame_Implementation_Plan.md` | Phase completion status |
+| Subsystem README | Template catalog, configuration reference |
+
+**Documentation Phase Template:**
+```markdown
+### Phase N.X: Documentation Update (1 day)
+
+**Goal:** Update user-facing documentation to reflect new capabilities.
+
+**Files to Update:**
+| File | Updates Required |
+|------|------------------|
+| docs/ExoFrame_User_Guide.md | [Section]: [features] |
+| docs/Building_with_AI_Agents.md | [patterns, examples] |
+| [Subsystem]/README.md | [templates, config] |
+
+**Tasks:**
+1. Document new features with examples
+2. Update CLI reference
+3. Add troubleshooting section
+4. Update configuration reference
+
+**Success Criteria:**
+- [ ] User guide complete
+- [ ] Each feature has example
+- [ ] CLI documented
+```
+
+### 3.4 Prioritization Matrix
 
 | Priority | Criteria |
 |----------|----------|
@@ -173,6 +211,7 @@ Each sub-phase should have:
 | High | Major quality/reliability improvements |
 | Medium | Important features, moderate impact |
 | Low | Nice-to-have, polish, minor improvements |
+| **Final** | Documentation Update (always last phase) |
 
 ## Phase 4: Artifacts (Create Concrete Deliverables)
 
@@ -233,6 +272,7 @@ Before completing the pattern:
 - [ ] Planning document committed to `agents/planning/`
 - [ ] Weaknesses have code evidence (not speculation)
 - [ ] Improvement phases have clear success criteria
+- [ ] **Documentation Update phase included** (updates `docs/` folder)
 - [ ] Templates follow existing conventions
 - [ ] README files updated
 - [ ] All pre-commit checks pass

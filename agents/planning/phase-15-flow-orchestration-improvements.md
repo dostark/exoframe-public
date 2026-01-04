@@ -631,10 +631,39 @@ All enhancements are **additive** - existing flows continue to work unchanged:
 
 ---
 
+### Phase 15.7: Documentation Update (1 day)
+
+**Goal:** Update user-facing documentation to reflect new Flow capabilities.
+
+**Files to Update:**
+
+| File | Updates Required |
+|------|------------------|
+| `docs/ExoFrame_User_Guide.md` | Flow section: conditions, gates, loops, judge patterns |
+| `docs/Building_with_AI_Agents.md` | New orchestration patterns, examples |
+| `docs/ExoFrame_Implementation_Plan.md` | Phase 15 completion status |
+| `Blueprints/Flows/README.md` | New templates, step types |
+
+**Tasks:**
+1. Document condition evaluation syntax and examples
+2. Add quality gate configuration guide
+3. Document feedback loop patterns
+4. Add LLM-as-a-Judge setup guide
+5. Update CLI reference for new flow commands
+6. Add troubleshooting section for new features
+
+**Success Criteria:**
+- [ ] User guide has complete Flow feature documentation
+- [ ] Each new pattern has worked example
+- [ ] API reference updated for new schema fields
+- [ ] Migration guide for existing flows (if needed)
+
+---
+
 ## Next Steps
 
 1. Review and approve this plan
 2. Create implementation tickets for each phase
 3. Start with Phase 15.1 (lowest risk, enables others)
 4. Follow TDD approach for each component
-5. Update documentation as features are added
+5. Complete Phase 15.7 documentation update before closing phase
