@@ -2,11 +2,13 @@
  * Agent Runtime - Combines Blueprints and Requests, executes via LLM providers
  * Implements Step 3.2 of the ExoFrame Implementation Plan
  * Enhanced with retry/recovery (Phase 16.3)
+ * Enhanced with structured output validation (Phase 16.2)
  */
 
 import type { IModelProvider } from "../ai/providers.ts";
 import type { DatabaseService } from "./db.ts";
 import { createLLMRetryPolicy, type RetryPolicy, type RetryPolicyConfig, type RetryResult } from "./retry_policy.ts";
+import { createOutputValidator, OutputValidator, type ValidationMetrics } from "./output_validator.ts";
 
 // ============================================================================
 // Types and Interfaces
@@ -81,11 +83,17 @@ export interface AgentRunnerConfig {
  * - Exponential backoff on transient failures
  * - Temperature adjustment on retries
  * - Detailed retry logging
+ *
+ * Enhanced with output validation (Phase 16.2):
+ * - XML tag extraction (<thought>, <content>)
+ * - JSON repair for malformed outputs
+ * - Validation metrics tracking
  */
 export class AgentRunner {
   private db?: DatabaseService;
   private retryPolicy: RetryPolicy;
   private disableRetry: boolean;
+  private outputValidator: OutputValidator;
 
   constructor(
     private readonly modelProvider: IModelProvider,
@@ -94,6 +102,7 @@ export class AgentRunner {
     this.db = config?.db;
     this.disableRetry = config?.disableRetry ?? false;
     this.retryPolicy = createLLMRetryPolicy();
+    this.outputValidator = createOutputValidator({ autoRepair: true });
 
     // Set up retry logging
     this.retryPolicy.setOnRetry((ctx) => {
@@ -249,52 +258,34 @@ export class AgentRunner {
   /**
    * Parse the LLM response to extract <thought> and <content> tags
    * Falls back to treating the whole response as content if tags are missing
+   * Enhanced with Phase 16.2 OutputValidator for consistent parsing.
    * @param rawResponse - Raw response from the LLM
    * @returns Parsed result with thought, content, and raw response
    */
   private parseResponse(rawResponse: string): AgentExecutionResult {
-    // Handle null/undefined responses
-    if (rawResponse == null) {
-      return {
-        thought: "",
-        content: "",
-        raw: "",
-      };
-    }
-
-    // Ensure rawResponse is a string
-    const responseStr = String(rawResponse);
-
-    // Regex to extract <thought>...</thought>
-    const thoughtRegex = /<thought>([\s\S]*?)<\/thought>/i;
-    const thoughtMatch = responseStr.match(thoughtRegex);
-
-    // Regex to extract <content>...</content>
-    const contentRegex = /<content>([\s\S]*?)<\/content>/i;
-    const contentMatch = responseStr.match(contentRegex);
-
-    let thought = "";
-    let content = "";
-
-    if (thoughtMatch) {
-      thought = thoughtMatch[1].trim();
-    }
-
-    if (contentMatch) {
-      content = contentMatch[1].trim();
-    }
-
-    // Fallback: if no tags found, treat whole response as content
-    if (!thoughtMatch && !contentMatch) {
-      content = responseStr;
-      thought = "";
-    }
+    // Use OutputValidator for consistent XML parsing (Phase 16.2)
+    const parsed = this.outputValidator.parseXMLTags(rawResponse);
 
     return {
-      thought,
-      content,
-      raw: responseStr,
+      thought: parsed.thought,
+      content: parsed.content,
+      raw: parsed.raw,
     };
+  }
+
+  /**
+   * Get validation metrics from the output validator (Phase 16.2)
+   * @returns Current validation metrics
+   */
+  getValidationMetrics(): ValidationMetrics {
+    return this.outputValidator.getMetrics();
+  }
+
+  /**
+   * Reset validation metrics (Phase 16.2)
+   */
+  resetValidationMetrics(): void {
+    this.outputValidator.resetMetrics();
   }
 
   /**
