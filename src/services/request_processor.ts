@@ -20,7 +20,8 @@ import type { IModelProvider } from "../ai/providers.ts";
 import type { DatabaseService } from "./db.ts";
 import type { Config } from "../config/schema.ts";
 import { AgentRunner, type Blueprint, type ParsedRequest } from "./agent_runner.ts";
-import { buildParsedRequest, loadBlueprint as loadBlueprintFromCommon } from "./request_common.ts";
+import { buildParsedRequest } from "./request_common.ts";
+import { BlueprintLoader } from "./blueprint_loader.ts";
 import { PlanWriter, type RequestMetadata } from "./plan_writer.ts";
 import { EventLogger } from "./event_logger.ts";
 import { FlowValidatorImpl } from "./flow_validator.ts";
@@ -225,8 +226,9 @@ export class RequestProcessor {
         });
       } else {
         // Handle agent request (existing logic)
-        const blueprint = await loadBlueprintFromCommon(this.processorConfig.blueprintsPath, frontmatter.agent!);
-        if (!blueprint) {
+        const blueprintLoader = new BlueprintLoader({ blueprintsPath: this.processorConfig.blueprintsPath });
+        const loadedBlueprint = await blueprintLoader.load(frontmatter.agent!);
+        if (!loadedBlueprint) {
           traceLogger.error("blueprint.not_found", frontmatter.agent!, {
             request: filePath,
           });
@@ -236,6 +238,7 @@ export class RequestProcessor {
           });
           return null;
         }
+        const blueprint = blueprintLoader.toLegacyBlueprint(loadedBlueprint);
 
         // Step 3: Build the parsed request for AgentRunner
         const request: ParsedRequest = buildParsedRequest(body, frontmatter, requestId, traceId) as ParsedRequest;
@@ -354,20 +357,16 @@ export class RequestProcessor {
 
   /**
    * Load an agent blueprint from the blueprints directory
+   * Uses unified BlueprintLoader for consistent parsing
    */
   private async loadBlueprint(agentId: string): Promise<Blueprint | null> {
-    const blueprintPath = join(this.processorConfig.blueprintsPath, `${agentId}.md`);
-
-    if (!await exists(blueprintPath)) {
-      return null;
-    }
-
     try {
-      const content = await Deno.readTextFile(blueprintPath);
-      return {
-        systemPrompt: content,
-        agentId,
-      };
+      const loader = new BlueprintLoader({ blueprintsPath: this.processorConfig.blueprintsPath });
+      const loaded = await loader.load(agentId);
+      if (!loaded) {
+        return null;
+      }
+      return loader.toLegacyBlueprint(loaded);
     } catch (error) {
       this.logger.error("blueprint.load_failed", agentId, {
         error: error instanceof Error ? error.message : String(error),

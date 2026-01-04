@@ -1,6 +1,7 @@
 import { FlowRunner } from "../flows/flow_runner.ts";
 import { AgentRunner, type Blueprint, type ParsedRequest } from "./agent_runner.ts";
 import { EventLogger } from "./event_logger.ts";
+import { BlueprintLoader } from "./blueprint_loader.ts";
 
 /**
  * RequestRouter - Routes requests to appropriate execution engine
@@ -208,10 +209,14 @@ export class RequestRouter {
 
   /**
    * Load an agent blueprint from the blueprints directory
+   * Uses unified BlueprintLoader for consistent parsing
    */
   protected async loadBlueprint(agentId: string): Promise<Blueprint | null> {
-    // Delegate to shared helper to keep loading logic consistent between modules
-    const { loadBlueprint } = await import("./request_common.ts");
-    return await loadBlueprint(this.blueprintsPath, agentId);
+    const loader = new BlueprintLoader({ blueprintsPath: this.blueprintsPath });
+    const loaded = await loader.load(agentId);
+    if (!loaded) {
+      return null;
+    }
+    return loader.toLegacyBlueprint(loaded);
   }
 }
