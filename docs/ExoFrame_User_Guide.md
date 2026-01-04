@@ -415,23 +415,68 @@ For help and available options:
 exoctl dashboard --help
 ```
 
+#### Dashboard Views
+
+The dashboard includes 7 integrated views, each accessible via the view picker (`p`) or `Tab` navigation:
+
+| Icon | View                | Description                              |
+| ---- | ------------------- | ---------------------------------------- |
+| 🌀   | **Portal Manager**  | Manage project portals and aliases       |
+| 📋   | **Plan Reviewer**   | Review and approve agent-generated plans |
+| 📊   | **Monitor**         | Real-time activity log streaming         |
+| ⚙️   | **Daemon Control**  | Start, stop, and manage the daemon       |
+| 🤖   | **Agent Status**    | Monitor agent health and activity        |
+| 📥   | **Request Manager** | Track and manage requests                |
+| 💾   | **Memory View**     | Browse and manage Memory Banks           |
+
 #### Key Features
 
-- **Real-time log streaming and filtering**
-- **Plan Reviewer:** Approve/reject plans with diff view
-- **Portal Manager:** Add, remove, refresh, and view portal status
-- **Daemon Control:** Start, stop, restart, and view daemon status
-- **Agent Health:** Monitor agent activity and health
-- **Keyboard navigation, theming, and notifications**
+- **Multi-Pane Split View:** Run multiple views side-by-side
+- **Real-time Log Streaming:** Filter and search Activity Journal logs
+- **Plan Approval Workflow:** Review diffs and approve/reject plans
+- **Portal Management:** Add, remove, refresh, and configure portals
+- **Daemon Control:** Full lifecycle management from the TUI
+- **Notification System:** Alerts for important events
+- **Layout Persistence:** Save and restore your preferred layouts
+- **Keyboard-First Navigation:** Vim-style keys supported
+- **Accessibility:** High contrast mode and screen reader support
+
+#### Global Navigation
+
+| Key                 | Action                     |
+| ------------------- | -------------------------- |
+| `Tab` / `Shift+Tab` | Switch between panes/views |
+| `1`-`7`             | Jump directly to pane      |
+| `?` / `F1`          | Show help overlay          |
+| `p`                 | Open view picker           |
+| `n`                 | Toggle notification panel  |
+| `R`                 | Refresh current view       |
+| `q` / `Esc`         | Quit dashboard             |
+
+#### Split View (Multi-Pane Mode)
+
+The dashboard supports multiple panes for side-by-side view comparison:
+
+| Key | Action                               |
+| --- | ------------------------------------ |
+| `v` | Split pane vertically (left/right)   |
+| `h` | Split pane horizontally (top/bottom) |
+| `c` | Close current pane                   |
+| `z` | Maximize/restore pane (zoom)         |
+| `s` | Save current layout                  |
+| `r` | Restore saved layout                 |
+| `d` | Reset to default layout              |
+
+**Layout Persistence:** Press `s` to save your layout, `r` to restore it later. Layouts are saved to `~/.exoframe/tui_layout.json`.
 
 #### Using the Dashboard
 
-- **Navigation:** Use `Tab` or arrow keys to switch between Monitor, Plans, Portals, Daemon, and Agents views. On-screen help (`?`) is always available.
-- **Split View:** Press `s` or use the menu to split the dashboard into multiple panes. Each pane can show a different view (e.g., Monitor + Plans). Resize with `Ctrl+Arrow` keys.
-- **Plan Approval:** In the Plan Reviewer, select a plan to see the diff and approve or reject it directly from the TUI.
-- **Log Monitoring:** The Monitor view streams Activity Journal logs in real time, with filtering options.
-- **Portal Management:** Add, remove, or refresh portals from the Portal Manager view.
-- **Daemon Control:** Start, stop, or restart the daemon from within the dashboard.
+- **Navigation:** Use `Tab` or arrow keys to switch between panes. Use `↑↓` or `jk` within lists.
+- **Split View:** Press `v` for vertical split or `h` for horizontal. Each pane can display a different view.
+- **Plan Approval:** In the Plan Reviewer, press `a` to approve or `r` to reject. Use `Enter` to view details.
+- **Log Monitoring:** The Monitor streams logs in real time. Press `Space` to pause, `f` to filter.
+- **Portal Management:** Add (`a`), delete (`d`), or refresh (`r`) portals from the Portal Manager.
+- **Daemon Control:** Press `s` to start, `k` to stop, `r` to restart the daemon.
 
 #### Example Workflow
 
@@ -439,19 +484,34 @@ exoctl dashboard --help
 # 1. Launch the dashboard
 exoctl dashboard
 
-# 2. Navigate between views (Tab/Arrow keys)
-# 3. Approve a plan in the Plan Reviewer
-# 4. Watch logs in the Monitor
-# 5. Manage portals in the Portal Manager
-# 6. Control the daemon in Daemon Control
+# 2. Split the view to see Plans and Monitor side-by-side
+#    Press 'v' to split, then 'p' to pick a view
+
+# 3. Navigate to Plan Reviewer (Tab or number key)
+# 4. Review and approve a plan (Enter to view, 'a' to approve)
+# 5. Watch execution logs in Monitor pane
+# 6. Check agent status in Agent Status view
+# 7. Save your layout for next time (press 's')
 ```
+
+#### Accessibility Features
+
+ExoFrame TUI includes accessibility support:
+
+- **High Contrast Mode:** Enhanced colors for visibility. Set `tui.high_contrast = true` in config.
+- **Screen Reader Support:** Status announcements. Set `tui.screen_reader = true`.
+- **Keyboard-Only:** All features accessible without mouse.
 
 #### Troubleshooting
 
-- If the dashboard fails to launch, ensure your terminal supports ANSI escape codes and your workspace is initialized.
-- For accessibility or theming issues, open the settings panel (`?` in the TUI).
+- **Dashboard fails to launch:** Ensure your terminal supports ANSI escape codes and raw mode.
+- **Keys not responding:** Check that your terminal is in focus and not in paste mode.
+- **Layout not saving:** Verify write permissions to `~/.exoframe/` directory.
+- **Colors look wrong:** Try toggling high contrast mode or check `$TERM` environment variable.
 
-For technical details and roadmap, see the [Implementation Plan](./ExoFrame_Implementation_Plan.md#step-95-tui-cockpit-implementation-plan).
+For complete keyboard shortcuts, see [TUI Keyboard Reference](./TUI_Keyboard_Reference.md).
+
+For technical details, see the [Implementation Plan](./ExoFrame_Implementation_Plan.md#step-95-tui-cockpit-implementation-plan).
 
 ````
 ### 4.2 Command Groups

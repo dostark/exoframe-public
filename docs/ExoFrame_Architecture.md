@@ -609,30 +609,161 @@ graph LR
 
 ## TUI Dashboard Architecture
 
-The dashboard is an interactive terminal UI launched from the CLI.
+The dashboard is an interactive terminal UI launched from the CLI, providing a unified cockpit for ExoFrame operations.
 
-- Entry point: `exoctl dashboard` → `src/cli/dashboard_commands.ts` → `src/tui/tui_dashboard.ts`.
-- The dashboard is composed from multiple views and supports pane splitting/focus.
-- Test stability: the wiring can run with mock services (see `src/tui/tui_dashboard_mocks.ts`).
+### Overview
+
+- **Entry point:** `exoctl dashboard` → `src/cli/dashboard_commands.ts` → `src/tui/tui_dashboard.ts`
+- **Multi-pane support:** Split views with independent focus management
+- **7 integrated views:** Portal Manager, Plan Reviewer, Monitor, Daemon Control, Agent Status, Request Manager, Memory View
+- **Test stability:** Mock services enable comprehensive testing (see `src/tui/tui_dashboard_mocks.ts`)
+
+### Component Architecture
 
 ```mermaid
 graph TB
-    subgraph CLI[CLI]
+    subgraph CLI[CLI Layer]
         Exoctl[exoctl.ts]
         DashCmd[DashboardCommands.show]
     end
 
-    subgraph TUI[TUI]
-        Launch[launchTuiDashboard()]
-        Panes[Panes + Focus Management]
-        Views[PortalManagerView / PlanReviewerView / RequestManagerView / MonitorView / DaemonControlView / AgentStatusView]
-        Raw[tryEnableRawMode / tryDisableRawMode]
+    subgraph Dashboard[TUI Dashboard]
+        Launch[launchTuiDashboard]
+        State[DashboardViewState]
+        Theme[TuiTheme]
+    end
+
+    subgraph Panes[Pane Management]
+        PaneList[Panes Array]
+        Focus[Active Pane Focus]
+        Layout[Layout Persistence]
+    end
+
+    subgraph Views[Dashboard Views]
+        Portal[🌀 PortalManagerView]
+        Plan[📋 PlanReviewerView]
+        Monitor[📊 MonitorView]
+        Daemon[⚙️ DaemonControlView]
+        Agent[🤖 AgentStatusView]
+        Request[📥 RequestManagerView]
+        Memory[💾 MemoryView]
+    end
+
+    subgraph Infrastructure[Shared Infrastructure]
+        Colors[tui_colors.ts<br/>Theme & colorize]
+        Help[tui_help.ts<br/>Help overlays]
+        Session[tui_session_base.ts<br/>Base class]
+        Raw[Raw mode handling]
+    end
+
+    subgraph Notifications[Notification System]
+        NotifPanel[Notification Panel]
+        NotifTypes[info/success/warning/error]
+        AutoExpire[Auto-expire timers]
     end
 
     Exoctl --> DashCmd --> Launch
-    Launch --> Raw
-    Launch --> Panes --> Views
+    Launch --> State
+    Launch --> Theme
+    Launch --> PaneList
+    PaneList --> Focus
+    PaneList --> Layout
+    Focus --> Views
+    Views --> Infrastructure
+    Launch --> Notifications
 ```
+
+### Dashboard State
+
+The `DashboardViewState` manages global UI state:
+
+```typescript
+interface DashboardViewState {
+  showHelp: boolean; // Help overlay visible
+  showNotifications: boolean; // Notification panel visible
+  showViewPicker: boolean; // View picker dialog visible
+  isLoading: boolean; // Loading indicator
+  loadingMessage: string; // Loading message text
+  error: string | null; // Error message
+  notifications: Notification[]; // Active notifications
+  currentTheme: string; // "dark" | "light"
+  highContrast: boolean; // Accessibility mode
+  screenReader: boolean; // Screen reader support
+}
+```
+
+### Pane Structure
+
+Each pane manages a view instance with layout information:
+
+```typescript
+interface Pane {
+  id: string;           // Unique pane identifier
+  view: View;           // View instance (PortalManagerView, etc.)
+  x: number;            // X position in grid
+  y: number;            // Y position in grid
+  width: number;        // Pane width (columns)
+  height: number;       // Pane height (rows)
+  focused: boolean;     // Currently focused
+  maximized?: boolean;  // Zoom state
+  previousBounds?: {...}; // For restore after maximize
+}
+```
+
+### Key Bindings
+
+Dashboard uses a declarative key binding system:
+
+| Category        | Keys                      | Actions                           |
+| --------------- | ------------------------- | --------------------------------- |
+| **Navigation**  | `Tab`, `Shift+Tab`, `1-7` | Pane switching                    |
+| **Layout**      | `v`, `h`, `c`, `z`        | Split, close, maximize            |
+| **Persistence** | `s`, `r`, `d`             | Save, restore, default            |
+| **Dialogs**     | `?`, `n`, `p`, `Esc/q`    | Help, notifications, picker, quit |
+
+### Layout Persistence
+
+Layouts are saved to `~/.exoframe/tui_layout.json`:
+
+```json
+{
+  "panes": [
+    { "id": "main", "viewName": "PortalManagerView", "x": 0, "y": 0, "width": 40, "height": 24 },
+    { "id": "pane-1", "viewName": "MonitorView", "x": 40, "y": 0, "width": 40, "height": 24 }
+  ],
+  "activePaneId": "main",
+  "version": "1.1"
+}
+```
+
+### View Integration
+
+Each view extends `TuiSessionBase` and implements:
+
+- `render()`: View-specific rendering
+- `handleKey(key: string)`: Keyboard input handling
+- `getFocusableElements()`: List of focusable UI elements
+- Service injection for data access
+
+### Raw Mode Handling
+
+Terminal raw mode enables immediate key response:
+
+```typescript
+tryEnableRawMode(); // Enable for interactive mode
+tryDisableRawMode(); // Restore on exit
+```
+
+Falls back to line-based input when raw mode unavailable.
+
+### Testing Strategy
+
+- **Unit tests:** Mock services for isolated view testing
+- **Integration tests:** Full dashboard lifecycle with test mode
+- **Sanitizer safety:** Test mode skips timers to prevent leaks
+- **Coverage:** 591+ TUI tests across all components
+
+For keyboard shortcuts, see [TUI Keyboard Reference](./TUI_Keyboard_Reference.md).
 
 ---
 

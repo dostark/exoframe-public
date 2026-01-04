@@ -25,14 +25,14 @@ ExoFrame is built from the ground up to be the "Mission Control" for AI agents, 
 
 While IDE-integrated agents (Cursor, Copilot, Windsurf) excel at real-time pair programming, ExoFrame is an **auditable agent orchestration platform** for asynchronous, high-trust, and multi-project workflows.
 
-| Scenario | Tool |
-| :--- | :--- |
-| Quick code fix while coding | Use IDE agent (Copilot/Cursor) |
-| Interactive feature development | Use IDE agent |
-| **Overnight batch processing** | **ExoFrame** |
-| **Audit/compliance requirements** | **ExoFrame** |
-| **Multi-project refactoring** | **ExoFrame** |
-| **Air-gapped environments** | **ExoFrame** |
+| Scenario                          | Tool                           |
+| :-------------------------------- | :----------------------------- |
+| Quick code fix while coding       | Use IDE agent (Copilot/Cursor) |
+| Interactive feature development   | Use IDE agent                  |
+| **Overnight batch processing**    | **ExoFrame**                   |
+| **Audit/compliance requirements** | **ExoFrame**                   |
+| **Multi-project refactoring**     | **ExoFrame**                   |
+| **Air-gapped environments**       | **ExoFrame**                   |
 
 ExoFrame is not competing with IDE agents for real-time assistance. It provides a robust, sandboxed environment for agents to work autonomously on complex tasks while you maintain full control through explicit approval gates.
 
@@ -45,12 +45,43 @@ ExoFrame is not competing with IDE agents for real-time assistance. It provides 
 - **Portals**: Securely link multiple external repositories into a single agent context.
 - **Deno-Powered Security**: Leverages Deno's granular permission system to sandbox agent operations (no unauthorized network or filesystem access).
 - **Files-as-API**: Interact with the system by dropping Markdown files into folders or using the `exoctl` CLI.
+- **TUI Dashboard**: A powerful terminal UI cockpit for real-time monitoring, plan approval, and system control.
 - **Memory Banks**: The `Memory/` directory provides structured knowledge management:
   - **Global Learnings**: Cross-project insights and patterns
   - **Project Memory**: Portal-specific knowledge, decisions, and patterns
   - **Execution History**: Complete audit trail with lessons learned
   - **Pending Workflow**: Auto-extracted learnings require human approval
   - **Search**: Tag-based, keyword, and semantic search capabilities
+
+---
+
+## 🖥️ TUI Dashboard
+
+ExoFrame includes a powerful Terminal User Interface (TUI) dashboard for day-to-day operations:
+
+```bash
+exoctl dashboard
+```
+
+**Dashboard Views:**
+
+- 🌀 **Portal Manager** - Manage project portals and aliases
+- 📋 **Plan Reviewer** - Review and approve agent-generated plans with diff view
+- 📊 **Monitor** - Real-time activity log streaming with filtering
+- ⚙️ **Daemon Control** - Start, stop, and manage the daemon
+- 🤖 **Agent Status** - Monitor agent health and activity
+- 📥 **Request Manager** - Track and manage requests
+- 💾 **Memory View** - Browse and manage Memory Banks
+
+**Key Features:**
+
+- Multi-pane split view (side-by-side monitoring)
+- Keyboard-first navigation (Vim-style keys supported)
+- Layout persistence (save/restore your preferred layout)
+- Notification system for important events
+- High contrast and screen reader accessibility support
+
+See [TUI Keyboard Reference](./docs/TUI_Keyboard_Reference.md) for complete shortcuts.
 
 ---
 
@@ -107,6 +138,7 @@ ExoFrame is built on a "Files-as-API" philosophy:
 ## 🔒 Security
 
 ExoFrame takes security seriously. Unlike other agent frameworks that run with full user privileges, ExoFrame:
+
 - Uses **Deno's sandbox** to restrict agents to specific directories and domains.
 - Requires **explicit approval** for all code changes.
 - Maintains a **tamper-evident log** in the Activity Journal.
