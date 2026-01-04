@@ -52,6 +52,7 @@
 | Phase 11 | 1 week  | Phases 1-10 complete                  | Comprehensive test coverage achieved                 |
 | Phase 12 | 1 week  | Phase 11 complete                     | Obsidian retired, Memory Banks implemented           |
 | Phase 13 | 1-2 wks | Phases 1-12 complete                  | MCP server operational                               |
+| Phase 16 | 2 weeks | Core agent system stable              | Agent orchestration improvements complete ✅         |
 
 Each step lists **Dependencies**, **Rollback/Contingency**, and updated success metrics.
 
@@ -7960,6 +7961,114 @@ Deno.test("MCP Server - list plans tool", async () => {
 [ ] Documentation for IDE integration
 [ ] Example configurations repository
 [ ] User Guide updated with MCP section
+
+---
+
+## Phase 16: Agent Orchestration Improvements ✅ COMPLETED
+
+**Goal:** Enhance agent execution with self-critique, confidence scoring, session memory, and improved reliability.
+
+**Duration:** 2 weeks (completed January 2025)
+
+### Phase 16.1: Unified Blueprint Loading ✅
+
+Standardized blueprint parsing and template resolution:
+
+- `BlueprintLoader` class for unified loading
+- TOML frontmatter parsing with validation
+- Template inheritance and merging
+- Error handling with detailed messages
+
+### Phase 16.2: Structured Output Validation ✅
+
+Agent output validation with JSON repair:
+
+- `OutputValidator` service for schema validation
+- Automatic repair of common JSON issues
+- Detailed error reporting with field paths
+- Truncation detection and warning
+
+### Phase 16.3: Retry & Recovery ✅
+
+Intelligent retry with exponential backoff:
+
+- `RetryPolicy` service with configurable strategy
+- Exponential backoff with jitter
+- Retryable error classification
+- Circuit breaker pattern for repeated failures
+
+### Phase 16.4: Reflexion Pattern ✅
+
+Self-critique and iterative improvement:
+
+- `ReflexiveAgent` wrapper for quality-critical tasks
+- Structured critique schema (accuracy, completeness, quality, safety)
+- Confidence scoring (0-100) with reasoning
+- Configurable iteration limits and thresholds
+
+### Phase 16.5: Tool Result Reflection ✅
+
+Tool execution evaluation and retry:
+
+- `ToolReflector` service for result analysis
+- Automatic retry with alternative parameters
+- Parallel execution with dependency ordering
+- Success/failure classification
+
+### Phase 16.6: Session Memory Integration ✅
+
+Automatic memory context injection:
+
+- `SessionMemoryService` for context enhancement
+- Semantic search via embeddings
+- Keyword search fallback
+- Post-execution insight capture
+
+### Phase 16.7: Confidence Scoring ✅
+
+Confidence extraction and human review flags:
+
+- `ConfidenceScorer` service for assessment
+- LLM-based and heuristic scoring
+- Multi-agent aggregation
+- Low-confidence alerts
+
+### Phase 16.8: New Agent Templates ✅
+
+Rich template library for common patterns:
+
+- `specialist-agent.md.template` - Domain-focused expertise
+- `conversational-agent.md.template` - Multi-turn dialogue
+- Updated `templates/README.md` with comparison table
+
+### Phase 16.9: Documentation Update ✅
+
+User-facing documentation updates:
+
+- User Guide section 6: Advanced Agent Features
+- Template documentation with usage examples
+- Troubleshooting guide for new features
+- Configuration reference updates
+
+### Phase 16 Success Metrics
+
+- **Output Quality:** Reflexive agents produce higher quality outputs
+- **Reliability:** Retry mechanism handles transient failures
+- **Context Awareness:** Session memory provides relevant context
+- **User Visibility:** Confidence scores aid human review
+- **Developer Experience:** Templates accelerate agent creation
+
+### Implementation Files
+
+| Service          | Location                            | Tests                                      |
+| ---------------- | ----------------------------------- | ------------------------------------------ |
+| BlueprintLoader  | `src/services/blueprint_loader.ts`  | `tests/services/blueprint_loader_test.ts`  |
+| OutputValidator  | `src/services/output_validator.ts`  | `tests/services/output_validator_test.ts`  |
+| RetryPolicy      | `src/services/retry_policy.ts`      | `tests/services/retry_policy_test.ts`      |
+| ReflexiveAgent   | `src/services/reflexive_agent.ts`   | `tests/services/reflexive_agent_test.ts`   |
+| ToolReflector    | `src/services/tool_reflector.ts`    | `tests/services/tool_reflector_test.ts`    |
+| SessionMemory    | `src/services/session_memory.ts`    | `tests/services/session_memory_test.ts`    |
+| ConfidenceScorer | `src/services/confidence_scorer.ts` | `tests/services/confidence_scorer_test.ts` |
 
 ---
 

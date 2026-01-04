@@ -1698,4 +1698,269 @@ exoctl daemon start
 
 ---
 
+## 6. Advanced Agent Features
+
+ExoFrame includes sophisticated agent orchestration capabilities that enhance output quality, reliability, and context awareness. This section covers the advanced features available for agent configuration.
+
+### 6.1 Reflexion Pattern (Self-Critique)
+
+The Reflexion pattern enables agents to critique and improve their own outputs iteratively.
+
+#### How It Works
+
+1. Agent generates initial response
+2. Agent self-critiques using structured criteria (accuracy, completeness, quality, safety)
+3. If issues found, agent refines output
+4. Process repeats until quality threshold met or max iterations reached
+
+#### Configuration
+
+Enable reflexion in agent blueprint frontmatter:
+
+```toml
++++
+agent_id = "quality-reviewer"
+name = "Quality Reviewer"
+model = "anthropic:claude-opus-4.5"
+capabilities = ["read_file", "search_files"]
+reflexive = true
+max_reflexion_iterations = 3
+confidence_required = 80
++++
+```
+
+| Field                      | Default | Description                          |
+| -------------------------- | ------- | ------------------------------------ |
+| `reflexive`                | `false` | Enable self-critique loop            |
+| `max_reflexion_iterations` | `3`     | Maximum refinement passes            |
+| `confidence_required`      | `80`    | Minimum confidence (0-100) to accept |
+
+#### When to Use
+
+- **Code review agents**: Catch issues the first pass might miss
+- **Technical writing**: Ensure accuracy and completeness
+- **Security audits**: Multi-pass vulnerability analysis
+- **Quality-critical tasks**: Any output requiring high confidence
+
+#### Trade-offs
+
+- **Higher quality**: More thorough analysis
+- **Increased latency**: 2-4x longer response time
+- **Higher cost**: Multiple LLM calls per request
+
+### 6.2 Confidence Scoring
+
+Every agent output includes a confidence score indicating how certain the agent is about its response.
+
+#### Understanding Confidence Scores
+
+| Score  | Level     | Interpretation                                         |
+| ------ | --------- | ------------------------------------------------------ |
+| 90-100 | Very High | Confident response, proceed with caution-free approval |
+| 70-89  | High      | Good confidence, standard review recommended           |
+| 50-69  | Medium    | Moderate uncertainty, careful review needed            |
+| 30-49  | Low       | Significant uncertainty, human verification required   |
+| 0-29   | Very Low  | Agent uncertain, consider alternate approach           |
+
+#### Human Review Triggers
+
+Outputs with confidence below threshold are flagged for human review:
+
+```toml
+[agents]
+confidence_threshold = 70  # Flag outputs below this score
+```
+
+When flagged, you'll see warnings in the plan output:
+
+```
+⚠️ Low confidence (55%): Agent uncertain about database migration strategy.
+   Reasoning: Multiple valid approaches exist; recommend architectural review.
+```
+
+### 6.3 Session Memory
+
+Session Memory automatically provides relevant context from past interactions to agents.
+
+#### How It Works
+
+1. **Request received**: User submits a request
+2. **Memory lookup**: System searches for relevant past interactions
+3. **Context injection**: Top-K memories added to agent prompt
+4. **Execution**: Agent has historical context
+5. **Learning capture**: New insights saved post-execution
+
+#### Configuration
+
+```toml
+[agents.memory]
+enabled = true           # Enable session memory
+topK = 5                # Number of memories to inject
+threshold = 0.3         # Minimum relevance score (0-1)
+maxContextLength = 4000  # Maximum characters for memory context
+includeExecutions = true # Include past execution history
+includeLearnings = true  # Include approved learnings
+includePatterns = true   # Include project patterns
+```
+
+#### Memory Types
+
+| Type           | Description                            |
+| -------------- | -------------------------------------- |
+| **Learnings**  | Approved insights from past executions |
+| **Patterns**   | Code patterns identified in projects   |
+| **Decisions**  | Architectural decisions and rationale  |
+| **Executions** | Past agent execution summaries         |
+
+#### Viewing Memory Context
+
+To see what memories were injected for a request:
+
+```bash
+exoctl request show <request-id> --show-context
+```
+
+### 6.4 Retry & Recovery
+
+Agents automatically retry failed operations with intelligent backoff.
+
+#### Retry Behavior
+
+| Attempt | Wait Time  | With Jitter |
+| ------- | ---------- | ----------- |
+| 1       | 1 second   | 0.5-1.5s    |
+| 2       | 2 seconds  | 1.0-3.0s    |
+| 3       | 4 seconds  | 2.0-6.0s    |
+| 4       | 8 seconds  | 4.0-12.0s   |
+| 5       | 16 seconds | 8.0-24.0s   |
+
+#### Configuration
+
+```toml
+[agents.retry]
+maxAttempts = 5
+initialDelay = 1000      # ms
+maxDelay = 60000         # ms
+backoffMultiplier = 2.0
+jitterFactor = 0.5
+retryableErrors = [
+  "rate_limit_exceeded",
+  "service_unavailable",
+  "timeout",
+  "connection_reset"
+]
+```
+
+#### Non-Retryable Errors
+
+Some errors are not retried:
+
+- Authentication failures
+- Invalid input/schema errors
+- Permission denied
+- Resource not found
+
+### 6.5 Structured Output Validation
+
+Agent outputs are validated against JSON schemas with automatic repair.
+
+#### Validation Process
+
+1. **Extract JSON**: Parse JSON from agent response
+2. **Schema validation**: Check against PlanSchema
+3. **Auto-repair**: Attempt to fix common issues
+4. **Detailed errors**: Report specific validation failures
+
+#### Auto-Repair Capabilities
+
+| Issue              | Auto-Fix                |
+| ------------------ | ----------------------- |
+| Trailing commas    | Removed                 |
+| Missing quotes     | Added around keys       |
+| Unescaped newlines | Escaped                 |
+| Comments in JSON   | Stripped                |
+| Truncated output   | Detected (not repaired) |
+
+#### Validation Errors
+
+When validation fails, you'll see detailed errors:
+
+```
+❌ Plan validation failed:
+  - steps[2].dependencies: Expected array, got string
+  - estimatedDuration: Missing required field
+  - steps[0].tools[1]: Unknown tool "invalid_tool"
+```
+
+### 6.6 Agent Templates
+
+ExoFrame provides templates for common agent patterns:
+
+| Template               | Pattern                  | Best For                     |
+| ---------------------- | ------------------------ | ---------------------------- |
+| `pipeline-agent`       | Sequential processing    | Transformations in workflows |
+| `collaborative-agent`  | Multi-agent coordination | Handoffs and consensus       |
+| `reflexive-agent`      | Self-critique            | Quality-critical tasks       |
+| `research-agent`       | Information gathering    | Exploration, documentation   |
+| `judge-agent`          | LLM-as-Judge             | Quality gates, approvals     |
+| `specialist-agent`     | Domain expertise         | Security, architecture       |
+| `conversational-agent` | Multi-turn dialogue      | Interactive sessions         |
+
+#### Using Templates
+
+```bash
+# Copy template
+cp Blueprints/Agents/templates/reflexive-agent.md.template \
+   Blueprints/Agents/my-agent.md
+
+# Edit placeholders
+# Validate
+exoctl blueprint validate my-agent
+
+# Use
+exoctl request "Task" --agent my-agent
+```
+
+See `Blueprints/Agents/templates/README.md` for detailed template documentation.
+
+### 6.7 Troubleshooting
+
+#### High Latency
+
+If agent responses are slow:
+
+1. **Check reflexion settings**: Reduce `max_reflexion_iterations`
+2. **Reduce memory context**: Lower `topK` or `maxContextLength`
+3. **Use faster model**: Switch to smaller/faster model variant
+4. **Disable optional features**: Turn off reflexion or memory for speed
+
+#### Low Confidence Outputs
+
+If agents consistently produce low-confidence outputs:
+
+1. **Check prompt clarity**: Ensure request is specific
+2. **Provide more context**: Add relevant files to portal
+3. **Use specialist agent**: Match agent expertise to task
+4. **Enable session memory**: Historical context helps
+
+#### Retry Exhaustion
+
+If agents fail after max retries:
+
+1. **Check service status**: Provider may be down
+2. **Verify credentials**: API keys may be expired
+3. **Check rate limits**: You may be hitting quotas
+4. **Increase delays**: Raise `initialDelay` or `maxDelay`
+
+#### Memory Not Found
+
+If relevant memories aren't being injected:
+
+1. **Check threshold**: Lower `threshold` value (e.g., 0.1)
+2. **Rebuild index**: `exoctl memory rebuild-index`
+3. **Add learnings**: Approve pending learnings
+4. **Check scope**: Ensure learnings are in correct project/global scope
+
+---
+
 _End of User Guide_
