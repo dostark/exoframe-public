@@ -1,10 +1,12 @@
 /**
  * Agent Runtime - Combines Blueprints and Requests, executes via LLM providers
  * Implements Step 3.2 of the ExoFrame Implementation Plan
+ * Enhanced with retry/recovery (Phase 16.3)
  */
 
 import type { IModelProvider } from "../ai/providers.ts";
 import type { DatabaseService } from "./db.ts";
+import { createLLMRetryPolicy, type RetryPolicy, type RetryPolicyConfig, type RetryResult } from "./retry_policy.ts";
 
 // ============================================================================
 // Types and Interfaces
@@ -59,6 +61,12 @@ export interface AgentExecutionResult {
 export interface AgentRunnerConfig {
   /** Optional: Database service for activity logging */
   db?: DatabaseService;
+
+  /** Optional: Retry policy configuration */
+  retryPolicy?: Partial<RetryPolicyConfig>;
+
+  /** Optional: Disable retries entirely */
+  disableRetry?: boolean;
 }
 
 // ============================================================================
@@ -68,15 +76,41 @@ export interface AgentRunnerConfig {
 /**
  * AgentRunner combines Blueprint (system prompt) with ParsedRequest (user prompt),
  * executes via an LLM provider, and parses the structured XML response.
+ *
+ * Enhanced with retry/recovery (Phase 16.3):
+ * - Exponential backoff on transient failures
+ * - Temperature adjustment on retries
+ * - Detailed retry logging
  */
 export class AgentRunner {
   private db?: DatabaseService;
+  private retryPolicy: RetryPolicy;
+  private disableRetry: boolean;
 
   constructor(
     private readonly modelProvider: IModelProvider,
     config?: AgentRunnerConfig,
   ) {
     this.db = config?.db;
+    this.disableRetry = config?.disableRetry ?? false;
+    this.retryPolicy = createLLMRetryPolicy();
+
+    // Set up retry logging
+    this.retryPolicy.setOnRetry((ctx) => {
+      this.logActivity(
+        "agent",
+        "agent.retry_attempt",
+        null,
+        {
+          attempt: ctx.attempt,
+          delay_ms: ctx.delayMs,
+          temperature: ctx.temperature,
+          elapsed_ms: ctx.elapsedMs,
+          error_type: ctx.error.constructor.name,
+          error_message: ctx.error.message,
+        },
+      );
+    });
   }
 
   /**
@@ -94,53 +128,58 @@ export class AgentRunner {
     const traceId = request.traceId;
     const requestId = request.requestId;
 
-    try {
-      // Log agent execution start
-      this.logActivity(
-        "agent",
-        "agent.execution_started",
-        requestId || null,
-        {
-          agent_id: agentId,
-          prompt_length: request.userPrompt.length,
-          has_context: Object.keys(request.context).length > 0,
-        },
-        traceId,
-        agentId,
+    // Log agent execution start
+    this.logActivity(
+      "agent",
+      "agent.execution_started",
+      requestId || null,
+      {
+        agent_id: agentId,
+        prompt_length: request.userPrompt.length,
+        has_context: Object.keys(request.context).length > 0,
+        retry_enabled: !this.disableRetry,
+      },
+      traceId,
+      agentId,
+    );
+
+    // Step 1: Construct the combined prompt
+    const combinedPrompt = this.constructPrompt(blueprint, request);
+
+    // Step 2: Execute via the model provider (with retry if enabled)
+    let retryResult: RetryResult<string>;
+
+    if (this.disableRetry) {
+      // Direct execution without retry
+      try {
+        const rawResponse = await this.modelProvider.generate(combinedPrompt);
+        retryResult = {
+          success: true,
+          value: rawResponse,
+          totalAttempts: 1,
+          totalTimeMs: Date.now() - startTime,
+          retryHistory: [],
+        };
+      } catch (error) {
+        retryResult = {
+          success: false,
+          error: error instanceof Error ? error : new Error(String(error)),
+          totalAttempts: 1,
+          totalTimeMs: Date.now() - startTime,
+          retryHistory: [],
+        };
+      }
+    } else {
+      // Execute with retry policy
+      retryResult = await this.retryPolicy.execute(
+        async () => await this.modelProvider.generate(combinedPrompt),
       );
+    }
 
-      // Step 1: Construct the combined prompt
-      const combinedPrompt = this.constructPrompt(blueprint, request);
+    const duration = Date.now() - startTime;
 
-      // Step 2: Execute via the model provider
-      const rawResponse = await this.modelProvider.generate(combinedPrompt);
-
-      // Step 3: Parse the response to extract thought and content
-      const result = this.parseResponse(rawResponse);
-
-      const duration = Date.now() - startTime;
-
-      // Log successful execution
-      this.logActivity(
-        "agent",
-        "agent.execution_completed",
-        requestId || null,
-        {
-          agent_id: agentId,
-          duration_ms: duration,
-          response_length: rawResponse?.length || 0,
-          has_thought: result.thought.length > 0,
-          has_content: result.content.length > 0,
-        },
-        traceId,
-        agentId,
-      );
-
-      return result;
-    } catch (error) {
-      const duration = Date.now() - startTime;
-
-      // Log execution failure
+    // Handle retry failure
+    if (!retryResult.success) {
       this.logActivity(
         "agent",
         "agent.execution_failed",
@@ -148,15 +187,41 @@ export class AgentRunner {
         {
           agent_id: agentId,
           duration_ms: duration,
-          error_type: error instanceof Error ? error.constructor.name : "Unknown",
-          error_message: error instanceof Error ? error.message : String(error),
+          total_attempts: retryResult.totalAttempts,
+          retry_history: retryResult.retryHistory,
+          error_type: retryResult.error?.constructor.name || "Unknown",
+          error_message: retryResult.error?.message || "Unknown error",
         },
         traceId,
         agentId,
       );
 
-      throw error;
+      throw retryResult.error || new Error("Agent execution failed after retries");
     }
+
+    // Step 3: Parse the response to extract thought and content
+    const rawResponse = retryResult.value!;
+    const result = this.parseResponse(rawResponse);
+
+    // Log successful execution
+    this.logActivity(
+      "agent",
+      "agent.execution_completed",
+      requestId || null,
+      {
+        agent_id: agentId,
+        duration_ms: duration,
+        total_attempts: retryResult.totalAttempts,
+        retry_history: retryResult.retryHistory.length > 0 ? retryResult.retryHistory : undefined,
+        response_length: rawResponse?.length || 0,
+        has_thought: result.thought.length > 0,
+        has_content: result.content.length > 0,
+      },
+      traceId,
+      agentId,
+    );
+
+    return result;
   }
 
   /**
