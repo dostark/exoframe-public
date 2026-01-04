@@ -29,6 +29,22 @@ Unlike **Examples** (which are concrete, runnable use cases), **Templates** are 
 - Dependencies on multiple previous steps
 - Checkpoints between stages
 
+### 4. LLM-as-a-Judge (`llm-judge-code-review.flow.template.ts`)
+**Pattern:** Multi-perspective analysis with judge evaluation.
+**Use Case:** Code review, content evaluation, quality assessment.
+**Key Features:**
+- Parallel specialized reviewers
+- Judge agent evaluates all reviews
+- Structured JSON output for quality gates
+- Designed for future feedback loops
+
+**Required Agents:**
+- `code-analyzer` - Initial analysis
+- `security-reviewer` - Security-focused review
+- `quality-reviewer` - Code quality review
+- `quality-judge` - Final evaluation (see `Blueprints/Agents/quality-judge.md`)
+- `technical-writer` - Report generation
+
 ## How to Use
 
 1. **Choose a pattern** that matches your needs.
