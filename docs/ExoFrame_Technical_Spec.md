@@ -1,7 +1,7 @@
 # Project ExoFrame: Technical Specification & Architecture
 
-- **Version:** 1.9.0
-- **Release Date:** 2025-12-20
+- **Version:** 1.10.0
+- **Release Date:** 2026-01-05
 - **Status:** Engineering Specification
 - **Reference:** [ExoFrame White Paper](./ExoFrame_White_Paper.md)
 - **Architecture:** [ExoFrame Architecture Diagrams](./ExoFrame_Architecture.md)
@@ -1315,7 +1315,114 @@ optional soft caps). When `runtime_mode` is `remote`, the loader enforces the mo
 `[System Warning]` entries if truncation occurs. For `runtime_mode: hybrid`, the loader splits context into local vs
 exportable segments based on `handoff_policy`, and every remote hop logs the exact files shared.
 
----
+### 7.3 Agent Orchestration Services (Phase 16)
+
+Phase 16 introduced advanced orchestration services that enhance agent execution
+with quality improvements, reliability, and context awareness.
+
+#### 7.3.1 Service Overview
+
+| Service               | Purpose                            | Key File                            |
+| --------------------- | ---------------------------------- | ----------------------------------- |
+| **Blueprint Loader**  | Unified blueprint parsing          | `src/services/blueprint_loader.ts`  |
+| **Output Validator**  | Schema validation with JSON repair | `src/services/output_validator.ts`  |
+| **Retry Policy**      | Exponential backoff with jitter    | `src/services/retry_policy.ts`      |
+| **Reflexive Agent**   | Self-critique improvement loop     | `src/services/reflexive_agent.ts`   |
+| **Tool Reflector**    | Tool result evaluation and retry   | `src/services/tool_reflector.ts`    |
+| **Session Memory**    | Memory context injection           | `src/services/session_memory.ts`    |
+| **Confidence Scorer** | Output confidence assessment       | `src/services/confidence_scorer.ts` |
+
+#### 7.3.2 Orchestration Pipeline
+
+```
+Request → Session Memory → Agent Runner → Reflexive Agent → Output Validator → Response
+             ↓                  ↓               ↓                 ↓
+         Memory Bank      Tool Reflector   Self-Critique      Retry Policy
+```
+
+1. **Session Memory**: Injects relevant context from past interactions
+   (learnings, patterns, executions)
+2. **Agent Runner**: Executes agent with enhanced context
+3. **Tool Reflector**: Evaluates tool call results, retries with alternative
+   parameters if needed
+4. **Reflexive Agent**: Self-critiques output and refines iteratively (optional,
+   for quality-critical tasks)
+5. **Output Validator**: Validates against schema, auto-repairs common JSON
+   errors
+6. **Retry Policy**: Handles transient failures with exponential backoff
+7. **Confidence Scorer**: Assesses output confidence, flags low-confidence for
+   human review
+
+#### 7.3.3 Blueprint Configuration
+
+Orchestration features are configured in agent blueprints:
+
+```toml
++++
+agent_id = "quality-reviewer"
+name = "Quality Reviewer"
+model = "anthropic:claude-opus-4.5"
+capabilities = ["read_file", "search_files"]
+
+# Reflexion Pattern (Phase 16.4)
+reflexive = true
+max_reflexion_iterations = 3
+confidence_required = 80
+
+# Session Memory (Phase 16.6)
+memory_enabled = true
++++
+```
+
+#### 7.3.4 Output Validation Schema
+
+The `OutputValidator` supports multiple schema types:
+
+- **plan**: Standard execution plan (PlanSchema)
+- **evaluation**: Quality evaluation with verdict (pass/fail/needs_improvement)
+- **analysis**: Code analysis with findings and severity
+- **simpleResponse**: Basic structured response with confidence
+- **toolCall**: Tool invocation with arguments
+- **actionSequence**: Multi-step action workflows
+
+JSON repair capabilities include:
+
+- Markdown code block removal
+- Trailing comma removal
+- Single quote to double quote conversion
+- Unquoted key handling
+- Comment stripping
+- Newline escaping in strings
+
+#### 7.3.5 Retry Policy Strategy
+
+| Attempt | Base Delay | With Jitter (0.5 factor) |
+| ------- | ---------- | ------------------------ |
+| 1       | 1s         | 0.5s - 1.5s              |
+| 2       | 2s         | 1.0s - 3.0s              |
+| 3       | 4s         | 2.0s - 6.0s              |
+| 4       | 8s         | 4.0s - 12.0s             |
+| 5       | 16s        | 8.0s - 24.0s             |
+
+Retryable errors: `rate_limit_exceeded`, `service_unavailable`, `timeout`,
+`connection_reset`
+
+Non-retryable: Authentication failures, schema validation errors, permission
+denied
+
+#### 7.3.6 Confidence Scoring
+
+Confidence scores (0-100) help determine output reliability:
+
+| Score  | Level     | Action                      |
+| ------ | --------- | --------------------------- |
+| 90-100 | Very High | Auto-approve                |
+| 70-89  | High      | Standard review             |
+| 50-69  | Medium    | Careful review recommended  |
+| 30-49  | Low       | Human verification required |
+| 0-29   | Very Low  | Consider alternate approach |
+
+## Low-confidence outputs (below `confidence_threshold`) are flagged in logs andmay trigger human review workflows.
 
 ## 8. Security & Trust
 
