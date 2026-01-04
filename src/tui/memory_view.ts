@@ -285,7 +285,7 @@ export class MemoryViewTuiSession extends TuiSessionBase {
   /**
    * Force refresh all data
    */
-  async refresh(): Promise<void> {
+  override async refresh(): Promise<void> {
     this.state.isLoading = true;
     this.state.loadingMessage = "Refreshing...";
 
