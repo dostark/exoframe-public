@@ -20,12 +20,19 @@ import type {
   ActivitySummary,
   Decision,
   ExecutionMemory,
+  GlobalMemory,
+  Learning,
   MemorySearchResult,
   Pattern,
   ProjectMemory,
   Reference,
 } from "../schemas/memory_bank.ts";
-import { ExecutionMemorySchema, ProjectMemorySchema } from "../schemas/memory_bank.ts";
+import {
+  ExecutionMemorySchema,
+  GlobalMemorySchema,
+  LearningSchema,
+  ProjectMemorySchema,
+} from "../schemas/memory_bank.ts";
 
 /**
  * Memory Bank Service
@@ -40,6 +47,7 @@ export class MemoryBankService {
   private executionDir: string;
   private tasksDir: string;
   private indexDir: string;
+  private globalDir: string;
 
   /**
    * Create a new Memory Bank Service instance
@@ -56,6 +64,7 @@ export class MemoryBankService {
     this.executionDir = join(this.memoryRoot, "Execution");
     this.tasksDir = join(this.memoryRoot, "Tasks");
     this.indexDir = join(this.memoryRoot, "Index");
+    this.globalDir = join(this.memoryRoot, "Global");
 
     // Ensure directory structure exists
     this.initializeDirectories();
@@ -350,6 +359,326 @@ export class MemoryBankService {
       console.error("Error reading execution history:", error);
       return [];
     }
+  }
+
+  // ===== Global Memory Operations (Phase 12.8) =====
+
+  /**
+   * Get global memory
+   *
+   * @returns Global memory or null if not initialized
+   */
+  async getGlobalMemory(): Promise<GlobalMemory | null> {
+    const jsonPath = join(this.globalDir, "learnings.json");
+
+    if (!await exists(jsonPath)) {
+      return null;
+    }
+
+    try {
+      const content = await Deno.readTextFile(jsonPath);
+      const data = JSON.parse(content);
+      return GlobalMemorySchema.parse(data);
+    } catch (error) {
+      console.error("Error reading global memory:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Initialize global memory directory structure
+   *
+   * Creates Memory/Global/ with empty learnings, patterns, and anti-patterns files.
+   */
+  async initGlobalMemory(): Promise<void> {
+    await ensureDir(this.globalDir);
+
+    const now = new Date().toISOString();
+    const emptyGlobal: GlobalMemory = {
+      version: "1.0.0",
+      updated_at: now,
+      learnings: [],
+      patterns: [],
+      anti_patterns: [],
+      statistics: {
+        total_learnings: 0,
+        by_category: {},
+        by_project: {},
+        last_activity: now,
+      },
+    };
+
+    // Write JSON index
+    await Deno.writeTextFile(
+      join(this.globalDir, "learnings.json"),
+      JSON.stringify(emptyGlobal, null, 2),
+    );
+
+    // Write empty markdown files
+    await this.writeMarkdownFile(
+      join(this.globalDir, "learnings.md"),
+      "# Global Learnings\n\nCross-project learnings and insights.\n",
+    );
+
+    await this.writeMarkdownFile(
+      join(this.globalDir, "patterns.md"),
+      "# Global Patterns\n\nCode patterns that apply across all projects.\n",
+    );
+
+    await this.writeMarkdownFile(
+      join(this.globalDir, "anti-patterns.md"),
+      "# Anti-Patterns\n\nThings to avoid across all projects.\n",
+    );
+
+    this.logActivity({
+      event_type: "memory.global.initialized",
+      target: "global",
+      metadata: { version: "1.0.0" },
+    });
+  }
+
+  /**
+   * Add a learning to global memory
+   *
+   * @param learning - Learning to add
+   */
+  async addGlobalLearning(learning: Learning): Promise<void> {
+    // Validate learning schema
+    LearningSchema.parse(learning);
+
+    let globalMem = await this.getGlobalMemory();
+    if (!globalMem) {
+      await this.initGlobalMemory();
+      globalMem = await this.getGlobalMemory();
+    }
+
+    if (!globalMem) {
+      throw new Error("Failed to initialize global memory");
+    }
+
+    // Add learning
+    globalMem.learnings.push(learning);
+
+    // Update statistics
+    globalMem.statistics.total_learnings = globalMem.learnings.length;
+    globalMem.statistics.by_category[learning.category] = (globalMem.statistics.by_category[learning.category] || 0) +
+      1;
+
+    if (learning.project) {
+      globalMem.statistics.by_project[learning.project] = (globalMem.statistics.by_project[learning.project] || 0) + 1;
+    }
+
+    globalMem.statistics.last_activity = new Date().toISOString();
+    globalMem.updated_at = new Date().toISOString();
+
+    // Write updated JSON
+    await Deno.writeTextFile(
+      join(this.globalDir, "learnings.json"),
+      JSON.stringify(globalMem, null, 2),
+    );
+
+    // Append to markdown file
+    const mdContent = this.formatLearningMarkdown(learning);
+    const mdPath = join(this.globalDir, "learnings.md");
+    const existingContent = await this.readMarkdownFile(mdPath);
+    await this.writeMarkdownFile(mdPath, existingContent + "\n" + mdContent);
+
+    this.logActivity({
+      event_type: "memory.global.learning.added",
+      target: "global",
+      metadata: {
+        learning_id: learning.id,
+        title: learning.title,
+        category: learning.category,
+        confidence: learning.confidence,
+      },
+    });
+  }
+
+  /**
+   * Promote a learning from project to global scope
+   *
+   * @param portal - Source portal name
+   * @param promotion - Promotion details
+   * @returns ID of the created global learning
+   */
+  async promoteLearning(
+    portal: string,
+    promotion: {
+      type: "pattern" | "decision";
+      name: string;
+      title: string;
+      description: string;
+      category: Learning["category"];
+      tags: string[];
+      confidence: Learning["confidence"];
+    },
+  ): Promise<string> {
+    // Verify source project exists
+    const projectMem = await this.getProjectMemory(portal);
+    if (!projectMem) {
+      throw new Error(`Project memory not found for portal: ${portal}`);
+    }
+
+    // Ensure global memory exists
+    const globalMem = await this.getGlobalMemory();
+    if (!globalMem) {
+      await this.initGlobalMemory();
+    }
+
+    // Create learning from promotion
+    const learningId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const learning: Learning = {
+      id: learningId,
+      created_at: now,
+      source: "user",
+      scope: "global",
+      project: portal,
+      title: promotion.title,
+      description: promotion.description,
+      category: promotion.category,
+      tags: promotion.tags,
+      confidence: promotion.confidence,
+      status: "approved",
+      approved_at: now,
+    };
+
+    await this.addGlobalLearning(learning);
+
+    this.logActivity({
+      event_type: "memory.learning.promoted",
+      target: portal,
+      metadata: {
+        learning_id: learningId,
+        from_type: promotion.type,
+        from_name: promotion.name,
+        to_scope: "global",
+      },
+    });
+
+    return learningId;
+  }
+
+  /**
+   * Demote a learning from global to project scope
+   *
+   * @param learningId - ID of the learning to demote
+   * @param targetPortal - Target portal name
+   */
+  async demoteLearning(learningId: string, targetPortal: string): Promise<void> {
+    // Get global memory
+    const globalMem = await this.getGlobalMemory();
+    if (!globalMem) {
+      throw new Error("Global memory not initialized");
+    }
+
+    // Find the learning
+    const learningIndex = globalMem.learnings.findIndex((l) => l.id === learningId);
+    if (learningIndex === -1) {
+      throw new Error(`Learning not found: ${learningId}`);
+    }
+
+    // Verify target project exists
+    const projectMem = await this.getProjectMemory(targetPortal);
+    if (!projectMem) {
+      throw new Error(`Project memory not found for portal: ${targetPortal}`);
+    }
+
+    const learning = globalMem.learnings[learningIndex];
+
+    // Add to project as a pattern (most common case)
+    const pattern: Pattern = {
+      name: learning.title,
+      description: learning.description,
+      examples: [],
+      tags: learning.tags,
+    };
+
+    await this.addPattern(targetPortal, pattern);
+
+    // Remove from global memory
+    globalMem.learnings.splice(learningIndex, 1);
+
+    // Update statistics
+    globalMem.statistics.total_learnings = globalMem.learnings.length;
+    globalMem.statistics.by_category[learning.category] = Math.max(
+      0,
+      (globalMem.statistics.by_category[learning.category] || 1) - 1,
+    );
+
+    if (learning.project) {
+      globalMem.statistics.by_project[learning.project] = Math.max(
+        0,
+        (globalMem.statistics.by_project[learning.project] || 1) - 1,
+      );
+    }
+
+    globalMem.updated_at = new Date().toISOString();
+
+    // Write updated global memory
+    await Deno.writeTextFile(
+      join(this.globalDir, "learnings.json"),
+      JSON.stringify(globalMem, null, 2),
+    );
+
+    // Rewrite learnings.md without the demoted learning
+    await this.rewriteLearningsMarkdown(globalMem);
+
+    this.logActivity({
+      event_type: "memory.learning.demoted",
+      target: targetPortal,
+      metadata: {
+        learning_id: learningId,
+        from_scope: "global",
+        to_project: targetPortal,
+      },
+    });
+  }
+
+  /**
+   * Format a learning as markdown
+   */
+  private formatLearningMarkdown(learning: Learning): string {
+    let md = `## ${learning.title}\n\n`;
+    md += `**ID:** ${learning.id}\n`;
+    md += `**Created:** ${learning.created_at}\n`;
+    md += `**Source:** ${learning.source}`;
+    if (learning.project) {
+      md += ` (from ${learning.project})`;
+    }
+    md += `\n`;
+    md += `**Category:** ${learning.category}\n`;
+    md += `**Confidence:** ${learning.confidence}\n`;
+
+    if (learning.tags.length > 0) {
+      md += `**Tags:** ${learning.tags.join(", ")}\n`;
+    }
+
+    md += `\n${learning.description}\n`;
+
+    if (learning.references && learning.references.length > 0) {
+      md += `\n**References:**\n`;
+      for (const ref of learning.references) {
+        md += `- [${ref.type}] ${ref.path}\n`;
+      }
+    }
+
+    return md;
+  }
+
+  /**
+   * Rewrite the learnings.md file from global memory state
+   */
+  private async rewriteLearningsMarkdown(globalMem: GlobalMemory): Promise<void> {
+    let md = "# Global Learnings\n\nCross-project learnings and insights.\n\n";
+
+    for (const learning of globalMem.learnings) {
+      md += this.formatLearningMarkdown(learning) + "\n";
+    }
+
+    await this.writeMarkdownFile(join(this.globalDir, "learnings.md"), md);
   }
 
   // ===== Search Operations =====

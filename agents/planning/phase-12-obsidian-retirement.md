@@ -1,16 +1,19 @@
 # Phase 12: Obsidian Retirement & Memory Banks Migration
 
-**Document Version:** 1.2.0
-**Date:** 2026-01-03
+**Document Version:** 1.3.0
+**Date:** 2026-01-04
 **Author:** Senior Architecture Agent
-**Status:** IN PROGRESS - Phases 12.1-12.4 COMPLETED ✅
+**Status:** IN PROGRESS - Phases 12.1-12.4, 12.6 COMPLETED ✅
 
 **Completion Status:**
 - ✅ Phase 12.1: Memory Banks Architecture (COMPLETE)
 - ✅ Phase 12.2: Memory Bank Services (COMPLETE)
 - ✅ Phase 12.3: Mission Reporter Migration (COMPLETE)
 - ✅ Phase 12.4: Remove Obsidian Code (COMPLETE)
-- 📝 Phase 12.5-12.7: Documentation & CLI Updates (PENDING)
+- 📄 Phase 12.5+: Enhanced Architecture → See [phase-12.5-memory-bank-enhanced.md](phase-12.5-memory-bank-enhanced.md)
+- ✅ Phase 12.6: Documentation Update (COMPLETE)
+- 📝 Phase 12.7: Final Validation (PENDING)
+
 This document outlines the comprehensive plan for **Phase 12: Obsidian Retirement**, which will remove Obsidian as a dependency (even optional) and migrate to a standalone, TUI-integrated **Memory Banks** system for long-term project knowledge storage.
 
 **Key Objectives:**
@@ -777,34 +780,30 @@ Deno.test("Migration: dry-run mode makes no changes", async () => {
 
 ---
 
-### Phase 12.5: Update CLI Commands (1 day)
+### Phase 12.5: Core CLI Commands & Enhanced Architecture
 
-**Goal:** Add/update CLI commands for memory banks
+> **📄 MOVED TO:** [phase-12.5-memory-bank-enhanced.md](phase-12.5-memory-bank-enhanced.md)
+>
+> Phase 12.5 has been expanded into a comprehensive Memory Banks v2 Enhanced Architecture document that includes:
+> - **Phase 12.5:** Core CLI Commands (20+ commands)
+> - **Phase 12.8:** Global Memory & Promote/Demote
+> - **Phase 12.9:** Agent Memory Updates with User Notification
+> - **Phase 12.10:** Tag-Based Search & Simple RAG
+> - **Phase 12.11:** Integration & Documentation
+>
+> See the linked document for:
+> - Gap analysis comparing current vs. desired state
+> - Reference architecture survey (mem0, MemGPT, Zep, LangMem)
+> - Enhanced schemas (LearningSchema, MemoryUpdateProposalSchema, GlobalMemorySchema)
+> - Complete CLI command tree (20+ commands)
+> - Agent memory update workflow with Mermaid diagrams
+> - Data format decisions (Markdown vs JSON)
+> - Embedding reuse strategy from `agents/embeddings/`
+> - 88 projected tests with detailed test inventories
+> - Measurable success criteria for each phase
 
-**Tasks:**
-- [ ] Create `src/cli/memory_commands.ts`
-  - `exoctl memory projects`
-  - `exoctl memory project <portal>`
-  - `exoctl memory execution <trace-id>`
-  - `exoctl memory search <query>`
-- [ ] Update existing commands to use Memory/
-  - `exoctl report <trace-id>` → read from Memory/Execution/
-  - `exoctl context <portal>` → read from Memory/Projects/
-- [ ] Add migration command
-  - `exoctl migrate-memory [--dry-run]`
-- [ ] Write CLI command tests (20+ tests)
-
-**Deliverables:**
-- `src/cli/memory_commands.ts` (~100 LOC)
-- Updated `src/cli/dashboard_commands.ts` (~20 LOC)
-
-**Success Criteria:**
-- [ ] All memory CLI commands functional
-- [ ] Help text updated
-
-**Tests:**
-- [ ] `tests/cli/memory_commands_test.ts` (~150 LOC, 20+ tests)
-- [ ] CLI integration tests
+**Status:** PLANNING
+**Target Release:** v1.1
 
 ---
 

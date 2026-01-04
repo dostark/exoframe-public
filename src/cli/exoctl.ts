@@ -26,6 +26,7 @@ import { PortalCommands } from "./portal_commands.ts";
 import { BlueprintCommands } from "./blueprint_commands.ts";
 import { FlowCommands } from "./flow_commands.ts";
 import { DashboardCommands } from "./dashboard_commands.ts";
+import { MemoryCommands } from "./memory_commands.ts";
 
 // Allow tests to run the CLI entrypoint without initializing heavy services
 let IN_TEST_MODE = false;
@@ -101,6 +102,7 @@ const portalCommands = new PortalCommands({ config, db, configService });
 const blueprintCommands = new BlueprintCommands(context);
 const flowCommands = new FlowCommands(context);
 const dashboardCommands = new DashboardCommands(context);
+const memoryCommands = new MemoryCommands({ config, db });
 
 // Export test helper for unit tests to inspect module-internal context when running in test mode.
 export function __test_getContext() {
@@ -121,6 +123,7 @@ export function __test_getContext() {
     blueprintCommands,
     flowCommands,
     dashboardCommands,
+    memoryCommands,
   } as const;
 }
 
@@ -1030,6 +1033,133 @@ export const __test_command = new Command()
           .action(async (options, ...args: string[]) => {
             const flowId = args[0] as unknown as string;
             await flowCommands.validateFlow(flowId, options);
+          }),
+      ),
+  )
+  // Memory commands
+  .command(
+    "memory",
+    new Command()
+      .description("Manage Memory Banks (project memory, execution history, search)")
+      .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+      .action(async (options) => {
+        // Default action: show summary
+        const result = await memoryCommands.list(options.format as "table" | "json" | "md");
+        console.log(result);
+      })
+      .command(
+        "list",
+        new Command()
+          .description("List all memory banks with summary")
+          .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+          .action(async (options) => {
+            const result = await memoryCommands.list(options.format as "table" | "json" | "md");
+            console.log(result);
+          }),
+      )
+      .command(
+        "search <query:string>",
+        new Command()
+          .description("Search across all memory banks")
+          .option("-p, --portal <portal:string>", "Filter by portal")
+          .option("-t, --tags <tags:string>", "Filter by tags (comma-separated)")
+          .option("-l, --limit <limit:number>", "Maximum results", { default: 20 })
+          .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+          .action(async (options, ...args: string[]) => {
+            const query = args[0] as unknown as string;
+            const tags = options.tags ? options.tags.split(",").map((t: string) => t.trim()) : undefined;
+            const result = await memoryCommands.search(query, {
+              portal: options.portal,
+              tags,
+              limit: options.limit,
+              format: options.format as "table" | "json" | "md",
+            });
+            console.log(result);
+          }),
+      )
+      .command(
+        "project",
+        new Command()
+          .description("Project memory operations")
+          .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+          .action(async (options) => {
+            // Default: list projects
+            const result = await memoryCommands.projectList(options.format as "table" | "json" | "md");
+            console.log(result);
+          })
+          .command(
+            "list",
+            new Command()
+              .description("List all project memories")
+              .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+              .action(async (options) => {
+                const result = await memoryCommands.projectList(options.format as "table" | "json" | "md");
+                console.log(result);
+              }),
+          )
+          .command(
+            "show <portal:string>",
+            new Command()
+              .description("Show details of a specific project memory")
+              .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+              .action(async (options, ...args: string[]) => {
+                const portal = args[0] as unknown as string;
+                const result = await memoryCommands.projectShow(portal, options.format as "table" | "json" | "md");
+                console.log(result);
+              }),
+          ),
+      )
+      .command(
+        "execution",
+        new Command()
+          .description("Execution history operations")
+          .option("-p, --portal <portal:string>", "Filter by portal")
+          .option("-l, --limit <limit:number>", "Maximum results", { default: 20 })
+          .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+          .action(async (options) => {
+            // Default: list executions
+            const result = await memoryCommands.executionList({
+              portal: options.portal,
+              limit: options.limit,
+              format: options.format as "table" | "json" | "md",
+            });
+            console.log(result);
+          })
+          .command(
+            "list",
+            new Command()
+              .description("List execution history")
+              .option("-p, --portal <portal:string>", "Filter by portal")
+              .option("-l, --limit <limit:number>", "Maximum results", { default: 20 })
+              .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+              .action(async (options) => {
+                const result = await memoryCommands.executionList({
+                  portal: options.portal,
+                  limit: options.limit,
+                  format: options.format as "table" | "json" | "md",
+                });
+                console.log(result);
+              }),
+          )
+          .command(
+            "show <traceId:string>",
+            new Command()
+              .description("Show details of a specific execution")
+              .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+              .action(async (options, ...args: string[]) => {
+                const traceId = args[0] as unknown as string;
+                const result = await memoryCommands.executionShow(traceId, options.format as "table" | "json" | "md");
+                console.log(result);
+              }),
+          ),
+      )
+      .command(
+        "rebuild-index",
+        new Command()
+          .description("Rebuild memory bank search indices")
+          .action(async () => {
+            const result = await memoryCommands.rebuildIndex();
+            console.log(result);
           }),
       ),
   )

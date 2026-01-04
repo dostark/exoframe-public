@@ -84,13 +84,119 @@ export const ExecutionMemorySchema = z.object({
 export type Changes = z.infer<typeof ChangesSchema>;
 export type ExecutionMemory = z.infer<typeof ExecutionMemorySchema>;
 
+// ===== Learning Schemas (Phase 12.8: Global Memory) =====
+
+/**
+ * Learning reference - links to supporting evidence
+ */
+export const LearningReferenceSchema = z.object({
+  type: z.enum(["file", "execution", "url", "doc"]),
+  path: z.string(),
+});
+
+/**
+ * Learning schema - represents a learned insight, pattern, or decision
+ *
+ * Learnings can be project-scoped or global, and flow through
+ * a pending → approved workflow for quality control.
+ */
+export const LearningSchema = z.object({
+  id: z.string().uuid(),
+  created_at: z.string().datetime(),
+  source: z.enum(["execution", "user", "agent"]).describe("Who/what created this learning"),
+  source_id: z.string().optional().describe("trace_id or user session if applicable"),
+
+  scope: z.enum(["global", "project"]).describe("Whether this applies globally or to a specific project"),
+  project: z.string().optional().describe("Portal name if project-scoped"),
+
+  title: z.string().max(100).describe("Short title for the learning"),
+  description: z.string().max(2000).describe("Detailed description of the learning"),
+
+  category: z.enum([
+    "pattern", // Code pattern learned
+    "anti-pattern", // What to avoid
+    "decision", // Architectural choice
+    "insight", // General observation
+    "troubleshooting", // Problem + solution
+  ]).describe("Type of learning"),
+
+  tags: z.array(z.string()).max(10).describe("Searchable tags"),
+
+  confidence: z.enum(["low", "medium", "high"]).describe("Confidence level in this learning"),
+
+  references: z.array(LearningReferenceSchema).optional().describe("Supporting evidence"),
+
+  status: z.enum(["pending", "approved", "rejected", "archived"]).describe("Approval status"),
+  approved_at: z.string().datetime().optional(),
+  archived_at: z.string().datetime().optional(),
+});
+
+export type LearningReference = z.infer<typeof LearningReferenceSchema>;
+export type Learning = z.infer<typeof LearningSchema>;
+
+/**
+ * Global pattern - a code pattern that applies across projects
+ */
+export const GlobalPatternSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  applies_to: z.array(z.string()).describe("Project patterns or 'all'"),
+  examples: z.array(z.string()),
+  tags: z.array(z.string()),
+});
+
+/**
+ * Global anti-pattern - something to avoid across all projects
+ */
+export const GlobalAntiPatternSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  reason: z.string().describe("Why this is an anti-pattern"),
+  alternative: z.string().describe("What to do instead"),
+  tags: z.array(z.string()),
+});
+
+/**
+ * Global memory statistics
+ */
+export const GlobalMemoryStatsSchema = z.object({
+  total_learnings: z.number(),
+  by_category: z.record(z.number()),
+  by_project: z.record(z.number()),
+  last_activity: z.string().datetime(),
+});
+
+/**
+ * Global memory - cross-project learnings and patterns
+ *
+ * Stored in Memory/Global/ and contains learnings that apply
+ * across all projects in the workspace.
+ */
+export const GlobalMemorySchema = z.object({
+  version: z.string().describe("Schema version"),
+  updated_at: z.string().datetime(),
+
+  learnings: z.array(LearningSchema),
+
+  patterns: z.array(GlobalPatternSchema).describe("Global code patterns"),
+
+  anti_patterns: z.array(GlobalAntiPatternSchema).describe("What to avoid"),
+
+  statistics: GlobalMemoryStatsSchema,
+});
+
+export type GlobalPattern = z.infer<typeof GlobalPatternSchema>;
+export type GlobalAntiPattern = z.infer<typeof GlobalAntiPatternSchema>;
+export type GlobalMemoryStats = z.infer<typeof GlobalMemoryStatsSchema>;
+export type GlobalMemory = z.infer<typeof GlobalMemorySchema>;
+
 // ===== Helper Types =====
 
 /**
  * Search result from memory bank queries
  */
 export interface MemorySearchResult {
-  type: "project" | "execution" | "pattern" | "decision";
+  type: "project" | "execution" | "pattern" | "decision" | "learning";
   portal?: string;
   trace_id?: string;
   title: string;

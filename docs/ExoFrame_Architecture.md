@@ -1,7 +1,7 @@
 # ExoFrame Architecture
 
-**Version:** 1.10.0\
-**Date:** January 2, 2026
+**Version:** 1.11.0\
+**Date:** January 4, 2026
 
 This document provides a comprehensive architectural overview of ExoFrame components using Mermaid diagrams.
 
@@ -735,6 +735,122 @@ graph TB
     class Journal,Activities,Schema db
     class DB,Event,Config,Git service
 ```
+
+---
+
+## Memory Banks Architecture
+
+The Memory Banks system provides persistent knowledge storage for project context, execution history, and cross-project learnings.
+
+> **Enhanced Architecture:** See [agents/planning/phase-12.5-memory-bank-enhanced.md](../agents/planning/phase-12.5-memory-bank-enhanced.md) for the full v2 architecture with Global Memory, Agent Memory Updates, and Simple RAG.
+
+### Directory Structure
+
+```mermaid
+graph TB
+    subgraph Memory["Memory/"]
+        Global["Global/<br/>Cross-project learnings"]
+        Projects["Projects/<br/>Project-specific memory"]
+        Execution["Execution/<br/>Execution history"]
+        Pending["Pending/<br/>Awaiting approval"]
+        Tasks["Tasks/<br/>Task tracking"]
+        Index["Index/<br/>Search indices"]
+    end
+
+    subgraph ProjectMem["Projects/{portal}/"]
+        Overview["overview.md"]
+        Patterns["patterns.md"]
+        Decisions["decisions.md"]
+        References["references.md"]
+        ContextJson["context.json"]
+    end
+
+    subgraph ExecMem["Execution/{trace-id}/"]
+        Summary["summary.md"]
+        Context["context.json"]
+        Changes["changes.diff"]
+        Learnings["learnings.md"]
+    end
+
+    subgraph GlobalMem["Global/"]
+        GLearnings["learnings.md"]
+        GPatterns["patterns.md"]
+        GAnti["anti-patterns.md"]
+        GJson["learnings.json"]
+    end
+
+    subgraph IndexDir["Index/"]
+        Files["files.json"]
+        PatIdx["patterns.json"]
+        Tags["tags.json"]
+        LearnIdx["learnings.json"]
+        Embed["embeddings/"]
+    end
+
+    Projects --> ProjectMem
+    Execution --> ExecMem
+    Global --> GlobalMem
+    Index --> IndexDir
+
+    classDef dir fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef file fill:#c8e6c9,stroke:#388e3c,stroke-width:2px
+    classDef json fill:#b2dfdb,stroke:#00695c,stroke-width:2px
+
+    class Memory,Global,Projects,Execution,Pending,Tasks,Index dir
+    class Overview,Patterns,Decisions,References,Summary,Changes,Learnings,GLearnings,GPatterns,GAnti file
+    class ContextJson,Context,GJson,Files,PatIdx,Tags,LearnIdx,Embed json
+```
+
+### Memory Update Workflow
+
+```mermaid
+sequenceDiagram
+    participant Agent as Execution Agent
+    participant ME as Memory Extractor
+    participant MB as MemoryBankService
+    participant P as Memory/Pending/
+    participant U as User
+    participant G as Memory/Global/
+
+    Note over Agent: Execution completes
+
+    Agent->>ME: triggerMemoryExtraction()
+    ME->>ME: analyzeExecution()
+    ME->>ME: extractLearnings()
+
+    alt Learnings Found
+        ME->>MB: createProposal(learnings)
+        MB->>P: Write proposal.md
+        MB-->>U: "Memory update pending"
+
+        U->>MB: exoctl memory pending approve
+        MB->>G: mergeLearning(learning)
+        MB->>P: archiveProposal()
+    end
+```
+
+### CLI Command Tree
+
+```
+exoctl memory
+├── list                    # List all memory banks
+├── search <query>          # Search across memory
+├── project list|show       # Project memory ops
+├── execution list|show     # Execution history
+├── global show|stats       # Global memory
+├── pending list|approve    # Pending updates
+├── promote|demote          # Move learnings
+└── rebuild-index           # Regenerate indices
+```
+
+### Key Components
+
+| Component         | Location                           | Purpose                       |
+| ----------------- | ---------------------------------- | ----------------------------- |
+| MemoryBankService | `src/services/memory_bank.ts`      | Core CRUD operations          |
+| Memory Schemas    | `src/schemas/memory_bank.ts`       | Zod validation schemas        |
+| Memory Extractor  | `src/services/memory_extractor.ts` | Learning extraction (planned) |
+| Memory CLI        | `src/cli/memory_commands.ts`       | CLI interface (planned)       |
 
 ---
 
