@@ -1161,6 +1161,68 @@ export const __test_command = new Command()
             const result = await memoryCommands.rebuildIndex();
             console.log(result);
           }),
+      )
+      .command(
+        "pending",
+        new Command()
+          .description("Manage pending memory update proposals")
+          .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+          .action(async (options) => {
+            // Default: list pending
+            const result = await memoryCommands.pendingList(options.format as "table" | "json" | "md");
+            console.log(result);
+          })
+          .command(
+            "list",
+            new Command()
+              .description("List all pending proposals")
+              .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+              .action(async (options) => {
+                const result = await memoryCommands.pendingList(options.format as "table" | "json" | "md");
+                console.log(result);
+              }),
+          )
+          .command(
+            "show <proposalId:string>",
+            new Command()
+              .description("Show details of a pending proposal")
+              .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+              .action(async (options, ...args: string[]) => {
+                const proposalId = args[0] as unknown as string;
+                const result = await memoryCommands.pendingShow(proposalId, options.format as "table" | "json" | "md");
+                console.log(result);
+              }),
+          )
+          .command(
+            "approve <proposalId:string>",
+            new Command()
+              .description("Approve a pending proposal")
+              .action(async (_options, ...args: string[]) => {
+                const proposalId = args[0] as unknown as string;
+                const result = await memoryCommands.pendingApprove(proposalId);
+                console.log(result);
+              }),
+          )
+          .command(
+            "reject <proposalId:string>",
+            new Command()
+              .description("Reject a pending proposal")
+              .option("-r, --reason <reason:string>", "Rejection reason", { required: true })
+              .action(async (options, ...args: string[]) => {
+                const proposalId = args[0] as unknown as string;
+                const result = await memoryCommands.pendingReject(proposalId, options.reason);
+                console.log(result);
+              }),
+          )
+          .command(
+            "approve-all",
+            new Command()
+              .description("Approve all pending proposals")
+              .action(async () => {
+                const result = await memoryCommands.pendingApproveAll();
+                console.log(result);
+              }),
+          ),
       ),
   )
   .command(

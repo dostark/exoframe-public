@@ -6,8 +6,10 @@
  * - memory search: Search across all memory
  * - memory project list|show: Project memory operations
  * - memory execution list|show: Execution history operations
+ * - memory pending list|show|approve|reject: Pending proposals
  *
  * Part of Phase 12.5: Core CLI Commands for Memory Banks v2
+ * Part of Phase 12.9: Agent Memory Updates
  */
 
 import { join } from "@std/path";
@@ -15,12 +17,14 @@ import { exists } from "@std/fs";
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "../services/db.ts";
 import { MemoryBankService } from "../services/memory_bank.ts";
+import { MemoryExtractorService } from "../services/memory_extractor.ts";
 import type {
   ExecutionMemory,
   GlobalMemory,
   GlobalMemoryStats,
   Learning,
   MemorySearchResult,
+  MemoryUpdateProposal,
   ProjectMemory,
 } from "../schemas/memory_bank.ts";
 
@@ -46,12 +50,14 @@ export class MemoryCommands {
   private config: Config;
   private db: DatabaseService;
   private memoryBank: MemoryBankService;
+  private extractor: MemoryExtractorService;
   private memoryRoot: string;
 
   constructor(context: MemoryCommandsContext) {
     this.config = context.config;
     this.db = context.db;
     this.memoryBank = new MemoryBankService(context.config, context.db);
+    this.extractor = new MemoryExtractorService(context.config, context.db, this.memoryBank);
     this.memoryRoot = join(context.config.system.root, "Memory");
   }
 
@@ -1029,6 +1035,231 @@ export class MemoryCommands {
     try {
       await this.memoryBank.demoteLearning(learningId, targetPortal);
       return `Learning demoted successfully.\nID: ${learningId}\nTo: ${targetPortal}`;
+    } catch (error) {
+      return `Error: ${(error as Error).message}`;
+    }
+  }
+
+  // ===== Pending Proposals Commands =====
+
+  /**
+   * List all pending memory update proposals
+   *
+   * @param format - Output format
+   * @returns Formatted list of pending proposals
+   */
+  async pendingList(format: OutputFormat = "table"): Promise<string> {
+    const proposals = await this.extractor.listPending();
+
+    if (proposals.length === 0) {
+      return "No pending proposals.";
+    }
+
+    switch (format) {
+      case "json":
+        return JSON.stringify(proposals, null, 2);
+      case "md":
+        return this.formatPendingListMarkdown(proposals);
+      case "table":
+      default:
+        return this.formatPendingListTable(proposals);
+    }
+  }
+
+  private formatPendingListTable(proposals: MemoryUpdateProposal[]): string {
+    const lines: string[] = [
+      "Pending Memory Update Proposals",
+      "═".repeat(80),
+      "",
+      "ID".padEnd(38) + "Title".padEnd(30) + "Category".padEnd(15) + "Scope",
+      "─".repeat(80),
+    ];
+
+    for (const proposal of proposals) {
+      const id = proposal.id.substring(0, 36);
+      const title = proposal.learning.title.substring(0, 28).padEnd(30);
+      const category = proposal.learning.category.padEnd(15);
+      const scope = proposal.target_project || "global";
+      lines.push(`${id}  ${title}${category}${scope}`);
+    }
+
+    lines.push("");
+    lines.push(`Total: ${proposals.length} pending proposal(s)`);
+
+    return lines.join("\n");
+  }
+
+  private formatPendingListMarkdown(proposals: MemoryUpdateProposal[]): string {
+    const lines: string[] = [
+      "# Pending Memory Update Proposals",
+      "",
+      "| ID | Title | Category | Scope | Created |",
+      "|----|-------|----------|-------|---------|",
+    ];
+
+    for (const proposal of proposals) {
+      const id = proposal.id.substring(0, 8) + "...";
+      const title = proposal.learning.title.substring(0, 30);
+      const category = proposal.learning.category;
+      const scope = proposal.target_project || "global";
+      const created = proposal.created_at.substring(0, 10);
+      lines.push(`| ${id} | ${title} | ${category} | ${scope} | ${created} |`);
+    }
+
+    lines.push("");
+    lines.push(`**Total:** ${proposals.length} pending proposal(s)`);
+
+    return lines.join("\n");
+  }
+
+  /**
+   * Show details of a specific pending proposal
+   *
+   * @param proposalId - Proposal ID
+   * @param format - Output format
+   * @returns Formatted proposal details
+   */
+  async pendingShow(proposalId: string, format: OutputFormat = "table"): Promise<string> {
+    const proposal = await this.extractor.getPending(proposalId);
+
+    if (!proposal) {
+      return `Proposal not found: ${proposalId}`;
+    }
+
+    switch (format) {
+      case "json":
+        return JSON.stringify(proposal, null, 2);
+      case "md":
+        return this.formatPendingShowMarkdown(proposal);
+      case "table":
+      default:
+        return this.formatPendingShowTable(proposal);
+    }
+  }
+
+  private formatPendingShowTable(proposal: MemoryUpdateProposal): string {
+    const lines: string[] = [
+      "Pending Proposal Details",
+      "═".repeat(60),
+      "",
+      `ID:          ${proposal.id}`,
+      `Status:      ${proposal.status}`,
+      `Created:     ${proposal.created_at}`,
+      `Agent:       ${proposal.agent}`,
+      `Execution:   ${proposal.execution_id}`,
+      "",
+      "─".repeat(60),
+      "Learning:",
+      "",
+      `  Title:       ${proposal.learning.title}`,
+      `  Category:    ${proposal.learning.category}`,
+      `  Confidence:  ${proposal.learning.confidence}`,
+      `  Scope:       ${proposal.target_scope}`,
+      `  Project:     ${proposal.target_project || "(global)"}`,
+      "",
+      "  Description:",
+      `  ${proposal.learning.description}`,
+      "",
+      `  Tags: ${proposal.learning.tags.join(", ")}`,
+      "",
+      "─".repeat(60),
+      `Reason: ${proposal.reason}`,
+    ];
+
+    return lines.join("\n");
+  }
+
+  private formatPendingShowMarkdown(proposal: MemoryUpdateProposal): string {
+    const lines: string[] = [
+      "# Pending Proposal",
+      "",
+      "| Field | Value |",
+      "|-------|-------|",
+      `| ID | ${proposal.id} |`,
+      `| Status | ${proposal.status} |`,
+      `| Created | ${proposal.created_at} |`,
+      `| Agent | ${proposal.agent} |`,
+      `| Execution | ${proposal.execution_id} |`,
+      "",
+      "## Learning",
+      "",
+      `**Title:** ${proposal.learning.title}`,
+      "",
+      `**Category:** ${proposal.learning.category}`,
+      "",
+      `**Confidence:** ${proposal.learning.confidence}`,
+      "",
+      `**Scope:** ${proposal.target_scope}${proposal.target_project ? ` (${proposal.target_project})` : ""}`,
+      "",
+      "### Description",
+      "",
+      proposal.learning.description,
+      "",
+      `**Tags:** ${proposal.learning.tags.join(", ")}`,
+      "",
+      "---",
+      "",
+      `**Reason:** ${proposal.reason}`,
+    ];
+
+    return lines.join("\n");
+  }
+
+  /**
+   * Approve a pending proposal
+   *
+   * @param proposalId - Proposal ID to approve
+   * @returns Success or error message
+   */
+  async pendingApprove(proposalId: string): Promise<string> {
+    try {
+      const proposal = await this.extractor.getPending(proposalId);
+      if (!proposal) {
+        return `Proposal not found: ${proposalId}`;
+      }
+
+      await this.extractor.approvePending(proposalId);
+      return `Proposal approved successfully.\nID: ${proposalId}\nTitle: ${proposal.learning.title}\nMerged to: ${
+        proposal.target_project || "global"
+      }`;
+    } catch (error) {
+      return `Error: ${(error as Error).message}`;
+    }
+  }
+
+  /**
+   * Reject a pending proposal
+   *
+   * @param proposalId - Proposal ID to reject
+   * @param reason - Rejection reason
+   * @returns Success or error message
+   */
+  async pendingReject(proposalId: string, reason: string): Promise<string> {
+    try {
+      const proposal = await this.extractor.getPending(proposalId);
+      if (!proposal) {
+        return `Proposal not found: ${proposalId}`;
+      }
+
+      await this.extractor.rejectPending(proposalId, reason);
+      return `Proposal rejected.\nID: ${proposalId}\nReason: ${reason}`;
+    } catch (error) {
+      return `Error: ${(error as Error).message}`;
+    }
+  }
+
+  /**
+   * Approve all pending proposals
+   *
+   * @returns Success message with count
+   */
+  async pendingApproveAll(): Promise<string> {
+    try {
+      const count = await this.extractor.approveAll();
+      if (count === 0) {
+        return "No pending proposals to approve.";
+      }
+      return `Approved ${count} proposal(s).`;
     } catch (error) {
       return `Error: ${(error as Error).message}`;
     }

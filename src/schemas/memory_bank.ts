@@ -190,6 +190,71 @@ export type GlobalAntiPattern = z.infer<typeof GlobalAntiPatternSchema>;
 export type GlobalMemoryStats = z.infer<typeof GlobalMemoryStatsSchema>;
 export type GlobalMemory = z.infer<typeof GlobalMemorySchema>;
 
+// ===== Memory Update Proposal Schema (Phase 12.9: Agent Memory Updates) =====
+
+/**
+ * Partial learning schema for proposals (without status/approved_at fields)
+ * These fields are managed by the proposal workflow, not the learning itself.
+ */
+export const ProposalLearningSchema = z.object({
+  id: z.string().uuid(),
+  created_at: z.string().datetime(),
+  source: z.enum(["execution", "user", "agent"]),
+  source_id: z.string().optional(),
+
+  scope: z.enum(["global", "project"]),
+  project: z.string().optional(),
+
+  title: z.string().max(100),
+  description: z.string().max(2000),
+
+  category: z.enum([
+    "pattern",
+    "anti-pattern",
+    "decision",
+    "insight",
+    "troubleshooting",
+  ]),
+
+  tags: z.array(z.string()).max(10).optional().default([]),
+
+  confidence: z.enum(["low", "medium", "high"]),
+
+  references: z.array(LearningReferenceSchema).optional(),
+});
+
+/**
+ * Memory Update Proposal - represents a proposed memory change
+ *
+ * Proposals are written to Memory/Pending/ and flow through
+ * a review workflow: pending → approved/rejected
+ */
+export const MemoryUpdateProposalSchema = z.object({
+  id: z.string().uuid(),
+  created_at: z.string().datetime(),
+
+  operation: z.enum(["add", "update", "promote", "demote", "archive"])
+    .describe("Type of memory operation"),
+  target_scope: z.enum(["global", "project"])
+    .describe("Where the learning should be stored"),
+  target_project: z.string().optional()
+    .describe("Portal name if target_scope is 'project'"),
+
+  learning: ProposalLearningSchema.describe("The proposed learning content"),
+
+  reason: z.string().describe("Why this update is proposed"),
+  agent: z.string().describe("Agent that proposed the update"),
+  execution_id: z.string().optional().describe("Related execution trace_id"),
+
+  status: z.enum(["pending", "approved", "rejected"])
+    .describe("Current proposal status"),
+  reviewed_at: z.string().datetime().optional(),
+  reviewed_by: z.enum(["user", "auto"]).optional(),
+});
+
+export type ProposalLearning = z.infer<typeof ProposalLearningSchema>;
+export type MemoryUpdateProposal = z.infer<typeof MemoryUpdateProposalSchema>;
+
 // ===== Helper Types =====
 
 /**
