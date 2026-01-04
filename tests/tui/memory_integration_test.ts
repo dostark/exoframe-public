@@ -6,12 +6,7 @@
  * Tests full TUI workflows and integration between components.
  */
 
-import {
-  assertEquals,
-  assertExists,
-  assertGreater,
-  assertStringIncludes,
-} from "jsr:@std/assert@^1.0.0";
+import { assertEquals, assertExists, assertGreater, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import type {
   ExecutionMemory,
   GlobalMemory,
@@ -19,10 +14,7 @@ import type {
   MemoryUpdateProposal,
   ProjectMemory,
 } from "../../src/schemas/memory_bank.ts";
-import {
-  type MemoryServiceInterface,
-  MemoryViewTuiSession,
-} from "../../src/tui/memory_view.ts";
+import { type MemoryServiceInterface, MemoryViewTuiSession } from "../../src/tui/memory_view.ts";
 import {
   renderCategoryBadge,
   renderConfidence,
