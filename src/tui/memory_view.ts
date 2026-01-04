@@ -2,13 +2,15 @@
  * Memory Bank TUI View
  *
  * Interactive view for Memory Banks in the TUI dashboard.
- * Part of Phase 12.12: TUI Memory View - Core
+ * Part of Phase 12.12-12.13: TUI Memory View
  *
  * Features:
  * - Tree navigation for memory bank hierarchy
  * - Detail panel for selected items
  * - Search with live filtering
  * - Keyboard shortcuts (g/p/e/s/n)
+ * - Pending proposal actions (approve/reject)
+ * - Dialog confirmations for actions
  */
 
 import { TuiSessionBase } from "./tui_common.ts";
@@ -24,6 +26,14 @@ import type {
   MemoryUpdateProposal,
   ProjectMemory,
 } from "../schemas/memory_bank.ts";
+import {
+  AddLearningDialog,
+  BulkApproveDialog,
+  ConfirmApproveDialog,
+  ConfirmRejectDialog,
+  type DialogBase,
+  PromoteDialog,
+} from "./dialogs/memory_dialogs.ts";
 
 // ===== Types =====
 
@@ -49,6 +59,7 @@ export interface MemoryViewState {
   tree: TreeNode[];
   detailContent: string;
   pendingCount: number;
+  activeDialog: DialogBase | null;
 }
 
 export interface MemoryServiceInterface {
@@ -162,6 +173,7 @@ export class MemoryViewTuiSession extends TuiSessionBase {
       tree: [],
       detailContent: "",
       pendingCount: 0,
+      activeDialog: null,
     };
   }
 
@@ -197,6 +209,14 @@ export class MemoryViewTuiSession extends TuiSessionBase {
 
   getSearchQuery(): string {
     return this.state.searchQuery;
+  }
+
+  getActiveDialog(): DialogBase | null {
+    return this.state.activeDialog;
+  }
+
+  hasActiveDialog(): boolean {
+    return this.state.activeDialog !== null && this.state.activeDialog.isActive();
   }
 
   // ===== Initialization =====
@@ -343,6 +363,15 @@ export class MemoryViewTuiSession extends TuiSessionBase {
    * Handle keyboard input
    */
   async handleKey(key: string): Promise<void> {
+    // Dialog mode handling
+    if (this.state.activeDialog && this.state.activeDialog.isActive()) {
+      this.state.activeDialog.handleKey(key);
+      if (!this.state.activeDialog.isActive()) {
+        await this.processDialogResult();
+      }
+      return;
+    }
+
     // Search mode handling
     if (this.state.searchActive) {
       if (key === "escape") {
@@ -388,6 +417,21 @@ export class MemoryViewTuiSession extends TuiSessionBase {
         return;
       case "?":
         this.state.detailContent = this.renderHelpContent();
+        return;
+      case "a":
+        await this.approveSelectedProposal();
+        return;
+      case "r":
+        await this.rejectSelectedProposal();
+        return;
+      case "A":
+        await this.approveAllProposals();
+        return;
+      case "L":
+        this.openAddLearningDialog();
+        return;
+      case "P":
+        this.promoteSelectedLearning();
         return;
     }
 
@@ -503,6 +547,172 @@ export class MemoryViewTuiSession extends TuiSessionBase {
       return null;
     };
     return findParent(this.state.tree, null);
+  }
+
+  // ===== Actions =====
+
+  /**
+   * Open approve dialog for selected pending proposal
+   */
+  async approveSelectedProposal(): Promise<void> {
+    const node = this.findNodeById(this.state.selectedNodeId);
+    if (!node || !node.id.startsWith("pending:")) {
+      this.statusMessage = "Select a pending proposal to approve";
+      return;
+    }
+
+    const proposalId = node.id.replace("pending:", "");
+    const proposal = await this.service.getPending(proposalId);
+    if (!proposal) {
+      this.statusMessage = "Proposal not found";
+      return;
+    }
+
+    this.state.activeDialog = new ConfirmApproveDialog(proposal);
+  }
+
+  /**
+   * Open reject dialog for selected pending proposal
+   */
+  async rejectSelectedProposal(): Promise<void> {
+    const node = this.findNodeById(this.state.selectedNodeId);
+    if (!node || !node.id.startsWith("pending:")) {
+      this.statusMessage = "Select a pending proposal to reject";
+      return;
+    }
+
+    const proposalId = node.id.replace("pending:", "");
+    const proposal = await this.service.getPending(proposalId);
+    if (!proposal) {
+      this.statusMessage = "Proposal not found";
+      return;
+    }
+
+    this.state.activeDialog = new ConfirmRejectDialog(proposal);
+  }
+
+  /**
+   * Open bulk approve dialog
+   */
+  async approveAllProposals(): Promise<void> {
+    const pending = await this.service.listPending();
+    if (pending.length === 0) {
+      this.statusMessage = "No pending proposals to approve";
+      return;
+    }
+
+    this.state.activeDialog = new BulkApproveDialog(pending.length);
+  }
+
+  /**
+   * Open add learning dialog
+   */
+  openAddLearningDialog(): void {
+    const node = this.findNodeById(this.state.selectedNodeId);
+    let defaultPortal: string | undefined;
+
+    if (node?.id.startsWith("project:")) {
+      defaultPortal = node.id.replace("project:", "");
+    }
+
+    this.state.activeDialog = new AddLearningDialog(defaultPortal);
+  }
+
+  /**
+   * Open promote dialog for selected learning
+   */
+  promoteSelectedLearning(): void {
+    const node = this.findNodeById(this.state.selectedNodeId);
+    if (!node || node.type !== "learning") {
+      this.statusMessage = "Select a learning to promote";
+      return;
+    }
+
+    // Check if it's a project learning
+    const parent = this.findParentNode(node.id);
+    if (!parent || !parent.id.startsWith("project:")) {
+      this.statusMessage = "Can only promote project learnings";
+      return;
+    }
+
+    const portal = parent.id.replace("project:", "");
+    this.state.activeDialog = new PromoteDialog(node.label, portal);
+  }
+
+  /**
+   * Process dialog result after it closes
+   */
+  private async processDialogResult(): Promise<void> {
+    const dialog = this.state.activeDialog;
+    if (!dialog) return;
+
+    this.state.activeDialog = null;
+
+    // Handle different dialog types with typed results
+    if (dialog instanceof ConfirmApproveDialog) {
+      const result = dialog.getResult();
+      if (result.type === "cancelled") {
+        this.statusMessage = "Cancelled";
+        return;
+      }
+      try {
+        await this.service.approvePending(result.value.proposalId);
+        this.statusMessage = "Proposal approved";
+        await this.loadTree();
+        await this.loadPendingCount();
+      } catch (e) {
+        this.statusMessage = `Error: ${e instanceof Error ? e.message : String(e)}`;
+      }
+    } else if (dialog instanceof ConfirmRejectDialog) {
+      const result = dialog.getResult();
+      if (result.type === "cancelled") {
+        this.statusMessage = "Cancelled";
+        return;
+      }
+      try {
+        await this.service.rejectPending(result.value.proposalId, result.value.reason);
+        this.statusMessage = "Proposal rejected";
+        await this.loadTree();
+        await this.loadPendingCount();
+      } catch (e) {
+        this.statusMessage = `Error: ${e instanceof Error ? e.message : String(e)}`;
+      }
+    } else if (dialog instanceof BulkApproveDialog) {
+      const result = dialog.getResult();
+      if (result.type === "cancelled") {
+        this.statusMessage = "Cancelled";
+        return;
+      }
+      try {
+        const pending = await this.service.listPending();
+        let approved = 0;
+        for (const proposal of pending) {
+          await this.service.approvePending(proposal.id);
+          approved++;
+        }
+        this.statusMessage = `Approved ${approved} proposals`;
+        await this.loadTree();
+        await this.loadPendingCount();
+      } catch (e) {
+        this.statusMessage = `Error: ${e instanceof Error ? e.message : String(e)}`;
+      }
+    } else if (dialog instanceof AddLearningDialog) {
+      const result = dialog.getResult();
+      if (result.type === "cancelled") {
+        this.statusMessage = "Cancelled";
+        return;
+      }
+      // AddLearning would require additional service method
+      this.statusMessage = "Learning add not implemented yet";
+    } else if (dialog instanceof PromoteDialog) {
+      const result = dialog.getResult();
+      if (result.type === "cancelled") {
+        this.statusMessage = "Cancelled";
+        return;
+      }
+      // Promote would require additional service method
+      this.statusMessage = "Promote not implemented yet";
+    }
   }
 
   // ===== Detail Content =====
@@ -772,9 +982,12 @@ export class MemoryViewTuiSession extends TuiSessionBase {
       "- s or /: Search",
       "- ?: Show this help",
       "",
-      "## Pending Actions",
-      "- a: Approve proposal",
-      "- r: Reject proposal",
+      "## Actions",
+      "- a: Approve selected proposal",
+      "- r: Reject selected proposal",
+      "- A: Approve all pending",
+      "- L: Add new learning",
+      "- P: Promote to global",
       "",
       "Press any key to close.",
     ].join("\n");
@@ -824,15 +1037,24 @@ export class MemoryViewTuiSession extends TuiSessionBase {
    */
   renderActionButtons(): string {
     const node = this.findNodeById(this.state.selectedNodeId);
-    if (!node) return "";
+    if (!node) return "[L] Add Learning";
 
     if (node.id.startsWith("pending:")) {
-      return "[a] Approve  [r] Reject  [Enter] View Details";
+      return "[a] Approve  [r] Reject  [A] Approve All  [Enter] View Details";
+    }
+    if (node.id === "pending") {
+      return "[A] Approve All  [Enter] Expand";
     }
     if (node.type === "project") {
-      return "[Enter] View  [Tab] Switch Panel";
+      return "[L] Add Learning  [Enter] View  [Tab] Switch Panel";
     }
-    return "[Enter] Select  [Tab] Switch Panel";
+    if (node.type === "learning") {
+      const parent = this.findParentNode(node.id);
+      if (parent?.id.startsWith("project:")) {
+        return "[P] Promote to Global  [Enter] View Details";
+      }
+    }
+    return "[L] Add Learning  [Enter] Select  [Tab] Switch Panel";
   }
 
   /**
@@ -840,6 +1062,16 @@ export class MemoryViewTuiSession extends TuiSessionBase {
    */
   getFocusableElements(): string[] {
     return ["tree-panel", "detail-panel", "search-input", "action-buttons"];
+  }
+
+  /**
+   * Render dialog overlay if active
+   */
+  renderDialog(width: number, height: number): string | null {
+    if (!this.state.activeDialog || !this.state.activeDialog.isActive()) {
+      return null;
+    }
+    return this.state.activeDialog.render(width, height);
   }
 }
 

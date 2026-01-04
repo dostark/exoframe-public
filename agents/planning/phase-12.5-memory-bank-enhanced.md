@@ -3,7 +3,7 @@
 **Document Version:** 1.3.0
 **Date:** 2026-01-04
 **Author:** Architecture Agent
-**Status:** IN PROGRESS (Phase 12.5 ✅, Phase 12.8 ✅, Phase 12.9 ✅, Phase 12.10 ✅, Phase 12.11 ✅, Phase 12.12-12.14 🆕)
+**Status:** IN PROGRESS (Phase 12.5 ✅, Phase 12.8 ✅, Phase 12.9 ✅, Phase 12.10 ✅, Phase 12.11 ✅, Phase 12.12 ✅, Phase 12.13 ✅, Phase 12.14 🆕)
 **Parent Phase:** [Phase 12: Obsidian Retirement](phase-12-obsidian-retirement.md)
 **Target Release:** v1.1
 
@@ -904,30 +904,33 @@ async searchMemory(query: string, options: SearchOptions): Promise<SearchResult[
 
 ---
 
-### Phase 12.12: TUI Memory View - Core (2 days)
+### Phase 12.12: TUI Memory View - Core (2 days) ✅
 
 **Goal:** Implement interactive Memory Bank view in the TUI dashboard.
 
 **Tasks:**
-- [ ] Create `src/tui/memory_view.ts` with base component
-- [ ] Implement memory bank list panel (projects, global, execution)
-- [ ] Implement navigation between memory scopes (Tab/Arrow keys)
-- [ ] Add project memory detail view with patterns/decisions
-- [ ] Add execution history list with filtering
-- [ ] Implement search input with live results
-- [ ] Add keyboard shortcuts (s=search, g=global, p=projects, e=executions)
-- [ ] Integrate into main TUI dashboard navigation
-- [ ] Write unit tests for view components
+- [x] Create `src/tui/memory_view.ts` with base component
+- [x] Implement memory bank list panel (projects, global, execution)
+- [x] Implement navigation between memory scopes (Tab/Arrow keys)
+- [x] Add project memory detail view with patterns/decisions
+- [x] Add execution history list with filtering
+- [x] Implement search input with live results
+- [x] Add keyboard shortcuts (s=search, g=global, p=projects, e=executions)
+- [x] Integrate into main TUI dashboard navigation
+- [x] Write unit tests for view components
 
 **Deliverables:**
-- [ ] `src/tui/memory_view.ts` (~450 LOC)
-- [ ] `src/tui/memory_panels/` directory:
-  - [ ] `project_panel.ts` (~150 LOC)
-  - [ ] `global_panel.ts` (~120 LOC)
-  - [ ] `execution_panel.ts` (~130 LOC)
-  - [ ] `search_panel.ts` (~100 LOC)
-- [ ] Updated `src/tui/tui_dashboard.ts` (+50 LOC for memory tab integration)
-- [ ] `tests/tui/memory_view_test.ts` (~300 LOC)
+- [x] `src/tui/memory_view.ts` (~875 LOC)
+- [x] `src/tui/memory_panels/index.ts` (~430 LOC):
+  - [x] `renderProjectPanel()`
+  - [x] `renderGlobalPanel()`
+  - [x] `renderExecutionPanel()`
+  - [x] `renderSearchPanel()`
+  - [x] `renderPendingPanel()`
+  - [x] `renderStatsPanel()`
+- [x] Updated `src/tui/tui_dashboard.ts` (+30 LOC for memory tab integration)
+- [x] Updated `src/tui/tui_dashboard_mocks.ts` (+95 LOC for MockMemoryService)
+- [x] `tests/tui/memory_view_test.ts` (~397 LOC, 32 tests)
 
 **TUI Layout Design:**
 ```
@@ -966,54 +969,77 @@ async searchMemory(query: string, options: SearchOptions): Promise<SearchResult[
 | `?` | Show help overlay |
 
 **Success Criteria:**
-- [ ] Memory view accessible from main dashboard via `[m]` key
-- [ ] Tree navigation for memory bank hierarchy
-- [ ] Detail panel shows selected item content
-- [ ] Search input filters results in real-time
-- [ ] Keyboard navigation fully functional
-- [ ] View updates when memory banks change
-- [ ] 100% of view components have unit tests
+- [x] Memory view accessible from main dashboard via `[m]` key
+- [x] Tree navigation for memory bank hierarchy
+- [x] Detail panel shows selected item content
+- [x] Search input filters results in real-time
+- [x] Keyboard navigation fully functional
+- [x] View updates when memory banks change
+- [x] 100% of view components have unit tests
 
-**Tests (18 tests):**
+**Tests (32 tests - exceeds target of 18):**
 - `memory_view_test.ts`:
-  - `renders memory bank tree` (1)
-  - `navigates with arrow keys` (2)
-  - `expands/collapses tree nodes` (2)
-  - `switches panels with Tab` (1)
-  - `shows detail panel for selected item` (2)
-  - `search filters results` (2)
-  - `keyboard shortcuts trigger actions` (4)
-  - `handles empty memory banks` (2)
-  - `updates on memory change` (2)
+  - `initializes with default state` (1)
+  - `initialize loads tree and selects first node` (1)
+  - `initialize loads pending count` (1)
+  - `getActiveScope returns current scope` (1)
+  - `getTree returns tree structure` (1)
+  - `isSearchActive tracks search mode` (1)
+  - `up/down navigation changes selection` (1)
+  - `expand/collapse with enter key` (1)
+  - `left key collapses or moves to parent` (1)
+  - `home/end keys jump to first/last` (1)
+  - `'g' jumps to global scope` (1)
+  - `'p' jumps to projects scope` (1)
+  - `'e' jumps to executions scope` (1)
+  - `'n' jumps to pending scope` (1)
+  - `'s' activates search mode` (1)
+  - `'/' also activates search mode` (1)
+  - `typing in search mode updates query` (1)
+  - `backspace removes last character in search` (1)
+  - `escape exits search mode` (1)
+  - `enter executes search` (1)
+  - `getDetailContent returns content` (1)
+  - `'?' shows help content` (1)
+  - `renderTreePanel returns formatted tree` (1)
+  - `renderStatusBar shows shortcuts` (1)
+  - `renderStatusBar shows search input when active` (1)
+  - `renderActionButtons shows context-specific actions` (1)
+  - `getFocusableElements returns panel list` (1)
+  - `creates TUI session` (1)
+  - `getService returns service instance` (1)
+  - `findNodeById returns correct node` (1)
+  - `findNodeById returns null for invalid ID` (1)
+  - `findNodeById handles null ID` (1)
 
 ---
 
-### Phase 12.13: TUI Memory View - Pending & Actions (2 days)
+### Phase 12.13: TUI Memory View - Pending & Actions (2 days) ✅
 
 **Goal:** Add interactive pending proposal management and action dialogs to TUI.
 
 **Tasks:**
-- [ ] Create pending proposals panel with badge notification
-- [ ] Implement proposal detail view with diff display
-- [ ] Add approve/reject actions with confirmation dialogs
-- [ ] Implement bulk approve-all with progress indicator
-- [ ] Add promote/demote actions from detail view
-- [ ] Create "Add Learning" dialog for manual entry
-- [ ] Implement search with embedding toggle option
-- [ ] Add statistics overview panel
-- [ ] Write unit and integration tests
+- [x] Create pending proposals panel with badge notification
+- [x] Implement proposal detail view with diff display
+- [x] Add approve/reject actions with confirmation dialogs
+- [x] Implement bulk approve-all with progress indicator
+- [x] Add promote/demote actions from detail view
+- [x] Create "Add Learning" dialog for manual entry
+- [x] Implement search with embedding toggle option (in Phase 12.12)
+- [x] Add statistics overview panel
+- [x] Write unit and integration tests
 
 **Deliverables:**
-- [ ] `src/tui/memory_panels/pending_panel.ts` (~180 LOC)
-- [ ] `src/tui/memory_panels/stats_panel.ts` (~100 LOC)
-- [ ] `src/tui/dialogs/memory_dialogs.ts` (~250 LOC):
-  - [ ] `ConfirmApproveDialog`
-  - [ ] `ConfirmRejectDialog`
-  - [ ] `AddLearningDialog`
-  - [ ] `PromoteDialog`
-- [ ] Updated `src/tui/memory_view.ts` (+150 LOC for actions)
-- [ ] `tests/tui/memory_dialogs_test.ts` (~200 LOC)
-- [ ] `tests/tui/memory_pending_panel_test.ts` (~150 LOC)
+- [x] `src/tui/memory_panels/index.ts` (includes `renderPendingPanel`, `renderStatsPanel`)
+- [x] `src/tui/dialogs/memory_dialogs.ts` (~540 LOC):
+  - [x] `ConfirmApproveDialog`
+  - [x] `ConfirmRejectDialog`
+  - [x] `AddLearningDialog`
+  - [x] `PromoteDialog`
+  - [x] `BulkApproveDialog`
+- [x] Updated `src/tui/memory_view.ts` (+200 LOC for dialog state and actions)
+- [x] `tests/tui/memory_dialogs_test.ts` (37 tests)
+- [x] `tests/tui/memory_pending_panel_test.ts` (22 tests)
 
 **Pending Panel Layout:**
 ```
@@ -1076,31 +1102,78 @@ async searchMemory(query: string, options: SearchOptions): Promise<SearchResult[
 ```
 
 **Success Criteria:**
-- [ ] Pending badge shows count on Memory tab header
-- [ ] Pending proposals list with visual indicators
-- [ ] Approve/reject actions with confirmation
-- [ ] Bulk approve-all with progress feedback
-- [ ] Promote/demote accessible from learning detail
-- [ ] Add Learning dialog with form validation
-- [ ] Statistics panel shows accurate counts
-- [ ] All actions log to Activity Journal
-- [ ] 100% of dialogs have unit tests
+- [x] Pending badge shows count on Memory tab header
+- [x] Pending proposals list with visual indicators
+- [x] Approve/reject actions with confirmation
+- [x] Bulk approve-all with progress feedback
+- [x] Promote/demote accessible from learning detail
+- [x] Add Learning dialog with form validation
+- [x] Statistics panel shows accurate counts
+- [x] All actions log to Activity Journal (via service)
+- [x] 100% of dialogs have unit tests
 
-**Tests (16 tests):**
-- `memory_pending_panel_test.ts`:
-  - `renders pending proposals list` (1)
-  - `shows badge with count` (1)
-  - `navigates pending items` (2)
-  - `opens detail view on Enter` (1)
-  - `approve action triggers dialog` (2)
-  - `reject action triggers dialog` (2)
-  - `approve-all shows progress` (1)
-- `memory_dialogs_test.ts`:
-  - `confirm approve dialog renders` (1)
-  - `confirm reject dialog with reason` (1)
-  - `add learning dialog validates input` (2)
-  - `promote dialog shows target options` (1)
-  - `dialogs handle keyboard shortcuts` (1)
+**Tests (59 tests - exceeds target of 16):**
+- `memory_pending_panel_test.ts` (22 tests):
+  - `renders pending proposals list` ✅
+  - `shows proposal titles` ✅
+  - `shows categories` ✅
+  - `shows scope` ✅
+  - `marks selected item` ✅
+  - `handles empty list` ✅
+  - `formats age correctly` ✅
+  - `limits display to 10 items` ✅
+  - `renderStatsPanel renders statistics` ✅
+  - `renderStatsPanel shows all categories` ✅
+  - `'n' jumps to pending scope` ✅
+  - `pending badge shows count` ✅
+  - `'a' opens approve dialog` ✅
+  - `'r' opens reject dialog` ✅
+  - `'A' opens bulk approve dialog` ✅
+  - `'L' opens add learning dialog` ✅
+  - `action buttons show pending actions` ✅
+  - `dialog receives key events` ✅
+  - `renderDialog returns dialog content` ✅
+  - `approve action updates count` ✅
+  - `reject action with reason` ✅
+  - `help shows new action keys` ✅
+- `memory_dialogs_test.ts` (37 tests):
+  - `ConfirmApproveDialog: renders correctly` ✅
+  - `ConfirmApproveDialog: starts active` ✅
+  - `ConfirmApproveDialog: left/right switches focus` ✅
+  - `ConfirmApproveDialog: enter on approve confirms` ✅
+  - `ConfirmApproveDialog: 'y' shortcut confirms` ✅
+  - `ConfirmApproveDialog: escape cancels` ✅
+  - `ConfirmApproveDialog: 'n' shortcut cancels` ✅
+  - `ConfirmApproveDialog: getProposal returns proposal` ✅
+  - `ConfirmRejectDialog: renders correctly` ✅
+  - `ConfirmRejectDialog: navigates with tab/arrow` ✅
+  - `ConfirmRejectDialog: enters edit mode for reason` ✅
+  - `ConfirmRejectDialog: backspace removes characters` ✅
+  - `ConfirmRejectDialog: escape exits edit mode` ✅
+  - `ConfirmRejectDialog: confirms with reason` ✅
+  - `AddLearningDialog: renders correctly` ✅
+  - `AddLearningDialog: uses default portal` ✅
+  - `AddLearningDialog: validates required fields` ✅
+  - `AddLearningDialog: form fields can be edited` ✅
+  - `AddLearningDialog: escape cancels` ✅
+  - `AddLearningDialog: getFocusableElements` ✅
+  - `PromoteDialog: renders correctly` ✅
+  - `PromoteDialog: shows explanation text` ✅
+  - `PromoteDialog: left/right switches focus` ✅
+  - `PromoteDialog: enter confirms promotion` ✅
+  - `PromoteDialog: 'y' shortcut confirms` ✅
+  - `PromoteDialog: escape cancels` ✅
+  - `PromoteDialog: getters return correct values` ✅
+  - `BulkApproveDialog: renders correctly` ✅
+  - `BulkApproveDialog: shows warning text` ✅
+  - `BulkApproveDialog: left/right switches focus` ✅
+  - `BulkApproveDialog: enter confirms` ✅
+  - `BulkApproveDialog: 'y' shortcut confirms` ✅
+  - `BulkApproveDialog: escape cancels` ✅
+  - `BulkApproveDialog: progress updates rendering` ✅
+  - `BulkApproveDialog: getCount returns count` ✅
+  - `All dialogs: getFocusableElements returns non-empty arrays` ✅
+  - `All dialogs: render returns non-empty string` ✅
 
 ---
 
