@@ -1,7 +1,7 @@
 # ExoFrame Architecture
 
-**Version:** 1.11.0\
-**Date:** January 4, 2026
+**Version:** 1.12.0\
+**Date:** January 5, 2026
 
 This document provides a comprehensive architectural overview of ExoFrame components using Mermaid diagrams.
 
@@ -58,6 +58,12 @@ graph TB
         PathRes[Path Resolver]
         ToolReg[Tool Registry]
         CtxCard[Context Card Generator]
+        OutputVal[Output Validator]
+        RetryPol[Retry Policy]
+        ReflexAgt[Reflexive Agent]
+        ConfScore[Confidence Scorer]
+        SessMem[Session Memory]
+        ToolRefl[Tool Reflector]
     end
 
     subgraph Storage["💾 Storage"]
@@ -148,6 +154,15 @@ graph TB
     Factory --> Mock
     AgentRun --> Factory
 
+    %% Agent Orchestration (Phase 16)
+    AgentRun --> OutputVal
+    AgentRun --> RetryPol
+    AgentRun --> ReflexAgt
+    AgentRun --> ConfScore
+    SessMem --> Memory
+    AgentRun --> SessMem
+    ExecLoop --> ToolRefl
+
     %% Storage access
     ConfigSvc --> FS
     DBSvc --> DB
@@ -165,7 +180,7 @@ graph TB
     class User,Agent actor
     class Exoctl,ReqCmd,PlanCmd,ChangeCmd,GitCmd,DaemonCmd,PortalCmd,BlueprintCmd,DashCmd cli
     class Main,ReqWatch,PlanWatch,ReqProc,ReqRouter,PlanExec,AgentRun,FlowEng,FlowRun,ExecLoop core
-    class ConfigSvc,DBSvc,GitSvc,EventLog,ContextLoad,PlanWriter,MissionRpt,PathRes,ToolReg,CtxCard service
+    class ConfigSvc,DBSvc,GitSvc,EventLog,ContextLoad,PlanWriter,MissionRpt,PathRes,ToolReg,CtxCard,OutputVal,RetryPol,ReflexAgt,ConfScore,SessMem,ToolRefl service
     class DB,FS,Inbox,Blueprint,Memory,Portals,System storage
     class Factory,Ollama,Claude,GPT,Gemini,Mock ai
 
@@ -1293,6 +1308,111 @@ graph LR
 | **Parsers**            | Parse markdown + frontmatter       | `src/parsers/*.ts`                  |
 | **Schemas**            | Zod validation layer               | `src/schemas/*.ts`                  |
 | **MCP Server**         | JSON-RPC server for tool execution | `src/mcp/server.ts`                 |
+| **Blueprint Loader**   | Unified blueprint parsing          | `src/services/blueprint_loader.ts`  |
+| **Output Validator**   | Schema validation with JSON repair | `src/services/output_validator.ts`  |
+| **Retry Policy**       | Exponential backoff with jitter    | `src/services/retry_policy.ts`      |
+| **Reflexive Agent**    | Self-critique improvement loop     | `src/services/reflexive_agent.ts`   |
+| **Tool Reflector**     | Tool result evaluation and retry   | `src/services/tool_reflector.ts`    |
+| **Session Memory**     | Memory context injection           | `src/services/session_memory.ts`    |
+| **Confidence Scorer**  | Output confidence assessment       | `src/services/confidence_scorer.ts` |
+
+---
+
+## Agent Orchestration Architecture
+
+Phase 16 introduced advanced agent orchestration capabilities for improved output quality, reliability, and context awareness.
+
+### Orchestration Components
+
+```mermaid
+graph TB
+    subgraph Orchestration["🎭 Agent Orchestration"]
+        Request[Request Input]
+        SessMem[Session Memory]
+        AgentRun[Agent Runner]
+        ReflexAgt[Reflexive Agent]
+        OutputVal[Output Validator]
+        ConfScore[Confidence Scorer]
+        RetryPol[Retry Policy]
+        ToolRefl[Tool Reflector]
+        Response[Final Response]
+    end
+
+    subgraph Memory["💾 Memory Bank"]
+        Learnings[Learnings]
+        Patterns[Patterns]
+        Executions[Executions]
+    end
+
+    Request --> SessMem
+    SessMem -->|Lookup| Memory
+    Memory -->|Context| SessMem
+    SessMem -->|Enhanced| AgentRun
+
+    AgentRun --> ReflexAgt
+    ReflexAgt -->|Critique| ReflexAgt
+    ReflexAgt --> OutputVal
+
+    OutputVal -->|Invalid| RetryPol
+    RetryPol -->|Retry| AgentRun
+    OutputVal -->|Valid| ConfScore
+
+    ConfScore -->|Low| Response
+    ConfScore -->|High| Response
+
+    AgentRun --> ToolRefl
+    ToolRefl -->|Reflect| ToolRefl
+    ToolRefl --> AgentRun
+
+    classDef orch fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef mem fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+
+    class Request,SessMem,AgentRun,ReflexAgt,OutputVal,ConfScore,RetryPol,ToolRefl,Response orch
+    class Learnings,Patterns,Executions mem
+```
+
+### Service Responsibilities
+
+| Service               | Purpose             | Key Features                                                  |
+| --------------------- | ------------------- | ------------------------------------------------------------- |
+| **Session Memory**    | Context injection   | Semantic search, memory lookup, insight saving                |
+| **Reflexive Agent**   | Quality improvement | Self-critique, iterative refinement, confidence threshold     |
+| **Output Validator**  | Schema validation   | JSON repair, Zod validation, error reporting                  |
+| **Retry Policy**      | Failure recovery    | Exponential backoff, jitter, circuit breaker                  |
+| **Confidence Scorer** | Quality assessment  | LLM-based scoring, human review flags                         |
+| **Tool Reflector**    | Tool execution      | Result evaluation, alternative parameters, parallel execution |
+
+### Data Flow
+
+1. **Request Enhancement**: Session Memory injects relevant context from past interactions
+2. **Agent Execution**: Agent Runner processes request with enhanced context
+3. **Self-Critique** (optional): Reflexive Agent refines output iteratively
+4. **Validation**: Output Validator checks against schema, repairs if needed
+5. **Retry** (on failure): Retry Policy handles transient errors with backoff
+6. **Confidence**: Confidence Scorer assesses output quality
+7. **Human Review**: Low-confidence outputs flagged for review
+
+### Configuration
+
+Agent orchestration is configured in `exo.config.toml`:
+
+```toml
+[agents]
+confidence_threshold = 70  # Flag outputs below this score
+
+[agents.memory]
+enabled = true
+topK = 5
+threshold = 0.3
+
+[agents.retry]
+maxAttempts = 5
+initialDelay = 1000
+backoffMultiplier = 2.0
+jitterFactor = 0.5
+```
+
+See User Guide Section 6 for detailed configuration reference.
 
 ---
 
