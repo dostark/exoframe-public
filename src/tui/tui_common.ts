@@ -434,8 +434,9 @@ export class TuiSessionBase {
   /**
    * Get key bindings for this view
    * Override in subclasses to provide view-specific bindings
+   * The type parameter allows subclasses to use string actions or function handlers
    */
-  getKeyBindings(): KeyBinding<KeyHandler>[] {
+  getKeyBindings(): KeyBinding<KeyHandler | string>[] {
     return [];
   }
 
