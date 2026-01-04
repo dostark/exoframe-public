@@ -1,0 +1,17 @@
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--min-lines` | Minimum lines to consider clone | `--min-lines 5` (default: 5) |
+| `--min-tokens` | Minimum tokens to consider clone | `--min-tokens 50` (default: 50) |
+| `--threshold` | Fail if duplication exceeds % | `--threshold 10` |
+| `--reporters` | Output formats | `json`, `html`, `console` |
+| `--ignore` | Patterns to ignore | `--ignore "**/node_modules/**"` |
+| `--format` | Languages to scan | `--format typescript` |
+
+## Understanding Output
+
+### Console Output
+```
+Clone found (typescript):
+ - tests/ai/openai_provider_test.ts [64:2 - 78:13] (14 lines, 136 tokens)
+   tests/ai/anthropic_provider_test.ts [44:2 - 56:12]
+```

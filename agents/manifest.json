@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-04T17:18:06.574Z",
+  "generated_at": "2026-01-04T21:12:22.942Z",
   "docs": [
     {
       "path": "agents/docs/documentation.md",
@@ -636,6 +636,30 @@
         "agents/chunks/testing.md.chunk3.txt",
         "agents/chunks/testing.md.chunk4.txt",
         "agents/chunks/testing.md.chunk5.txt"
+      ]
+    },
+    {
+      "path": "agents/tests/jscpd-guide.md",
+      "agent": "copilot",
+      "scope": "dev",
+      "title": "jscpd Code Duplication Detection Guide",
+      "short_summary": "Using jscpd to detect and track code duplication in ExoFrame codebase",
+      "version": "0.1",
+      "topics": [
+        "refactoring",
+        "quality",
+        "tools",
+        "jscpd"
+      ],
+      "chunks": [
+        "agents/chunks/jscpd-guide.md.chunk0.txt",
+        "agents/chunks/jscpd-guide.md.chunk1.txt",
+        "agents/chunks/jscpd-guide.md.chunk2.txt",
+        "agents/chunks/jscpd-guide.md.chunk3.txt",
+        "agents/chunks/jscpd-guide.md.chunk4.txt",
+        "agents/chunks/jscpd-guide.md.chunk5.txt",
+        "agents/chunks/jscpd-guide.md.chunk6.txt",
+        "agents/chunks/jscpd-guide.md.chunk7.txt"
       ]
     }
   ]
