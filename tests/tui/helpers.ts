@@ -85,6 +85,46 @@ export function createTuiWithRequests(arr: Array<Record<string, any>> = []) {
 }
 
 // -------------------------
+// Log entry helpers (for MonitorView tests)
+// -------------------------
+let logIdCounter = 1;
+
+export function sampleLogEntry(overrides: Record<string, unknown> = {}) {
+  const id = overrides.id ?? String(logIdCounter++);
+  return {
+    id,
+    trace_id: overrides.trace_id ?? `trace-${id}`,
+    actor: overrides.actor ?? "agent",
+    agent_id: overrides.agent_id ?? "default",
+    action_type: overrides.action_type ?? "request_created",
+    target: overrides.target ?? "Inbox/Requests/test.md",
+    payload: overrides.payload ?? {},
+    timestamp: overrides.timestamp ?? new Date().toISOString(),
+    ...overrides,
+  };
+}
+
+export function sampleLogEntries(arr: Array<Record<string, unknown>>) {
+  return arr.map((a) => sampleLogEntry(a));
+}
+
+/** Convenience: create two logs with different agents for filter tests */
+export function createTwoAgentLogs() {
+  return sampleLogEntries([
+    { agent_id: "researcher", action_type: "request_created" },
+    { agent_id: "architect", action_type: "plan_approved", target: "Inbox/Plans/test.md" },
+  ]);
+}
+
+/** Convenience: create two logs with different action types for filter tests */
+export function createTwoActionLogs() {
+  return sampleLogEntries([
+    { action_type: "request_created" },
+    { action_type: "plan_approved" },
+  ]);
+}
+
+// -------------------------
 // Portal helpers
 // -------------------------
 export function samplePortal(overrides: Record<string, any> = {}) {

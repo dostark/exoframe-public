@@ -2,7 +2,14 @@ import { assert, assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
 import { LOG_COLORS, LOG_ICONS, MONITOR_KEY_BINDINGS, MonitorView } from "../../src/tui/monitor_view.ts";
 import type { LogEntry } from "../../src/tui/monitor_view.ts";
 import { DatabaseService } from "../../src/services/db.ts";
-import { createMockDatabaseService, createMonitorViewWithLogs } from "./helpers.ts";
+import {
+  createMockDatabaseService,
+  createMonitorViewWithLogs,
+  createTwoActionLogs,
+  createTwoAgentLogs,
+  sampleLogEntries,
+  sampleLogEntry,
+} from "./helpers.ts";
 
 // Additional coverage for MonitorView rendering and color helpers
 Deno.test("MonitorView - getLogColor covers all cases", () => {
@@ -64,16 +71,7 @@ Deno.test("MonitorView - renderLogs outputs ANSI and handles empty", () => {
 
 Deno.test("MonitorView - should display real-time log streaming", () => {
   const { db: _db, monitorView } = createMonitorViewWithLogs([
-    {
-      id: "1",
-      trace_id: "trace-1",
-      actor: "agent",
-      agent_id: "researcher",
-      action_type: "request_created",
-      target: "Inbox/Requests/test.md",
-      payload: { description: "Test request" },
-      timestamp: "2025-12-21T10:00:00Z",
-    },
+    sampleLogEntry({ agent_id: "researcher" }),
   ]);
 
   // Test that it can retrieve logs
@@ -84,28 +82,7 @@ Deno.test("MonitorView - should display real-time log streaming", () => {
 });
 
 Deno.test("MonitorView - should filter logs by agent", () => {
-  const { db: _db, monitorView } = createMonitorViewWithLogs([
-    {
-      id: "1",
-      trace_id: "trace-1",
-      actor: "agent",
-      agent_id: "researcher",
-      action_type: "request_created",
-      target: "Inbox/Requests/test.md",
-      payload: { description: "Test request" },
-      timestamp: "2025-12-21T10:00:00Z",
-    },
-    {
-      id: "2",
-      trace_id: "trace-2",
-      actor: "agent",
-      agent_id: "architect",
-      action_type: "plan_approved",
-      target: "Inbox/Plans/test.md",
-      payload: { plan: "Test plan" },
-      timestamp: "2025-12-21T10:01:00Z",
-    },
-  ]);
+  const { db: _db, monitorView } = createMonitorViewWithLogs(createTwoAgentLogs());
 
   // Test filtering by agent
   monitorView.setFilter({ agent: "researcher" });
@@ -115,28 +92,7 @@ Deno.test("MonitorView - should filter logs by agent", () => {
 });
 
 Deno.test("MonitorView - should filter logs by action type", () => {
-  const { db: _db, monitorView } = createMonitorViewWithLogs([
-    {
-      id: "1",
-      trace_id: "trace-1",
-      actor: "agent",
-      agent_id: "researcher",
-      action_type: "request_created",
-      target: "Inbox/Requests/test.md",
-      payload: { description: "Test request" },
-      timestamp: "2025-12-21T10:00:00Z",
-    },
-    {
-      id: "2",
-      trace_id: "trace-2",
-      actor: "agent",
-      agent_id: "architect",
-      action_type: "plan_approved",
-      target: "Inbox/Plans/test.md",
-      payload: { plan: "Test plan" },
-      timestamp: "2025-12-21T10:01:00Z",
-    },
-  ]);
+  const { db: _db, monitorView } = createMonitorViewWithLogs(createTwoActionLogs());
 
   // Test filtering by action type
   monitorView.setFilter({ actionType: "plan_approved" });
@@ -306,74 +262,27 @@ Deno.test("MonitorView - should filter logs by time window", () => {
 // ============================================================
 
 Deno.test("Phase 13.5: MonitorTuiSession - creates session", () => {
-  const { monitorView } = createMonitorViewWithLogs([
-    {
-      id: "1",
-      trace_id: "t1",
-      actor: "user",
-      agent_id: "a1",
-      action_type: "request_created",
-      target: "target.md",
-      payload: {},
-      timestamp: "2025-12-22T10:00:00Z",
-    },
-  ]);
+  const { monitorView } = createMonitorViewWithLogs([sampleLogEntry()]);
   const session = monitorView.createTuiSession();
   assertExists(session);
   assertEquals(session.getViewName(), "Monitor");
 });
 
 Deno.test("Phase 13.5: MonitorTuiSession - builds flat tree", () => {
-  const { monitorView } = createMonitorViewWithLogs([
-    {
-      id: "1",
-      trace_id: "t1",
-      actor: "user",
-      agent_id: "a1",
-      action_type: "request_created",
-      target: "target.md",
-      payload: {},
-      timestamp: "2025-12-22T10:00:00Z",
-    },
-    {
-      id: "2",
-      trace_id: "t2",
-      actor: "user",
-      agent_id: "a2",
-      action_type: "plan.approved",
-      target: "target2.md",
-      payload: {},
-      timestamp: "2025-12-22T10:01:00Z",
-    },
-  ]);
+  const { monitorView } = createMonitorViewWithLogs(sampleLogEntries([
+    { action_type: "request_created" },
+    { action_type: "plan.approved" },
+  ]));
   const session = monitorView.createTuiSession();
   const tree = session.getLogTree();
   assertEquals(tree.length, 2, "Flat tree should have 2 entries");
 });
 
 Deno.test("Phase 13.5: MonitorTuiSession - toggle grouping", async () => {
-  const { monitorView } = createMonitorViewWithLogs([
-    {
-      id: "1",
-      trace_id: "t1",
-      actor: "user",
-      agent_id: "a1",
-      action_type: "request_created",
-      target: "target.md",
-      payload: {},
-      timestamp: "2025-12-22T10:00:00Z",
-    },
-    {
-      id: "2",
-      trace_id: "t2",
-      actor: "user",
-      agent_id: "a2",
-      action_type: "request_created",
-      target: "target2.md",
-      payload: {},
-      timestamp: "2025-12-22T10:01:00Z",
-    },
-  ]);
+  const { monitorView } = createMonitorViewWithLogs(sampleLogEntries([
+    { agent_id: "a1" },
+    { agent_id: "a2" },
+  ]));
   const session = monitorView.createTuiSession();
 
   assertEquals(session.getGroupBy(), "none");
