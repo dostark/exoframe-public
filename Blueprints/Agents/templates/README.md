@@ -71,6 +71,36 @@ Unlike **Examples** (which are fully defined personas like "Code Reviewer"), **T
 - Plan approval workflows
 - Compliance checking
 
+### 6. Specialist Agent (`specialist-agent.md.template`) 🆕
+**Pattern:** Domain-focused expertise
+**Use Case:** Agents with deep knowledge in a specific domain.
+**Key Features:**
+- Domain-specific checklist methodology
+- Severity classification (critical/high/medium/low/info)
+- Structured analysis format
+- Pre-built persona configurations (security, code review, architecture)
+
+**When to use:**
+- Security audits
+- Architecture reviews
+- Code quality assessments
+- Specialized compliance checks
+
+### 7. Conversational Agent (`conversational-agent.md.template`) 🆕
+**Pattern:** Multi-turn dialogue
+**Use Case:** Interactive sessions requiring context continuity.
+**Key Features:**
+- Conversation state tracking
+- Short-term and long-term memory integration
+- Topic change handling
+- Multiple persona templates (assistant, mentor, brainstorm partner)
+
+**When to use:**
+- Interactive debugging sessions
+- Technical mentoring
+- Brainstorming and ideation
+- Exploratory assistance
+
 ## Template Comparison
 
 | Template | Output Quality | Latency | Automation | Best For |
@@ -78,6 +108,8 @@ Unlike **Examples** (which are fully defined personas like "Code Reviewer"), **T
 | Pipeline | Standard | Low | High | Transformations |
 | Collaborative | Standard | Medium | Medium | Multi-agent flows |
 | Reflexive | High | High | Medium | Quality-critical |
+| Specialist | High | Medium | High | Domain expertise |
+| Conversational | Standard | Low | Low | Multi-turn dialogue |
 | Research | High | Medium | Low | Exploration |
 | Judge | Structured | Medium | High | Quality gates |
 
@@ -135,14 +167,32 @@ criteria_version: "1.0"        # Criteria set version
 verdict_threshold: 70          # PASS threshold score
 ```
 
+### Specialist Agent Fields
+
+```yaml
+domain: "security"             # Specialization domain
+expertise_level: "expert"      # expert | senior | standard
+```
+
+### Conversational Agent Fields
+
+```yaml
+conversational: true           # Enable multi-turn mode
+max_turns: 20                  # Max turns before reset
+memory_enabled: true           # Use Memory Bank
+context_window: 10             # Turns to keep in context
+```
+
 ## Implementation Status
 
 | Template | Documentation | Runtime Support |
 |----------|--------------|-----------------|
 | Pipeline | ✅ Complete | ✅ Supported |
 | Collaborative | ✅ Complete | ✅ Supported |
-| Reflexive | ✅ Complete | 🔄 Phase 16.4 |
+| Reflexive | ✅ Complete | ✅ Phase 16.4 |
 | Research | ✅ Complete | 🔄 Phase 16.6 |
 | Judge | ✅ Complete | ✅ Supported |
+| Specialist | ✅ Complete | ✅ Supported |
+| Conversational | ✅ Complete | 🔄 Phase 16.6 |
 
 See [Phase 16: Agent Orchestration Improvements](../../../agents/planning/phase-16-agent-orchestration-improvements.md) for implementation timeline.
