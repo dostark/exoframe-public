@@ -1,6 +1,6 @@
 /.cache
 dist/
-coverage/
+coverage*/
 
 # Allow a checked-in agent-facing coverage snapshot (kept small and human-readable)
 !agents/coverage/

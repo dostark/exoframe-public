@@ -4328,6 +4328,298 @@ Just with:
 That’s what makes `agents/` more than a folder.
 It’s a maintenance contract.
 
+---
+
+## Part XXI: The TUI Unification Sprint (January 3-4, 2026)
+
+### The Problem: Seven Views, Seven Patterns
+
+Phase 13 started with an uncomfortable truth: the TUI dashboard had 7 views, but only one (Memory View from Phase 12) had modern UX patterns. The other 6 were functional but felt like different applications:
+
+| View            | Loading States | Help Screen | Tree Nav | Search | Dialogs |
+| --------------- | -------------- | ----------- | -------- | ------ | ------- |
+| Memory View     | ✅             | ✅          | ✅       | ✅     | ✅      |
+| Portal Manager  | ❌             | ❌          | ❌       | ❌     | ❌      |
+| Plan Reviewer   | ❌             | ❌          | ❌       | ❌     | ❌      |
+| Monitor         | ❌             | ❌          | ❌       | ❌     | ❌      |
+| Request Manager | ❌             | ❌          | ❌       | ❌     | ❌      |
+| Agent Status    | ❌             | ❌          | ❌       | ❌     | ❌      |
+| Daemon Control  | ❌             | ❌          | ❌       | ❌     | ❌      |
+
+### Pattern 29: Extract-Then-Propagate (The Unification Strategy)
+
+**The Anti-Pattern**: Copy-paste Memory View code into each view.
+
+**The Pattern**:
+
+1. **Extract** shared utilities from Memory View into `src/tui/utils/`
+2. **Create** base patterns that all views can inherit
+3. **Propagate** patterns to each view, one phase at a time
+
+**The Implementation**:
+
+```
+Phase 13.1: Extract shared infrastructure
+           └── dialog_base.ts, colors.ts, spinner.ts, tree_view.ts, etc.
+
+Phase 13.2: Enhance TuiSessionBase
+           └── Add loading states, refresh, dialogs to base class
+
+Phase 13.3-13.8: Propagate to each view (one per phase)
+           └── Portal → Plan → Monitor → Request → Agent → Daemon
+
+Phase 13.9: Dashboard integration
+           └── Global help, notifications, layout persistence
+
+Phase 13.10-13.11: Polish
+           └── Documentation, split view enhancement
+```
+
+**Why This Works**:
+
+- Each phase is independent after 13.2 (parallelizable if needed)
+- Rollback is surgical (revert one view without affecting others)
+- Tests prove each view works before moving to next
+- Shared utilities get tested once, used everywhere
+
+**The Result**:
+
+| Metric               | Before | After       |
+| -------------------- | ------ | ----------- |
+| Total TUI Tests      | 225    | **656**     |
+| Views with Modern UX | 1/7    | **7/7**     |
+| Shared Utilities     | 0      | **8 files** |
+| Lines of Code        | ~2,500 | **~6,000**  |
+
+### Pattern 30: Timer Leak Prevention in Tests
+
+**The Bug**: After Phase 13.3, tests started hanging intermittently.
+
+```bash
+$ deno test tests/tui/portal_manager_view_test.ts
+# ... tests pass ...
+# [hangs for 30 seconds]
+# error: Leaking async ops
+```
+
+**The Root Cause**: TUI components use `setTimeout` for spinners, auto-refresh, and debouncing. In tests, these timers outlive the test case.
+
+**The Solution**: Conditional timer creation.
+
+```typescript
+// In TuiSessionBase
+protected startAutoRefresh() {
+  // Skip in test mode to prevent timer leaks
+  if (Deno.env.get("DENO_TEST") === "1") {
+    return;
+  }
+  this.autoRefreshTimer = setTimeout(() => this.refresh(), this.refreshIntervalMs);
+}
+```
+
+**The Test Configuration**: For tests that genuinely need timers, disable sanitizers:
+
+```typescript
+Deno.test({
+  name: "TUI: handles async refresh",
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    // Test code that involves timers
+  },
+});
+```
+
+**The Rule**:
+
+- Production code: Timers run normally
+- Test code: Timers skipped OR sanitizers disabled
+- Never mix: Either skip timers OR disable sanitizers, not both randomly
+
+### Pattern 31: The CLAUDE.md Entry Point
+
+**The Discovery**: AI assistants don't automatically scan `agents/` for guidance. They work with immediate context.
+
+**The Question**:
+
+```
+Me: "Do you automatically look into agents/ folder while doing my requests?"
+Agent: "No - I only explore it when tasks explicitly mention it,
+        semantic search surfaces it, or I'm prompted to look there."
+```
+
+**The Solution**: Create `CLAUDE.md` in the repository root as an entry point.
+
+**What Goes in CLAUDE.md**:
+
+```markdown
+# CLAUDE.md — ExoFrame AI Assistant Guidelines
+
+## Quick Reference
+
+| Need               | Location                  |
+| ------------------ | ------------------------- |
+| Task → Doc mapping | agents/cross-reference.md |
+| Source patterns    | agents/source/exoframe.md |
+| Testing patterns   | agents/tests/testing.md   |
+| Planning docs      | agents/planning/          |
+
+## Key Patterns
+
+- TDD-first (tests before implementation)
+- Pre-commit hooks enforce fmt/lint
+- TUI tests use sanitizeOps: false for timer tests
+
+## Current Status
+
+- Phase 13: TUI Enhancement ✅ COMPLETED (656 tests)
+```
+
+**Why This Works**:
+
+- Root-level files are often included in AI context automatically
+- Provides immediate orientation without searching
+- Points to detailed docs in `agents/` for deep dives
+- Easy to maintain (update when phases complete)
+
+**The Pattern**: `CLAUDE.md` is the README for AI assistants.
+
+### Pattern 32: Planning Document as Living Record
+
+**The Anti-Pattern**: Planning docs that stay "PLANNING" forever.
+
+**The Pattern**: Update planning documents as phases complete:
+
+```markdown
+# Before
+
+**Status:** PLANNING
+
+### Phase 13.1: Shared Infrastructure (1 day)
+
+**Tasks:**
+
+- [ ] Create dialog_base.ts
+- [ ] Create colors.ts
+
+# After
+
+**Status:** COMPLETED ✅
+**Completed:** 2026-01-04
+
+### Phase 13.1: Shared Infrastructure (1 day) ✅
+
+**Commit:** 62abbbf
+**Tasks:**
+
+- [x] Create dialog_base.ts
+- [x] Create colors.ts
+```
+
+**What to Update**:
+
+1. Document status (PLANNING → COMPLETED)
+2. Phase headers (add ✅)
+3. Task checkboxes ([ ] → [x])
+4. Add commit hashes for traceability
+5. Update metrics with actual results
+
+**Why This Matters**:
+
+- Planning docs become historical record
+- Easy to see what was planned vs. achieved
+- Future phases can reference patterns
+- Onboarding shows how decisions evolved
+
+### Pattern 33: Incremental Phase Commits
+
+**The 11-Phase Pattern**: Phase 13 was split into 11 sub-phases, each with its own commit:
+
+| Phase | Commit  | Tests Added | Description                 |
+| ----- | ------- | ----------- | --------------------------- |
+| 13.1  | 62abbbf | 53          | Shared TUI Infrastructure   |
+| 13.2  | 02091ca | 27          | Enhanced TuiSessionBase     |
+| 13.3  | e28c7ec | 63          | Portal Manager Enhancement  |
+| 13.4  | bfa8e8c | 71          | Plan Reviewer Enhancement   |
+| 13.5  | 9def473 | 73          | Monitor View Enhancement    |
+| 13.6  | a721eb8 | 73          | Request Manager Enhancement |
+| 13.7  | 75f2f02 | 63          | Agent Status Enhancement    |
+| 13.8  | f4c21dd | 61          | Daemon Control Enhancement  |
+| 13.9  | 86f134b | 107         | Dashboard Integration       |
+| 13.10 | 2aece8c | 0           | User Documentation          |
+| 13.11 | ad8757d | 65          | Split View Enhancement      |
+
+**Why Small Commits**:
+
+- Bisectable: `git bisect` can find regressions
+- Reviewable: Each commit is ~300-500 LOC
+- Revertable: One view broken? Revert one commit
+- Documentable: Commit message explains the "what" and "why"
+
+**The Commit Message Pattern**:
+
+```
+Phase 13.X: [Component] Enhancement
+
+- Add [ViewState] interface
+- Implement tree view with [grouping strategy]
+- Add help screen (? key)
+- Add [N] tests
+
+Tests: XXX passing (YYY new)
+```
+
+### Pattern 34: Test Count as Progress Metric
+
+**The Observation**: Test count is a surprisingly good progress indicator.
+
+**Phase 13 Test Trajectory**:
+
+```
+Day 1: 225 tests (baseline)
+       └── 13.1: +53 → 278
+       └── 13.2: +27 → 305
+
+Day 2: 305 tests
+       └── 13.3: +63 → 368
+       └── 13.4: +71 → 439
+       └── 13.5: +73 → 512
+       └── 13.6: +73 → 585
+
+Day 3: 585 tests
+       └── 13.7: +63 → 648
+       └── 13.8: +61 → 709
+       └── 13.9: +107 → (some overlap)
+       └── 13.10: +0 → (docs only)
+       └── 13.11: +65 → 656
+
+Final: 656 TUI tests
+```
+
+**Why Test Count Works**:
+
+- Objective (not subjective "feels done")
+- Correlates with coverage
+- Visible progress (225 → 656 = 2.9x growth)
+- Catches regressions (count should never decrease)
+
+**The Caveat**: Test count ≠ test quality. But for TDD workflows, high count usually means high coverage.
+
+### The Meta-Lesson: Unification as Infrastructure Investment
+
+**The Temptation**: "Let's just ship the feature, we'll clean up later."
+
+**The Reality**: Phase 13 took 2 days but saved future weeks:
+
+- New views now inherit patterns automatically
+- Bug fixes in base class propagate everywhere
+- Documentation is consistent (one keyboard reference, not seven)
+- Tests are comprehensive (656 vs 225)
+
+**The Rule**: When you notice inconsistency across N components, consider if unifying them is cheaper than maintaining N variants forever.
+
+---
+
 ## Recent Patterns and Observations
 
 The repository underwent an intensive implementation and QA cycle between 2025-12-21 and 2025-12-23. The following patterns and engineering observations emerged and are recommended to be included in this guide so future contributors and integrators benefit from them.
