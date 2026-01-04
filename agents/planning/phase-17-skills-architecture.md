@@ -4,24 +4,51 @@
 **Status:** Planning
 **Priority:** High
 **Estimated Duration:** 2-3 weeks
+**Parent Phase:** [Phase 12.5: Memory Banks Enhanced](./phase-12.5-memory-bank-enhanced.md)
 
 ---
 
 ## Executive Summary
 
-This plan introduces **Skills** as a new abstraction layer in ExoFrame. Skills are
-reusable instruction modules that encode domain expertise, procedures, and best
-practices. Unlike capabilities (tool permissions), Skills define *how* agents should
-approach specific types of work.
+This plan introduces **Skills** as a specialized type of **Procedural Memory** within
+ExoFrame's Memory Bank system. Skills encode domain expertise, procedures, and best
+practices as reusable instruction modules that agents can apply automatically.
 
 **Key Insight from Anthropic's Approach:**
 > "Turn your expertise, procedures, and best practices into reusable capabilities
 > so Claude can apply them automatically, every time."
 
+### Why Skills Belong in Memory
+
+Skills are fundamentally **procedural memory** - "how to do things." Integrating
+with the Memory Bank system provides:
+
+| Benefit | Description |
+|---------|-------------|
+| **Unified Storage** | Skills live in `Memory/Skills/` alongside other memory types |
+| **Semantic Search** | Leverage existing Memory Bank search infrastructure |
+| **Learning Integration** | Skills can evolve from execution learnings |
+| **Approval Workflow** | Reuse pending → approved pattern from learnings |
+| **CLI Integration** | `exoctl memory skill` commands fit existing UX |
+
+### Memory Type Hierarchy
+
+```
+Memory/
+├── Projects/{portal}/     # Declarative: project facts, decisions
+├── Execution/{trace-id}/  # Episodic: what happened
+├── Global/                # Cross-project learnings
+└── Skills/                # NEW: Procedural memory (how to do things)
+    ├── core/              # Built-in skills (tdd, security, etc.)
+    ├── project/           # Project-specific skills
+    └── learned/           # Skills derived from executions
+```
+
 Skills bridge the gap between:
 - **Capabilities** (what tools an agent CAN use)
 - **Blueprints** (agent persona and identity)
 - **Task Requirements** (what needs to be done)
+- **Learnings** (what we've discovered works)
 
 ---
 
@@ -29,13 +56,24 @@ Skills bridge the gap between:
 
 ### What is a Skill?
 
-A **Skill** is a declarative instruction module containing:
+A **Skill** is a specialized Memory entry containing procedural knowledge:
 
 1. **Trigger Conditions** - When this skill should be activated
 2. **Instructions** - Procedural knowledge for the task type
 3. **Constraints** - Boundaries and requirements
 4. **Output Format** - Expected deliverable structure
 5. **Quality Criteria** - How to evaluate success
+
+### Memory Type Comparison
+
+| Aspect | Learning | Pattern | Skill |
+|--------|----------|---------|-------|
+| **Memory Type** | Episodic | Declarative | Procedural |
+| **Answers** | "What happened?" | "What exists?" | "How to do it?" |
+| **Example** | "TDD reduced bugs by 40%" | "Repository Pattern" | "TDD Methodology" |
+| **Scope** | Global/Project | Project | Global/Project |
+| **Source** | Execution/User | User/Agent | User/Agent/Learned |
+| **Evolution** | Static after approval | Updated manually | Can improve over time |
 
 ### Skill vs Capability vs Blueprint
 
@@ -47,6 +85,7 @@ A **Skill** is a declarative instruction module containing:
 | **Granularity** | Atomic tool | Composable procedure | Complete persona |
 | **Reusability** | Across all agents | Across related tasks | Single agent |
 | **Runtime** | Permission check | Context injection | System prompt |
+| **Storage** | Blueprint frontmatter | Memory/Skills/ | Blueprints/Agents/ |
 
 ### Skill Composition Model
 
@@ -72,131 +111,276 @@ A **Skill** is a declarative instruction module containing:
 
 ## Current State Analysis
 
-### Existing Mechanisms
+### Existing Memory Mechanisms
 
-| Mechanism | Location | Limitation |
-|-----------|----------|------------|
-| Agent capabilities | Blueprint frontmatter | Tool-level only, no procedures |
-| System prompts | Blueprint body | Monolithic, not composable |
-| Flow transforms | Flow definitions | Data transformation, not instruction injection |
-| agents/ docs | `agents/` folder | Human-readable, not agent-consumable at runtime |
+| Mechanism | Location | Purpose | Limitation |
+|-----------|----------|---------|------------|
+| **Learnings** | `Memory/Global/` | Insights from executions | Descriptive, not prescriptive |
+| **Patterns** | `Memory/Projects/*/patterns.md` | Code patterns found | Static, no triggers |
+| **Decisions** | `Memory/Projects/*/decisions.md` | Architectural choices | Historical, not actionable |
+| **agents/ docs** | `agents/` folder | Human guidance | Not runtime-consumable |
 
 ### Gap Analysis
 
-1. **No dynamic instruction injection** - Agents get static system prompts
-2. **No task-based skill routing** - Manual agent selection required
-3. **No skill versioning** - Instructions embedded in blueprints
-4. **No skill testing** - Can't validate skill effectiveness
-5. **Scattered procedural knowledge** - In docs, prompts, templates
+1. **No procedural memory type** - Learnings are observations, not instructions
+2. **No trigger-based retrieval** - Memory search is semantic, not task-aware
+3. **No skill composition** - Can't combine multiple procedures
+4. **No learning-to-skill pipeline** - Can't evolve learnings into skills
+5. **Scattered procedural knowledge** - In docs, prompts, templates (not Memory)
+
+### Integration Opportunity
+
+The Memory Bank already has:
+- ✅ Semantic search (`searchByKeyword`, `searchByTags`)
+- ✅ Approval workflow (`pending` → `approved`)
+- ✅ Scoping (`global` vs `project`)
+- ✅ CLI interface (`exoctl memory`)
+- ✅ Activity logging integration
+
+Skills can reuse all of this infrastructure!
 
 ---
 
 ## Architecture Design
 
-### Skill Definition Format
+### Skills as Memory Extension
 
-```yaml
-# Blueprints/Skills/tdd-methodology.skill.yaml
+Skills extend the existing Memory Bank schema:
+
+```typescript
+// src/schemas/memory_bank.ts (extended)
+
+/**
+ * Skill - Procedural memory for how to accomplish tasks
+ *
+ * Unlike Learnings (observations) or Patterns (structures),
+ * Skills are actionable instructions that agents apply.
+ */
+export const SkillSchema = z.object({
+  // === Memory Bank Standard Fields ===
+  id: z.string().uuid(),
+  created_at: z.string().datetime(),
+  source: z.enum(["user", "agent", "learned"]),  // "learned" = derived from executions
+  source_id: z.string().optional(),
+
+  scope: z.enum(["global", "project"]),
+  project: z.string().optional(),
+
+  status: z.enum(["draft", "active", "deprecated"]),
+
+  // === Skill-Specific Fields ===
+  skill_id: z.string().regex(/^[a-z0-9-]+$/),
+  name: z.string().min(1).max(100),
+  version: z.string().regex(/^\d+\.\d+\.\d+$/),
+  description: z.string(),
+
+  // Trigger conditions for automatic matching
+  triggers: z.object({
+    keywords: z.array(z.string()).optional(),
+    task_types: z.array(z.string()).optional(),
+    file_patterns: z.array(z.string()).optional(),
+    tags: z.array(z.string()).optional(),
+  }),
+
+  // The procedural knowledge itself
+  instructions: z.string().min(10),
+
+  // Constraints and quality criteria
+  constraints: z.array(z.string()).optional(),
+  output_requirements: z.array(z.string()).optional(),
+  quality_criteria: z.array(z.object({
+    name: z.string(),
+    description: z.string().optional(),
+    weight: z.number().min(0).max(100),
+  })).optional(),
+
+  // Compatibility
+  compatible_with: z.object({
+    agents: z.array(z.string()).default(["*"]),
+    flows: z.array(z.string()).optional(),
+  }).optional(),
+
+  // Evolution tracking
+  derived_from: z.array(z.string()).optional(),  // Learning IDs this skill came from
+  effectiveness_score: z.number().min(0).max(100).optional(),
+  usage_count: z.number().default(0),
+});
+```
+
+### Storage Structure
+
+```
+Memory/
+├── Projects/{portal}/
+├── Execution/{trace-id}/
+├── Global/
+│   ├── learnings.json
+│   └── index.json
+└── Skills/                    # NEW
+    ├── index.json             # Skill registry with triggers
+    ├── core/                  # Built-in skills (shipped with ExoFrame)
+    │   ├── tdd-methodology.skill.md
+    │   ├── security-first.skill.md
+    │   └── code-review.skill.md
+    ├── project/{portal}/      # Project-specific skills
+    │   └── {skill-id}.skill.md
+    └── learned/               # Auto-derived from learnings
+        └── {skill-id}.skill.md
+```
+
+### Skill File Format (Markdown with Frontmatter)
+
+```markdown
+<!-- Memory/Skills/core/tdd-methodology.skill.md -->
 ---
 skill_id: "tdd-methodology"
 name: "Test-Driven Development Methodology"
 version: "1.0.0"
-description: "Enforces TDD workflow: test first, implement, refactor"
+scope: "global"
+status: "active"
+source: "user"
 
 triggers:
-  - keywords: ["implement", "feature", "add", "create", "build"]
-  - task_types: ["feature", "bugfix", "refactor"]
-  - file_patterns: ["*.ts", "*.js", "*.py"]
-
-instructions: |
-  ## TDD Workflow
-
-  You MUST follow Test-Driven Development:
-
-  1. **Red Phase**: Write a failing test first
-     - Define expected behavior before implementation
-     - Run test to confirm it fails
-
-  2. **Green Phase**: Write minimal code to pass
-     - Only implement what's needed to pass the test
-     - No premature optimization
-
-  3. **Refactor Phase**: Improve without changing behavior
-     - Clean up code while tests stay green
-     - Extract helpers if needed
+  keywords: ["implement", "feature", "add", "create", "build"]
+  task_types: ["feature", "bugfix", "refactor"]
+  file_patterns: ["*.ts", "*.js", "*.py"]
+  tags: ["development", "testing"]
 
 constraints:
   - "Never write implementation before tests"
   - "Run tests after each change"
-  - "Keep test and implementation in sync"
-
-output_requirements:
-  - "Test file must exist before implementation"
-  - "All tests must pass before completion"
 
 quality_criteria:
   - name: "Test Coverage"
-    description: "New code has corresponding tests"
     weight: 40
   - name: "Test-First Evidence"
-    description: "Tests written before implementation"
     weight: 30
   - name: "Refactor Quality"
-    description: "Code is clean after green phase"
     weight: 30
 
-dependencies: []
-
 compatible_with:
-  agents: ["*"]  # All agents
-  flows: ["code-review-pipeline", "feature-development"]
+  agents: ["*"]
+---
+
+# TDD Methodology
+
+You MUST follow Test-Driven Development:
+
+## 1. Red Phase (Write Failing Test)
+- Write a test that describes expected behavior
+- Run test to confirm it fails
+- Test name should describe the behavior, not implementation
+
+## 2. Green Phase (Make It Pass)
+- Write ONLY enough code to pass the test
+- No additional features or optimizations
+- Focus on correctness, not elegance
+
+## 3. Refactor Phase (Clean Up)
+- Improve code structure while tests pass
+- Extract helpers, reduce duplication
+- Run tests after each change
+
+## Key Rules
+- Never write production code without a failing test
+- One logical assertion per test
+- Test behavior, not implementation details
 ```
 
-### Skill Library Structure
-
-```
-Blueprints/
-├── Agents/           # Agent definitions
-├── Flows/            # Multi-agent workflows
-└── Skills/           # NEW: Skill definitions
-    ├── README.md
-    ├── schemas/
-    │   └── skill.schema.json
-    ├── methodologies/
-    │   ├── tdd-methodology.skill.yaml
-    │   ├── security-first.skill.yaml
-    │   └── documentation-driven.skill.yaml
-    ├── domain/
-    │   ├── exoframe-conventions.skill.yaml
-    │   ├── typescript-patterns.skill.yaml
-    │   └── deno-best-practices.skill.yaml
-    ├── workflows/
-    │   ├── code-review-checklist.skill.yaml
-    │   ├── pr-description.skill.yaml
-    │   └── commit-message.skill.yaml
-    └── quality/
-        ├── owasp-security.skill.yaml
-        ├── performance-audit.skill.yaml
-        └── accessibility-check.skill.yaml
-```
-
-### Skill Router
+### MemoryBankService Extension
 
 ```typescript
-// src/services/skill_router.ts
+// src/services/memory_bank.ts (extended)
 
-interface SkillMatch {
-  skillId: string;
-  confidence: number;
-  matchedTriggers: string[];
-}
+export class MemoryBankService {
+  // ... existing methods ...
 
-class SkillRouter {
+  // ===== Skill Operations =====
+
   /**
-   * Analyze request and return matching skills
+   * Get skill by ID
    */
-  async matchSkills(request: ParsedRequest): Promise<SkillMatch[]> {
+  async getSkill(skillId: string): Promise<Skill | null> {
+    // Check core skills first
+    const corePath = join(this.skillsDir, "core", `${skillId}.skill.md`);
+    if (await exists(corePath)) {
+      return this.loadSkillFile(corePath);
+    }
+
+    // Check learned skills
+    const learnedPath = join(this.skillsDir, "learned", `${skillId}.skill.md`);
+    if (await exists(learnedPath)) {
+      return this.loadSkillFile(learnedPath);
+    }
+
+    return null;
+  }
+
+  /**
+   * Search skills by triggers
+   */
+  async matchSkills(request: {
+    keywords?: string[];
+    taskType?: string;
+    filePaths?: string[];
+    tags?: string[];
+  }): Promise<SkillMatch[]> {
+    const index = await this.loadSkillIndex();
     const matches: SkillMatch[] = [];
+
+    for (const entry of index.skills) {
+      const score = this.calculateTriggerMatch(entry.triggers, request);
+      if (score > 0.3) {  // Confidence threshold
+        matches.push({
+          skillId: entry.skill_id,
+          confidence: score,
+          matchedTriggers: this.getMatchedTriggers(entry.triggers, request),
+        });
+      }
+    }
+
+    return matches.sort((a, b) => b.confidence - a.confidence);
+  }
+
+  /**
+   * Create skill from learnings
+   */
+  async deriveSkillFromLearnings(
+    learningIds: string[],
+    skillDraft: Partial<Skill>
+  ): Promise<Skill> {
+    const learnings = await Promise.all(
+      learningIds.map(id => this.getLearning(id))
+    );
+
+    // Create skill with derived_from reference
+    const skill: Skill = {
+      ...skillDraft,
+      id: crypto.randomUUID(),
+      source: "learned",
+      derived_from: learningIds,
+      status: "draft",  // Requires approval
+    } as Skill;
+
+    await this.saveSkill(skill, "learned");
+    return skill;
+  }
+
+  /**
+   * Build skill context for agent injection
+   */
+  async buildSkillContext(skillIds: string[]): Promise<string> {
+    const skills = await Promise.all(
+      skillIds.map(id => this.getSkill(id))
+    );
+
+    return skills
+      .filter(Boolean)
+      .map(s => `## Skill: ${s!.name}\n\n${s!.instructions}`)
+      .join('\n\n---\n\n');
+  }
+}
+```
 
     for (const skill of this.skills) {
       const confidence = this.calculateMatch(skill, request);
@@ -288,48 +472,64 @@ const codeReviewFlow = defineFlow({
 
 ## Implementation Plan
 
-### Phase 17.1: Skill Schema & Loader (2 days)
+### Phase 17.1: Memory Bank Skill Schema (2 days)
 
-**Goal:** Define skill format and implement loading/validation.
+**Goal:** Extend Memory Bank schema with Skill type.
 
 **Tasks:**
-1. Create Zod schema for skill definition
-2. Implement `SkillLoader` service
-3. Add YAML parsing for `.skill.yaml` files
-4. Create skill validation CLI command
-5. Write foundational tests
+1. Add `SkillSchema` to `src/schemas/memory_bank.ts`
+2. Create `Memory/Skills/` directory structure
+3. Add skill index schema (`Memory/Skills/index.json`)
+4. Create skill file parser (markdown + frontmatter)
+5. Write schema validation tests
 
 **Success Criteria:**
 - [ ] `SkillSchema` validates skill structure
-- [ ] `SkillLoader.load(skillId)` returns typed Skill
-- [ ] Invalid skills produce clear error messages
-- [ ] `exoctl skill validate <id>` command works
+- [ ] Skills stored in `Memory/Skills/` alongside other memory
+- [ ] Skill index maintains trigger lookup data
+- [ ] Tests cover schema validation edge cases
 
-### Phase 17.2: Skill Router (2 days)
+### Phase 17.2: MemoryBankService Skill Operations (2 days)
 
-**Goal:** Automatic skill matching based on request analysis.
+**Goal:** Add skill CRUD operations to MemoryBankService.
 
 **Tasks:**
-1. Implement trigger matching algorithms
-   - Keyword matching (fuzzy)
-   - Task type classification
-   - File pattern matching
-2. Create confidence scoring system
-3. Add skill composition (combine multiple skills)
-4. Implement conflict resolution (overlapping skills)
+1. Implement `getSkill(skillId)` method
+2. Implement `listSkills(filters)` method
+3. Implement `createSkill(skill)` method
+4. Implement `updateSkill(skillId, updates)` method
+5. Add skill index rebuild on changes
 
 **Success Criteria:**
-- [ ] Router matches skills with >80% accuracy on test set
-- [ ] Confidence scores reflect match quality
-- [ ] Multiple skills can be composed
-- [ ] Conflicts handled gracefully
+- [ ] All CRUD operations work with Activity logging
+- [ ] Skill index stays synchronized
+- [ ] Tests cover all operations
+- [ ] Backward compatible (no breaking changes)
 
-### Phase 17.3: AgentRunner Integration (2 days)
+### Phase 17.3: Skill Trigger Matching (2 days)
+
+**Goal:** Implement trigger-based skill retrieval.
+
+**Tasks:**
+1. Implement `matchSkills(request)` in MemoryBankService
+2. Add keyword matching (exact + fuzzy)
+3. Add task type classification
+4. Add file pattern matching (glob)
+5. Add tag-based matching
+6. Create confidence scoring algorithm
+
+**Success Criteria:**
+- [ ] `matchSkills()` returns ranked skill matches
+- [ ] Confidence scores reflect match quality
+- [ ] Multiple trigger types compose correctly
+- [ ] Performance acceptable (<100ms for 100 skills)
+
+### Phase 17.4: AgentRunner Integration (2 days)
 
 **Goal:** Inject skills into agent execution pipeline.
 
 **Tasks:**
-1. Add skill injection to `constructPrompt()`
+1. Add `memoryBank.buildSkillContext()` call to `constructPrompt()`
 2. Update `AgentRunnerConfig` with skill options
 3. Add skill metadata to execution logs
 4. Implement skill context budgeting (token limits)
@@ -340,7 +540,7 @@ const codeReviewFlow = defineFlow({
 - [ ] Token budget respects skill context size
 - [ ] Backward compatible (no skills = current behavior)
 
-### Phase 17.4: Flow Integration (2 days)
+### Phase 17.5: Flow Integration (2 days)
 
 **Goal:** Allow flows to specify skills per step.
 
@@ -356,9 +556,28 @@ const codeReviewFlow = defineFlow({
 - [ ] Invalid skill references caught at validation
 - [ ] Flow-level skill defaults work
 
-### Phase 17.5: Core Skill Library (3 days)
+### Phase 17.6: CLI Integration (1 day)
 
-**Goal:** Create initial set of production-ready skills.
+**Goal:** Add skill management to `exoctl memory` command tree.
+
+**Commands:**
+```bash
+exoctl memory skill list                    # List all skills
+exoctl memory skill show <skill-id>         # Show skill details
+exoctl memory skill create <skill-id>       # Create new skill
+exoctl memory skill validate <skill-id>     # Validate skill
+exoctl memory skill match "<request>"       # Test trigger matching
+exoctl memory skill derive <learning-ids>   # Derive skill from learnings
+```
+
+**Success Criteria:**
+- [ ] All commands implemented and tested
+- [ ] Help text for each command
+- [ ] Output formatting consistent with other memory commands
+
+### Phase 17.7: Core Skill Library (3 days)
+
+**Goal:** Create initial set of production-ready skills in `Memory/Skills/core/`.
 
 **Skills to Create:**
 
@@ -374,12 +593,28 @@ const codeReviewFlow = defineFlow({
 | `documentation-driven` | Methodology | Docs-first approach |
 
 **Success Criteria:**
-- [ ] 8+ skills created and validated
+- [ ] 8+ skills created in `Memory/Skills/core/`
 - [ ] Each skill has tests for trigger matching
 - [ ] Skills are documented in README
 - [ ] Example usage for each skill
 
-### Phase 17.6: Blueprint Skill Defaults (1 day)
+### Phase 17.8: Learning-to-Skill Pipeline (2 days)
+
+**Goal:** Enable deriving skills from accumulated learnings.
+
+**Tasks:**
+1. Implement `deriveSkillFromLearnings()` in MemoryBankService
+2. Create skill suggestion algorithm (cluster related learnings)
+3. Add CLI command for skill derivation
+4. Create draft → active approval workflow
+
+**Success Criteria:**
+- [ ] Can create skill draft from learning IDs
+- [ ] Derived skills reference source learnings
+- [ ] Approval workflow matches learning workflow
+- [ ] Tests cover derivation logic
+
+### Phase 17.9: Blueprint Skill Defaults (1 day)
 
 **Goal:** Allow blueprints to specify default skills.
 
@@ -555,6 +790,7 @@ skill_context_budget = 2000  # tokens
 
 ## Related Documents
 
+- [Phase 12.5: Memory Banks Enhanced](./phase-12.5-memory-bank-enhanced.md) - Parent memory architecture
 - [Phase 15: Flow Orchestration Improvements](./phase-15-flow-orchestration-improvements.md)
 - [Phase 16: Agent Orchestration Improvements](./phase-16-agent-orchestration-improvements.md)
 - [Review-Research-Improvement Pattern](../process/review-research-improvement.md)
@@ -562,7 +798,61 @@ skill_context_budget = 2000  # tokens
 
 ---
 
-## Appendix A: Example Skills
+## Appendix A: Learning-to-Skill Evolution
+
+### How Learnings Become Skills
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    Learning → Skill Pipeline                             │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Executions ──────▶ Learnings ──────▶ Clusters ──────▶ Skills           │
+│       │                 │                 │               │              │
+│       ▼                 ▼                 ▼               ▼              │
+│  "TDD reduced      [Learning 1]     Related          Draft skill        │
+│   bugs by 40%"     [Learning 2]     learnings        with triggers,     │
+│                    [Learning 3]     grouped          instructions       │
+│                                                                          │
+│                                           │                              │
+│                                           ▼                              │
+│                                     User Approval                        │
+│                                           │                              │
+│                                           ▼                              │
+│                                     Active Skill                         │
+│                                   Memory/Skills/learned/                 │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Example: Deriving a Skill
+
+```bash
+# 1. User notices pattern in learnings
+$ exoctl memory learning list --tags=testing
+ID         Title                           Category
+─────────────────────────────────────────────────────
+abc-123    TDD reduced bugs in auth module  pattern
+def-456    Test-first caught edge case      insight
+ghi-789    Refactoring safe with tests      insight
+
+# 2. Derive skill from learnings
+$ exoctl memory skill derive abc-123 def-456 ghi-789 \
+    --name "TDD Methodology" \
+    --triggers.keywords "implement,feature,add"
+
+Created draft skill: tdd-methodology (status: draft)
+Source learnings: abc-123, def-456, ghi-789
+
+# 3. Review and activate
+$ exoctl memory skill show tdd-methodology
+$ exoctl memory skill activate tdd-methodology
+
+Skill activated: tdd-methodology
+```
+
+---
+
+## Appendix B: Example Skills
 
 ### tdd-methodology.skill.yaml
 
