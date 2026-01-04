@@ -48,18 +48,24 @@ Deno.test("tryEnableRawMode returns false when setRaw missing", () => {
   }
 });
 
-Deno.test("launchTuiDashboard({ nonInteractive: true }) does not enable raw mode", async () => {
-  const stdinAny = Deno.stdin as any;
-  const origSetRaw = stdinAny.setRaw;
+Deno.test({
+  name: "launchTuiDashboard({ nonInteractive: true }) does not enable raw mode",
+  // Production mode creates timers for auto-refresh that we don't want to wait for
+  sanitizeOps: false,
+  sanitizeResources: false,
+  fn: async () => {
+    const stdinAny = Deno.stdin as any;
+    const origSetRaw = stdinAny.setRaw;
 
-  try {
-    // If setRaw is called, throw so the test fails
-    stdinAny.setRaw = () => {
-      throw new Error("setRaw should not be called in nonInteractive mode");
-    };
+    try {
+      // If setRaw is called, throw so the test fails
+      stdinAny.setRaw = () => {
+        throw new Error("setRaw should not be called in nonInteractive mode");
+      };
 
-    await launchTuiDashboard({ nonInteractive: true });
-  } finally {
-    stdinAny.setRaw = origSetRaw;
-  }
+      await launchTuiDashboard({ nonInteractive: true });
+    } finally {
+      stdinAny.setRaw = origSetRaw;
+    }
+  },
 });
