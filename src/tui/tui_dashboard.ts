@@ -7,10 +7,12 @@ import { MonitorView } from "./monitor_view.ts";
 import { DaemonControlView } from "./daemon_control_view.ts";
 import { AgentStatusView } from "./agent_status_view.ts";
 import { RequestManagerView } from "./request_manager_view.ts";
+import { MemoryView } from "./memory_view.ts";
 import {
   MockAgentService,
   MockDaemonService,
   MockLogService,
+  MockMemoryService,
   MockPlanService,
   MockPortalService,
   MockRequestService,
@@ -99,6 +101,7 @@ export async function launchTuiDashboard(
   const daemonService = new MockDaemonService();
   const agentService = new MockAgentService();
   const requestService = new MockRequestService();
+  const memoryService = new MockMemoryService();
   const views = [
     Object.assign(new PortalManagerView(portalService), { name: "PortalManagerView" }),
     Object.assign(new PlanReviewerView(planService), { name: "PlanReviewerView" }),
@@ -106,6 +109,7 @@ export async function launchTuiDashboard(
     Object.assign(new DaemonControlView(daemonService), { name: "DaemonControlView" }),
     Object.assign(new AgentStatusView(agentService), { name: "AgentStatusView" }),
     Object.assign(new RequestManagerView(requestService), { name: "RequestManagerView" }),
+    Object.assign(new MemoryView(memoryService), { name: "MemoryView" }),
   ].map((view) => {
     const v: any = view;
     if (typeof v.getFocusableElements !== "function") {

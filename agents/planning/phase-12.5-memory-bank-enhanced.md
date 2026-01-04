@@ -1,9 +1,9 @@
 # Phase 12.5+: Memory Banks v2 Enhanced Architecture
 
-**Document Version:** 1.2.0
+**Document Version:** 1.3.0
 **Date:** 2026-01-04
 **Author:** Architecture Agent
-**Status:** IN PROGRESS (Phase 12.5 ✅, Phase 12.8 ✅, Phase 12.9 ✅, Phase 12.10 ✅)
+**Status:** IN PROGRESS (Phase 12.5 ✅, Phase 12.8 ✅, Phase 12.9 ✅, Phase 12.10 ✅, Phase 12.11 ✅, Phase 12.12-12.14 🆕)
 **Parent Phase:** [Phase 12: Obsidian Retirement](phase-12-obsidian-retirement.md)
 **Target Release:** v1.1
 
@@ -904,6 +904,263 @@ async searchMemory(query: string, options: SearchOptions): Promise<SearchResult[
 
 ---
 
+### Phase 12.12: TUI Memory View - Core (2 days)
+
+**Goal:** Implement interactive Memory Bank view in the TUI dashboard.
+
+**Tasks:**
+- [ ] Create `src/tui/memory_view.ts` with base component
+- [ ] Implement memory bank list panel (projects, global, execution)
+- [ ] Implement navigation between memory scopes (Tab/Arrow keys)
+- [ ] Add project memory detail view with patterns/decisions
+- [ ] Add execution history list with filtering
+- [ ] Implement search input with live results
+- [ ] Add keyboard shortcuts (s=search, g=global, p=projects, e=executions)
+- [ ] Integrate into main TUI dashboard navigation
+- [ ] Write unit tests for view components
+
+**Deliverables:**
+- [ ] `src/tui/memory_view.ts` (~450 LOC)
+- [ ] `src/tui/memory_panels/` directory:
+  - [ ] `project_panel.ts` (~150 LOC)
+  - [ ] `global_panel.ts` (~120 LOC)
+  - [ ] `execution_panel.ts` (~130 LOC)
+  - [ ] `search_panel.ts` (~100 LOC)
+- [ ] Updated `src/tui/tui_dashboard.ts` (+50 LOC for memory tab integration)
+- [ ] `tests/tui/memory_view_test.ts` (~300 LOC)
+
+**TUI Layout Design:**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  ExoFrame Dashboard                          [Memory] [1 Pending]   │
+├─────────────────────────────────────────────────────────────────────┤
+│ ┌─ Memory Banks ─────────────────┐ ┌─ Details ────────────────────┐ │
+│ │ ▸ Global Memory (12 learnings) │ │ # Project: my-app            │ │
+│ │ ▾ Projects                     │ │                              │ │
+│ │   ├─ my-app (5 patterns)       │ │ ## Patterns                  │ │
+│ │   ├─ api-service (3 patterns)  │ │ - Error Handling [typescript]│ │
+│ │   └─ web-client (2 patterns)   │ │ - Auth Flow [security]       │ │
+│ │ ▸ Executions (24 total)        │ │                              │ │
+│ │                                │ │ ## Decisions                 │ │
+│ │ ─────────────────────────────  │ │ - Use SQLite for local DB    │ │
+│ │ [s] Search  [Tab] Switch Panel │ │ - JWT for authentication     │ │
+│ └────────────────────────────────┘ └──────────────────────────────┘ │
+├─────────────────────────────────────────────────────────────────────┤
+│ [g]lobal [p]rojects [e]xecutions [s]earch [n]pending │ [q]uit [?]help│
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Keyboard Navigation:**
+| Key | Action |
+|-----|--------|
+| `Tab` | Switch between panels |
+| `↑/↓` | Navigate list items |
+| `Enter` | Select/expand item |
+| `g` | Jump to Global Memory |
+| `p` | Jump to Projects |
+| `e` | Jump to Executions |
+| `s` | Open search input |
+| `n` | Show pending proposals |
+| `/` | Quick search (vim-style) |
+| `q` | Return to dashboard |
+| `?` | Show help overlay |
+
+**Success Criteria:**
+- [ ] Memory view accessible from main dashboard via `[m]` key
+- [ ] Tree navigation for memory bank hierarchy
+- [ ] Detail panel shows selected item content
+- [ ] Search input filters results in real-time
+- [ ] Keyboard navigation fully functional
+- [ ] View updates when memory banks change
+- [ ] 100% of view components have unit tests
+
+**Tests (18 tests):**
+- `memory_view_test.ts`:
+  - `renders memory bank tree` (1)
+  - `navigates with arrow keys` (2)
+  - `expands/collapses tree nodes` (2)
+  - `switches panels with Tab` (1)
+  - `shows detail panel for selected item` (2)
+  - `search filters results` (2)
+  - `keyboard shortcuts trigger actions` (4)
+  - `handles empty memory banks` (2)
+  - `updates on memory change` (2)
+
+---
+
+### Phase 12.13: TUI Memory View - Pending & Actions (2 days)
+
+**Goal:** Add interactive pending proposal management and action dialogs to TUI.
+
+**Tasks:**
+- [ ] Create pending proposals panel with badge notification
+- [ ] Implement proposal detail view with diff display
+- [ ] Add approve/reject actions with confirmation dialogs
+- [ ] Implement bulk approve-all with progress indicator
+- [ ] Add promote/demote actions from detail view
+- [ ] Create "Add Learning" dialog for manual entry
+- [ ] Implement search with embedding toggle option
+- [ ] Add statistics overview panel
+- [ ] Write unit and integration tests
+
+**Deliverables:**
+- [ ] `src/tui/memory_panels/pending_panel.ts` (~180 LOC)
+- [ ] `src/tui/memory_panels/stats_panel.ts` (~100 LOC)
+- [ ] `src/tui/dialogs/memory_dialogs.ts` (~250 LOC):
+  - [ ] `ConfirmApproveDialog`
+  - [ ] `ConfirmRejectDialog`
+  - [ ] `AddLearningDialog`
+  - [ ] `PromoteDialog`
+- [ ] Updated `src/tui/memory_view.ts` (+150 LOC for actions)
+- [ ] `tests/tui/memory_dialogs_test.ts` (~200 LOC)
+- [ ] `tests/tui/memory_pending_panel_test.ts` (~150 LOC)
+
+**Pending Panel Layout:**
+```
+┌─ Pending Proposals (3) ──────────────────────────────────────────────┐
+│ ┌────────────────────────────────────────────────────────────────┐   │
+│ │ ● Error Handling Pattern                    [project: my-app]  │   │
+│ │   Category: pattern │ Confidence: high │ 2 hours ago           │   │
+│ ├────────────────────────────────────────────────────────────────┤   │
+│ │ ○ API Rate Limiting Decision                [global]           │   │
+│ │   Category: decision │ Confidence: medium │ 5 hours ago        │   │
+│ ├────────────────────────────────────────────────────────────────┤   │
+│ │ ○ Database Connection Troubleshooting       [project: api-svc] │   │
+│ │   Category: troubleshooting │ Confidence: high │ 1 day ago     │   │
+│ └────────────────────────────────────────────────────────────────┘   │
+│                                                                      │
+│ [a]pprove  [r]eject  [A]pprove All  [Enter] View Details  [Esc] Back │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Statistics Panel Layout:**
+```
+┌─ Memory Statistics ──────────────────────────────────────────────────┐
+│                                                                      │
+│  Total Learnings: 47        │  By Category:                         │
+│  Global: 12                 │    pattern: 18                        │
+│  Project: 35                │    decision: 12                       │
+│  Pending: 3                 │    anti-pattern: 8                    │
+│                             │    insight: 5                         │
+│  Projects: 5                │    troubleshooting: 4                 │
+│  Executions: 127            │                                       │
+│                             │  By Project:                          │
+│  Last Activity:             │    my-app: 15                         │
+│  2026-01-04 14:32           │    api-service: 12                    │
+│                             │    web-client: 8                      │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Dialog Interactions:**
+```
+┌─ Approve Proposal ───────────────────────────────────────────────────┐
+│                                                                      │
+│  Title: Error Handling Pattern                                       │
+│  Scope: project (my-app)                                             │
+│  Category: pattern                                                   │
+│                                                                      │
+│  Description:                                                        │
+│  All async functions should use try-catch with typed errors.         │
+│  This pattern was extracted from execution trace-abc123.             │
+│                                                                      │
+│  Tags: error-handling, typescript, best-practice                     │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │ Approve this learning?                                         │  │
+│  │                                                                 │  │
+│  │              [Yes, Approve]    [No, Cancel]                     │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+**Success Criteria:**
+- [ ] Pending badge shows count on Memory tab header
+- [ ] Pending proposals list with visual indicators
+- [ ] Approve/reject actions with confirmation
+- [ ] Bulk approve-all with progress feedback
+- [ ] Promote/demote accessible from learning detail
+- [ ] Add Learning dialog with form validation
+- [ ] Statistics panel shows accurate counts
+- [ ] All actions log to Activity Journal
+- [ ] 100% of dialogs have unit tests
+
+**Tests (16 tests):**
+- `memory_pending_panel_test.ts`:
+  - `renders pending proposals list` (1)
+  - `shows badge with count` (1)
+  - `navigates pending items` (2)
+  - `opens detail view on Enter` (1)
+  - `approve action triggers dialog` (2)
+  - `reject action triggers dialog` (2)
+  - `approve-all shows progress` (1)
+- `memory_dialogs_test.ts`:
+  - `confirm approve dialog renders` (1)
+  - `confirm reject dialog with reason` (1)
+  - `add learning dialog validates input` (2)
+  - `promote dialog shows target options` (1)
+  - `dialogs handle keyboard shortcuts` (1)
+
+---
+
+### Phase 12.14: TUI Memory Integration & Polish (1 day)
+
+**Goal:** Final integration, polish, and performance optimization for TUI Memory view.
+
+**Tasks:**
+- [ ] Implement async loading with spinners for large memory banks
+- [ ] Add markdown rendering in detail panel
+- [ ] Implement syntax highlighting for code blocks
+- [ ] Add copy-to-clipboard for learnings
+- [ ] Implement real-time refresh when memory changes
+- [ ] Add color coding for categories and confidence levels
+- [ ] Performance optimization for large memory sets
+- [ ] Accessibility improvements (screen reader hints)
+- [ ] Integration tests for full TUI workflows
+
+**Deliverables:**
+- [ ] Updated TUI components with async loading
+- [ ] `src/tui/utils/markdown_renderer.ts` (~100 LOC)
+- [ ] Updated styles and color themes
+- [ ] `tests/tui/memory_integration_test.ts` (~200 LOC)
+- [ ] Performance benchmarks
+
+**Color Coding Scheme:**
+| Element | Color | Meaning |
+|---------|-------|---------|
+| Global Memory | 🟣 Magenta | Cross-project scope |
+| Project Memory | 🔵 Blue | Project-specific |
+| Execution | 🟢 Green | Execution history |
+| Pending | 🟡 Yellow | Awaiting approval |
+| Pattern | 🔵 Cyan | Code pattern |
+| Anti-pattern | 🔴 Red | What to avoid |
+| Decision | 🟣 Magenta | Architectural choice |
+| High confidence | Bold | Strong signal |
+| Low confidence | Dim | Tentative |
+
+**Success Criteria:**
+- [ ] Memory view loads < 200ms for 100+ learnings
+- [ ] Markdown renders with formatting
+- [ ] Code blocks have syntax highlighting
+- [ ] Categories visually distinguishable
+- [ ] Real-time updates without flicker
+- [ ] Keyboard navigation fully accessible
+- [ ] All integration tests pass
+
+**Tests (8 tests):**
+- `memory_integration_test.ts`:
+  - `full TUI workflow: navigate → view → search` (1)
+  - `pending workflow: view → approve → verify` (1)
+  - `promote workflow via TUI` (1)
+  - `search with embedding toggle` (1)
+  - `handles large memory sets` (1)
+  - `real-time refresh on change` (1)
+  - `markdown rendering in detail` (1)
+  - `keyboard accessibility` (1)
+
+---
+
 ## 8. Rollback Plan
 
 | Phase | Rollback Strategy |
@@ -913,6 +1170,9 @@ async searchMemory(query: string, options: SearchOptions): Promise<SearchResult[
 | 12.9 | Remove extractor service, revert AgentRunner |
 | 12.10 | Delete embedding service, remove indices |
 | 12.11 | Revert documentation changes |
+| 12.12 | Remove `src/tui/memory_view.ts` and panels, revert dashboard |
+| 12.13 | Remove dialogs and pending panel, revert memory_view |
+| 12.14 | Remove polish features, revert to 12.13 state |
 
 **Critical Checkpoint:** After Phase 12.9, rollback becomes complex. Ensure 12.5 and 12.8 are stable before proceeding.
 
@@ -925,16 +1185,18 @@ async searchMemory(query: string, options: SearchOptions): Promise<SearchResult[
 | Metric | Target | Measurement |
 |--------|--------|-------------|
 | Test Coverage | ≥ 80% line, ≥ 75% branch | `deno coverage` |
-| New Tests | ≥ 88 tests added | Test count delta |
-| LOC Added | ~900 LOC | `wc -l` on new files |
+| New Tests | ≥ 130 tests added | Test count delta |
+| LOC Added | ~2,400 LOC | `wc -l` on new files |
 
 ### 9.2 Functionality
 
 | Metric | Target | Measurement |
 |--------|--------|-------------|
 | CLI Commands | 20+ commands | Command tree count |
+| TUI Views | 4 panels + 4 dialogs | Component count |
 | Search Latency | < 100ms | Benchmark test |
 | Embedding Latency | < 500ms | Benchmark test |
+| TUI Load Latency | < 200ms | Benchmark test |
 | Zero Regressions | 0 failures | Full test suite |
 
 ### 9.3 User Experience
@@ -942,8 +1204,10 @@ async searchMemory(query: string, options: SearchOptions): Promise<SearchResult[
 | Metric | Target | Measurement |
 |--------|--------|-------------|
 | CLI Discoverability | 100% commands have help | `--help` coverage |
+| TUI Discoverability | 100% views have help overlay | `?` key coverage |
 | Notification Delivery | 100% proposals notified | Integration test |
 | Format Options | 3 formats (json/table/md) | CLI validation |
+| Keyboard Navigation | 100% actions keyboard-accessible | Accessibility test |
 
 ---
 
@@ -990,7 +1254,11 @@ async searchMemory(query: string, options: SearchOptions): Promise<SearchResult[
 | 12.10 | `tests/services/memory_embedding_test.ts` | 8 |
 | 12.10 | `tests/services/rebuild_index_test.ts` | 2 |
 | 12.11 | `tests/integration/memory_integration_test.ts` | 10 |
-| **Total** | | **88** |
+| 12.12 | `tests/tui/memory_view_test.ts` | 18 |
+| 12.13 | `tests/tui/memory_pending_panel_test.ts` | 10 |
+| 12.13 | `tests/tui/memory_dialogs_test.ts` | 6 |
+| 12.14 | `tests/tui/memory_tui_integration_test.ts` | 8 |
+| **Total** | | **130** |
 
 ---
 

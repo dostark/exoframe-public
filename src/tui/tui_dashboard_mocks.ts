@@ -254,3 +254,234 @@ export class MockAgentService {
     ]);
   }
 }
+
+/**
+ * MockMemoryService
+ * Mock implementation of the MemoryServiceInterface for TDD and dashboard wiring tests.
+ * Returns static memory data for testing TUI Memory View.
+ */
+export class MockMemoryService {
+  /** Returns list of project names. */
+  getProjects() {
+    return Promise.resolve(["test-project", "demo-app"]);
+  }
+
+  /** Returns mock project memory. */
+  getProjectMemory(portal: string) {
+    return Promise.resolve({
+      portal,
+      overview: `Overview for ${portal} project. This is a comprehensive project memory.`,
+      patterns: [
+        {
+          name: "Error Handling Pattern",
+          description: "Use try-catch with specific error types",
+          examples: ["src/error-handler.ts"],
+          tags: ["error-handling", "best-practice"],
+        },
+        {
+          name: "Service Layer Pattern",
+          description: "Separate business logic into service classes",
+          examples: ["src/services/user-service.ts"],
+          tags: ["architecture"],
+        },
+      ],
+      decisions: [
+        {
+          date: new Date().toISOString().split("T")[0],
+          decision: "Use TypeScript",
+          rationale: "Strong typing improves maintainability",
+          alternatives: ["JavaScript", "Flow"],
+        },
+      ],
+      references: [
+        {
+          type: "file" as const,
+          path: "src/index.ts",
+          description: "Main entry point",
+        },
+      ],
+    });
+  }
+
+  /** Returns mock global memory. */
+  getGlobalMemory() {
+    return Promise.resolve({
+      version: "1.0",
+      updated_at: new Date().toISOString(),
+      learnings: [
+        {
+          id: "global-1",
+          created_at: new Date().toISOString(),
+          source: "user" as const,
+          scope: "global" as const,
+          title: "Cross-project coding standards",
+          description: "Apply consistent formatting across all projects",
+          category: "pattern" as const,
+          confidence: "high" as const,
+          tags: ["standards"],
+          status: "approved" as const,
+        },
+        {
+          id: "global-2",
+          created_at: new Date().toISOString(),
+          source: "execution" as const,
+          scope: "global" as const,
+          title: "Testing best practices",
+          description: "Write tests for critical paths first",
+          category: "insight" as const,
+          confidence: "medium" as const,
+          tags: ["testing"],
+          status: "approved" as const,
+        },
+      ],
+      patterns: [
+        {
+          name: "Dependency Injection",
+          description: "Use DI for better testability",
+          applies_to: ["all"],
+          examples: ["src/services/*.ts"],
+          tags: ["architecture"],
+        },
+      ],
+      anti_patterns: [
+        {
+          name: "God Object",
+          description: "Avoid classes that do too much",
+          reason: "Makes code hard to maintain and test",
+          alternative: "Split into smaller, focused classes",
+          tags: ["anti-pattern"],
+        },
+      ],
+      statistics: {
+        total_learnings: 2,
+        by_category: {
+          pattern: 1,
+          insight: 1,
+          decision: 0,
+          troubleshooting: 0,
+        },
+        by_project: {},
+        last_activity: new Date().toISOString(),
+      },
+    });
+  }
+
+  /** Returns mock execution memory. */
+  getExecutionByTraceId(traceId: string) {
+    return Promise.resolve({
+      trace_id: traceId,
+      request_id: "req-001",
+      status: "completed" as const,
+      agent: "CodeAgent",
+      portal: "test-project",
+      started_at: new Date(Date.now() - 3600000).toISOString(),
+      completed_at: new Date().toISOString(),
+      summary: "Implemented feature X with comprehensive tests",
+      context_files: ["src/feature.ts"],
+      context_portals: ["test-project"],
+      changes: {
+        files_created: ["src/feature.ts"],
+        files_modified: ["src/index.ts"],
+        files_deleted: [],
+      },
+      lessons_learned: ["Consider edge cases early"],
+    });
+  }
+
+  /** Returns mock execution list. */
+  getExecutionHistory(_options?: { portal?: string; limit?: number }) {
+    return Promise.resolve([
+      {
+        trace_id: "exec-001-abcd-1234-5678-abcd1234",
+        request_id: "req-001",
+        status: "completed" as const,
+        agent: "CodeAgent",
+        portal: "test-project",
+        started_at: new Date(Date.now() - 3600000).toISOString(),
+        completed_at: new Date().toISOString(),
+        summary: "Implement feature X",
+        context_files: [],
+        context_portals: [],
+        changes: { files_created: [], files_modified: [], files_deleted: [] },
+      },
+      {
+        trace_id: "exec-002-efgh-5678-1234-efgh5678",
+        request_id: "req-002",
+        status: "running" as const,
+        agent: "TestAgent",
+        portal: "demo-app",
+        started_at: new Date().toISOString(),
+        summary: "Run test suite",
+        context_files: [],
+        context_portals: [],
+        changes: { files_created: [], files_modified: [], files_deleted: [] },
+      },
+    ]);
+  }
+
+  /** Returns mock search results. */
+  search(query: string, _options?: { portal?: string; limit?: number }) {
+    return Promise.resolve([
+      {
+        type: "pattern" as const,
+        portal: "test-project",
+        title: `Result matching "${query}"`,
+        summary: "Found in project memory",
+        relevance_score: 0.95,
+        tags: ["matching"],
+      },
+      {
+        type: "learning" as const,
+        title: `Another result for "${query}"`,
+        summary: "Found in global memory",
+        relevance_score: 0.75,
+        tags: ["related"],
+      },
+    ]);
+  }
+
+  /** Returns mock pending proposals. */
+  listPending() {
+    return Promise.resolve([
+      {
+        id: "proposal-1",
+        created_at: new Date().toISOString(),
+        operation: "add" as const,
+        target_scope: "global" as const,
+        learning: {
+          id: "learning-prop-1",
+          created_at: new Date().toISOString(),
+          source: "execution" as const,
+          scope: "global" as const,
+          title: "New error handling pattern",
+          description: "Use Result type for error handling",
+          category: "pattern" as const,
+          confidence: "medium" as const,
+          tags: ["error-handling"],
+        },
+        reason: "Extracted from recent execution",
+        agent: "CodeAgent",
+        execution_id: "exec-001",
+        status: "pending" as const,
+      },
+    ]);
+  }
+
+  /** Returns mock pending proposal by ID. */
+  getPending(proposalId: string) {
+    if (proposalId === "proposal-1") {
+      return this.listPending().then((list) => list[0] || null);
+    }
+    return Promise.resolve(null);
+  }
+
+  /** Simulates approving a proposal. */
+  approvePending(_proposalId: string) {
+    return Promise.resolve();
+  }
+
+  /** Simulates rejecting a proposal. */
+  rejectPending(_proposalId: string, _reason: string) {
+    return Promise.resolve();
+  }
+}
