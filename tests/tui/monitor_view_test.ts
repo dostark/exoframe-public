@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
-import { MonitorView } from "../../src/tui/monitor_view.ts";
+import { LOG_COLORS, LOG_ICONS, MONITOR_KEY_BINDINGS, MonitorView } from "../../src/tui/monitor_view.ts";
 import type { LogEntry } from "../../src/tui/monitor_view.ts";
 import { DatabaseService } from "../../src/services/db.ts";
 import { createMockDatabaseService, createMonitorViewWithLogs } from "./helpers.ts";
@@ -299,4 +299,373 @@ Deno.test("MonitorView - should filter logs by time window", () => {
   const filteredLogs = monitorView.getFilteredLogs();
   assertEquals(filteredLogs.length, 1);
   assertEquals(filteredLogs[0].id, "1");
+});
+
+// ============================================================
+// Phase 13.5 Enhanced Monitor View Tests
+// ============================================================
+
+Deno.test("Phase 13.5: MonitorTuiSession - creates session", () => {
+  const { monitorView } = createMonitorViewWithLogs([
+    {
+      id: "1",
+      trace_id: "t1",
+      actor: "user",
+      agent_id: "a1",
+      action_type: "request_created",
+      target: "target.md",
+      payload: {},
+      timestamp: "2025-12-22T10:00:00Z",
+    },
+  ]);
+  const session = monitorView.createTuiSession();
+  assertExists(session);
+  assertEquals(session.getViewName(), "Monitor");
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - builds flat tree", () => {
+  const { monitorView } = createMonitorViewWithLogs([
+    {
+      id: "1",
+      trace_id: "t1",
+      actor: "user",
+      agent_id: "a1",
+      action_type: "request_created",
+      target: "target.md",
+      payload: {},
+      timestamp: "2025-12-22T10:00:00Z",
+    },
+    {
+      id: "2",
+      trace_id: "t2",
+      actor: "user",
+      agent_id: "a2",
+      action_type: "plan.approved",
+      target: "target2.md",
+      payload: {},
+      timestamp: "2025-12-22T10:01:00Z",
+    },
+  ]);
+  const session = monitorView.createTuiSession();
+  const tree = session.getLogTree();
+  assertEquals(tree.length, 2, "Flat tree should have 2 entries");
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - toggle grouping", async () => {
+  const { monitorView } = createMonitorViewWithLogs([
+    {
+      id: "1",
+      trace_id: "t1",
+      actor: "user",
+      agent_id: "a1",
+      action_type: "request_created",
+      target: "target.md",
+      payload: {},
+      timestamp: "2025-12-22T10:00:00Z",
+    },
+    {
+      id: "2",
+      trace_id: "t2",
+      actor: "user",
+      agent_id: "a2",
+      action_type: "request_created",
+      target: "target2.md",
+      payload: {},
+      timestamp: "2025-12-22T10:01:00Z",
+    },
+  ]);
+  const session = monitorView.createTuiSession();
+
+  assertEquals(session.getGroupBy(), "none");
+
+  await session.handleKey("g");
+  assertEquals(session.getGroupBy(), "agent");
+
+  await session.handleKey("g");
+  assertEquals(session.getGroupBy(), "action");
+
+  await session.handleKey("g");
+  assertEquals(session.getGroupBy(), "none");
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - help toggle", async () => {
+  const { monitorView } = createMonitorViewWithLogs([]);
+  const session = monitorView.createTuiSession();
+
+  assertEquals(session.isHelpVisible(), false);
+  await session.handleKey("?");
+  assertEquals(session.isHelpVisible(), true);
+  await session.handleKey("?");
+  assertEquals(session.isHelpVisible(), false);
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - pause toggle", async () => {
+  const { monitorView } = createMonitorViewWithLogs([]);
+  const session = monitorView.createTuiSession();
+
+  assertEquals(session.isPaused(), false);
+  await session.handleKey("space");
+  assertEquals(session.isPaused(), true);
+  await session.handleKey("space");
+  assertEquals(session.isPaused(), false);
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - bookmarking", async () => {
+  const { monitorView } = createMonitorViewWithLogs([
+    {
+      id: "1",
+      trace_id: "t1",
+      actor: "user",
+      agent_id: "a1",
+      action_type: "request_created",
+      target: "target.md",
+      payload: {},
+      timestamp: "2025-12-22T10:00:00Z",
+    },
+  ]);
+  const session = monitorView.createTuiSession();
+
+  assertEquals(session.getBookmarkedIds().size, 0);
+  await session.handleKey("b");
+  assertEquals(session.getBookmarkedIds().size, 1);
+  assert(session.isBookmarked("1"));
+
+  // Toggle off
+  await session.handleKey("b");
+  assertEquals(session.getBookmarkedIds().size, 0);
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - navigation", async () => {
+  const { monitorView } = createMonitorViewWithLogs([
+    {
+      id: "1",
+      trace_id: "t1",
+      actor: "user",
+      agent_id: "a1",
+      action_type: "request_created",
+      target: "target.md",
+      payload: {},
+      timestamp: "2025-12-22T10:00:00Z",
+    },
+    {
+      id: "2",
+      trace_id: "t2",
+      actor: "user",
+      agent_id: "a2",
+      action_type: "plan.approved",
+      target: "target2.md",
+      payload: {},
+      timestamp: "2025-12-22T10:01:00Z",
+    },
+  ]);
+  const session = monitorView.createTuiSession();
+
+  // Navigate down
+  await session.handleKey("down");
+  // Navigate up
+  await session.handleKey("up");
+  // Go to end
+  await session.handleKey("end");
+  // Go to home
+  await session.handleKey("home");
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - expand/collapse all", async () => {
+  const { monitorView } = createMonitorViewWithLogs([
+    {
+      id: "1",
+      trace_id: "t1",
+      actor: "user",
+      agent_id: "a1",
+      action_type: "request_created",
+      target: "target.md",
+      payload: {},
+      timestamp: "2025-12-22T10:00:00Z",
+    },
+    {
+      id: "2",
+      trace_id: "t2",
+      actor: "user",
+      agent_id: "a2",
+      action_type: "plan.approved",
+      target: "target2.md",
+      payload: {},
+      timestamp: "2025-12-22T10:01:00Z",
+    },
+  ]);
+  const session = monitorView.createTuiSession();
+
+  // Switch to grouped mode
+  await session.handleKey("g");
+
+  // Collapse all
+  await session.handleKey("c");
+  const collapsed = session.getLogTree();
+  assert(collapsed.every((n) => !n.expanded), "All should be collapsed");
+
+  // Expand all
+  await session.handleKey("E");
+  const expanded = session.getLogTree();
+  assert(expanded.every((n) => n.expanded), "All should be expanded");
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - detail view", async () => {
+  const { monitorView } = createMonitorViewWithLogs([
+    {
+      id: "1",
+      trace_id: "t1",
+      actor: "user",
+      agent_id: "a1",
+      action_type: "request_created",
+      target: "target.md",
+      payload: { foo: "bar" },
+      timestamp: "2025-12-22T10:00:00Z",
+    },
+  ]);
+  const session = monitorView.createTuiSession();
+
+  assertEquals(session.isDetailVisible(), false);
+
+  // Open detail
+  await session.handleKey("enter");
+  assertEquals(session.isDetailVisible(), true);
+  assert(session.getDetailContent().includes("ID: 1"));
+
+  // Close detail
+  await session.handleKey("escape");
+  assertEquals(session.isDetailVisible(), false);
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - render methods", () => {
+  const { monitorView } = createMonitorViewWithLogs([
+    {
+      id: "1",
+      trace_id: "t1",
+      actor: "user",
+      agent_id: "a1",
+      action_type: "request_created",
+      target: "target.md",
+      payload: {},
+      timestamp: "2025-12-22T10:00:00Z",
+    },
+  ]);
+  const session = monitorView.createTuiSession();
+
+  const treeLines = session.renderLogTree();
+  assert(treeLines.length > 0);
+
+  const helpLines = session.renderHelp();
+  assert(helpLines.length > 0);
+  assert(helpLines.some((l) => l.includes("Navigation")));
+
+  const buttons = session.renderActionButtons();
+  assert(buttons.includes("Pause"));
+  assert(buttons.includes("Help"));
+
+  const status = session.renderStatusLine();
+  assert(status.includes("log"));
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - key bindings", () => {
+  const { monitorView } = createMonitorViewWithLogs([]);
+  const session = monitorView.createTuiSession();
+
+  const bindings = session.getKeyBindings();
+  assert(bindings.length > 0);
+
+  const keys = bindings.map((b) => b.key);
+  assert(keys.includes("up"));
+  assert(keys.includes("down"));
+  assert(keys.includes("space"));
+  assert(keys.includes("b"));
+  assert(keys.includes("?"));
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - export logs", () => {
+  const { monitorView } = createMonitorViewWithLogs([
+    {
+      id: "1",
+      trace_id: "t1",
+      actor: "user",
+      agent_id: "a1",
+      action_type: "request_created",
+      target: "target.md",
+      payload: { data: "test" },
+      timestamp: "2025-12-22T10:00:00Z",
+    },
+  ]);
+  const session = monitorView.createTuiSession();
+
+  const exported = session.exportLogs();
+  assert(exported.includes("request_created"));
+  assert(exported.includes("2025-12-22T10:00:00Z"));
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - auto refresh toggle", async () => {
+  const { monitorView } = createMonitorViewWithLogs([]);
+  const session = monitorView.createTuiSession();
+
+  assertEquals(session.isAutoRefreshEnabled(), false);
+  await session.handleKey("a");
+  assertEquals(session.isAutoRefreshEnabled(), true);
+  await session.handleKey("a");
+  assertEquals(session.isAutoRefreshEnabled(), false);
+
+  // Clean up timer
+  session.cleanup();
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - focusable elements", () => {
+  const { monitorView } = createMonitorViewWithLogs([]);
+  const session = monitorView.createTuiSession();
+
+  const elements = session.getFocusableElements();
+  assert(elements.includes("log-list"));
+  assert(elements.includes("action-buttons"));
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - search dialog", async () => {
+  const { monitorView } = createMonitorViewWithLogs([]);
+  const session = monitorView.createTuiSession();
+
+  assertEquals(session.hasActiveDialog(), false);
+  await session.handleKey("s");
+  assertEquals(session.hasActiveDialog(), true);
+
+  // Cancel dialog
+  await session.handleKey("escape");
+  assertEquals(session.hasActiveDialog(), false);
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - refresh", async () => {
+  const { monitorView } = createMonitorViewWithLogs([]);
+  const session = monitorView.createTuiSession();
+
+  // This should not throw
+  await session.handleKey("R");
+});
+
+Deno.test("Phase 13.5: MonitorTuiSession - empty logs tree", () => {
+  const { monitorView } = createMonitorViewWithLogs([]);
+  const session = monitorView.createTuiSession();
+
+  const tree = session.getLogTree();
+  assertEquals(tree.length, 0);
+
+  const lines = session.renderLogTree();
+  assert(lines.some((l) => l.includes("No logs")));
+});
+
+Deno.test("Phase 13.5: LOG_ICONS and LOG_COLORS are defined", () => {
+  // Import from module
+  // Check they have expected keys
+  assertExists(LOG_ICONS);
+  assertExists(LOG_COLORS);
+  assertExists(LOG_ICONS["request_created"]);
+  assertExists(LOG_COLORS["error"]);
+});
+
+Deno.test("Phase 13.5: MONITOR_KEY_BINDINGS are defined", () => {
+  assertExists(MONITOR_KEY_BINDINGS);
+  assert(MONITOR_KEY_BINDINGS.length > 0);
 });
