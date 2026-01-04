@@ -771,6 +771,279 @@ export class MemoryBankService {
   }
 
   /**
+   * Search memory by tags (AND logic for multiple tags)
+   *
+   * @param tags - Array of tags to search for
+   * @param options - Optional search options (portal filter, limit)
+   * @returns Array of search results with matching tags
+   */
+  async searchByTags(
+    tags: string[],
+    options?: { portal?: string; limit?: number },
+  ): Promise<MemorySearchResult[]> {
+    const results: MemorySearchResult[] = [];
+    const limit = options?.limit || 50;
+    const normalizedTags = tags.map((t) => t.toLowerCase());
+
+    // Search project patterns and decisions
+    for await (const entry of Deno.readDir(this.projectsDir)) {
+      if (entry.isDirectory) {
+        if (options?.portal && entry.name !== options.portal) {
+          continue;
+        }
+
+        const projectMem = await this.getProjectMemory(entry.name);
+        if (projectMem) {
+          // Check patterns
+          for (const pattern of projectMem.patterns) {
+            const patternTags = (pattern.tags || []).map((t) => t.toLowerCase());
+            if (normalizedTags.every((t) => patternTags.includes(t))) {
+              results.push({
+                type: "pattern",
+                portal: entry.name,
+                title: pattern.name,
+                summary: pattern.description,
+                relevance_score: 0.9,
+                tags: pattern.tags,
+              });
+            }
+          }
+
+          // Check decisions
+          for (const decision of projectMem.decisions) {
+            const decisionTags = (decision.tags || []).map((t) => t.toLowerCase());
+            if (normalizedTags.every((t) => decisionTags.includes(t))) {
+              results.push({
+                type: "decision",
+                portal: entry.name,
+                title: `Decision: ${decision.date}`,
+                summary: decision.decision,
+                relevance_score: 0.85,
+                tags: decision.tags,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Search global learnings
+    const learnings = await this.loadLearningsFromFile();
+    for (const learning of learnings) {
+      if (learning.status !== "approved") continue;
+
+      const learningTags = (learning.tags || []).map((t) => t.toLowerCase());
+      if (normalizedTags.every((t) => learningTags.includes(t))) {
+        results.push({
+          type: "learning",
+          title: learning.title,
+          summary: learning.description,
+          relevance_score: 0.95,
+          tags: learning.tags,
+          id: learning.id,
+        });
+      }
+    }
+
+    // Sort by score
+    results.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
+    return results.slice(0, limit);
+  }
+
+  /**
+   * Search memory by keyword with frequency-based ranking
+   *
+   * @param keyword - Keyword to search for
+   * @param options - Optional search options (portal filter, limit)
+   * @returns Array of search results ranked by keyword frequency
+   */
+  async searchByKeyword(
+    keyword: string,
+    options?: { portal?: string; limit?: number },
+  ): Promise<MemorySearchResult[]> {
+    const results: MemorySearchResult[] = [];
+    const limit = options?.limit || 50;
+    const keywordLower = keyword.toLowerCase();
+
+    // Helper function to calculate keyword frequency in text
+    const calculateFrequency = (text: string): number => {
+      const matches = text.toLowerCase().match(new RegExp(keywordLower, "gi"));
+      return matches ? matches.length : 0;
+    };
+
+    // Helper function to calculate relevance score based on frequency
+    const calculateRelevance = (titleFreq: number, descFreq: number): number => {
+      // Title matches weighted higher than description matches
+      return Math.min(0.99, 0.5 + (titleFreq * 0.15) + (descFreq * 0.05));
+    };
+
+    // Search project patterns and decisions
+    for await (const entry of Deno.readDir(this.projectsDir)) {
+      if (entry.isDirectory) {
+        if (options?.portal && entry.name !== options.portal) {
+          continue;
+        }
+
+        const projectMem = await this.getProjectMemory(entry.name);
+        if (projectMem) {
+          // Check patterns
+          for (const pattern of projectMem.patterns) {
+            const titleFreq = calculateFrequency(pattern.name);
+            const descFreq = calculateFrequency(pattern.description);
+            if (titleFreq > 0 || descFreq > 0) {
+              results.push({
+                type: "pattern",
+                portal: entry.name,
+                title: pattern.name,
+                summary: pattern.description,
+                relevance_score: calculateRelevance(titleFreq, descFreq),
+                tags: pattern.tags,
+              });
+            }
+          }
+
+          // Check decisions
+          for (const decision of projectMem.decisions) {
+            const titleFreq = calculateFrequency(decision.decision);
+            const descFreq = calculateFrequency(decision.rationale);
+            if (titleFreq > 0 || descFreq > 0) {
+              results.push({
+                type: "decision",
+                portal: entry.name,
+                title: `Decision: ${decision.date}`,
+                summary: decision.decision,
+                relevance_score: calculateRelevance(titleFreq, descFreq),
+                tags: decision.tags,
+              });
+            }
+          }
+
+          // Check overview
+          const overviewFreq = calculateFrequency(projectMem.overview);
+          if (overviewFreq > 0) {
+            results.push({
+              type: "project",
+              portal: entry.name,
+              title: `${entry.name} Overview`,
+              summary: projectMem.overview.substring(0, 200),
+              relevance_score: calculateRelevance(0, overviewFreq),
+            });
+          }
+        }
+      }
+    }
+
+    // Search global learnings
+    const learnings = await this.loadLearningsFromFile();
+    for (const learning of learnings) {
+      if (learning.status !== "approved") continue;
+
+      const titleFreq = calculateFrequency(learning.title);
+      const descFreq = calculateFrequency(learning.description);
+      if (titleFreq > 0 || descFreq > 0) {
+        results.push({
+          type: "learning",
+          title: learning.title,
+          summary: learning.description,
+          relevance_score: calculateRelevance(titleFreq, descFreq),
+          tags: learning.tags,
+          id: learning.id,
+        });
+      }
+    }
+
+    // Sort by relevance score (descending)
+    results.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
+    return results.slice(0, limit);
+  }
+
+  /**
+   * Advanced search combining tags, keywords, and optional embedding search
+   *
+   * Uses tiered approach: tag matches first, then keyword matches
+   *
+   * @param options - Advanced search options
+   * @returns Array of search results
+   */
+  async searchMemoryAdvanced(
+    options: {
+      tags?: string[];
+      keyword?: string;
+      portal?: string;
+      limit?: number;
+    },
+  ): Promise<MemorySearchResult[]> {
+    const limit = options.limit || 50;
+    const results: MemorySearchResult[] = [];
+    const seenIds = new Set<string>();
+
+    // Helper to create unique key for deduplication
+    const getResultKey = (r: MemorySearchResult): string => {
+      return `${r.type}:${r.portal || ""}:${r.title}`;
+    };
+
+    // Tier 1: Tag-based search (highest relevance)
+    if (options.tags && options.tags.length > 0) {
+      const tagResults = await this.searchByTags(options.tags, {
+        portal: options.portal,
+        limit,
+      });
+
+      for (const result of tagResults) {
+        const key = getResultKey(result);
+        if (!seenIds.has(key)) {
+          seenIds.add(key);
+          // Boost tag results
+          result.relevance_score = (result.relevance_score || 0) + 0.2;
+          results.push(result);
+        }
+      }
+    }
+
+    // Tier 2: Keyword-based search
+    if (options.keyword) {
+      const keywordResults = await this.searchByKeyword(options.keyword, {
+        portal: options.portal,
+        limit,
+      });
+
+      for (const result of keywordResults) {
+        const key = getResultKey(result);
+        if (seenIds.has(key)) {
+          // Already found by tag search - boost the score
+          const existing = results.find((r) => getResultKey(r) === key);
+          if (existing) {
+            existing.relevance_score = (existing.relevance_score || 0) + 0.1;
+          }
+        } else {
+          seenIds.add(key);
+          results.push(result);
+        }
+      }
+    }
+
+    // Sort by final relevance score
+    results.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
+    return results.slice(0, limit);
+  }
+
+  /**
+   * Load learnings from JSON file (helper for search operations)
+   */
+  private async loadLearningsFromFile(): Promise<Learning[]> {
+    const learningsPath = join(this.globalDir, "learnings.json");
+    if (!await exists(learningsPath)) {
+      return [];
+    }
+    try {
+      const content = await Deno.readTextFile(learningsPath);
+      return JSON.parse(content);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Get recent activity summary
    *
    * @param limit - Maximum number of activities to return
@@ -854,6 +1127,18 @@ export class MemoryBankService {
       }
     }
 
+    // Index global learnings tags
+    const learnings = await this.loadLearningsFromFile();
+    for (const learning of learnings) {
+      if (learning.status !== "approved") continue;
+      for (const tag of learning.tags || []) {
+        if (!tagsIndex[tag]) {
+          tagsIndex[tag] = [];
+        }
+        tagsIndex[tag].push(`learning:global:${learning.id}`);
+      }
+    }
+
     // Write indices
     await Deno.writeTextFile(
       join(this.indexDir, "files.json"),
@@ -878,6 +1163,45 @@ export class MemoryBankService {
         files_indexed: Object.keys(filesIndex).length,
         patterns_indexed: Object.keys(patternsIndex).length,
         tags_indexed: Object.keys(tagsIndex).length,
+      },
+    });
+  }
+
+  /**
+   * Rebuild all indices including embeddings
+   *
+   * This method rebuilds standard indices and also regenerates
+   * embedding vectors for all learnings using the provided embedding service.
+   *
+   * @param embeddingService - The embedding service to use for generating vectors
+   */
+  async rebuildIndicesWithEmbeddings(
+    embeddingService: {
+      embedLearning(learning: Learning): Promise<void>;
+      initializeManifest(): Promise<void>;
+    },
+  ): Promise<void> {
+    // First, rebuild standard indices
+    await this.rebuildIndices();
+
+    // Initialize embedding manifest
+    await embeddingService.initializeManifest();
+
+    // Embed all approved learnings
+    const learnings = await this.loadLearningsFromFile();
+    for (const learning of learnings) {
+      if (learning.status === "approved") {
+        await embeddingService.embedLearning(learning);
+      }
+    }
+
+    // Log embedding rebuild
+    const approvedCount = learnings.filter((l) => l.status === "approved").length;
+    this.logActivity({
+      event_type: "memory.embeddings.rebuilt",
+      target: "system",
+      metadata: {
+        learnings_embedded: approvedCount,
       },
     });
   }

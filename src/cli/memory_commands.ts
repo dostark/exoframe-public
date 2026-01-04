@@ -18,6 +18,7 @@ import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "../services/db.ts";
 import { MemoryBankService } from "../services/memory_bank.ts";
 import { MemoryExtractorService } from "../services/memory_extractor.ts";
+import { MemoryEmbeddingService } from "../services/memory_embedding.ts";
 import type {
   ExecutionMemory,
   GlobalMemory,
@@ -51,6 +52,7 @@ export class MemoryCommands {
   private db: DatabaseService;
   private memoryBank: MemoryBankService;
   private extractor: MemoryExtractorService;
+  private embedding: MemoryEmbeddingService;
   private memoryRoot: string;
 
   constructor(context: MemoryCommandsContext) {
@@ -58,6 +60,7 @@ export class MemoryCommands {
     this.db = context.db;
     this.memoryBank = new MemoryBankService(context.config, context.db);
     this.extractor = new MemoryExtractorService(context.config, context.db, this.memoryBank);
+    this.embedding = new MemoryEmbeddingService(context.config);
     this.memoryRoot = join(context.config.system.root, "Memory");
   }
 
@@ -195,35 +198,51 @@ export class MemoryCommands {
       tags?: string[];
       limit?: number;
       format?: OutputFormat;
+      useEmbeddings?: boolean;
     },
   ): Promise<string> {
     const format = options?.format || "table";
     const limit = options?.limit || 20;
 
-    const results = await this.memoryBank.searchMemory(query, {
-      portal: options?.portal,
-      limit,
-    }); // Filter by tags if specified
-    const filteredResults = options?.tags ? this.filterByTags(results, options.tags) : results;
+    let results: MemorySearchResult[];
+
+    // Use advanced search if tags are specified
+    if (options?.tags && options.tags.length > 0) {
+      results = await this.memoryBank.searchMemoryAdvanced({
+        tags: options.tags,
+        keyword: query,
+        portal: options.portal,
+        limit,
+      });
+    } else if (options?.useEmbeddings) {
+      // Use embedding-based search
+      const embeddingResults = await this.embedding.searchByEmbedding(query, {
+        limit,
+      });
+      results = embeddingResults.map((r) => ({
+        type: "learning" as const,
+        title: r.title,
+        summary: r.summary,
+        relevance_score: r.similarity,
+        id: r.id,
+      }));
+    } else {
+      // Use standard search
+      results = await this.memoryBank.searchMemory(query, {
+        portal: options?.portal,
+        limit,
+      });
+    }
 
     switch (format) {
       case "json":
-        return JSON.stringify(filteredResults, null, 2);
+        return JSON.stringify(results, null, 2);
       case "md":
-        return this.formatSearchMarkdown(query, filteredResults);
+        return this.formatSearchMarkdown(query, results);
       case "table":
       default:
-        return this.formatSearchTable(query, filteredResults);
+        return this.formatSearchTable(query, results);
     }
-  }
-
-  private filterByTags(
-    results: MemorySearchResult[],
-    _tags: string[],
-  ): MemorySearchResult[] {
-    // For now, return all results - tag filtering will be enhanced in Phase 12.10
-    // This is a placeholder that maintains API compatibility
-    return results;
   }
 
   private formatSearchTable(query: string, results: MemorySearchResult[]): string {
@@ -1270,10 +1289,24 @@ export class MemoryCommands {
   /**
    * Rebuild all memory bank indices
    *
+   * @param options - Options for rebuilding
    * @returns Status message
    */
-  async rebuildIndex(): Promise<string> {
-    await this.memoryBank.rebuildIndices();
-    return "Memory bank indices rebuilt successfully.";
+  async rebuildIndex(options?: { includeEmbeddings?: boolean }): Promise<string> {
+    const messages: string[] = [];
+
+    if (options?.includeEmbeddings) {
+      // Rebuild with embeddings
+      await this.memoryBank.rebuildIndicesWithEmbeddings(this.embedding);
+      const stats = await this.embedding.getStats();
+      messages.push("Memory bank indices rebuilt successfully.");
+      messages.push(`Embeddings regenerated: ${stats.total} learnings embedded.`);
+    } else {
+      // Standard rebuild
+      await this.memoryBank.rebuildIndices();
+      messages.push("Memory bank indices rebuilt successfully.");
+    }
+
+    return messages.join("\n");
   }
 }

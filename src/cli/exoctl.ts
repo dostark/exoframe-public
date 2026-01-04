@@ -1064,6 +1064,7 @@ export const __test_command = new Command()
           .option("-p, --portal <portal:string>", "Filter by portal")
           .option("-t, --tags <tags:string>", "Filter by tags (comma-separated)")
           .option("-l, --limit <limit:number>", "Maximum results", { default: 20 })
+          .option("-e, --use-embeddings", "Use embedding-based semantic search")
           .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
           .action(async (options, ...args: string[]) => {
             const query = args[0] as unknown as string;
@@ -1073,6 +1074,7 @@ export const __test_command = new Command()
               tags,
               limit: options.limit,
               format: options.format as "table" | "json" | "md",
+              useEmbeddings: options.useEmbeddings,
             });
             console.log(result);
           }),
@@ -1157,8 +1159,11 @@ export const __test_command = new Command()
         "rebuild-index",
         new Command()
           .description("Rebuild memory bank search indices")
-          .action(async () => {
-            const result = await memoryCommands.rebuildIndex();
+          .option("-e, --include-embeddings", "Regenerate embedding vectors for all learnings")
+          .action(async (options) => {
+            const result = await memoryCommands.rebuildIndex({
+              includeEmbeddings: options.includeEmbeddings,
+            });
             console.log(result);
           }),
       )

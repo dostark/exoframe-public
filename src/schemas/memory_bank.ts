@@ -267,6 +267,19 @@ export interface MemorySearchResult {
   title: string;
   summary: string;
   relevance_score?: number;
+  tags?: string[];
+  id?: string;
+}
+
+/**
+ * Advanced search options for searchMemoryAdvanced
+ */
+export interface AdvancedSearchOptions {
+  tags?: string[];
+  keyword?: string;
+  portal?: string;
+  limit?: number;
+  useEmbeddings?: boolean;
 }
 
 /**
