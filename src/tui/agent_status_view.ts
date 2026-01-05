@@ -49,6 +49,7 @@ export interface AgentStatus {
   status: "active" | "inactive" | "error";
   lastActivity: string; // ISO timestamp
   capabilities: string[];
+  defaultSkills: string[]; // Phase 17: Skills from blueprint default_skills
 }
 
 export interface AgentHealth {
@@ -637,6 +638,14 @@ export class AgentStatusTuiSession extends TuiSessionBase {
       lines.push("Capabilities:");
       for (const cap of agent.capabilities) {
         lines.push(`  • ${cap}`);
+      }
+    }
+
+    if (agent.defaultSkills && agent.defaultSkills.length > 0) {
+      lines.push("");
+      lines.push("Default Skills:");
+      for (const skill of agent.defaultSkills) {
+        lines.push(`  🎯 ${skill}`);
       }
     }
 
