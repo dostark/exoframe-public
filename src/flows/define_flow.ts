@@ -50,6 +50,7 @@ export function defineFlow(config: {
     steps: config.steps.map((step) => ({
       id: step.id,
       name: step.name,
+      type: "agent" as const, // Default step type
       agent: step.agent,
       dependsOn: step.dependsOn ?? [],
       input: {

@@ -389,6 +389,7 @@ Deno.test("Flow schemas: can be imported and used by other modules", () => {
   const testStep: FlowStep = {
     id: "test-step",
     name: "Test Step",
+    type: "agent",
     agent: "test-agent",
     dependsOn: [],
     input: {

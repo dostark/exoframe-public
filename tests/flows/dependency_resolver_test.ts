@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { DependencyResolver, FlowValidationError } from "../../src/flows/dependency_resolver.ts";
-import { FlowStep } from "../../src/schemas/flow.ts";
+import { FlowStep, FlowStepInput } from "../../src/schemas/flow.ts";
 
 // Test DependencyResolver class
 Deno.test("DependencyResolver: handles empty flow", () => {
@@ -10,7 +10,7 @@ Deno.test("DependencyResolver: handles empty flow", () => {
 });
 
 Deno.test("DependencyResolver: handles single step with no dependencies", () => {
-  const steps: FlowStep[] = [
+  const steps: FlowStepInput[] = [
     {
       id: "step1",
       name: "Step 1",
@@ -21,13 +21,13 @@ Deno.test("DependencyResolver: handles single step with no dependencies", () => 
     },
   ];
 
-  const resolver = new DependencyResolver(steps);
+  const resolver = new DependencyResolver(steps as FlowStep[]);
   assertEquals(resolver.topologicalSort(), ["step1"]);
   assertEquals(resolver.groupIntoWaves(), [["step1"]]);
 });
 
 Deno.test("DependencyResolver: handles linear chain", () => {
-  const steps: FlowStep[] = [
+  const steps: FlowStepInput[] = [
     {
       id: "step1",
       name: "Step 1",
@@ -54,13 +54,13 @@ Deno.test("DependencyResolver: handles linear chain", () => {
     },
   ];
 
-  const resolver = new DependencyResolver(steps);
+  const resolver = new DependencyResolver(steps as FlowStep[]);
   assertEquals(resolver.topologicalSort(), ["step1", "step2", "step3"]);
   assertEquals(resolver.groupIntoWaves(), [["step1"], ["step2"], ["step3"]]);
 });
 
 Deno.test("DependencyResolver: handles parallel steps", () => {
-  const steps: FlowStep[] = [
+  const steps: FlowStepInput[] = [
     {
       id: "start",
       name: "Start",
@@ -95,7 +95,7 @@ Deno.test("DependencyResolver: handles parallel steps", () => {
     },
   ];
 
-  const resolver = new DependencyResolver(steps);
+  const resolver = new DependencyResolver(steps as FlowStep[]);
   const topoOrder = resolver.topologicalSort();
   // Should start with "start", end with "end", and have parallel steps in some order
   assertEquals(topoOrder[0], "start");
@@ -112,7 +112,7 @@ Deno.test("DependencyResolver: handles parallel steps", () => {
 });
 
 Deno.test("DependencyResolver: detects self-referencing cycle", () => {
-  const steps: FlowStep[] = [
+  const steps: FlowStepInput[] = [
     {
       id: "step1",
       name: "Step 1",
@@ -123,7 +123,7 @@ Deno.test("DependencyResolver: detects self-referencing cycle", () => {
     },
   ];
 
-  const resolver = new DependencyResolver(steps);
+  const resolver = new DependencyResolver(steps as FlowStep[]);
   assertThrows(
     () => resolver.topologicalSort(),
     FlowValidationError,
@@ -132,7 +132,7 @@ Deno.test("DependencyResolver: detects self-referencing cycle", () => {
 });
 
 Deno.test("DependencyResolver: detects simple cycle", () => {
-  const steps: FlowStep[] = [
+  const steps: FlowStepInput[] = [
     {
       id: "step1",
       name: "Step 1",
@@ -151,7 +151,7 @@ Deno.test("DependencyResolver: detects simple cycle", () => {
     },
   ];
 
-  const resolver = new DependencyResolver(steps);
+  const resolver = new DependencyResolver(steps as FlowStep[]);
   assertThrows(
     () => resolver.topologicalSort(),
     FlowValidationError,
@@ -160,7 +160,7 @@ Deno.test("DependencyResolver: detects simple cycle", () => {
 });
 
 Deno.test("DependencyResolver: detects complex cycle", () => {
-  const steps: FlowStep[] = [
+  const steps: FlowStepInput[] = [
     {
       id: "a",
       name: "A",
@@ -187,7 +187,7 @@ Deno.test("DependencyResolver: detects complex cycle", () => {
     },
   ];
 
-  const resolver = new DependencyResolver(steps);
+  const resolver = new DependencyResolver(steps as FlowStep[]);
   assertThrows(
     () => resolver.topologicalSort(),
     FlowValidationError,
@@ -196,7 +196,7 @@ Deno.test("DependencyResolver: detects complex cycle", () => {
 });
 
 Deno.test("DependencyResolver: handles diamond pattern", () => {
-  const steps: FlowStep[] = [
+  const steps: FlowStepInput[] = [
     {
       id: "start",
       name: "Start",
@@ -231,7 +231,7 @@ Deno.test("DependencyResolver: handles diamond pattern", () => {
     },
   ];
 
-  const resolver = new DependencyResolver(steps);
+  const resolver = new DependencyResolver(steps as FlowStep[]);
   const topoOrder = resolver.topologicalSort();
   assertEquals(topoOrder[0], "start");
   assertEquals(topoOrder[topoOrder.length - 1], "merge");
@@ -245,7 +245,7 @@ Deno.test("DependencyResolver: handles diamond pattern", () => {
 });
 
 Deno.test("DependencyResolver: throws error for invalid dependency", () => {
-  const steps: FlowStep[] = [
+  const steps: FlowStepInput[] = [
     {
       id: "step1",
       name: "Step 1",
@@ -257,14 +257,14 @@ Deno.test("DependencyResolver: throws error for invalid dependency", () => {
   ];
 
   assertThrows(
-    () => new DependencyResolver(steps),
+    () => new DependencyResolver(steps as FlowStep[]),
     FlowValidationError,
     "Dependency 'nonexistent' not found in step definitions",
   );
 });
 
 Deno.test("DependencyResolver: handles all parallel steps", () => {
-  const steps: FlowStep[] = [
+  const steps: FlowStepInput[] = [
     {
       id: "step1",
       name: "Step 1",
@@ -291,7 +291,7 @@ Deno.test("DependencyResolver: handles all parallel steps", () => {
     },
   ];
 
-  const resolver = new DependencyResolver(steps);
+  const resolver = new DependencyResolver(steps as FlowStep[]);
   const waves = resolver.groupIntoWaves();
   assertEquals(waves.length, 1);
   assertEquals(waves[0].includes("step1"), true);

@@ -5,7 +5,7 @@ import { exists } from "@std/fs";
 import { type FlowReportConfig, FlowReporter } from "../../src/services/flow_reporter.ts";
 import { createMockConfig } from "../helpers/config.ts";
 import { initTestDbService } from "../helpers/db.ts";
-import type { Flow } from "../../src/schemas/flow.ts";
+import type { Flow, FlowInput } from "../../src/schemas/flow.ts";
 import type { FlowResult, StepResult } from "../../src/flows/flow_runner.ts";
 
 describe("FlowReporter", () => {
@@ -51,7 +51,7 @@ describe("FlowReporter", () => {
   describe("generate", () => {
     it("should generate report for successful flow execution", async () => {
       // Create mock flow data
-      const flow: Flow = {
+      const flow: FlowInput = {
         id: "test-flow",
         name: "Test Flow",
         description: "A test flow",
@@ -142,7 +142,7 @@ describe("FlowReporter", () => {
       const requestId = "request-abc123";
 
       // Generate report
-      const result = await reporter.generate(flow, flowResult, requestId);
+      const result = await reporter.generate(flow as Flow, flowResult, requestId);
 
       // Verify result structure
       assertExists(result.reportPath);
@@ -166,7 +166,7 @@ describe("FlowReporter", () => {
 
     it("should generate report for failed flow execution", async () => {
       // Create mock flow data with failure
-      const flow: Flow = {
+      const flow: FlowInput = {
         id: "failed-flow",
         name: "Failed Flow",
         description: "A flow that fails",
@@ -222,7 +222,7 @@ describe("FlowReporter", () => {
       };
 
       // Generate report
-      const result = await reporter.generate(flow, flowResult);
+      const result = await reporter.generate(flow as Flow, flowResult);
 
       // Verify content indicates failure
       assertStringIncludes(result.content, "success: false");
@@ -234,7 +234,7 @@ describe("FlowReporter", () => {
 
     it("should generate correct filename format", async () => {
       // Create minimal mock data
-      const flow: Flow = {
+      const flow: FlowInput = {
         id: "filename-test",
         name: "Filename Test",
         description: "Test filename generation",
@@ -291,7 +291,7 @@ describe("FlowReporter", () => {
         completedAt: new Date(),
       };
 
-      const result = await reporter.generate(flow, flowResult);
+      const result = await reporter.generate(flow as Flow, flowResult);
 
       // Filename should match pattern: flow_{flowId}_{shortRunId}_{timestamp}.md
       const filename = result.reportPath.split("/").pop()!;

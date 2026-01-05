@@ -1,6 +1,7 @@
 import { Flow, FlowStep } from "../schemas/flow.ts";
 import { DependencyResolver } from "./dependency_resolver.ts";
 import { AgentExecutionResult } from "../services/agent_runner.ts";
+import { ConditionEvaluator } from "./condition_evaluator.ts";
 import {
   appendToRequest,
   extractSection,
@@ -28,6 +29,10 @@ export interface StepResult {
   stepId: string;
   /** Whether the step succeeded */
   success: boolean;
+  /** Whether the step was skipped due to condition */
+  skipped?: boolean;
+  /** The condition that caused skipping (if skipped) */
+  skipReason?: string;
   /** Execution result if successful */
   result?: AgentExecutionResult;
   /** Error message if failed */
@@ -89,10 +94,14 @@ export interface FlowEventLogger {
  * Implements Step 7.4 of the ExoFrame Implementation Plan
  */
 export class FlowRunner {
+  private conditionEvaluator: ConditionEvaluator;
+
   constructor(
     private agentExecutor: AgentExecutor,
     private eventLogger: FlowEventLogger,
-  ) {}
+  ) {
+    this.conditionEvaluator = new ConditionEvaluator();
+  }
 
   /**
    * Execute a flow with the given request
@@ -345,6 +354,50 @@ export class FlowRunner {
   ): Promise<StepResult> {
     const step = flow.steps.find((s) => s.id === stepId)!;
     const startedAt = new Date();
+
+    // Evaluate step condition if present
+    if (step.condition) {
+      const conditionResult = this.conditionEvaluator.evaluateStepCondition(
+        step,
+        stepResults,
+        request,
+        flow,
+      );
+
+      this.eventLogger.log("flow.step.condition.evaluated", {
+        flowRunId,
+        stepId,
+        condition: step.condition,
+        shouldExecute: conditionResult.shouldExecute,
+        error: conditionResult.error,
+        traceId: request.traceId,
+        requestId: request.requestId,
+      });
+
+      if (!conditionResult.shouldExecute) {
+        const completedAt = new Date();
+        const duration = completedAt.getTime() - startedAt.getTime();
+
+        this.eventLogger.log("flow.step.skipped", {
+          flowRunId,
+          stepId,
+          condition: step.condition,
+          reason: conditionResult.error || "Condition evaluated to false",
+          traceId: request.traceId,
+          requestId: request.requestId,
+        });
+
+        return {
+          stepId,
+          success: true, // Skipped steps are considered successful
+          skipped: true,
+          skipReason: conditionResult.error || `Condition "${step.condition}" evaluated to false`,
+          duration,
+          startedAt,
+          completedAt,
+        };
+      }
+    }
 
     // Log step queued (ready for execution)
     this.eventLogger.log("flow.step.queued", {
