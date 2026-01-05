@@ -1,0 +1,25 @@
+Show your thinking explicitly in <thinking> tags before each major step.
+```
+
+## Expected Response Pattern
+
+Claude should show thinking for each phase:
+```
+<thinking>
+ANALYZE phase:
+- Found 12 files calling initTestDbService()
+- No existing db.ts helper in tests/helpers/
+- Risk: Circular dependencies if placed in wrong location
+- Dependencies: All test files import from tests/helpers/
+
+PLAN phase:
+Tool calls needed:
+1. grep_search for "initTestDbService" (get usage count)
+2. Parallel read: tests/helpers/test_utils.ts, tests/db_test.ts (patterns)
+3. Create tests/helpers/db.ts with exported helper
+4. Update 2 representative files as examples
+5. Run tests to verify
+</thinking>
+
+[then execute the plan with actual tool calls]
+```

@@ -1,0 +1,17 @@
+1. Read [providers/claude.md](providers/claude.md) for prompt templates
+2. Use [providers/claude-rag.md](providers/claude-rag.md) for context injection
+3. Follow tool-use patterns (parallel reads, thinking protocol)
+4. Reference task-specific system prompts for TDD/refactoring/debugging
+
+### "I want to use Gemini effectively"
+
+1. Read [providers/google.md](providers/google.md) for optimized prompts
+2. Use [providers/google-long-context.md](providers/google-long-context.md) to decide when to use RAG vs full context
+3. Follow thinking protocol (Saturate → Analyze → Plan)
+
+### "I want to add security tests"
+
+1. Review [tests/testing.md](tests/testing.md) security section
+2. Label tests with `[security]` tag
+3. Test path traversal, injection, leakage
+4. Use PathResolver for all path validation

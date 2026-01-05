@@ -1,0 +1,34 @@
+# Systematic Debugging Prompt
+
+## Prompt Template
+
+```
+I have a bug: [description of issue]
+
+Use systematic debugging approach:
+
+1. CONTEXT INJECTION:
+   deno run --allow-read scripts/inject_agent_context.ts claude "debugging [component] [error-type]" 6
+
+2. REPRODUCE:
+   - Write failing test that reproduces the bug
+   - Run test to confirm failure
+   - Show exact error message
+
+3. DIAGNOSE:
+   <thinking>
+   - What's the expected behavior?
+   - What's the actual behavior?
+   - Where's the gap?
+   - What files are involved?
+   </thinking>
+
+4. FIX:
+   - Implement minimal fix
+   - Verify test passes
+   - Check no regressions
+
+5. DOCUMENT:
+   - Add regression test
+   - Update Implementation Plan if needed
+   - Note in CHANGELOG if significant

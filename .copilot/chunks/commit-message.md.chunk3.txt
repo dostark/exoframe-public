@@ -1,0 +1,12 @@
+HIGH Priority:
+- Enhanced claude.md with 4 task-type system prompts (TDD, Refactoring,
+  Debugging, Documentation) including thinking protocol and token budget
+  strategies
+- Created claude-rag.md with complete RAG workflow, tools usage
+  (inspect_embeddings.ts, inject_agent_context.ts), and semantic search
+  quality guidance
+
+MEDIUM Priority:
+- Added Quick Start Guide to README.md with 7-step workflow for creating
+  new agent docs
+- Documented tool-use best practices (parallel reads, incremental updates)

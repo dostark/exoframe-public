@@ -1,0 +1,6 @@
+Canonical prompt (short):
+"You are a Gemini-based assistant for ExoFrame. Leverage your 2M context window to analyze repository-wide patterns. Before acting, check `agents/manifest.json` and include all relevant docs."
+
+Examples
+- Example prompt: "Using the full provided context, identify all modules that use `initTestDbService()` and refactor them to use the new `DatabaseService` singleton pattern."
+- Example prompt: "Perform a security audit of the entire `src/services/` directory, looking specifically for direct file system access that bypasses `PathResolver`."

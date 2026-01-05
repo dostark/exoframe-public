@@ -1,0 +1,26 @@
+Add to pre-commit or CI pipeline:
+```bash
+# Fail if duplication > 5%
+npx jscpd src/ tests/ --threshold 5
+
+# Or specific directories
+npx jscpd src/ai/ --threshold 3
+```
+
+## ExoFrame-Specific Patterns
+
+### Test Helper Locations
+- `tests/helpers/` - General test utilities
+- `tests/cli/helpers/` - CLI test setup
+- `tests/integration/helpers/` - Integration test environment
+- `tests/tui/helpers.ts` - TUI mocks and harnesses
+- `tests/mcp/helpers/` - MCP server test setup
+
+### When NOT to Deduplicate
+
+1. **Intentional isolation** - Security tests should be standalone
+2. **Test clarity** - Some repetition improves test readability
+3. **Evolution** - Tests that may diverge should stay separate
+4. **Small clones** - < 50 tokens rarely worth extracting
+
+## Current Status (2026-01-04)

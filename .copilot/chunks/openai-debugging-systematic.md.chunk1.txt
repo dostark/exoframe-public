@@ -1,0 +1,10 @@
+- Example prompt:
+  "Failure: tests/execution_loop_test.ts is flaky. Inject agents/ context for 'execution loop tests flake'. Provide a repro strategy, likely root causes, and a minimal diff to stabilize. End with verification commands."
+
+- Example prompt:
+  "Runtime error: daemon hangs on --version. Inject agents/ context for 'cli version flag'. Provide diagnosis and minimal fix + regression test."
+
+Do / Don't
+- ✅ Do add a regression test when possible.
+- ✅ Do keep diffs minimal and file-scoped.
+- ❌ Don’t guess without reproducing.

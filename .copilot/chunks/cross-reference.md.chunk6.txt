@@ -1,0 +1,17 @@
+### "I want to set up RAG for semantic search"
+
+1. Read [providers/claude-rag.md](providers/claude-rag.md) for workflow
+2. Build embeddings: `deno run --allow-read --allow-write scripts/build_agents_embeddings.ts --mode mock`
+3. Test retrieval: `deno run --allow-read scripts/inject_agent_context.ts --query "your query" --agent claude`
+4. Inspect similarity: `deno run --allow-read scripts/inspect_embeddings.ts --query "your query" --top 5`
+
+## Provider-Specific Quick Links
+
+### Claude
+
+- **Main guide**: [providers/claude.md](providers/claude.md)
+- **RAG setup**: [providers/claude-rag.md](providers/claude-rag.md)
+- **System prompts**: TDD, Refactoring, Debugging, Documentation (in claude.md)
+- **Context window**: 200k tokens (4-6 chunks recommended)
+
+### VS Code Copilot

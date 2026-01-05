@@ -1,0 +1,18 @@
+Claude response:
+```
+<thinking>
+The ConfigLoader needs to handle missing files gracefully. I'll propose tests first, then implement.
+
+Tests needed:
+1. Missing file returns default config
+2. Invalid TOML format throws clear error
+3. Partial config merges with defaults
+</thinking>
+
+Here are 3 failing tests:
+
+```typescript
+import { assertEquals, assertRejects } from "https://deno.land/std@0.203.0/assert/mod.ts";
+import { ConfigLoader } from "../src/config/loader.ts";
+import { createCliTestContext } from "./helpers/test_context.ts";
+import { join } from "https://deno.land/std@0.203.0/path/mod.ts";

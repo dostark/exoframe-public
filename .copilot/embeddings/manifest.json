@@ -1,0 +1,155 @@
+{
+  "generated_at": "2026-01-02T17:15:57.562Z",
+  "index": [
+    {
+      "path": "agents/docs/documentation.md",
+      "title": "ExoFrame Documentation Development Guidelines",
+      "embeddingFile": "agents/embeddings/documentation.md.json"
+    },
+    {
+      "path": "agents/prompts/openai-debugging-systematic.md",
+      "title": "OpenAI Debugging: Reproduce → Diagnose → Fix → Verify",
+      "embeddingFile": "agents/embeddings/openai-debugging-systematic.md.json"
+    },
+    {
+      "path": "agents/prompts/refactoring-with-thinking.md",
+      "title": "Refactoring with Thinking Protocol Prompt",
+      "embeddingFile": "agents/embeddings/refactoring-with-thinking.md.json"
+    },
+    {
+      "path": "agents/prompts/commit-message.md",
+      "title": "Detailed Commit Message Prompt",
+      "embeddingFile": "agents/embeddings/commit-message.md.json"
+    },
+    {
+      "path": "agents/prompts/debugging-systematic.md",
+      "title": "Systematic Debugging Prompt",
+      "embeddingFile": "agents/embeddings/debugging-systematic.md.json"
+    },
+    {
+      "path": "agents/prompts/google-quickstart.md",
+      "title": "Gemini Quickstart Prompt",
+      "embeddingFile": "agents/embeddings/google-quickstart.md.json"
+    },
+    {
+      "path": "agents/prompts/openai-tdd-workflow.md",
+      "title": "OpenAI TDD Workflow (tests first)",
+      "embeddingFile": "agents/embeddings/openai-tdd-workflow.md.json"
+    },
+    {
+      "path": "agents/prompts/README.md",
+      "title": "Prompt Examples README",
+      "embeddingFile": "agents/embeddings/README.md.json"
+    },
+    {
+      "path": "agents/prompts/rag-context-injection.md",
+      "title": "RAG Context Injection Prompt",
+      "embeddingFile": "agents/embeddings/rag-context-injection.md.json"
+    },
+    {
+      "path": "agents/prompts/openai-rag-context-injection.md",
+      "title": "OpenAI RAG Context Injection (inspect → inject)",
+      "embeddingFile": "agents/embeddings/openai-rag-context-injection.md.json"
+    },
+    {
+      "path": "agents/prompts/tdd-workflow.md",
+      "title": "TDD Workflow Prompt Example",
+      "embeddingFile": "agents/embeddings/tdd-workflow.md.json"
+    },
+    {
+      "path": "agents/prompts/google-tdd-workflow.md",
+      "title": "Gemini TDD Workflow Prompt",
+      "embeddingFile": "agents/embeddings/google-tdd-workflow.md.json"
+    },
+    {
+      "path": "agents/prompts/openai-quickstart.md",
+      "title": "OpenAI Quickstart: Use agents/ first",
+      "embeddingFile": "agents/embeddings/openai-quickstart.md.json"
+    },
+    {
+      "path": "agents/prompts/implementation-plan-driven.md",
+      "title": "Implementation Plan Driven Development Prompt",
+      "embeddingFile": "agents/embeddings/implementation-plan-driven.md.json"
+    },
+    {
+      "path": "agents/prompts/cross-reference-navigation.md",
+      "title": "Cross-Reference Navigation Prompt",
+      "embeddingFile": "agents/embeddings/cross-reference-navigation.md.json"
+    },
+    {
+      "path": "agents/prompts/update-building-with-ai-agents.md",
+      "title": "Update Building with AI Agents Documentation",
+      "embeddingFile": "agents/embeddings/update-building-with-ai-agents.md.json"
+    },
+    {
+      "path": "agents/prompts/self-improvement-loop.md",
+      "title": "Self-improvement loop prompt template",
+      "embeddingFile": "agents/embeddings/self-improvement-loop.md.json"
+    },
+    {
+      "path": "agents/source/exoframe.md",
+      "title": "ExoFrame Source Development Guidelines",
+      "embeddingFile": "agents/embeddings/exoframe.md.json"
+    },
+    {
+      "path": "agents/README.md",
+      "title": "Agents directory README",
+      "embeddingFile": "agents/embeddings/README.md.json"
+    },
+    {
+      "path": "agents/cross-reference.md",
+      "title": "Agent Documentation Cross-Reference Map",
+      "embeddingFile": "agents/embeddings/cross-reference.md.json"
+    },
+    {
+      "path": "agents/copilot/exoframe.md",
+      "title": "ExoFrame quick reference for Copilot",
+      "embeddingFile": "agents/embeddings/exoframe.md.json"
+    },
+    {
+      "path": "agents/copilot/summary.md",
+      "title": "ExoFrame Quick Summary",
+      "embeddingFile": "agents/embeddings/summary.md.json"
+    },
+    {
+      "path": "agents/process/self-improvement.md",
+      "title": "Self-improvement loop for agent instructions",
+      "embeddingFile": "agents/embeddings/self-improvement.md.json"
+    },
+    {
+      "path": "agents/providers/claude.md",
+      "title": "Claude provider adaptation notes",
+      "embeddingFile": "agents/embeddings/claude.md.json"
+    },
+    {
+      "path": "agents/providers/google.md",
+      "title": "Google Gemini Provider Adaptation Guide",
+      "embeddingFile": "agents/embeddings/google.md.json"
+    },
+    {
+      "path": "agents/providers/openai-rag.md",
+      "title": "OpenAI RAG (Retrieval-Augmented Generation) Usage Guide",
+      "embeddingFile": "agents/embeddings/openai-rag.md.json"
+    },
+    {
+      "path": "agents/providers/google-long-context.md",
+      "title": "Gemini Long-Context Reasoning Guide",
+      "embeddingFile": "agents/embeddings/google-long-context.md.json"
+    },
+    {
+      "path": "agents/providers/claude-rag.md",
+      "title": "Claude RAG (Retrieval-Augmented Generation) Usage Guide",
+      "embeddingFile": "agents/embeddings/claude-rag.md.json"
+    },
+    {
+      "path": "agents/providers/openai.md",
+      "title": "OpenAI adaptation notes",
+      "embeddingFile": "agents/embeddings/openai.md.json"
+    },
+    {
+      "path": "agents/tests/testing.md",
+      "title": "ExoFrame Test Development Guidelines",
+      "embeddingFile": "agents/embeddings/testing.md.json"
+    }
+  ]
+}

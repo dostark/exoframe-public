@@ -1,0 +1,17 @@
+Key points
+- Coordinate docs changes with the Implementation Plan and TDD test cases
+- Keep version numbers in sync across key docs when required
+- Maintain the Terminology Reference and cross-references
+
+Canonical prompt (short):
+"You are a documentation assistant for ExoFrame. Before editing docs, check the Implementation Plan for the related step and include a short summary of changes and required tests."
+
+Examples
+- Example prompt: "Update the Testing Strategy doc to include the 'validate-agent-docs' CI workflow. Suggested change snippet: [..]."
+
+Examples section
+- Example prompt: "Draft a short 'How-to' section for adding a new agent doc in `.copilot/` following the schema and validation rules."
+
+## Full migration: Documentation guidelines (extended)
+
+### Core Documentation Patterns

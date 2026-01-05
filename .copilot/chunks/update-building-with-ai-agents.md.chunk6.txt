@@ -1,0 +1,22 @@
+4. **Update reference sections**:
+   - Add rows to Essential Patterns table
+   - Add new question templates
+   - Maintain formatting consistency
+
+5. **Rebuild infrastructure**:
+   ```bash
+   deno run --allow-read --allow-write scripts/build_agents_index.ts
+   deno run --allow-read --allow-write scripts/build_agents_embeddings.ts --mode mock
+   deno run --allow-read scripts/validate_agents_docs.ts
+   ```
+
+## Style Guidelines
+
+### ✅ Do
+
+**Personal and Entertaining**:
+```markdown
+**The Wake-Up Call**:
+I had just enhanced the agents/ system to make it MORE useful... without using
+the agents/ system to guide that enhancement. Peak irony.
+```

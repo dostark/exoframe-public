@@ -1,0 +1,692 @@
+{
+  "generated_at": "2026-01-05T18:42:10.612Z",
+  "docs": [
+    {
+      "path": "agents/docs/documentation.md",
+      "agent": "copilot",
+      "scope": "dev",
+      "title": "ExoFrame Documentation Development Guidelines",
+      "short_summary": "Guidance for producing and maintaining docs in the docs/ directory and cross-referencing the Implementation Plan.",
+      "version": "0.1",
+      "topics": [
+        "docs",
+        "process",
+        "publishing"
+      ],
+      "chunks": [
+        "agents/chunks/documentation.md.chunk0.txt",
+        "agents/chunks/documentation.md.chunk1.txt",
+        "agents/chunks/documentation.md.chunk2.txt",
+        "agents/chunks/documentation.md.chunk3.txt",
+        "agents/chunks/documentation.md.chunk4.txt",
+        "agents/chunks/documentation.md.chunk5.txt"
+      ]
+    },
+    {
+      "path": "agents/coverage/coverage-summary.md",
+      "short_summary": "",
+      "chunks": [
+        "agents/chunks/coverage-summary.md.chunk0.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/openai-debugging-systematic.md",
+      "agent": "openai",
+      "scope": "dev",
+      "title": "OpenAI Debugging: Reproduce → Diagnose → Fix → Verify",
+      "short_summary": "Prompt template for systematic debugging with context injection, minimal diffs, and explicit verification steps.",
+      "version": "0.1",
+      "topics": [
+        "openai",
+        "debugging",
+        "prompts",
+        "diff-first"
+      ],
+      "chunks": [
+        "agents/chunks/openai-debugging-systematic.md.chunk0.txt",
+        "agents/chunks/openai-debugging-systematic.md.chunk1.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/refactoring-with-thinking.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Refactoring with Thinking Protocol Prompt",
+      "short_summary": "Example prompt for complex refactoring using Claude's thinking protocol.",
+      "version": "0.1",
+      "topics": [
+        "refactoring",
+        "thinking-protocol",
+        "prompts",
+        "examples"
+      ],
+      "chunks": [
+        "agents/chunks/refactoring-with-thinking.md.chunk0.txt",
+        "agents/chunks/refactoring-with-thinking.md.chunk1.txt",
+        "agents/chunks/refactoring-with-thinking.md.chunk2.txt",
+        "agents/chunks/refactoring-with-thinking.md.chunk3.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/commit-message.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Detailed Commit Message Prompt",
+      "short_summary": "Example prompt for creating structured, informative commit messages.",
+      "version": "0.1",
+      "topics": [
+        "git",
+        "commit",
+        "documentation",
+        "best-practices"
+      ],
+      "chunks": [
+        "agents/chunks/commit-message.md.chunk0.txt",
+        "agents/chunks/commit-message.md.chunk1.txt",
+        "agents/chunks/commit-message.md.chunk2.txt",
+        "agents/chunks/commit-message.md.chunk3.txt",
+        "agents/chunks/commit-message.md.chunk4.txt",
+        "agents/chunks/commit-message.md.chunk5.txt",
+        "agents/chunks/commit-message.md.chunk6.txt",
+        "agents/chunks/commit-message.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/debugging-systematic.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Systematic Debugging Prompt",
+      "short_summary": "Example prompt for systematic debugging using agents/ guidance.",
+      "version": "0.1",
+      "topics": [
+        "debugging",
+        "troubleshooting",
+        "prompts",
+        "examples"
+      ],
+      "chunks": [
+        "agents/chunks/debugging-systematic.md.chunk0.txt",
+        "agents/chunks/debugging-systematic.md.chunk1.txt",
+        "agents/chunks/debugging-systematic.md.chunk2.txt",
+        "agents/chunks/debugging-systematic.md.chunk3.txt",
+        "agents/chunks/debugging-systematic.md.chunk4.txt",
+        "agents/chunks/debugging-systematic.md.chunk5.txt",
+        "agents/chunks/debugging-systematic.md.chunk6.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/google-quickstart.md",
+      "agent": "google",
+      "scope": "dev",
+      "title": "Gemini Quickstart Prompt",
+      "short_summary": "Native long-context prompt for Gemini 1.5 Pro to perform whole-repo analysis.",
+      "version": "0.1",
+      "topics": [
+        "prompts",
+        "gemini",
+        "quickstart",
+        "long-context"
+      ],
+      "chunks": [
+        "agents/chunks/google-quickstart.md.chunk0.txt",
+        "agents/chunks/google-quickstart.md.chunk1.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/openai-tdd-workflow.md",
+      "agent": "openai",
+      "scope": "dev",
+      "title": "OpenAI TDD Workflow (tests first)",
+      "short_summary": "Prompt template that forces tests-first with explicit assertions, then minimal diffs and verification.",
+      "version": "0.1",
+      "topics": [
+        "openai",
+        "tdd",
+        "testing",
+        "prompts",
+        "diff-first"
+      ],
+      "chunks": [
+        "agents/chunks/openai-tdd-workflow.md.chunk0.txt",
+        "agents/chunks/openai-tdd-workflow.md.chunk1.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/README.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Prompt Examples README",
+      "short_summary": "Guide to using example prompts for maximum agent effectiveness.",
+      "version": "0.1",
+      "topics": [
+        "prompts",
+        "examples",
+        "guide",
+        "best-practices"
+      ],
+      "chunks": [
+        "agents/chunks/README.md.chunk0.txt",
+        "agents/chunks/README.md.chunk1.txt",
+        "agents/chunks/README.md.chunk2.txt",
+        "agents/chunks/README.md.chunk3.txt",
+        "agents/chunks/README.md.chunk4.txt",
+        "agents/chunks/README.md.chunk5.txt",
+        "agents/chunks/README.md.chunk6.txt",
+        "agents/chunks/README.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/rag-context-injection.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "RAG Context Injection Prompt",
+      "short_summary": "Example prompt showing how to use semantic search for context injection.",
+      "version": "0.1",
+      "topics": [
+        "rag",
+        "embeddings",
+        "context-injection",
+        "prompts"
+      ],
+      "chunks": [
+        "agents/chunks/rag-context-injection.md.chunk0.txt",
+        "agents/chunks/rag-context-injection.md.chunk1.txt",
+        "agents/chunks/rag-context-injection.md.chunk2.txt",
+        "agents/chunks/rag-context-injection.md.chunk3.txt",
+        "agents/chunks/rag-context-injection.md.chunk4.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/openai-rag-context-injection.md",
+      "agent": "openai",
+      "scope": "dev",
+      "title": "OpenAI RAG Context Injection (inspect → inject)",
+      "short_summary": "Prompt template for OpenAI agents to inspect embeddings, inject top chunks, then answer with minimal diffs and verification.",
+      "version": "0.1",
+      "topics": [
+        "openai",
+        "rag",
+        "embeddings",
+        "context-injection",
+        "prompts"
+      ],
+      "chunks": [
+        "agents/chunks/openai-rag-context-injection.md.chunk0.txt",
+        "agents/chunks/openai-rag-context-injection.md.chunk1.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/tdd-workflow.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "TDD Workflow Prompt Example",
+      "short_summary": "Example prompt for test-driven development following ExoFrame patterns.",
+      "version": "0.1",
+      "topics": [
+        "tdd",
+        "testing",
+        "prompts",
+        "examples"
+      ],
+      "chunks": [
+        "agents/chunks/tdd-workflow.md.chunk0.txt",
+        "agents/chunks/tdd-workflow.md.chunk1.txt",
+        "agents/chunks/tdd-workflow.md.chunk2.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/google-tdd-workflow.md",
+      "agent": "google",
+      "scope": "dev",
+      "title": "Gemini TDD Workflow Prompt",
+      "short_summary": "Exhaustive TDD prompt optimized for Gemini's long-context reasoning.",
+      "version": "0.1",
+      "topics": [
+        "prompts",
+        "gemini",
+        "tdd",
+        "exhaustive-testing"
+      ],
+      "chunks": [
+        "agents/chunks/google-tdd-workflow.md.chunk0.txt",
+        "agents/chunks/google-tdd-workflow.md.chunk1.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/openai-quickstart.md",
+      "agent": "openai",
+      "scope": "dev",
+      "title": "OpenAI Quickstart: Use agents/ first",
+      "short_summary": "Copy/paste prompt that forces OpenAI agents to inject agents/ context, answer diff-first, and verify with tests.",
+      "version": "0.1",
+      "topics": [
+        "openai",
+        "quickstart",
+        "rag",
+        "diff-first",
+        "prompts"
+      ],
+      "chunks": [
+        "agents/chunks/openai-quickstart.md.chunk0.txt",
+        "agents/chunks/openai-quickstart.md.chunk1.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/implementation-plan-driven.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Implementation Plan Driven Development Prompt",
+      "short_summary": "Example prompt for working from Implementation Plan steps.",
+      "version": "0.1",
+      "topics": [
+        "implementation-plan",
+        "workflow",
+        "prompts",
+        "examples"
+      ],
+      "chunks": [
+        "agents/chunks/implementation-plan-driven.md.chunk0.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk1.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk2.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk3.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk4.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk5.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk6.txt",
+        "agents/chunks/implementation-plan-driven.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/cross-reference-navigation.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Cross-Reference Navigation Prompt",
+      "short_summary": "Example prompt using cross-reference map for task navigation.",
+      "version": "0.1",
+      "topics": [
+        "cross-reference",
+        "navigation",
+        "prompts",
+        "workflow"
+      ],
+      "chunks": [
+        "agents/chunks/cross-reference-navigation.md.chunk0.txt",
+        "agents/chunks/cross-reference-navigation.md.chunk1.txt",
+        "agents/chunks/cross-reference-navigation.md.chunk2.txt",
+        "agents/chunks/cross-reference-navigation.md.chunk3.txt",
+        "agents/chunks/cross-reference-navigation.md.chunk4.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/update-building-with-ai-agents.md",
+      "agent": "claude",
+      "scope": "docs",
+      "title": "Update Building with AI Agents Documentation",
+      "short_summary": "Prompt template for adding new patterns and stories to Building_with_AI_Agents.md",
+      "version": "0.1",
+      "topics": [
+        "documentation",
+        "meta",
+        "patterns",
+        "field-guide"
+      ],
+      "chunks": [
+        "agents/chunks/update-building-with-ai-agents.md.chunk0.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk1.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk2.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk3.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk4.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk5.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk6.txt",
+        "agents/chunks/update-building-with-ai-agents.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/prompts/self-improvement-loop.md",
+      "agent": "general",
+      "scope": "dev",
+      "title": "Self-improvement loop prompt template",
+      "short_summary": "Copy/paste prompt to detect instruction gaps and patch agents/ docs during execution (then rebuild/validate) before continuing.",
+      "version": "0.1",
+      "topics": [
+        "self-improvement",
+        "prompt-template",
+        "instruction-adequacy",
+        "maintenance"
+      ],
+      "chunks": [
+        "agents/chunks/self-improvement-loop.md.chunk0.txt",
+        "agents/chunks/self-improvement-loop.md.chunk1.txt",
+        "agents/chunks/self-improvement-loop.md.chunk2.txt"
+      ]
+    },
+    {
+      "path": "agents/source/exoframe.md",
+      "agent": "copilot",
+      "scope": "dev",
+      "title": "ExoFrame Source Development Guidelines",
+      "short_summary": "Guidance for developing ExoFrame source code: TDD-first, patterns, project structure, and best practices.",
+      "version": "0.1",
+      "topics": [
+        "source",
+        "development",
+        "tdd",
+        "patterns"
+      ],
+      "chunks": [
+        "agents/chunks/exoframe.md.chunk0.txt",
+        "agents/chunks/exoframe.md.chunk1.txt",
+        "agents/chunks/exoframe.md.chunk2.txt",
+        "agents/chunks/exoframe.md.chunk3.txt",
+        "agents/chunks/exoframe.md.chunk4.txt",
+        "agents/chunks/exoframe.md.chunk5.txt"
+      ]
+    },
+    {
+      "path": "agents/README.md",
+      "agent": "general",
+      "scope": "dev",
+      "title": "Agents directory README",
+      "short_summary": "Overview of the agents/ directory, schema, and maintenance guidelines.",
+      "version": "0.1",
+      "chunks": [
+        "agents/chunks/README.md.chunk0.txt",
+        "agents/chunks/README.md.chunk1.txt",
+        "agents/chunks/README.md.chunk2.txt",
+        "agents/chunks/README.md.chunk3.txt",
+        "agents/chunks/README.md.chunk4.txt",
+        "agents/chunks/README.md.chunk5.txt",
+        "agents/chunks/README.md.chunk6.txt",
+        "agents/chunks/README.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/cross-reference.md",
+      "agent": "general",
+      "scope": "dev",
+      "title": "Agent Documentation Cross-Reference Map",
+      "short_summary": "Quick reference mapping task types to relevant agent documentation files.",
+      "version": "0.1",
+      "topics": [
+        "navigation",
+        "quick-reference",
+        "task-mapping"
+      ],
+      "chunks": [
+        "agents/chunks/cross-reference.md.chunk0.txt",
+        "agents/chunks/cross-reference.md.chunk1.txt",
+        "agents/chunks/cross-reference.md.chunk2.txt",
+        "agents/chunks/cross-reference.md.chunk3.txt",
+        "agents/chunks/cross-reference.md.chunk4.txt",
+        "agents/chunks/cross-reference.md.chunk5.txt",
+        "agents/chunks/cross-reference.md.chunk6.txt",
+        "agents/chunks/cross-reference.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/copilot/exoframe.md",
+      "agent": "copilot",
+      "scope": "dev",
+      "title": "ExoFrame quick reference for Copilot",
+      "short_summary": "Deno + TypeScript Flow-driven AI automation. Key dirs: src/, tests/, Blueprints/, docs/. Consult agents/manifest.json before edits.",
+      "version": "0.1",
+      "topics": [
+        "repo-overview",
+        "testing",
+        "flows",
+        "obsidian"
+      ],
+      "chunks": [
+        "agents/chunks/exoframe.md.chunk0.txt",
+        "agents/chunks/exoframe.md.chunk1.txt",
+        "agents/chunks/exoframe.md.chunk2.txt"
+      ]
+    },
+    {
+      "path": "agents/copilot/summary.md",
+      "agent": "copilot",
+      "scope": "dev",
+      "title": "ExoFrame Quick Summary",
+      "short_summary": "One-line overview of ExoFrame for quick Copilot context injection.",
+      "version": "0.1",
+      "topics": [
+        "quickstart",
+        "overview"
+      ],
+      "chunks": [
+        "agents/chunks/summary.md.chunk0.txt"
+      ]
+    },
+    {
+      "path": "agents/process/self-improvement.md",
+      "agent": "general",
+      "scope": "dev",
+      "title": "Self-improvement loop for agent instructions",
+      "short_summary": "How to detect instruction gaps during work and patch agents/ docs safely with minimal, test-backed updates.",
+      "version": "0.1",
+      "topics": [
+        "self-improvement",
+        "instruction-adequacy",
+        "agents",
+        "maintenance",
+        "rag"
+      ],
+      "chunks": [
+        "agents/chunks/self-improvement.md.chunk0.txt",
+        "agents/chunks/self-improvement.md.chunk1.txt",
+        "agents/chunks/self-improvement.md.chunk2.txt",
+        "agents/chunks/self-improvement.md.chunk3.txt",
+        "agents/chunks/self-improvement.md.chunk4.txt",
+        "agents/chunks/self-improvement.md.chunk5.txt",
+        "agents/chunks/self-improvement.md.chunk6.txt",
+        "agents/chunks/self-improvement.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/process/review-research-improvement.md",
+      "agent": "general",
+      "scope": "dev",
+      "title": "Review-Research-Improvement Pattern",
+      "short_summary": "Systematic approach to evaluate ExoFrame subsystems, identify weaknesses, and create actionable improvement plans.",
+      "version": "1.0",
+      "topics": [
+        "architecture-review",
+        "improvement-planning",
+        "patterns",
+        "refactoring",
+        "quality"
+      ],
+      "chunks": [
+        "agents/chunks/review-research-improvement.md.chunk0.txt",
+        "agents/chunks/review-research-improvement.md.chunk1.txt",
+        "agents/chunks/review-research-improvement.md.chunk2.txt",
+        "agents/chunks/review-research-improvement.md.chunk3.txt",
+        "agents/chunks/review-research-improvement.md.chunk4.txt",
+        "agents/chunks/review-research-improvement.md.chunk5.txt",
+        "agents/chunks/review-research-improvement.md.chunk6.txt",
+        "agents/chunks/review-research-improvement.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/providers/claude.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Claude provider adaptation notes",
+      "short_summary": "Comprehensive Claude usage guide with task-specific prompts, thinking protocols, and tool-use patterns.",
+      "version": "0.2",
+      "topics": [
+        "provider-adaptations",
+        "prompts",
+        "tdd",
+        "refactoring",
+        "debugging",
+        "tool-use"
+      ],
+      "chunks": [
+        "agents/chunks/claude.md.chunk0.txt",
+        "agents/chunks/claude.md.chunk1.txt",
+        "agents/chunks/claude.md.chunk2.txt",
+        "agents/chunks/claude.md.chunk3.txt",
+        "agents/chunks/claude.md.chunk4.txt",
+        "agents/chunks/claude.md.chunk5.txt",
+        "agents/chunks/claude.md.chunk6.txt",
+        "agents/chunks/claude.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/providers/google.md",
+      "agent": "google",
+      "scope": "dev",
+      "title": "Google Gemini Provider Adaptation Guide",
+      "short_summary": "Optimized guidance for Google Gemini 1.5 Pro, focusing on 2M context window usage and parallel tool calls.",
+      "version": "0.2",
+      "topics": [
+        "provider-adaptations",
+        "prompts",
+        "parallel-tool-calls",
+        "long-context"
+      ],
+      "chunks": [
+        "agents/chunks/google.md.chunk0.txt",
+        "agents/chunks/google.md.chunk1.txt",
+        "agents/chunks/google.md.chunk2.txt",
+        "agents/chunks/google.md.chunk3.txt"
+      ]
+    },
+    {
+      "path": "agents/providers/openai-rag.md",
+      "agent": "openai",
+      "scope": "dev",
+      "title": "OpenAI RAG (Retrieval-Augmented Generation) Usage Guide",
+      "short_summary": "How to retrieve and inject .copilot/ context for OpenAI models using ExoFrame embeddings and chunk tooling.",
+      "version": "0.1",
+      "topics": [
+        "rag",
+        "embeddings",
+        "context-injection",
+        "semantic-search",
+        "provider-adaptations"
+      ],
+      "chunks": [
+        "agents/chunks/openai-rag.md.chunk0.txt",
+        "agents/chunks/openai-rag.md.chunk1.txt",
+        "agents/chunks/openai-rag.md.chunk2.txt",
+        "agents/chunks/openai-rag.md.chunk3.txt",
+        "agents/chunks/openai-rag.md.chunk4.txt",
+        "agents/chunks/openai-rag.md.chunk5.txt"
+      ]
+    },
+    {
+      "path": "agents/providers/google-long-context.md",
+      "agent": "google",
+      "scope": "dev",
+      "title": "Gemini Long-Context Reasoning Guide",
+      "short_summary": "Strategies for utilizing Gemini's 1.5 Pro's 2M context window for holistic repository reasoning.",
+      "version": "0.1",
+      "topics": [
+        "long-context",
+        "reasoning",
+        "gemini",
+        "context-saturation"
+      ],
+      "chunks": [
+        "agents/chunks/google-long-context.md.chunk0.txt",
+        "agents/chunks/google-long-context.md.chunk1.txt",
+        "agents/chunks/google-long-context.md.chunk2.txt"
+      ]
+    },
+    {
+      "path": "agents/providers/claude-rag.md",
+      "agent": "claude",
+      "scope": "dev",
+      "title": "Claude RAG (Retrieval-Augmented Generation) Usage Guide",
+      "short_summary": "How to use embeddings infrastructure for semantic search and context injection with Claude.",
+      "version": "0.1",
+      "topics": [
+        "rag",
+        "embeddings",
+        "context-injection",
+        "semantic-search"
+      ],
+      "chunks": [
+        "agents/chunks/claude-rag.md.chunk0.txt",
+        "agents/chunks/claude-rag.md.chunk1.txt",
+        "agents/chunks/claude-rag.md.chunk2.txt",
+        "agents/chunks/claude-rag.md.chunk3.txt",
+        "agents/chunks/claude-rag.md.chunk4.txt",
+        "agents/chunks/claude-rag.md.chunk5.txt",
+        "agents/chunks/claude-rag.md.chunk6.txt",
+        "agents/chunks/claude-rag.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/providers/openai.md",
+      "agent": "openai",
+      "scope": "dev",
+      "title": "OpenAI adaptation notes",
+      "short_summary": "OpenAI usage guide with quick-start, RAG steps, prompt templates, and tool-use guardrails for gpt-4o family.",
+      "version": "0.2",
+      "topics": [
+        "provider-adaptations",
+        "prompts",
+        "rag",
+        "tooling",
+        "thinking-protocol"
+      ],
+      "chunks": [
+        "agents/chunks/openai.md.chunk0.txt",
+        "agents/chunks/openai.md.chunk1.txt",
+        "agents/chunks/openai.md.chunk2.txt",
+        "agents/chunks/openai.md.chunk3.txt",
+        "agents/chunks/openai.md.chunk4.txt",
+        "agents/chunks/openai.md.chunk5.txt",
+        "agents/chunks/openai.md.chunk6.txt",
+        "agents/chunks/openai.md.chunk7.txt"
+      ]
+    },
+    {
+      "path": "agents/tests/testing.md",
+      "agent": "copilot",
+      "scope": "dev",
+      "title": "ExoFrame Test Development Guidelines",
+      "short_summary": "Testing patterns and unified test context for ExoFrame (initTestDbService, createCliTestContext, withEnv, etc.).",
+      "version": "0.1",
+      "topics": [
+        "tests",
+        "tdd",
+        "helpers"
+      ],
+      "chunks": [
+        "agents/chunks/testing.md.chunk0.txt",
+        "agents/chunks/testing.md.chunk1.txt",
+        "agents/chunks/testing.md.chunk2.txt",
+        "agents/chunks/testing.md.chunk3.txt",
+        "agents/chunks/testing.md.chunk4.txt",
+        "agents/chunks/testing.md.chunk5.txt"
+      ]
+    },
+    {
+      "path": "agents/tests/jscpd-guide.md",
+      "agent": "copilot",
+      "scope": "dev",
+      "title": "jscpd Code Duplication Detection Guide",
+      "short_summary": "Using jscpd to detect and track code duplication in ExoFrame codebase",
+      "version": "0.1",
+      "topics": [
+        "refactoring",
+        "quality",
+        "tools",
+        "jscpd"
+      ],
+      "chunks": [
+        "agents/chunks/jscpd-guide.md.chunk0.txt",
+        "agents/chunks/jscpd-guide.md.chunk1.txt",
+        "agents/chunks/jscpd-guide.md.chunk2.txt",
+        "agents/chunks/jscpd-guide.md.chunk3.txt",
+        "agents/chunks/jscpd-guide.md.chunk4.txt",
+        "agents/chunks/jscpd-guide.md.chunk5.txt",
+        "agents/chunks/jscpd-guide.md.chunk6.txt",
+        "agents/chunks/jscpd-guide.md.chunk7.txt"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+Remember Part IX where we created the `agents/` directory? We had documentation
+   _for_ agents, but we were still treating it like regular docs—write it, forget it,
+   hope the AI reads it someday.
+
+**The Wake-Up Call**:
+
+\```
+   Me: [implements Step 10.5 enhancements to agents/ folder]
+   Me: [finishes implementation]
+   Me: [about to commit]
+   You: "You did not follow instructions in agents/ folder. Why?"
+   Me: ... 😳
+   \```
+
+I had just enhanced the agents/ system to make it MORE useful... without using
+   the agents/ system to guide that enhancement. Peak irony.
+
+[... continues with technical details, examples, before/after, patterns ...]
+   ```
