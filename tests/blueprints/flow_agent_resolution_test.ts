@@ -117,6 +117,118 @@ Deno.test("Flow validation: documentation.flow.ts resolves all agents", async ()
   }
 });
 
+Deno.test("Flow validation: bug_investigation.flow.ts resolves all agents", async () => {
+  const agentIds = await getAllAgentIds();
+  const flowPath = join(FLOWS_DIR, "bug_investigation.flow.ts");
+  const flowAgents = await getFlowAgentRefs(flowPath);
+
+  for (const agent of flowAgents) {
+    assertEquals(
+      agentIds.has(agent),
+      true,
+      `bug_investigation.flow.ts references "${agent}" but no blueprint exists`,
+    );
+  }
+});
+
+Deno.test("Flow validation: refactoring.flow.ts resolves all agents", async () => {
+  const agentIds = await getAllAgentIds();
+  const flowPath = join(FLOWS_DIR, "refactoring.flow.ts");
+  const flowAgents = await getFlowAgentRefs(flowPath);
+
+  for (const agent of flowAgents) {
+    assertEquals(
+      agentIds.has(agent),
+      true,
+      `refactoring.flow.ts references "${agent}" but no blueprint exists`,
+    );
+  }
+});
+
+Deno.test("Flow validation: security_audit.flow.ts resolves all agents", async () => {
+  const agentIds = await getAllAgentIds();
+  const flowPath = join(FLOWS_DIR, "security_audit.flow.ts");
+  const flowAgents = await getFlowAgentRefs(flowPath);
+
+  for (const agent of flowAgents) {
+    assertEquals(
+      agentIds.has(agent),
+      true,
+      `security_audit.flow.ts references "${agent}" but no blueprint exists`,
+    );
+  }
+});
+
+Deno.test("Flow validation: api_design.flow.ts resolves all agents", async () => {
+  const agentIds = await getAllAgentIds();
+  const flowPath = join(FLOWS_DIR, "api_design.flow.ts");
+  const flowAgents = await getFlowAgentRefs(flowPath);
+
+  for (const agent of flowAgents) {
+    assertEquals(
+      agentIds.has(agent),
+      true,
+      `api_design.flow.ts references "${agent}" but no blueprint exists`,
+    );
+  }
+});
+
+Deno.test("Flow validation: test_generation.flow.ts resolves all agents", async () => {
+  const agentIds = await getAllAgentIds();
+  const flowPath = join(FLOWS_DIR, "test_generation.flow.ts");
+  const flowAgents = await getFlowAgentRefs(flowPath);
+
+  for (const agent of flowAgents) {
+    assertEquals(
+      agentIds.has(agent),
+      true,
+      `test_generation.flow.ts references "${agent}" but no blueprint exists`,
+    );
+  }
+});
+
+Deno.test("Flow validation: pr_review.flow.ts resolves all agents", async () => {
+  const agentIds = await getAllAgentIds();
+  const flowPath = join(FLOWS_DIR, "pr_review.flow.ts");
+  const flowAgents = await getFlowAgentRefs(flowPath);
+
+  for (const agent of flowAgents) {
+    assertEquals(
+      agentIds.has(agent),
+      true,
+      `pr_review.flow.ts references "${agent}" but no blueprint exists`,
+    );
+  }
+});
+
+Deno.test("Flow validation: migration_planning.flow.ts resolves all agents", async () => {
+  const agentIds = await getAllAgentIds();
+  const flowPath = join(FLOWS_DIR, "migration_planning.flow.ts");
+  const flowAgents = await getFlowAgentRefs(flowPath);
+
+  for (const agent of flowAgents) {
+    assertEquals(
+      agentIds.has(agent),
+      true,
+      `migration_planning.flow.ts references "${agent}" but no blueprint exists`,
+    );
+  }
+});
+
+Deno.test("Flow validation: onboarding_docs.flow.ts resolves all agents", async () => {
+  const agentIds = await getAllAgentIds();
+  const flowPath = join(FLOWS_DIR, "onboarding_docs.flow.ts");
+  const flowAgents = await getFlowAgentRefs(flowPath);
+
+  for (const agent of flowAgents) {
+    assertEquals(
+      agentIds.has(agent),
+      true,
+      `onboarding_docs.flow.ts references "${agent}" but no blueprint exists`,
+    );
+  }
+});
+
 // ============================================================================
 // Flow defaultSkills Tests
 // ============================================================================
@@ -154,6 +266,102 @@ Deno.test("Flow validation: documentation.flow.ts has defaultSkills", async () =
     hasDefaultSkills,
     true,
     "documentation.flow.ts should have defaultSkills defined",
+  );
+});
+
+Deno.test("Flow validation: bug_investigation.flow.ts has defaultSkills", async () => {
+  const flowPath = join(FLOWS_DIR, "bug_investigation.flow.ts");
+  const content = await Deno.readTextFile(flowPath);
+
+  const hasDefaultSkills = content.includes("defaultSkills:");
+  assertEquals(
+    hasDefaultSkills,
+    true,
+    "bug_investigation.flow.ts should have defaultSkills defined",
+  );
+});
+
+Deno.test("Flow validation: refactoring.flow.ts has defaultSkills", async () => {
+  const flowPath = join(FLOWS_DIR, "refactoring.flow.ts");
+  const content = await Deno.readTextFile(flowPath);
+
+  const hasDefaultSkills = content.includes("defaultSkills:");
+  assertEquals(
+    hasDefaultSkills,
+    true,
+    "refactoring.flow.ts should have defaultSkills defined",
+  );
+});
+
+Deno.test("Flow validation: security_audit.flow.ts has defaultSkills", async () => {
+  const flowPath = join(FLOWS_DIR, "security_audit.flow.ts");
+  const content = await Deno.readTextFile(flowPath);
+
+  const hasDefaultSkills = content.includes("defaultSkills:");
+  assertEquals(
+    hasDefaultSkills,
+    true,
+    "security_audit.flow.ts should have defaultSkills defined",
+  );
+});
+
+Deno.test("Flow validation: api_design.flow.ts has defaultSkills", async () => {
+  const flowPath = join(FLOWS_DIR, "api_design.flow.ts");
+  const content = await Deno.readTextFile(flowPath);
+
+  const hasDefaultSkills = content.includes("defaultSkills:");
+  assertEquals(
+    hasDefaultSkills,
+    true,
+    "api_design.flow.ts should have defaultSkills defined",
+  );
+});
+
+Deno.test("Flow validation: test_generation.flow.ts has defaultSkills", async () => {
+  const flowPath = join(FLOWS_DIR, "test_generation.flow.ts");
+  const content = await Deno.readTextFile(flowPath);
+
+  const hasDefaultSkills = content.includes("defaultSkills:");
+  assertEquals(
+    hasDefaultSkills,
+    true,
+    "test_generation.flow.ts should have defaultSkills defined",
+  );
+});
+
+Deno.test("Flow validation: pr_review.flow.ts has defaultSkills", async () => {
+  const flowPath = join(FLOWS_DIR, "pr_review.flow.ts");
+  const content = await Deno.readTextFile(flowPath);
+
+  const hasDefaultSkills = content.includes("defaultSkills:");
+  assertEquals(
+    hasDefaultSkills,
+    true,
+    "pr_review.flow.ts should have defaultSkills defined",
+  );
+});
+
+Deno.test("Flow validation: migration_planning.flow.ts has defaultSkills", async () => {
+  const flowPath = join(FLOWS_DIR, "migration_planning.flow.ts");
+  const content = await Deno.readTextFile(flowPath);
+
+  const hasDefaultSkills = content.includes("defaultSkills:");
+  assertEquals(
+    hasDefaultSkills,
+    true,
+    "migration_planning.flow.ts should have defaultSkills defined",
+  );
+});
+
+Deno.test("Flow validation: onboarding_docs.flow.ts has defaultSkills", async () => {
+  const flowPath = join(FLOWS_DIR, "onboarding_docs.flow.ts");
+  const content = await Deno.readTextFile(flowPath);
+
+  const hasDefaultSkills = content.includes("defaultSkills:");
+  assertEquals(
+    hasDefaultSkills,
+    true,
+    "onboarding_docs.flow.ts should have defaultSkills defined",
   );
 });
 

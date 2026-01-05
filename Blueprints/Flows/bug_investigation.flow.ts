@@ -1,0 +1,143 @@
+import { defineFlow } from "../../src/flows/define_flow.ts";
+
+/**
+ * Bug Investigation Flow
+ *
+ * A systematic workflow for investigating and diagnosing bugs.
+ * Takes a bug report as input and produces a detailed analysis
+ * with root cause identification and fix recommendations.
+ *
+ * Use case: When a bug is reported, this flow analyzes the codebase,
+ * identifies potential causes, and proposes solutions.
+ */
+export default defineFlow({
+  id: "bug-investigation",
+  name: "Bug Investigation Flow",
+  description: "Systematic bug investigation from report to root cause analysis and fix proposal",
+  version: "1.0.0",
+  defaultSkills: ["error-handling", "code-review"],
+  steps: [
+    {
+      id: "analyze-bug-report",
+      name: "Analyze Bug Report",
+      agent: "product-manager",
+      dependsOn: [],
+      input: {
+        source: "request",
+        transform: "passthrough",
+      },
+      retry: {
+        maxAttempts: 1,
+        backoffMs: 1000,
+      },
+    },
+    {
+      id: "locate-relevant-code",
+      name: "Locate Relevant Code",
+      agent: "code-analyst",
+      dependsOn: ["analyze-bug-report"],
+      input: {
+        source: "step",
+        stepId: "analyze-bug-report",
+        transform: "mergeAsContext",
+      },
+      skills: ["code-review", "typescript-patterns"],
+      retry: {
+        maxAttempts: 2,
+        backoffMs: 1000,
+      },
+    },
+    {
+      id: "identify-root-cause",
+      name: "Identify Root Cause",
+      agent: "senior-coder",
+      dependsOn: ["locate-relevant-code"],
+      input: {
+        source: "step",
+        stepId: "locate-relevant-code",
+        transform: "mergeAsContext",
+      },
+      skills: ["error-handling", "typescript-patterns"],
+      timeout: 60000,
+      retry: {
+        maxAttempts: 2,
+        backoffMs: 2000,
+      },
+    },
+    {
+      id: "security-impact",
+      name: "Assess Security Impact",
+      agent: "security-expert",
+      dependsOn: ["identify-root-cause"],
+      input: {
+        source: "step",
+        stepId: "identify-root-cause",
+        transform: "mergeAsContext",
+      },
+      skills: ["security-first"],
+      timeout: 30000,
+      retry: {
+        maxAttempts: 1,
+        backoffMs: 1000,
+      },
+    },
+    {
+      id: "propose-fix",
+      name: "Propose Fix",
+      agent: "senior-coder",
+      dependsOn: ["identify-root-cause", "security-impact"],
+      input: {
+        source: "aggregate",
+        from: ["identify-root-cause", "security-impact"],
+        transform: "mergeAsContext",
+      },
+      skills: ["typescript-patterns", "error-handling"],
+      timeout: 60000,
+      retry: {
+        maxAttempts: 2,
+        backoffMs: 2000,
+      },
+    },
+    {
+      id: "write-test-cases",
+      name: "Write Regression Tests",
+      agent: "test-engineer",
+      dependsOn: ["propose-fix"],
+      input: {
+        source: "step",
+        stepId: "propose-fix",
+        transform: "mergeAsContext",
+      },
+      skills: ["tdd-methodology"],
+      retry: {
+        maxAttempts: 1,
+        backoffMs: 1000,
+      },
+    },
+    {
+      id: "compile-report",
+      name: "Compile Investigation Report",
+      agent: "technical-writer",
+      dependsOn: ["propose-fix", "write-test-cases"],
+      input: {
+        source: "aggregate",
+        from: ["analyze-bug-report", "identify-root-cause", "security-impact", "propose-fix", "write-test-cases"],
+        transform: "mergeAsContext",
+      },
+      skills: ["documentation-driven"],
+      retry: {
+        maxAttempts: 1,
+        backoffMs: 1000,
+      },
+    },
+  ],
+  output: {
+    from: "compile-report",
+    format: "markdown",
+  },
+  settings: {
+    maxParallelism: 2,
+    failFast: false,
+    timeout: 300000,
+  },
+});

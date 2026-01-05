@@ -57,11 +57,41 @@ Templates in `templates/` are for building new flows:
 
 ## Available Flows
 
-| Flow | Description | Agents Used | Default Skills |
-|------|-------------|-------------|----------------|
-| `code-review` | Multi-agent code review | `senior-coder`, `security-expert`, `performance-engineer`, `technical-writer` | `code-review` |
-| `feature-development` | End-to-end feature development | `product-manager`, `software-architect`, `senior-coder`, `test-engineer`, `qa-engineer` | `typescript-patterns` |
-| `documentation` | Documentation generation | `code-analyst`, `technical-writer`, `software-architect` | `documentation-driven` |
+### Core Development Flows
+
+| Flow | Description | Steps | Agents Used | Default Skills |
+|------|-------------|-------|-------------|----------------|
+| `code-review` | Multi-agent code review | 4 | `senior-coder`, `security-expert`, `performance-engineer`, `technical-writer` | `code-review` |
+| `feature-development` | End-to-end feature development | 6 | `product-manager`, `software-architect`, `senior-coder`, `test-engineer`, `qa-engineer` | `typescript-patterns` |
+| `documentation` | Documentation generation | 4 | `code-analyst`, `technical-writer`, `software-architect` | `documentation-driven` |
+| `refactoring` | Safe, systematic code refactoring | 7 | `code-analyst`, `software-architect`, `senior-coder`, `test-engineer`, `quality-judge` | `clean-code` |
+
+### Investigation & Analysis Flows
+
+| Flow | Description | Steps | Agents Used | Default Skills |
+|------|-------------|-------|-------------|----------------|
+| `bug-investigation` | Systematic bug diagnosis and fix proposal | 7 | `code-analyst`, `senior-coder`, `security-expert`, `test-engineer`, `technical-writer` | `debugging` |
+| `security-audit` | Comprehensive security audit with parallel analysis | 8 | `security-expert`, `software-architect`, `senior-coder`, `technical-writer` | `security-first` |
+| `pr-review` | Thorough pull request review with 5 parallel analyses | 8 | `code-analyst`, `senior-coder`, `security-expert`, `performance-engineer`, `test-engineer`, `technical-writer` | `code-review` |
+
+### Design & Planning Flows
+
+| Flow | Description | Steps | Agents Used | Default Skills |
+|------|-------------|-------|-------------|----------------|
+| `api-design` | Complete API design workflow | 8 | `product-manager`, `software-architect`, `senior-coder`, `security-expert`, `performance-engineer`, `technical-writer` | `api-first` |
+| `migration-planning` | Comprehensive migration strategy planning | 9 | `product-manager`, `code-analyst`, `software-architect`, `security-expert`, `senior-coder`, `test-engineer`, `technical-writer` | `planning-driven` |
+
+### Testing & Quality Flows
+
+| Flow | Description | Steps | Agents Used | Default Skills |
+|------|-------------|-------|-------------|----------------|
+| `test-generation` | Automated test suite generation | 8 | `code-analyst`, `test-engineer`, `qa-engineer`, `quality-judge` | `testing-first` |
+
+### Documentation Flows
+
+| Flow | Description | Steps | Agents Used | Default Skills |
+|------|-------------|-------|-------------|----------------|
+| `onboarding-docs` | Developer onboarding documentation generation | 8 | `code-analyst`, `software-architect`, `technical-writer` | `documentation-driven` |
 
 ## What are Flows?
 
