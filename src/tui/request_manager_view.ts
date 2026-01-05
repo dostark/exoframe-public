@@ -19,6 +19,13 @@ export interface Request {
   created: string;
   created_by: string;
   source: string;
+  // Phase 17: Skills information
+  skills?: {
+    explicit?: string[]; // User-specified skills
+    autoMatched?: string[]; // Skills matched by triggers
+    fromDefaults?: string[]; // Skills from agent defaults
+    skipped?: string[]; // Skills excluded by user
+  };
 }
 
 export interface RequestOptions {
@@ -26,6 +33,8 @@ export interface RequestOptions {
   priority?: "low" | "normal" | "high" | "critical";
   portal?: string;
   model?: string;
+  skills?: string[]; // Phase 17: Explicit skills override
+  skipSkills?: string[]; // Phase 17: Skills to exclude
 }
 
 // --- Phase 13.6: View state interface ---
@@ -495,10 +504,36 @@ export class RequestManagerTuiSession extends TuiSessionBase {
       `║ Agent:    ${request.agent.padEnd(50)}║`,
       `║ Created:  ${new Date(request.created).toLocaleString().padEnd(50)}║`,
       `║ Creator:  ${request.created_by.padEnd(50)}║`,
-      `╠══════════════════════════════════════════════════════════════╣`,
-      `║ Content:                                                     ║`,
-      `╠══════════════════════════════════════════════════════════════╣`,
     ];
+
+    // Phase 17: Add skills section if present
+    if (request.skills) {
+      lines.push(`╠══════════════════════════════════════════════════════════════╣`);
+      lines.push(`║ Applied Skills:                                              ║`);
+
+      if (request.skills.explicit && request.skills.explicit.length > 0) {
+        lines.push(`║   Explicit: ${request.skills.explicit.join(", ").slice(0, 46).padEnd(46)} ║`);
+      }
+      if (request.skills.autoMatched && request.skills.autoMatched.length > 0) {
+        lines.push(`║   Auto-matched: ${request.skills.autoMatched.join(", ").slice(0, 42).padEnd(42)} ║`);
+      }
+      if (request.skills.fromDefaults && request.skills.fromDefaults.length > 0) {
+        lines.push(`║   From defaults: ${request.skills.fromDefaults.join(", ").slice(0, 41).padEnd(41)} ║`);
+      }
+      if (request.skills.skipped && request.skills.skipped.length > 0) {
+        lines.push(`║   Skipped: ${request.skills.skipped.join(", ").slice(0, 47).padEnd(47)} ║`);
+      }
+      if (
+        !request.skills.explicit?.length && !request.skills.autoMatched?.length &&
+        !request.skills.fromDefaults?.length
+      ) {
+        lines.push(`║   (none)                                                     ║`);
+      }
+    }
+
+    lines.push(`╠══════════════════════════════════════════════════════════════╣`);
+    lines.push(`║ Content:                                                     ║`);
+    lines.push(`╠══════════════════════════════════════════════════════════════╣`);
 
     // Add content lines
     const contentLines = content.split("\n");
