@@ -29,6 +29,7 @@ class DetailedAgentService implements AgentService {
         status: "error",
         lastActivity: new Date().toISOString(),
         capabilities: ["chat"],
+        defaultSkills: [],
       },
     ]);
   }

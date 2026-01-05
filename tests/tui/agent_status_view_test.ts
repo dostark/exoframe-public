@@ -30,6 +30,7 @@ class MockAgentService implements AgentService {
       status: "active",
       lastActivity: new Date().toISOString(),
       capabilities: ["code", "chat"],
+      defaultSkills: [],
     },
     {
       id: "agent2",
@@ -38,6 +39,7 @@ class MockAgentService implements AgentService {
       status: "inactive",
       lastActivity: new Date().toISOString(),
       capabilities: ["chat"],
+      defaultSkills: [],
     },
     {
       id: "agent3",
@@ -46,6 +48,7 @@ class MockAgentService implements AgentService {
       status: "error",
       lastActivity: new Date().toISOString(),
       capabilities: ["code"],
+      defaultSkills: [],
     },
   ];
 
@@ -561,6 +564,7 @@ Deno.test("AgentStatusTuiSession: setAgents", async () => {
       status: "active",
       lastActivity: new Date().toISOString(),
       capabilities: ["code"],
+      defaultSkills: [],
     },
   ];
 
@@ -716,6 +720,7 @@ Deno.test("MinimalAgentServiceMock: works correctly", async () => {
       status: "active",
       lastActivity: new Date().toISOString(),
       capabilities: [],
+      defaultSkills: [],
     },
   ];
 
