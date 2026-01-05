@@ -19,6 +19,7 @@ import type { DatabaseService } from "../services/db.ts";
 import { MemoryBankService } from "../services/memory_bank.ts";
 import { MemoryExtractorService } from "../services/memory_extractor.ts";
 import { MemoryEmbeddingService } from "../services/memory_embedding.ts";
+import { type SkillMatchRequest, SkillsService } from "../services/skills.ts";
 import type {
   ExecutionMemory,
   GlobalMemory,
@@ -27,6 +28,8 @@ import type {
   MemorySearchResult,
   MemoryUpdateProposal,
   ProjectMemory,
+  Skill,
+  SkillMatch,
 } from "../schemas/memory_bank.ts";
 
 export type OutputFormat = "table" | "json" | "md";
@@ -53,6 +56,7 @@ export class MemoryCommands {
   private memoryBank: MemoryBankService;
   private extractor: MemoryExtractorService;
   private embedding: MemoryEmbeddingService;
+  private skills: SkillsService;
   private memoryRoot: string;
 
   constructor(context: MemoryCommandsContext) {
@@ -61,6 +65,7 @@ export class MemoryCommands {
     this.memoryBank = new MemoryBankService(context.config, context.db);
     this.extractor = new MemoryExtractorService(context.config, context.db, this.memoryBank);
     this.embedding = new MemoryEmbeddingService(context.config);
+    this.skills = new SkillsService(context.config, context.db);
     this.memoryRoot = join(context.config.system.root, "Memory");
   }
 
@@ -1308,5 +1313,428 @@ export class MemoryCommands {
     }
 
     return messages.join("\n");
+  }
+
+  // ===== Skills Commands (Phase 17) =====
+
+  /**
+   * List all skills
+   *
+   * @param options - List options
+   * @returns Formatted list of skills
+   */
+  async skillList(options: {
+    category?: "core" | "project" | "learned";
+    format?: OutputFormat;
+  } = {}): Promise<string> {
+    const format = options.format || "table";
+
+    try {
+      await this.skills.initialize();
+      // Map category to source for the API
+      const sourceFilter = options.category as "core" | "project" | "user" | "learned" | undefined;
+      const skills = await this.skills.listSkills({ source: sourceFilter });
+
+      if (skills.length === 0) {
+        return options.category ? `No ${options.category} skills found.` : "No skills found.";
+      }
+
+      switch (format) {
+        case "json":
+          return JSON.stringify(
+            skills.map((s) => ({
+              skill_id: s.skill_id,
+              name: s.name,
+              source: s.source,
+              scope: s.scope,
+              version: s.version,
+              status: s.status,
+              effectiveness_score: s.effectiveness_score,
+            })),
+            null,
+            2,
+          );
+
+        case "md":
+          return this.formatSkillListMarkdown(skills);
+
+        case "table":
+        default:
+          return this.formatSkillListTable(skills);
+      }
+    } catch (error) {
+      return `Error listing skills: ${(error as Error).message}`;
+    }
+  }
+
+  /**
+   * Show details of a specific skill
+   *
+   * @param skillId - Skill ID to show
+   * @param format - Output format
+   * @returns Formatted skill details
+   */
+  async skillShow(skillId: string, format: OutputFormat = "table"): Promise<string> {
+    try {
+      await this.skills.initialize();
+      const skill = await this.skills.getSkill(skillId);
+
+      if (!skill) {
+        return `Skill not found: ${skillId}`;
+      }
+
+      switch (format) {
+        case "json":
+          return JSON.stringify(skill, null, 2);
+
+        case "md":
+          return this.formatSkillShowMarkdown(skill);
+
+        case "table":
+        default:
+          return this.formatSkillShowTable(skill);
+      }
+    } catch (error) {
+      return `Error showing skill: ${(error as Error).message}`;
+    }
+  }
+
+  /**
+   * Match skills for a given request
+   *
+   * @param request - Request text to match against
+   * @param options - Match options
+   * @returns Matched skills with confidence scores
+   */
+  async skillMatch(
+    request: string,
+    options: {
+      taskType?: string;
+      tags?: string[];
+      limit?: number;
+      format?: OutputFormat;
+    } = {},
+  ): Promise<string> {
+    const format = options.format || "table";
+
+    try {
+      await this.skills.initialize();
+
+      const matchRequest: SkillMatchRequest = {
+        requestText: request,
+        taskType: options.taskType,
+        tags: options.tags,
+      };
+
+      const matches = await this.skills.matchSkills(matchRequest);
+      const limitedMatches = options.limit ? matches.slice(0, options.limit) : matches;
+
+      if (limitedMatches.length === 0) {
+        return "No matching skills found.";
+      }
+
+      switch (format) {
+        case "json":
+          return JSON.stringify(
+            limitedMatches.map((m) => ({
+              skillId: m.skillId,
+              confidence: m.confidence,
+              matchedTriggers: m.matchedTriggers,
+            })),
+            null,
+            2,
+          );
+
+        case "md":
+          return this.formatSkillMatchMarkdown(limitedMatches);
+
+        case "table":
+        default:
+          return this.formatSkillMatchTable(limitedMatches);
+      }
+    } catch (error) {
+      return `Error matching skills: ${(error as Error).message}`;
+    }
+  }
+
+  /**
+   * Derive a skill from learnings (simplified - requires manual learning IDs)
+   *
+   * @param options - Derivation options
+   * @returns Derived skill or error message
+   */
+  async skillDerive(options: {
+    learningIds?: string[];
+    name?: string;
+    description?: string;
+    instructions?: string;
+    format?: OutputFormat;
+  } = {}): Promise<string> {
+    const format = options.format || "table";
+
+    try {
+      await this.skills.initialize();
+
+      if (!options.learningIds || options.learningIds.length === 0) {
+        return "Error: Learning IDs are required for skill derivation. Use --learning-ids <id1,id2,...>";
+      }
+
+      if (!options.name) {
+        return "Error: Skill name is required. Use --name <name>";
+      }
+
+      const skillId = options.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+      const derivedSkill = await this.skills.deriveSkillFromLearnings(
+        options.learningIds,
+        {
+          skill_id: skillId,
+          name: options.name,
+          version: "1.0.0",
+          status: "draft",
+          description: options.description || `Skill derived from ${options.learningIds.length} learnings`,
+          scope: "project",
+          triggers: {
+            keywords: [],
+            task_types: [],
+            file_patterns: [],
+            tags: [],
+          },
+          instructions: options.instructions || "Instructions to be filled in.",
+        },
+      );
+
+      switch (format) {
+        case "json":
+          return JSON.stringify(derivedSkill, null, 2);
+
+        case "md":
+          return this.formatSkillShowMarkdown(derivedSkill);
+
+        case "table":
+        default:
+          return `Derived skill:\n${this.formatSkillShowTable(derivedSkill)}`;
+      }
+    } catch (error) {
+      return `Error deriving skill: ${(error as Error).message}`;
+    }
+  }
+
+  /**
+   * Create a new skill from a definition
+   *
+   * @param name - Skill name
+   * @param options - Skill options
+   * @returns Created skill confirmation
+   */
+  async skillCreate(
+    name: string,
+    options: {
+      description?: string;
+      category?: "core" | "project" | "learned";
+      instructions?: string;
+      triggersKeywords?: string[];
+      triggersTaskTypes?: string[];
+      format?: OutputFormat;
+    } = {},
+  ): Promise<string> {
+    const format = options.format || "table";
+
+    try {
+      await this.skills.initialize();
+
+      const skillId = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const location = options.category || "project";
+
+      const skill = await this.skills.createSkill(
+        {
+          skill_id: skillId,
+          name,
+          version: "1.0.0",
+          description: options.description || `${name} skill`,
+          source: location === "learned" ? "learned" : "user",
+          scope: "project",
+          status: "draft",
+          instructions: options.instructions || "No instructions provided.",
+          triggers: {
+            keywords: options.triggersKeywords || [],
+            task_types: options.triggersTaskTypes || [],
+            file_patterns: [],
+            tags: [],
+          },
+        },
+        location,
+      );
+
+      switch (format) {
+        case "json":
+          return JSON.stringify(skill, null, 2);
+
+        case "md":
+        case "table":
+        default:
+          return `Created skill: ${skill.skill_id} (${skill.name}) in ${location}/`;
+      }
+    } catch (error) {
+      return `Error creating skill: ${(error as Error).message}`;
+    }
+  }
+
+  // ===== Skills Formatting Helpers =====
+
+  private formatSkillListTable(skills: Skill[]): string {
+    const lines: string[] = [];
+    lines.push("┌──────────────────────┬─────────────────────────┬──────────┬─────────┬────────────┐");
+    lines.push("│ Skill ID             │ Name                    │ Source   │ Version │ Status     │");
+    lines.push("├──────────────────────┼─────────────────────────┼──────────┼─────────┼────────────┤");
+
+    for (const skill of skills) {
+      const id = skill.skill_id.padEnd(20).slice(0, 20);
+      const name = skill.name.padEnd(23).slice(0, 23);
+      const source = skill.source.padEnd(8).slice(0, 8);
+      const version = skill.version.padEnd(7).slice(0, 7);
+      const status = skill.status.padEnd(10).slice(0, 10);
+      lines.push(`│ ${id} │ ${name} │ ${source} │ ${version} │ ${status} │`);
+    }
+
+    lines.push("└──────────────────────┴─────────────────────────┴──────────┴─────────┴────────────┘");
+    lines.push(`\nTotal: ${skills.length} skill(s)`);
+    return lines.join("\n");
+  }
+
+  private formatSkillListMarkdown(skills: Skill[]): string {
+    const lines: string[] = [];
+    lines.push("# Skills\n");
+    lines.push("| Skill ID | Name | Source | Version | Status |");
+    lines.push("|---|---|---|---|---|");
+
+    for (const skill of skills) {
+      lines.push(`| ${skill.skill_id} | ${skill.name} | ${skill.source} | ${skill.version} | ${skill.status} |`);
+    }
+
+    lines.push(`\n**Total:** ${skills.length} skill(s)`);
+    return lines.join("\n");
+  }
+
+  private formatSkillShowTable(skill: Skill): string {
+    const lines: string[] = [];
+    lines.push("┌─────────────────────────────────────────────────────────────┐");
+    lines.push(`│ Skill: ${skill.name.padEnd(51)} │`);
+    lines.push("├─────────────────────────────────────────────────────────────┤");
+    lines.push(`│ Skill ID:   ${skill.skill_id.padEnd(47)} │`);
+    lines.push(`│ Source:     ${skill.source.padEnd(47)} │`);
+    lines.push(`│ Scope:      ${skill.scope.padEnd(47)} │`);
+    lines.push(`│ Version:    ${skill.version.padEnd(47)} │`);
+    lines.push(`│ Status:     ${skill.status.padEnd(47)} │`);
+    lines.push("├─────────────────────────────────────────────────────────────┤");
+    lines.push(`│ Description:                                                │`);
+
+    // Wrap description
+    const descWords = skill.description.split(" ");
+    let descLine = "";
+    for (const word of descWords) {
+      if ((descLine + " " + word).length > 55) {
+        lines.push(`│   ${descLine.padEnd(57)} │`);
+        descLine = word;
+      } else {
+        descLine = descLine ? `${descLine} ${word}` : word;
+      }
+    }
+    if (descLine) {
+      lines.push(`│   ${descLine.padEnd(57)} │`);
+    }
+
+    lines.push("├─────────────────────────────────────────────────────────────┤");
+    lines.push(`│ Triggers:                                                   │`);
+    lines.push(`│   Keywords:   ${(skill.triggers.keywords?.join(", ") || "none").slice(0, 43).padEnd(43)} │`);
+    lines.push(`│   Task Types: ${(skill.triggers.task_types?.join(", ") || "none").slice(0, 43).padEnd(43)} │`);
+    lines.push(`│   Tags:       ${(skill.triggers.tags?.join(", ") || "none").slice(0, 43).padEnd(43)} │`);
+    lines.push("├─────────────────────────────────────────────────────────────┤");
+    lines.push(`│ Instructions:                                               │`);
+
+    // Show first few lines of instructions
+    const instructionLines = skill.instructions.split("\n").slice(0, 5);
+    for (const line of instructionLines) {
+      lines.push(`│   ${line.slice(0, 55).padEnd(57)} │`);
+    }
+    if (skill.instructions.split("\n").length > 5) {
+      lines.push(`│   ... (${skill.instructions.split("\n").length - 5} more lines)`.padEnd(59) + " │");
+    }
+
+    lines.push("└─────────────────────────────────────────────────────────────┘");
+    return lines.join("\n");
+  }
+
+  private formatSkillShowMarkdown(skill: Skill): string {
+    const lines: string[] = [];
+    lines.push(`# ${skill.name}\n`);
+    lines.push(`**Skill ID:** ${skill.skill_id}`);
+    lines.push(`**Source:** ${skill.source}`);
+    lines.push(`**Scope:** ${skill.scope}`);
+    lines.push(`**Version:** ${skill.version}`);
+    lines.push(`**Status:** ${skill.status}\n`);
+    lines.push(`## Description\n`);
+    lines.push(skill.description + "\n");
+    lines.push(`## Triggers\n`);
+    lines.push(`- **Keywords:** ${skill.triggers.keywords?.join(", ") || "none"}`);
+    lines.push(`- **Task Types:** ${skill.triggers.task_types?.join(", ") || "none"}`);
+    lines.push(`- **Tags:** ${skill.triggers.tags?.join(", ") || "none"}\n`);
+    lines.push(`## Instructions\n`);
+    lines.push("```");
+    lines.push(skill.instructions);
+    lines.push("```");
+    return lines.join("\n");
+  }
+
+  private formatSkillMatchTable(matches: SkillMatch[]): string {
+    const lines: string[] = [];
+    lines.push("┌──────────────────────────────────┬────────────┬─────────────────────────────────┐");
+    lines.push("│ Skill ID                         │ Confidence │ Matched Triggers                │");
+    lines.push("├──────────────────────────────────┼────────────┼─────────────────────────────────┤");
+
+    for (const match of matches) {
+      const id = match.skillId.padEnd(32).slice(0, 32);
+      const confidence = (match.confidence.toFixed(2)).padStart(10);
+      const triggerParts: string[] = [];
+      if (match.matchedTriggers.keywords?.length) {
+        triggerParts.push(`kw:${match.matchedTriggers.keywords.join(",")}`);
+      }
+      if (match.matchedTriggers.task_types?.length) {
+        triggerParts.push(`tt:${match.matchedTriggers.task_types.join(",")}`);
+      }
+      if (match.matchedTriggers.tags?.length) {
+        triggerParts.push(`tag:${match.matchedTriggers.tags.join(",")}`);
+      }
+      const triggers = (triggerParts.join(" ") || "none").slice(0, 31).padEnd(31);
+      lines.push(`│ ${id} │ ${confidence} │ ${triggers} │`);
+    }
+
+    lines.push("└──────────────────────────────────┴────────────┴─────────────────────────────────┘");
+    lines.push(`\nMatched: ${matches.length} skill(s)`);
+    return lines.join("\n");
+  }
+
+  private formatSkillMatchMarkdown(matches: SkillMatch[]): string {
+    const lines: string[] = [];
+    lines.push("# Matched Skills\n");
+    lines.push("| Skill ID | Confidence | Matched Triggers |");
+    lines.push("|---|---|---|");
+
+    for (const match of matches) {
+      const triggerParts: string[] = [];
+      if (match.matchedTriggers.keywords?.length) {
+        triggerParts.push(`keywords: ${match.matchedTriggers.keywords.join(", ")}`);
+      }
+      if (match.matchedTriggers.task_types?.length) {
+        triggerParts.push(`task_types: ${match.matchedTriggers.task_types.join(", ")}`);
+      }
+      if (match.matchedTriggers.tags?.length) {
+        triggerParts.push(`tags: ${match.matchedTriggers.tags.join(", ")}`);
+      }
+      lines.push(`| ${match.skillId} | ${match.confidence.toFixed(2)} | ${triggerParts.join("; ") || "none"} |`);
+    }
+
+    lines.push(`\n**Matched:** ${matches.length} skill(s)`);
+    return lines.join("\n");
   }
 }

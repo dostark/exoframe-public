@@ -1228,6 +1228,117 @@ export const __test_command = new Command()
                 console.log(result);
               }),
           ),
+      )
+      // Phase 17: Skill commands
+      .command(
+        "skill",
+        new Command()
+          .description("Manage procedural skills (Phase 17)")
+          .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+          .action(async (options) => {
+            // Default: list skills
+            const result = await memoryCommands.skillList({ format: options.format as "table" | "json" | "md" });
+            console.log(result);
+          })
+          .command(
+            "list",
+            new Command()
+              .description("List all skills")
+              .option("-c, --category <category:string>", "Filter by category: core, project, learned")
+              .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+              .action(async (options) => {
+                const result = await memoryCommands.skillList({
+                  category: options.category as "core" | "project" | "learned" | undefined,
+                  format: options.format as "table" | "json" | "md",
+                });
+                console.log(result);
+              }),
+          )
+          .command(
+            "show <skillId:string>",
+            new Command()
+              .description("Show details of a specific skill")
+              .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+              .action(async (options, ...args: string[]) => {
+                const skillId = args[0] as unknown as string;
+                const result = await memoryCommands.skillShow(skillId, options.format as "table" | "json" | "md");
+                console.log(result);
+              }),
+          )
+          .command(
+            "match <request:string>",
+            new Command()
+              .description("Match skills for a given request")
+              .option("-t, --task-type <taskType:string>", "Task type filter")
+              .option("--tags <tags:string>", "Comma-separated tags filter")
+              .option("-l, --limit <limit:number>", "Maximum results", { default: 10 })
+              .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+              .action(async (options, ...args: string[]) => {
+                const request = args[0] as unknown as string;
+                const tags = options.tags ? options.tags.split(",").map((t: string) => t.trim()) : undefined;
+                const result = await memoryCommands.skillMatch(request, {
+                  taskType: options.taskType,
+                  tags,
+                  limit: options.limit,
+                  format: options.format as "table" | "json" | "md",
+                });
+                console.log(result);
+              }),
+          )
+          .command(
+            "derive",
+            new Command()
+              .description("Derive a new skill from learnings")
+              .option("-l, --learning-ids <ids:string>", "Comma-separated learning IDs to derive from", {
+                required: true,
+              })
+              .option("-n, --name <name:string>", "Name for the derived skill", { required: true })
+              .option("-d, --description <desc:string>", "Skill description")
+              .option("-i, --instructions <instructions:string>", "Skill instructions")
+              .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+              .action(async (options) => {
+                const learningIds = options.learningIds
+                  ? options.learningIds.split(",").map((id: string) => id.trim())
+                  : undefined;
+                const result = await memoryCommands.skillDerive({
+                  learningIds,
+                  name: options.name,
+                  description: options.description,
+                  instructions: options.instructions,
+                  format: options.format as "table" | "json" | "md",
+                });
+                console.log(result);
+              }),
+          )
+          .command(
+            "create <name:string>",
+            new Command()
+              .description("Create a new skill")
+              .option("-d, --description <desc:string>", "Skill description")
+              .option("-c, --category <category:string>", "Category: core, project, learned", { default: "project" })
+              .option("-i, --instructions <instructions:string>", "Skill instructions")
+              .option("-k, --keywords <keywords:string>", "Comma-separated trigger keywords")
+              .option("-t, --task-types <taskTypes:string>", "Comma-separated trigger task types")
+              .option("--format <format:string>", "Output format: table, json, md", { default: "table" })
+              .action(async (options, ...args: string[]) => {
+                const name = args[0] as unknown as string;
+                const keywords = options.keywords
+                  ? options.keywords.split(",").map((k: string) => k.trim())
+                  : undefined;
+                const taskTypes = options.taskTypes
+                  ? options.taskTypes.split(",").map((t: string) => t.trim())
+                  : undefined;
+                const result = await memoryCommands.skillCreate(name, {
+                  description: options.description,
+                  category: options.category as "core" | "project" | "learned",
+                  instructions: options.instructions,
+                  triggersKeywords: keywords,
+                  triggersTaskTypes: taskTypes,
+                  format: options.format as "table" | "json" | "md",
+                });
+                console.log(result);
+              }),
+          ),
       ),
   )
   .command(
