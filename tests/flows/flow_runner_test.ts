@@ -1390,3 +1390,247 @@ Deno.test("FlowRunner: handles condition syntax errors gracefully", async () => 
   assertEquals(result.stepResults.get("step2")?.skipped, true);
   assert(result.stepResults.get("step2")?.skipReason?.includes("Unexpected token"));
 });
+
+// ============================================================================
+// Phase 17: Flow Skills Integration Tests
+// ============================================================================
+
+// Mock AgentRunner that captures requests to verify skills are passed
+class CapturingMockAgentRunner {
+  capturedRequests: Array<{ agentId: string; request: any }> = [];
+
+  async run(agentId: string, request: any): Promise<AgentExecutionResult> {
+    this.capturedRequests.push({ agentId, request });
+    return await Promise.resolve({
+      thought: `Processing ${agentId}`,
+      content: `Result from ${agentId}`,
+      raw: `Raw from ${agentId}`,
+    });
+  }
+}
+
+Deno.test("FlowRunner: passes step-level skills to agent executor", async () => {
+  const steps: FlowStepInput[] = [
+    {
+      id: "step1",
+      name: "Step 1",
+      agent: "agent1",
+      dependsOn: [],
+      input: { source: "request", transform: "passthrough" },
+      skills: ["code-review", "testing"],
+    },
+  ];
+
+  const flow: FlowInput = {
+    id: "test-flow",
+    name: "Test Flow",
+    description: "Flow with step skills",
+    version: "1.0.0",
+    steps,
+    output: { from: "step1", format: "markdown" },
+    settings: { maxParallelism: 3, failFast: true },
+  };
+
+  const mockAgentRunner = new CapturingMockAgentRunner();
+  const mockLogger = new MockEventLogger();
+
+  const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
+  await runner.execute(flow as Flow, { userPrompt: "test request" });
+
+  // Verify skills were passed to the agent executor
+  assertEquals(mockAgentRunner.capturedRequests.length, 1);
+  assertEquals(mockAgentRunner.capturedRequests[0].request.skills, ["code-review", "testing"]);
+});
+
+Deno.test("FlowRunner: passes flow-level defaultSkills when step has no skills", async () => {
+  const steps: FlowStepInput[] = [
+    {
+      id: "step1",
+      name: "Step 1",
+      agent: "agent1",
+      dependsOn: [],
+      input: { source: "request", transform: "passthrough" },
+      // No step-level skills
+    },
+  ];
+
+  const flow: FlowInput = {
+    id: "test-flow",
+    name: "Test Flow",
+    description: "Flow with default skills",
+    version: "1.0.0",
+    steps,
+    output: { from: "step1", format: "markdown" },
+    settings: { maxParallelism: 3, failFast: true },
+    defaultSkills: ["architecture", "documentation"],
+  };
+
+  const mockAgentRunner = new CapturingMockAgentRunner();
+  const mockLogger = new MockEventLogger();
+
+  const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
+  await runner.execute(flow as Flow, { userPrompt: "test request" });
+
+  // Verify default skills were passed to the agent executor
+  assertEquals(mockAgentRunner.capturedRequests.length, 1);
+  assertEquals(mockAgentRunner.capturedRequests[0].request.skills, ["architecture", "documentation"]);
+});
+
+Deno.test("FlowRunner: step-level skills override flow-level defaults", async () => {
+  const steps: FlowStepInput[] = [
+    {
+      id: "step1",
+      name: "Step 1",
+      agent: "agent1",
+      dependsOn: [],
+      input: { source: "request", transform: "passthrough" },
+      skills: ["specific-skill"], // Step-level override
+    },
+  ];
+
+  const flow: FlowInput = {
+    id: "test-flow",
+    name: "Test Flow",
+    description: "Flow with both default and step skills",
+    version: "1.0.0",
+    steps,
+    output: { from: "step1", format: "markdown" },
+    settings: { maxParallelism: 3, failFast: true },
+    defaultSkills: ["default-skill"], // Should be overridden
+  };
+
+  const mockAgentRunner = new CapturingMockAgentRunner();
+  const mockLogger = new MockEventLogger();
+
+  const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
+  await runner.execute(flow as Flow, { userPrompt: "test request" });
+
+  // Step skills should override flow defaults
+  assertEquals(mockAgentRunner.capturedRequests.length, 1);
+  assertEquals(mockAgentRunner.capturedRequests[0].request.skills, ["specific-skill"]);
+});
+
+Deno.test("FlowRunner: multi-step flow with mixed skills", async () => {
+  const steps: FlowStepInput[] = [
+    {
+      id: "step1",
+      name: "Step 1",
+      agent: "agent1",
+      dependsOn: [],
+      input: { source: "request", transform: "passthrough" },
+      // Uses flow defaults
+    },
+    {
+      id: "step2",
+      name: "Step 2",
+      agent: "agent2",
+      dependsOn: ["step1"],
+      input: { source: "step", stepId: "step1", transform: "passthrough" },
+      skills: ["custom-skill"], // Override
+    },
+    {
+      id: "step3",
+      name: "Step 3",
+      agent: "agent3",
+      dependsOn: ["step2"],
+      input: { source: "step", stepId: "step2", transform: "passthrough" },
+      // Uses flow defaults
+    },
+  ];
+
+  const flow: FlowInput = {
+    id: "test-flow",
+    name: "Test Flow",
+    description: "Multi-step flow with mixed skills",
+    version: "1.0.0",
+    steps,
+    output: { from: "step3", format: "markdown" },
+    settings: { maxParallelism: 3, failFast: true },
+    defaultSkills: ["flow-default"],
+  };
+
+  const mockAgentRunner = new CapturingMockAgentRunner();
+  const mockLogger = new MockEventLogger();
+
+  const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
+  await runner.execute(flow as Flow, { userPrompt: "test request" });
+
+  // Step1: uses flow defaults
+  assertEquals(mockAgentRunner.capturedRequests[0].agentId, "agent1");
+  assertEquals(mockAgentRunner.capturedRequests[0].request.skills, ["flow-default"]);
+
+  // Step2: uses its own skills (override)
+  assertEquals(mockAgentRunner.capturedRequests[1].agentId, "agent2");
+  assertEquals(mockAgentRunner.capturedRequests[1].request.skills, ["custom-skill"]);
+
+  // Step3: uses flow defaults
+  assertEquals(mockAgentRunner.capturedRequests[2].agentId, "agent3");
+  assertEquals(mockAgentRunner.capturedRequests[2].request.skills, ["flow-default"]);
+});
+
+Deno.test("FlowRunner: flow without any skills passes undefined", async () => {
+  const steps: FlowStepInput[] = [
+    {
+      id: "step1",
+      name: "Step 1",
+      agent: "agent1",
+      dependsOn: [],
+      input: { source: "request", transform: "passthrough" },
+    },
+  ];
+
+  const flow: FlowInput = {
+    id: "test-flow",
+    name: "Test Flow",
+    description: "Flow without skills",
+    version: "1.0.0",
+    steps,
+    output: { from: "step1", format: "markdown" },
+    settings: { maxParallelism: 3, failFast: true },
+    // No defaultSkills
+  };
+
+  const mockAgentRunner = new CapturingMockAgentRunner();
+  const mockLogger = new MockEventLogger();
+
+  const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
+  await runner.execute(flow as Flow, { userPrompt: "test request" });
+
+  // Should have undefined skills
+  assertEquals(mockAgentRunner.capturedRequests.length, 1);
+  assertEquals(mockAgentRunner.capturedRequests[0].request.skills, undefined);
+});
+
+Deno.test("FlowRunner: logs hasSkills in input.prepared event", async () => {
+  const steps: FlowStepInput[] = [
+    {
+      id: "step1",
+      name: "Step 1",
+      agent: "agent1",
+      dependsOn: [],
+      input: { source: "request", transform: "passthrough" },
+      skills: ["test-skill"],
+    },
+  ];
+
+  const flow: FlowInput = {
+    id: "test-flow",
+    name: "Test Flow",
+    description: "Flow for logging test",
+    version: "1.0.0",
+    steps,
+    output: { from: "step1", format: "markdown" },
+    settings: { maxParallelism: 3, failFast: true },
+  };
+
+  const mockAgentRunner = new CapturingMockAgentRunner();
+  const mockLogger = new MockEventLogger();
+
+  const runner = new FlowRunner(mockAgentRunner as any, mockLogger as any);
+  await runner.execute(flow as Flow, { userPrompt: "test request" });
+
+  // Find the input.prepared event
+  const inputPreparedEvent = mockLogger.events.find((e) => e.event === "flow.step.input.prepared");
+  assert(inputPreparedEvent, "Should log flow.step.input.prepared event");
+  assertEquals(inputPreparedEvent.payload.hasSkills, true);
+});

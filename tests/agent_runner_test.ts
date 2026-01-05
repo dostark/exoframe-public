@@ -724,3 +724,315 @@ Deno.test("AgentRunner handles very long user prompt", async () => {
 
   assertExists(result);
 });
+
+// ============================================================================
+// Phase 17: Skills Integration Tests
+// ============================================================================
+
+/**
+ * Mock SkillsService for testing
+ */
+class MockSkillsService {
+  matchedSkills: { skillId: string; confidence: number; matchedTriggers: object }[] = [];
+  skillContext = "";
+  usageRecorded: string[] = [];
+  matchCallCount = 0;
+  contextBuiltForSkills: string[] = [];
+
+  setMatchedSkills(
+    skills: { skillId: string; confidence: number; matchedTriggers: object }[],
+  ) {
+    this.matchedSkills = skills;
+  }
+
+  setSkillContext(context: string) {
+    this.skillContext = context;
+  }
+
+  matchSkills(
+    _request: {
+      requestText?: string;
+      keywords?: string[];
+      taskType?: string;
+      filePaths?: string[];
+      tags?: string[];
+    },
+  ) {
+    this.matchCallCount++;
+    return this.matchedSkills;
+  }
+
+  buildSkillContext(skillIds: string[]) {
+    this.contextBuiltForSkills = skillIds;
+    if (skillIds.length === 0) return "";
+    return this.skillContext;
+  }
+
+  recordSkillUsage(skillId: string) {
+    this.usageRecorded.push(skillId);
+  }
+}
+
+Deno.test("AgentRunner: matches skills when skillsService provided", async () => {
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const mockSkills = new MockSkillsService();
+  mockSkills.setMatchedSkills([
+    { skillId: "tdd-methodology", confidence: 0.85, matchedTriggers: { keywords: ["create"] } },
+  ]);
+  mockSkills.setSkillContext("## Skill: TDD Methodology\n\nAlways write tests first.");
+
+  const runner = new AgentRunner(mockProvider, {
+    // deno-lint-ignore no-explicit-any
+    skillsService: mockSkills as any,
+  });
+
+  const result = await runner.run(sampleBlueprint, sampleRequest);
+
+  assertExists(result);
+  assertEquals(mockSkills.matchCallCount, 1);
+  assertEquals(result.skillsApplied, ["tdd-methodology"]);
+});
+
+Deno.test("AgentRunner: injects skill context into prompt", async () => {
+  let capturedPrompt = "";
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const originalGenerate = mockProvider.generate.bind(mockProvider);
+  mockProvider.generate = async (prompt: string) => {
+    capturedPrompt = prompt;
+    return await originalGenerate(prompt);
+  };
+
+  const mockSkills = new MockSkillsService();
+  mockSkills.setMatchedSkills([
+    { skillId: "security-first", confidence: 0.9, matchedTriggers: {} },
+  ]);
+  mockSkills.setSkillContext("## Skill: Security First\n\nAlways validate input.");
+
+  const runner = new AgentRunner(mockProvider, {
+    // deno-lint-ignore no-explicit-any
+    skillsService: mockSkills as any,
+  });
+
+  await runner.run(sampleBlueprint, sampleRequest);
+
+  assertStringIncludes(capturedPrompt, "## Skill: Security First");
+  assertStringIncludes(capturedPrompt, "Always validate input");
+});
+
+Deno.test("AgentRunner: records skill usage after execution", async () => {
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const mockSkills = new MockSkillsService();
+  mockSkills.setMatchedSkills([
+    { skillId: "tdd-methodology", confidence: 0.8, matchedTriggers: {} },
+    { skillId: "error-handling", confidence: 0.7, matchedTriggers: {} },
+  ]);
+  mockSkills.setSkillContext("Skills context");
+
+  const runner = new AgentRunner(mockProvider, {
+    // deno-lint-ignore no-explicit-any
+    skillsService: mockSkills as any,
+  });
+
+  await runner.run(sampleBlueprint, sampleRequest);
+
+  assertEquals(mockSkills.usageRecorded.length, 2);
+  assertEquals(mockSkills.usageRecorded.includes("tdd-methodology"), true);
+  assertEquals(mockSkills.usageRecorded.includes("error-handling"), true);
+});
+
+Deno.test("AgentRunner: skips skill matching when disableSkills is true", async () => {
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const mockSkills = new MockSkillsService();
+  mockSkills.setMatchedSkills([
+    { skillId: "tdd-methodology", confidence: 0.8, matchedTriggers: {} },
+  ]);
+
+  const runner = new AgentRunner(mockProvider, {
+    // deno-lint-ignore no-explicit-any
+    skillsService: mockSkills as any,
+    disableSkills: true,
+  });
+
+  const result = await runner.run(sampleBlueprint, sampleRequest);
+
+  assertExists(result);
+  assertEquals(mockSkills.matchCallCount, 0);
+  assertEquals(result.skillsApplied, undefined);
+});
+
+Deno.test("AgentRunner: continues without skills when no skillsService", async () => {
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const runner = new AgentRunner(mockProvider);
+
+  const result = await runner.run(sampleBlueprint, sampleRequest);
+
+  assertExists(result);
+  assertEquals(result.skillsApplied, undefined);
+});
+
+Deno.test("AgentRunner: handles skill matching error gracefully", async () => {
+  const mockProvider = new MockProvider(wellFormedResponse);
+
+  // Create a skill service that throws
+  const errorSkills = {
+    matchSkills() {
+      throw new Error("Skill matching failed");
+    },
+  };
+
+  const runner = new AgentRunner(mockProvider, {
+    // deno-lint-ignore no-explicit-any
+    skillsService: errorSkills as any,
+  });
+
+  // Should not throw, should continue without skills
+  const result = await runner.run(sampleBlueprint, sampleRequest);
+
+  assertExists(result);
+  assertEquals(result.skillsApplied, undefined);
+});
+
+Deno.test("AgentRunner: uses blueprint defaultSkills when no trigger matches", async () => {
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const mockSkills = new MockSkillsService();
+
+  // No trigger matches - returns empty
+  mockSkills.setMatchedSkills([]);
+  mockSkills.setSkillContext("## Blueprint Default Skill\nDefault instructions");
+
+  const runner = new AgentRunner(mockProvider, {
+    // deno-lint-ignore no-explicit-any
+    skillsService: mockSkills as any,
+  });
+
+  // Blueprint with defaultSkills
+  const blueprintWithDefaults: Blueprint = {
+    systemPrompt: "You are a helpful assistant.",
+    agentId: "test-agent",
+    defaultSkills: ["default-skill-1", "default-skill-2"],
+  };
+
+  const result = await runner.run(blueprintWithDefaults, sampleRequest);
+
+  assertExists(result);
+  // Should use blueprint default skills since no triggers matched
+  assertEquals(result.skillsApplied, ["default-skill-1", "default-skill-2"]);
+  // Verify buildSkillContext was called with the default skills
+  assertEquals(mockSkills.contextBuiltForSkills, ["default-skill-1", "default-skill-2"]);
+});
+
+Deno.test("AgentRunner: trigger matches override blueprint defaultSkills", async () => {
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const mockSkills = new MockSkillsService();
+
+  // Trigger match found
+  mockSkills.setMatchedSkills([
+    { skillId: "matched-skill", confidence: 0.9, matchedTriggers: { keywords: ["test"] } },
+  ]);
+  mockSkills.setSkillContext("## Matched Skill\nMatched instructions");
+
+  const runner = new AgentRunner(mockProvider, {
+    // deno-lint-ignore no-explicit-any
+    skillsService: mockSkills as any,
+  });
+
+  // Blueprint with defaultSkills
+  const blueprintWithDefaults: Blueprint = {
+    systemPrompt: "You are a helpful assistant.",
+    agentId: "test-agent",
+    defaultSkills: ["default-skill-1"],
+  };
+
+  const result = await runner.run(blueprintWithDefaults, sampleRequest);
+
+  assertExists(result);
+  // Should use matched skill, NOT default
+  assertEquals(result.skillsApplied, ["matched-skill"]);
+});
+
+Deno.test("AgentRunner: request-level skills override trigger matches", async () => {
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const mockSkills = new MockSkillsService();
+
+  // Trigger match would return these
+  mockSkills.setMatchedSkills([
+    { skillId: "matched-skill", confidence: 0.9, matchedTriggers: { keywords: ["test"] } },
+  ]);
+  mockSkills.setSkillContext("## Request Skill\nRequest instructions");
+
+  const runner = new AgentRunner(mockProvider, {
+    // deno-lint-ignore no-explicit-any
+    skillsService: mockSkills as any,
+  });
+
+  // Request with explicit skills
+  const requestWithSkills: ParsedRequest = {
+    userPrompt: "Do something",
+    context: {},
+    skills: ["explicit-skill-1", "explicit-skill-2"],
+  };
+
+  const result = await runner.run(sampleBlueprint, requestWithSkills);
+
+  assertExists(result);
+  // Should use request explicit skills, NOT trigger matches
+  assertEquals(result.skillsApplied, ["explicit-skill-1", "explicit-skill-2"]);
+  // matchSkills should not be called when explicit skills are provided
+  assertEquals(mockSkills.matchCallCount, 0);
+});
+
+Deno.test("AgentRunner: skipSkills filters out matched skills", async () => {
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const mockSkills = new MockSkillsService();
+
+  // Trigger matches return multiple skills
+  mockSkills.setMatchedSkills([
+    { skillId: "skill-a", confidence: 0.9, matchedTriggers: { keywords: ["test"] } },
+    { skillId: "skill-b", confidence: 0.8, matchedTriggers: { keywords: ["test"] } },
+    { skillId: "skill-c", confidence: 0.7, matchedTriggers: { keywords: ["test"] } },
+  ]);
+  mockSkills.setSkillContext("## Filtered Skills\nSome instructions");
+
+  const runner = new AgentRunner(mockProvider, {
+    // deno-lint-ignore no-explicit-any
+    skillsService: mockSkills as any,
+  });
+
+  // Request that skips some skills
+  const requestWithSkipSkills: ParsedRequest = {
+    userPrompt: "Do something",
+    context: {},
+    skipSkills: ["skill-b"],
+  };
+
+  const result = await runner.run(sampleBlueprint, requestWithSkipSkills);
+
+  assertExists(result);
+  // skill-b should be filtered out
+  assertEquals(result.skillsApplied, ["skill-a", "skill-c"]);
+});
+
+Deno.test("AgentRunner: skipSkills with explicit skills", async () => {
+  const mockProvider = new MockProvider(wellFormedResponse);
+  const mockSkills = new MockSkillsService();
+  mockSkills.setSkillContext("## Skills\nInstructions");
+
+  const runner = new AgentRunner(mockProvider, {
+    // deno-lint-ignore no-explicit-any
+    skillsService: mockSkills as any,
+  });
+
+  // Request with both explicit skills and skip
+  const requestWithBoth: ParsedRequest = {
+    userPrompt: "Do something",
+    context: {},
+    skills: ["skill-x", "skill-y", "skill-z"],
+    skipSkills: ["skill-y"],
+  };
+
+  const result = await runner.run(sampleBlueprint, requestWithBoth);
+
+  assertExists(result);
+  // skill-y should be filtered out from explicit list
+  assertEquals(result.skillsApplied, ["skill-x", "skill-z"]);
+});
