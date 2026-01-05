@@ -13,7 +13,6 @@ report/
 /System/activity_export.md
 /System/daemon.pid
 /System/*.log
-/Memory/
 /Inbox/
 /Portals/
 *.log

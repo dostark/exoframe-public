@@ -255,6 +255,133 @@ export const MemoryUpdateProposalSchema = z.object({
 export type ProposalLearning = z.infer<typeof ProposalLearningSchema>;
 export type MemoryUpdateProposal = z.infer<typeof MemoryUpdateProposalSchema>;
 
+// ===== Skill Schemas (Phase 17: Skills Architecture) =====
+
+/**
+ * Skill trigger conditions - determines when a skill should be activated
+ */
+export const SkillTriggersSchema = z.object({
+  /** Keywords that trigger this skill (e.g., "implement", "security", "test") */
+  keywords: z.array(z.string()).optional(),
+  /** Task types this skill applies to (e.g., "feature", "bugfix", "refactor") */
+  task_types: z.array(z.string()).optional(),
+  /** File patterns that trigger this skill (glob patterns) */
+  file_patterns: z.array(z.string()).optional(),
+  /** Tags for matching (e.g., "testing", "security") */
+  tags: z.array(z.string()).optional(),
+});
+
+/**
+ * Quality criterion for skill evaluation
+ */
+export const SkillQualityCriterionSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  weight: z.number().min(0).max(100).default(50),
+});
+
+/**
+ * Skill compatibility constraints
+ */
+export const SkillCompatibilitySchema = z.object({
+  /** Agent IDs this skill is compatible with ("*" for all) */
+  agents: z.array(z.string()).default(["*"]),
+  /** Flow IDs this skill can be used in */
+  flows: z.array(z.string()).optional(),
+});
+
+/**
+ * Skill - Procedural memory for how to accomplish tasks
+ *
+ * Unlike Learnings (observations) or Patterns (structures),
+ * Skills are actionable instructions that agents apply.
+ *
+ * Skills encode domain expertise, procedures, and best practices
+ * as reusable instruction modules.
+ */
+export const SkillSchema = z.object({
+  // === Memory Bank Standard Fields ===
+  id: z.string().uuid(),
+  created_at: z.string().datetime(),
+  source: z.enum(["user", "agent", "learned"]).describe("Origin of the skill"),
+  source_id: z.string().optional().describe("Learning IDs if derived"),
+
+  scope: z.enum(["global", "project"]).describe("Applicability scope"),
+  project: z.string().optional().describe("Portal name if project-scoped"),
+
+  status: z.enum(["draft", "active", "deprecated"]).describe("Skill lifecycle status"),
+
+  // === Skill Identity ===
+  skill_id: z.string().regex(/^[a-z0-9-]+$/).describe("Unique skill identifier (kebab-case)"),
+  name: z.string().min(1).max(100).describe("Human-readable skill name"),
+  version: z.string().regex(/^\d+\.\d+\.\d+$/).describe("Semantic version"),
+  description: z.string().describe("Brief description of what the skill does"),
+
+  // === Trigger Conditions ===
+  triggers: SkillTriggersSchema.describe("Conditions for automatic activation"),
+
+  // === Procedural Knowledge ===
+  instructions: z.string().min(10).describe("The procedural instructions (markdown)"),
+
+  // === Constraints and Quality ===
+  constraints: z.array(z.string()).optional().describe("Rules that must be followed"),
+  output_requirements: z.array(z.string()).optional().describe("Expected output format/content"),
+  quality_criteria: z.array(SkillQualityCriterionSchema).optional().describe("Evaluation criteria"),
+
+  // === Compatibility ===
+  compatible_with: SkillCompatibilitySchema.optional().describe("Compatibility constraints"),
+
+  // === Evolution Tracking ===
+  derived_from: z.array(z.string()).optional().describe("Learning IDs this skill was derived from"),
+  effectiveness_score: z.number().min(0).max(100).optional().describe("Measured effectiveness"),
+  usage_count: z.number().default(0).describe("Number of times skill has been used"),
+});
+
+export type SkillTriggers = z.infer<typeof SkillTriggersSchema>;
+export type SkillQualityCriterion = z.infer<typeof SkillQualityCriterionSchema>;
+export type SkillCompatibility = z.infer<typeof SkillCompatibilitySchema>;
+export type Skill = z.infer<typeof SkillSchema>;
+
+/**
+ * Skill match result from trigger matching
+ */
+export interface SkillMatch {
+  skillId: string;
+  confidence: number;
+  matchedTriggers: {
+    keywords?: string[];
+    task_types?: string[];
+    file_patterns?: string[];
+    tags?: string[];
+  };
+}
+
+/**
+ * Skill index entry for fast lookup
+ */
+export const SkillIndexEntrySchema = z.object({
+  skill_id: z.string(),
+  name: z.string(),
+  version: z.string(),
+  status: z.enum(["draft", "active", "deprecated"]),
+  scope: z.enum(["global", "project"]),
+  project: z.string().optional(),
+  triggers: SkillTriggersSchema,
+  path: z.string().describe("Relative path to skill file"),
+});
+
+/**
+ * Skill index for the Memory/Skills/ directory
+ */
+export const SkillIndexSchema = z.object({
+  version: z.string().default("1.0.0"),
+  updated_at: z.string().datetime(),
+  skills: z.array(SkillIndexEntrySchema),
+});
+
+export type SkillIndexEntry = z.infer<typeof SkillIndexEntrySchema>;
+export type SkillIndex = z.infer<typeof SkillIndexSchema>;
+
 // ===== Helper Types =====
 
 /**
