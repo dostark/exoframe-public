@@ -5,6 +5,7 @@ export default defineFlow({
   name: "Code Review Flow",
   description: "Automated code review workflow with multiple agents",
   version: "1.0.0",
+  defaultSkills: ["code-review"],
   steps: [
     {
       id: "analyze-code",

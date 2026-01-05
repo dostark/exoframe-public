@@ -5,6 +5,7 @@ export default defineFlow({
   name: "Documentation Generation Flow",
   description: "Generate comprehensive documentation from code and requirements",
   version: "1.0.0",
+  defaultSkills: ["documentation-driven"],
   steps: [
     {
       id: "extract-code-structure",

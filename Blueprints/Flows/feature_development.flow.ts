@@ -5,6 +5,7 @@ export default defineFlow({
   name: "Feature Development Flow",
   description: "End-to-end feature development from requirements to implementation",
   version: "1.0.0",
+  defaultSkills: ["typescript-patterns"],
   steps: [
     {
       id: "analyze-requirements",
