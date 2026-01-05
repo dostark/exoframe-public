@@ -8,6 +8,7 @@ expertise_level: "expert"
 created: "{{timestamp}}"
 created_by: "{{author}}"
 version: "1.0.0"
+default_skills: []
 ---
 
 # {{name}} - Domain Specialist Agent

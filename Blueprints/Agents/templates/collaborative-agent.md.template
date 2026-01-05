@@ -1,7 +1,12 @@
 ---
-name: "{agent_name}"
-model: "{model_name}"
+agent_id: "{{agent_id}}"
+name: "{{agent_name}}"
+model: "{{model_name}}"
 capabilities: ["read_file", "write_file", "list_directory", "git_create_branch", "git_commit"]
+created: "{{timestamp}}"
+created_by: "{{author}}"
+version: "1.0.0"
+default_skills: []
 ---
 
 # {Agent Title}

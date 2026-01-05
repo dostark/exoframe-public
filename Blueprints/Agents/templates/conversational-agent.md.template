@@ -10,6 +10,7 @@ context_window: 10
 created: "{{timestamp}}"
 created_by: "{{author}}"
 version: "1.0.0"
+default_skills: []
 ---
 
 # {{name}} - Conversational Agent

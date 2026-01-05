@@ -9,6 +9,7 @@ confidence_required: 80
 created: "{{timestamp}}"
 created_by: "{{author}}"
 version: "1.0.0"
+default_skills: []
 ---
 
 # {{name}} - Reflexive Agent

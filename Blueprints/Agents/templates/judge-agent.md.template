@@ -9,6 +9,7 @@ verdict_threshold: 70
 created: "{{timestamp}}"
 created_by: "{{author}}"
 version: "1.0.0"
+default_skills: ["code-review"]
 ---
 
 # {{name}} - Judge Agent
