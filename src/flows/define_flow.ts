@@ -26,9 +26,13 @@ export function defineFlow(config: {
       maxAttempts?: number;
       backoffMs?: number;
     };
+    /** Skills to apply for this step (Phase 17) */
+    skills?: string[];
   }>;
   output: { from: string | string[]; format?: "markdown" | "json" | "concat" };
   settings?: { maxParallelism?: number; failFast?: boolean; timeout?: number };
+  /** Default skills to apply to all steps (Phase 17) */
+  defaultSkills?: string[];
 }): Flow {
   // Basic validation for required top-level fields
   if (!config.id || config.id.trim() === "") throw new Error("Flow ID cannot be empty");

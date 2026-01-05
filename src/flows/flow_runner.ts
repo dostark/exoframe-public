@@ -80,6 +80,8 @@ export interface FlowStepRequest {
   context?: Record<string, unknown>;
   traceId?: string;
   requestId?: string;
+  /** Skills to apply for this step execution (Phase 17) */
+  skills?: string[];
 }
 
 /**
@@ -422,7 +424,7 @@ export class FlowRunner {
 
     try {
       // Prepare step input
-      const stepRequest = this.prepareStepRequest(flowRunId, step, request, stepResults);
+      const stepRequest = this.prepareStepRequest(flowRunId, step, flow, request, stepResults);
 
       // Log input preparation
       this.eventLogger.log("flow.step.input.prepared", {
@@ -430,6 +432,7 @@ export class FlowRunner {
         stepId,
         inputSource: step.input.source,
         hasContext: !!stepRequest.context,
+        hasSkills: !!stepRequest.skills?.length,
         traceId: request.traceId,
         requestId: request.requestId,
       });
@@ -494,6 +497,7 @@ export class FlowRunner {
   private prepareStepRequest(
     flowRunId: string,
     step: FlowStep,
+    flow: Flow,
     originalRequest: { userPrompt: string; traceId?: string; requestId?: string },
     stepResults: Map<string, StepResult>,
   ): FlowStepRequest {
@@ -562,11 +566,15 @@ export class FlowRunner {
       });
     }
 
+    // Merge skills: step-level skills override flow-level defaults (Phase 17)
+    const skills = step.skills ?? flow.defaultSkills;
+
     return {
       userPrompt,
       context: {},
       traceId: originalRequest.traceId,
       requestId: originalRequest.requestId,
+      skills,
     };
   }
 
