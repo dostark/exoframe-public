@@ -55,9 +55,15 @@ All agent blueprints use YAML frontmatter with the following structure:
 
 ```yaml
 ---
-name: "agent-identifier"
+agent_id: "agent-identifier"
+name: "Agent Display Name"
 model: "provider:model-name"
 capabilities: ["tool1", "tool2", "tool3"]
+created: "2026-01-05T00:00:00Z"
+created_by: "author"
+version: "1.0.0"
+description: "Brief description"
+default_skills: ["skill-1", "skill-2"]  # Phase 17 skills integration
 ---
 
 # Agent Title

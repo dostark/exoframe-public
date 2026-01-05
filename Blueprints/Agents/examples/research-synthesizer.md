@@ -1,11 +1,13 @@
 ---
 agent_id: "research-synthesizer"
-name: "research-synthesizer"
+name: "Research Synthesizer"
 model: "anthropic:claude-opus-4.5"
 capabilities: ["read_file", "write_file", "list_directory"]
 created: "2025-12-20T22:37:31Z"
 created_by: "system"
 version: "1.0.0"
+description: "Research analysis and information synthesis specialist"
+default_skills: []
 ---
 
 # Research Synthesis Agent

@@ -1,11 +1,13 @@
 ---
 agent_id: "api-documenter"
-name: "api-documenter"
+name: "API Documenter"
 model: "anthropic:claude-opus-4.5"
 capabilities: ["read_file", "list_directory"]
 created: "2025-12-20T22:37:31Z"
 created_by: "system"
 version: "1.0.0"
+description: "Technical documentation specialist for API reference and guides"
+default_skills: ["documentation-driven"]
 ---
 
 # API Documentation Agent

@@ -1,11 +1,13 @@
 ---
 agent_id: "security-auditor"
-name: "security-auditor"
+name: "Security Auditor"
 model: "anthropic:claude-opus-4.5"
 capabilities: ["read_file", "list_directory", "git_status"]
 created: "2025-12-20T22:37:31Z"
 created_by: "system"
 version: "1.0.0"
+description: "Security assessment specialist for vulnerability detection and remediation"
+default_skills: ["security-first", "code-review"]
 ---
 
 # Security Audit Agent

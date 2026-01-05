@@ -1,11 +1,13 @@
 ---
 agent_id: "code-reviewer"
-name: "code-reviewer"
+name: "Code Reviewer"
 model: "anthropic:claude-opus-4.5"
 capabilities: ["read_file", "write_file", "list_directory"]
 created: "2025-12-20T22:37:31Z"
 created_by: "system"
 version: "1.0.0"
+description: "Comprehensive code review agent for quality, security, and best practices"
+default_skills: ["code-review", "security-first"]
 ---
 
 # Code Reviewer Agent

@@ -1,11 +1,13 @@
 ---
 agent_id: "feature-developer"
-name: "feature-developer"
+name: "Feature Developer"
 model: "anthropic:claude-opus-4.5"
 capabilities: ["read_file", "write_file", "list_directory", "git_create_branch", "git_commit", "git_status"]
 created: "2025-12-20T22:37:31Z"
 created_by: "system"
 version: "1.0.0"
+description: "Full-cycle feature development from requirements to implementation"
+default_skills: ["typescript-patterns", "tdd-methodology", "commit-message"]
 ---
 
 # Feature Developer Agent
