@@ -76,6 +76,8 @@ export const FlowStepSchema = z.object({
   default: z.string().optional(),
   /** Consensus config (for type: "consensus") */
   consensus: ConsensusConfigSchema.optional(),
+  /** Skills to apply for this step (Phase 17) */
+  skills: z.array(z.string()).optional(),
 });
 
 // Flow schema definition
@@ -94,6 +96,8 @@ export const FlowSchema = z.object({
     failFast: z.boolean().default(true),
     timeout: z.number().positive().optional(),
   }).default({}),
+  /** Default skills to apply to all steps (Phase 17) */
+  defaultSkills: z.array(z.string()).optional(),
 });
 
 // Type exports for use in other modules

@@ -17,6 +17,12 @@ export const RequestSchema = z.object({
   priority: z.number().int().min(0).max(10).default(5),
   created_at: z.string().datetime().optional(),
   tags: z.array(z.string()).default([]),
+
+  // Phase 17: Request-level skill overrides
+  /** Explicit skills to apply for this request (overrides trigger matching) */
+  skills: z.array(z.string()).optional(),
+  /** Skills to skip/disable for this request */
+  skip_skills: z.array(z.string()).optional(),
 });
 
 export type Request = z.infer<typeof RequestSchema>;

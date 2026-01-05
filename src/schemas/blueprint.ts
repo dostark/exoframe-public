@@ -42,6 +42,9 @@ export const BlueprintFrontmatterSchema = z.object({
 
   /** Optional description */
   description: z.string().optional(),
+
+  /** Default skills to apply to all requests for this agent (Phase 17) */
+  default_skills: z.array(z.string()).optional(),
 });
 
 export type BlueprintFrontmatter = z.infer<typeof BlueprintFrontmatterSchema>;
