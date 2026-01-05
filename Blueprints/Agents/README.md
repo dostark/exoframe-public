@@ -8,6 +8,24 @@ This directory contains agent blueprint templates that instruct LLMs to output J
 - `templates/`: **Abstract Patterns**. Reusable templates (e.g., `pipeline-agent`, `collaborative-agent`) with placeholders. Use these when you need a specific behavioral pattern but want to define the persona from scratch.
 - `*.md`: **Active Blueprints**. Agents available for immediate use in your workspace (e.g., `default.md`, `senior-coder.md`).
 
+## Skills Integration (Phase 17)
+
+All blueprints support `default_skills` for automatic procedural knowledge injection:
+
+```yaml
+---
+agent_id: "my-agent"
+name: "My Agent"
+model: "anthropic:claude-sonnet-4"
+capabilities: ["read_file", "write_file"]
+default_skills: ["code-review", "error-handling"]  # NEW
+---
+```
+
+**Available Core Skills:** `code-review`, `security-first`, `tdd-methodology`, `error-handling`, `documentation-driven`, `typescript-patterns`, `commit-message`, `exoframe-conventions`
+
+See `Memory/Skills/` for skill definitions.
+
 ## Usage Guide
 
 ### Using Active Blueprints
@@ -25,13 +43,14 @@ Examples in `examples/` are for learning. To use one:
 ### Using Templates
 Templates in `templates/` are for creating new agents:
 1. Copy a template: `cp templates/pipeline-agent.md.template my-agent.md`
-2. Edit the file to replace placeholders (e.g., `{agent_name}`) with your values.
-3. Validate and use.
+2. Edit the file to replace placeholders (e.g., `{{agent_name}}`) with your values.
+3. Add appropriate `default_skills` for the agent's role.
+4. Validate and use.
 
 Each blueprint file contains:
 
-1. **TOML Frontmatter** (between `+++` delimiters)
-   - agent_id, name, model, capabilities, etc.
+1. **YAML Frontmatter** (between `---` delimiters)
+   - agent_id, name, model, capabilities, default_skills, etc.
 
 2. **System Prompt** (markdown body)
    - Agent persona and capabilities
@@ -40,15 +59,26 @@ Each blueprint file contains:
 
 ## Available Blueprints
 
-### default.md
-- Model: `ollama:codellama:13b`
-- Use case: General-purpose coding tasks
-- Capabilities: code_generation, planning, debugging
+### Core Agents
 
-### senior-coder.md
-- Model: `anthropic:claude-3-5-sonnet`
-- Use case: Complex implementations requiring expert-level planning
-- Capabilities: code_generation, architecture, debugging, testing, code_review
+| Agent | Model | Skills | Use Case |
+|-------|-------|--------|----------|
+| `default` | `ollama:codellama:13b` | `error-handling` | General-purpose coding |
+| `senior-coder` | `ollama:codellama:7b-instruct` | `typescript-patterns`, `error-handling`, `code-review` | Complex implementations |
+| `quality-judge` | `anthropic:claude-3-5-sonnet` | `code-review` | LLM-as-a-Judge evaluation |
+
+### Specialist Agents
+
+| Agent | Skills | Use Case |
+|-------|--------|----------|
+| `security-expert` | `security-first`, `code-review` | Security vulnerability analysis |
+| `performance-engineer` | `code-review` | Performance optimization |
+| `technical-writer` | `documentation-driven` | Documentation generation |
+| `software-architect` | `exoframe-conventions`, `typescript-patterns` | Architecture design |
+| `test-engineer` | `tdd-methodology`, `error-handling` | Test implementation |
+| `product-manager` | - | Requirements analysis |
+| `code-analyst` | `code-review`, `typescript-patterns` | Code structure analysis |
+| `qa-engineer` | `tdd-methodology`, `error-handling` | Integration testing |
 
 ## JSON Plan Schema Reference
 
