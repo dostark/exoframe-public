@@ -45,6 +45,32 @@ Unlike **Examples** (which are concrete, runnable use cases), **Templates** are 
 - `quality-judge` - Final evaluation (see `Blueprints/Agents/quality-judge.md`)
 - `technical-writer` - Report generation
 
+### 5. Self-Correcting (`self-correcting.flow.template.ts`) ✨ NEW
+**Pattern:** Iterative improvement with feedback loops (Phase 15).
+**Use Case:** High-quality code generation, documentation that must meet standards.
+**Key Features:**
+- LLM-as-a-Judge evaluation with built-in criteria
+- Feedback loops using Reflexion pattern
+- Quality gates for automated checkpoints
+- Conditional branching based on quality scores
+- Iterative refinement until quality threshold met
+
+**Required Agents:**
+- `generator-agent` - Initial content generation
+- `quality-judge` - Quality evaluation
+- `refiner-agent` - Improvement based on feedback
+
+**Built-in Criteria Used:**
+- `CODE_CORRECTNESS` - Syntax and semantic validation
+- `CODE_COMPLETENESS` - Requirements coverage
+- `FOLLOWS_CONVENTIONS` - Style compliance
+- `ERROR_HANDLING` - Error handling presence
+
+**Configuration Options:**
+- `maxIterations` - Maximum refinement cycles (default: 3)
+- `targetScore` - Quality threshold (default: 0.85)
+- `minImprovement` - Stop if improvement < threshold (default: 0.05)
+
 ## How to Use
 
 1. **Choose a pattern** that matches your needs.

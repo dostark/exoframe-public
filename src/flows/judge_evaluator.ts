@@ -42,7 +42,7 @@ export class JudgeEvaluator implements JudgeInvoker {
     context?: string,
   ): Promise<EvaluationResult> {
     // Build evaluation prompt
-    const prompt = buildEvaluationPrompt(criteria, content, context);
+    const prompt = buildEvaluationPrompt(content, criteria, context);
 
     // Invoke judge agent
     const response = await this.agentRunner.run(agentId, {
@@ -115,7 +115,7 @@ export class JudgeEvaluator implements JudgeInvoker {
             reasoning: String(scoreObj.reasoning || scoreObj.reason || ""),
             issues: Array.isArray(scoreObj.issues) ? scoreObj.issues.map(String) : [],
             passed: this.normalizeScore(scoreObj.score) >=
-              (criterion.threshold ?? 0.7),
+              0.7,
           };
           continue;
         }
@@ -131,7 +131,7 @@ export class JudgeEvaluator implements JudgeInvoker {
             score,
             reasoning: "",
             issues: [],
-            passed: score >= (criterion.threshold ?? 0.7),
+            passed: score >= 0.7,
           };
           continue;
         }
@@ -148,7 +148,7 @@ export class JudgeEvaluator implements JudgeInvoker {
             reasoning: String(obj.reasoning || obj.reason || obj.feedback || ""),
             issues: Array.isArray(obj.issues) ? obj.issues.map(String) : [],
             passed: this.normalizeScore(obj.score ?? obj.value ?? 0) >=
-              (criterion.threshold ?? 0.7),
+              0.7,
           };
         } else {
           const score = this.normalizeScore(value);
@@ -157,7 +157,7 @@ export class JudgeEvaluator implements JudgeInvoker {
             score,
             reasoning: "",
             issues: [],
-            passed: score >= (criterion.threshold ?? 0.7),
+            passed: score >= 0.7,
           };
         }
         continue;
@@ -185,7 +185,6 @@ export class JudgeEvaluator implements JudgeInvoker {
       suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.map(String) : [],
       metadata: {
         evaluatedAt: new Date().toISOString(),
-        rawResponse: parsed,
       },
     };
   }
@@ -274,7 +273,7 @@ export class JudgeEvaluator implements JudgeInvoker {
         score,
         reasoning: reasoningMatch ? reasoningMatch[1].trim() : "",
         issues: found ? [] : ["Score extracted heuristically"],
-        passed: score >= (criterion.threshold ?? 0.7),
+        passed: score >= 0.7,
       };
     }
 
@@ -289,7 +288,6 @@ export class JudgeEvaluator implements JudgeInvoker {
       suggestions: [],
       metadata: {
         evaluatedAt: new Date().toISOString(),
-        heuristicParsing: true,
       },
     };
   }

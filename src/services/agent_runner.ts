@@ -3,12 +3,17 @@
  * Implements Step 3.2 of the ExoFrame Implementation Plan
  * Enhanced with retry/recovery (Phase 16.3)
  * Enhanced with structured output validation (Phase 16.2)
+ * Enhanced with Skills Architecture (Phase 17)
  */
 
 import type { IModelProvider } from "../ai/providers.ts";
 import type { DatabaseService } from "./db.ts";
 import { createLLMRetryPolicy, type RetryPolicy, type RetryPolicyConfig, type RetryResult } from "./retry_policy.ts";
 import { createOutputValidator, OutputValidator, type ValidationMetrics } from "./output_validator.ts";
+import type { SkillMatch, SkillsService } from "./skills.ts";
+
+// Note: SkillMatchRequest may be used in future for direct skill matching
+// Keeping import for consistency with SkillsService integration
 
 // ============================================================================
 // Types and Interfaces
@@ -41,6 +46,15 @@ export interface ParsedRequest {
 
   /** Optional: Trace ID for logging */
   traceId?: string;
+
+  /** Optional: File paths involved in the request (for skill matching) */
+  filePaths?: string[];
+
+  /** Optional: Task type (e.g., 'feature', 'bugfix', 'refactor') */
+  taskType?: string;
+
+  /** Optional: Tags for skill matching */
+  tags?: string[];
 }
 
 /**
@@ -55,6 +69,9 @@ export interface AgentExecutionResult {
 
   /** The raw, unparsed response from the LLM */
   raw: string;
+
+  /** Skills that were matched and injected (Phase 17) */
+  skillsApplied?: string[];
 }
 
 /**
@@ -69,6 +86,12 @@ export interface AgentRunnerConfig {
 
   /** Optional: Disable retries entirely */
   disableRetry?: boolean;
+
+  /** Optional: Skills service for procedural memory (Phase 17) */
+  skillsService?: SkillsService;
+
+  /** Optional: Disable automatic skill matching */
+  disableSkills?: boolean;
 }
 
 // ============================================================================
@@ -88,12 +111,19 @@ export interface AgentRunnerConfig {
  * - XML tag extraction (<thought>, <content>)
  * - JSON repair for malformed outputs
  * - Validation metrics tracking
+ *
+ * Enhanced with Skills Architecture (Phase 17):
+ * - Automatic skill matching based on request context
+ * - Skill context injection into prompts
+ * - Skill usage tracking
  */
 export class AgentRunner {
   private db?: DatabaseService;
   private retryPolicy: RetryPolicy;
   private disableRetry: boolean;
   private outputValidator: OutputValidator;
+  private skillsService?: SkillsService;
+  private disableSkills: boolean;
 
   constructor(
     private readonly modelProvider: IModelProvider,
@@ -101,6 +131,8 @@ export class AgentRunner {
   ) {
     this.db = config?.db;
     this.disableRetry = config?.disableRetry ?? false;
+    this.skillsService = config?.skillsService;
+    this.disableSkills = config?.disableSkills ?? false;
     this.retryPolicy = createLLMRetryPolicy();
     this.outputValidator = createOutputValidator({ autoRepair: true });
 
@@ -137,6 +169,37 @@ export class AgentRunner {
     const traceId = request.traceId;
     const requestId = request.requestId;
 
+    // Phase 17: Match skills based on request context
+    let matchedSkills: SkillMatch[] = [];
+    let skillContext = "";
+    let skillsApplied: string[] = [];
+
+    if (this.skillsService && !this.disableSkills) {
+      try {
+        matchedSkills = await this.skillsService.matchSkills({
+          requestText: request.userPrompt,
+          keywords: this.extractKeywords(request.userPrompt),
+          taskType: request.taskType,
+          filePaths: request.filePaths,
+          tags: request.tags,
+          agentId,
+        });
+
+        if (matchedSkills.length > 0) {
+          skillsApplied = matchedSkills.map((m) => m.skillId);
+          skillContext = await this.skillsService.buildSkillContext(skillsApplied);
+
+          // Record skill usage
+          for (const skillId of skillsApplied) {
+            await this.skillsService.recordSkillUsage(skillId);
+          }
+        }
+      } catch (error) {
+        console.error("[AgentRunner] Skill matching failed:", error);
+        // Continue without skills - non-fatal error
+      }
+    }
+
     // Log agent execution start
     this.logActivity(
       "agent",
@@ -147,13 +210,16 @@ export class AgentRunner {
         prompt_length: request.userPrompt.length,
         has_context: Object.keys(request.context).length > 0,
         retry_enabled: !this.disableRetry,
+        skills_enabled: !this.disableSkills && !!this.skillsService,
+        skills_matched: skillsApplied.length,
+        skills_applied: skillsApplied,
       },
       traceId,
       agentId,
     );
 
-    // Step 1: Construct the combined prompt
-    const combinedPrompt = this.constructPrompt(blueprint, request);
+    // Step 1: Construct the combined prompt (with skill context)
+    const combinedPrompt = this.constructPrompt(blueprint, request, skillContext);
 
     // Step 2: Execute via the model provider (with retry if enabled)
     let retryResult: RetryResult<string>;
@@ -225,22 +291,31 @@ export class AgentRunner {
         response_length: rawResponse?.length || 0,
         has_thought: result.thought.length > 0,
         has_content: result.content.length > 0,
+        skills_applied: skillsApplied.length > 0 ? skillsApplied : undefined,
       },
       traceId,
       agentId,
     );
 
-    return result;
+    return {
+      ...result,
+      skillsApplied: skillsApplied.length > 0 ? skillsApplied : undefined,
+    };
   }
 
   /**
    * Construct the combined prompt from blueprint and request
    * @param blueprint - Agent blueprint
    * @param request - User request
+   * @param skillContext - Optional skill context to inject (Phase 17)
    * @returns Combined prompt string
    */
-  private constructPrompt(blueprint: Blueprint, request: ParsedRequest): string {
-    // Simple combination: system prompt first, then user prompt
+  private constructPrompt(
+    blueprint: Blueprint,
+    request: ParsedRequest,
+    skillContext?: string,
+  ): string {
+    // Combination: system prompt first, then skill context, then user prompt
     // Separated by double newlines for clarity
     const parts: string[] = [];
 
@@ -248,11 +323,137 @@ export class AgentRunner {
       parts.push(blueprint.systemPrompt);
     }
 
+    // Inject skill context after system prompt (Phase 17)
+    if (skillContext?.trim()) {
+      parts.push(skillContext);
+    }
+
     if (request.userPrompt.trim()) {
       parts.push(request.userPrompt);
     }
 
     return parts.join("\n\n");
+  }
+
+  /**
+   * Extract keywords from text for skill matching (Phase 17)
+   * @param text - Text to extract keywords from
+   * @returns Array of keywords
+   */
+  private extractKeywords(text: string): string[] {
+    // Simple keyword extraction: split by non-word characters, filter short words
+    const words = text.toLowerCase().split(/[^a-z0-9]+/);
+    const stopWords = new Set([
+      "the",
+      "a",
+      "an",
+      "and",
+      "or",
+      "but",
+      "in",
+      "on",
+      "at",
+      "to",
+      "for",
+      "of",
+      "with",
+      "by",
+      "from",
+      "is",
+      "are",
+      "was",
+      "were",
+      "be",
+      "been",
+      "being",
+      "have",
+      "has",
+      "had",
+      "do",
+      "does",
+      "did",
+      "will",
+      "would",
+      "could",
+      "should",
+      "may",
+      "might",
+      "must",
+      "shall",
+      "can",
+      "need",
+      "this",
+      "that",
+      "these",
+      "those",
+      "it",
+      "its",
+      "i",
+      "you",
+      "he",
+      "she",
+      "we",
+      "they",
+      "me",
+      "him",
+      "her",
+      "us",
+      "them",
+      "my",
+      "your",
+      "his",
+      "our",
+      "their",
+      "what",
+      "which",
+      "who",
+      "whom",
+      "whose",
+      "when",
+      "where",
+      "why",
+      "how",
+      "all",
+      "each",
+      "every",
+      "both",
+      "few",
+      "more",
+      "most",
+      "other",
+      "some",
+      "such",
+      "no",
+      "not",
+      "only",
+      "same",
+      "so",
+      "than",
+      "too",
+      "very",
+      "just",
+      "also",
+      "now",
+      "here",
+      "there",
+      "if",
+      "then",
+      "else",
+      "as",
+      "please",
+      "help",
+      "want",
+      "like",
+      "need",
+      "make",
+      "get",
+    ]);
+
+    return [
+      ...new Set(
+        words.filter((w) => w.length >= 3 && !stopWords.has(w)),
+      ),
+    ];
   }
 
   /**

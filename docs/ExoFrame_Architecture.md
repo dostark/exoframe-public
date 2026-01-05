@@ -1286,35 +1286,40 @@ graph LR
 
 ## Component Responsibilities
 
-| Component              | Responsibility                     | Key Files                           |
-| ---------------------- | ---------------------------------- | ----------------------------------- |
-| **CLI Layer**          | Human interface for system control | `src/cli/*.ts`                      |
-| **Daemon**             | Background orchestration engine    | `src/main.ts`                       |
-| **Request Watcher**    | Detect new requests in Inbox       | `src/services/watcher.ts`           |
-| **Plan Watcher**       | Detect approved plans              | `src/services/watcher.ts`           |
-| **Request Processor**  | Parse requests, generate plans     | `src/services/request_processor.ts` |
-| **Plan Executor**      | Execute approved plans             | `src/services/plan_executor.ts`     |
-| **Agent Runner**       | Execute agent logic with LLM       | `src/services/agent_runner.ts`      |
-| **Event Logger**       | Write to Activity Journal          | `src/services/event_logger.ts`      |
-| **Config Service**     | Load and validate exo.config.toml  | `src/config/service.ts`             |
-| **Database Service**   | SQLite journal.db operations       | `src/services/db.ts`                |
-| **Git Service**        | Git operations with trace metadata | `src/services/git_service.ts`       |
-| **Provider Factory**   | Create LLM provider instances      | `src/ai/provider_factory.ts`        |
-| **Context Loader**     | Load context for agent execution   | `src/services/context_loader.ts`    |
-| **Portal Commands**    | Manage external project access     | `src/cli/portal_commands.ts`        |
-| **Blueprint Commands** | Manage agent templates             | `src/cli/blueprint_commands.ts`     |
-| **Dashboard Commands** | Launch terminal dashboard          | `src/cli/dashboard_commands.ts`     |
-| **TUI Dashboard**      | Multi-view terminal UI             | `src/tui/*.ts`                      |
-| **Parsers**            | Parse markdown + frontmatter       | `src/parsers/*.ts`                  |
-| **Schemas**            | Zod validation layer               | `src/schemas/*.ts`                  |
-| **MCP Server**         | JSON-RPC server for tool execution | `src/mcp/server.ts`                 |
-| **Blueprint Loader**   | Unified blueprint parsing          | `src/services/blueprint_loader.ts`  |
-| **Output Validator**   | Schema validation with JSON repair | `src/services/output_validator.ts`  |
-| **Retry Policy**       | Exponential backoff with jitter    | `src/services/retry_policy.ts`      |
-| **Reflexive Agent**    | Self-critique improvement loop     | `src/services/reflexive_agent.ts`   |
-| **Tool Reflector**     | Tool result evaluation and retry   | `src/services/tool_reflector.ts`    |
-| **Session Memory**     | Memory context injection           | `src/services/session_memory.ts`    |
-| **Confidence Scorer**  | Output confidence assessment       | `src/services/confidence_scorer.ts` |
+| Component               | Responsibility                     | Key Files                           |
+| ----------------------- | ---------------------------------- | ----------------------------------- |
+| **CLI Layer**           | Human interface for system control | `src/cli/*.ts`                      |
+| **Daemon**              | Background orchestration engine    | `src/main.ts`                       |
+| **Request Watcher**     | Detect new requests in Inbox       | `src/services/watcher.ts`           |
+| **Plan Watcher**        | Detect approved plans              | `src/services/watcher.ts`           |
+| **Request Processor**   | Parse requests, generate plans     | `src/services/request_processor.ts` |
+| **Plan Executor**       | Execute approved plans             | `src/services/plan_executor.ts`     |
+| **Agent Runner**        | Execute agent logic with LLM       | `src/services/agent_runner.ts`      |
+| **Event Logger**        | Write to Activity Journal          | `src/services/event_logger.ts`      |
+| **Config Service**      | Load and validate exo.config.toml  | `src/config/service.ts`             |
+| **Database Service**    | SQLite journal.db operations       | `src/services/db.ts`                |
+| **Git Service**         | Git operations with trace metadata | `src/services/git_service.ts`       |
+| **Provider Factory**    | Create LLM provider instances      | `src/ai/provider_factory.ts`        |
+| **Context Loader**      | Load context for agent execution   | `src/services/context_loader.ts`    |
+| **Portal Commands**     | Manage external project access     | `src/cli/portal_commands.ts`        |
+| **Blueprint Commands**  | Manage agent templates             | `src/cli/blueprint_commands.ts`     |
+| **Dashboard Commands**  | Launch terminal dashboard          | `src/cli/dashboard_commands.ts`     |
+| **TUI Dashboard**       | Multi-view terminal UI             | `src/tui/*.ts`                      |
+| **Parsers**             | Parse markdown + frontmatter       | `src/parsers/*.ts`                  |
+| **Schemas**             | Zod validation layer               | `src/schemas/*.ts`                  |
+| **MCP Server**          | JSON-RPC server for tool execution | `src/mcp/server.ts`                 |
+| **Blueprint Loader**    | Unified blueprint parsing          | `src/services/blueprint_loader.ts`  |
+| **Output Validator**    | Schema validation with JSON repair | `src/services/output_validator.ts`  |
+| **Retry Policy**        | Exponential backoff with jitter    | `src/services/retry_policy.ts`      |
+| **Reflexive Agent**     | Self-critique improvement loop     | `src/services/reflexive_agent.ts`   |
+| **Tool Reflector**      | Tool result evaluation and retry   | `src/services/tool_reflector.ts`    |
+| **Session Memory**      | Memory context injection           | `src/services/session_memory.ts`    |
+| **Confidence Scorer**   | Output confidence assessment       | `src/services/confidence_scorer.ts` |
+| **Condition Evaluator** | Flow condition expression eval     | `src/flows/condition_evaluator.ts`  |
+| **Gate Evaluator**      | Quality gate checkpoint validation | `src/flows/gate_evaluator.ts`       |
+| **Judge Evaluator**     | LLM-as-a-Judge assessment          | `src/flows/judge_evaluator.ts`      |
+| **Feedback Loop**       | Iterative refinement control       | `src/flows/feedback_loop.ts`        |
+| **Evaluation Criteria** | Quality standards validation       | `src/flows/evaluation_criteria.ts`  |
 
 ---
 
@@ -1413,6 +1418,119 @@ jitterFactor = 0.5
 ```
 
 See User Guide Section 6 for detailed configuration reference.
+
+---
+
+## Flow Orchestration Architecture
+
+Phase 15 introduced advanced flow orchestration capabilities for conditional logic, quality gates, and intelligent feedback loops.
+
+### Flow Evaluation Components
+
+```mermaid
+graph TB
+    subgraph FlowOrch["🔄 Flow Orchestration"]
+        FlowIn[Flow Step Input]
+        CondEval[Condition Evaluator]
+        GateEval[Gate Evaluator]
+        JudgeEval[LLM-as-a-Judge]
+        FeedLoop[Feedback Loop]
+        EvalCrit[Evaluation Criteria]
+        FlowOut[Flow Step Output]
+    end
+
+    subgraph Context["📊 Evaluation Context"]
+        Variables[Flow Variables]
+        StepResults[Step Results]
+        Metadata[Execution Metadata]
+    end
+
+    FlowIn --> CondEval
+    CondEval -->|branch| GateEval
+    GateEval -->|quality check| JudgeEval
+
+    Context --> CondEval
+    Context --> GateEval
+    Context --> JudgeEval
+
+    JudgeEval --> EvalCrit
+    EvalCrit -->|criteria met| FlowOut
+    EvalCrit -->|criteria failed| FeedLoop
+    FeedLoop -->|retry| FlowIn
+
+    GateEval -->|gate passed| FlowOut
+    GateEval -->|gate failed| FeedLoop
+
+    classDef flow fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef ctx fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+
+    class FlowIn,CondEval,GateEval,JudgeEval,FeedLoop,EvalCrit,FlowOut flow
+    class Variables,StepResults,Metadata ctx
+```
+
+### Evaluation Component Responsibilities
+
+| Component               | Purpose               | Key Features                                               |
+| ----------------------- | --------------------- | ---------------------------------------------------------- |
+| **Condition Evaluator** | Expression evaluation | Safe expression parsing, variable interpolation, operators |
+| **Gate Evaluator**      | Quality checkpoints   | Pass/fail criteria, threshold validation, gate actions     |
+| **LLM-as-a-Judge**      | AI-powered assessment | Structured rubrics, multi-criteria scoring, explanations   |
+| **Feedback Loop**       | Iterative refinement  | Max iterations, convergence detection, state tracking      |
+| **Evaluation Criteria** | Quality standards     | Built-in criteria, custom criteria, weighted scoring       |
+
+### Built-in Evaluation Criteria
+
+| Criteria           | Description                           | Use Case                  |
+| ------------------ | ------------------------------------- | ------------------------- |
+| `CODE_CORRECTNESS` | Validates syntax and semantics        | Code generation steps     |
+| `HAS_TESTS`        | Ensures test coverage exists          | TDD workflows             |
+| `FOLLOWS_SPEC`     | Matches specification requirements    | Implementation validation |
+| `IS_SECURE`        | Checks security best practices        | Security-critical flows   |
+| `PERFORMANCE_OK`   | Validates performance characteristics | Optimization workflows    |
+
+### Condition Expression Syntax
+
+Flow conditions support a safe expression language:
+
+```typescript
+// Variable access
+"status == 'success'";
+"count > 10";
+
+// Logical operators
+"status == 'success' && confidence >= 80";
+"isComplete || hasTimeout";
+
+// Step result access
+"steps.validation.passed == true";
+"steps.analysis.score >= threshold";
+```
+
+### Quality Gate Configuration
+
+```yaml
+step:
+  type: gate
+  name: code_quality_gate
+  condition: "score >= 80"
+  onPass: continue
+  onFail:
+    action: feedback
+    maxRetries: 3
+  criteria:
+    - CODE_CORRECTNESS
+    - HAS_TESTS
+```
+
+### Flow Control Data Flow
+
+1. **Step Input**: Flow step receives input with current context
+2. **Condition Evaluation**: ConditionEvaluator checks branch/gate conditions
+3. **Gate Assessment**: GateEvaluator validates quality criteria
+4. **LLM Judgment** (optional): JudgeEvaluator provides AI-based assessment
+5. **Criteria Check**: EvaluationCriteria validates against standards
+6. **Feedback Loop** (on failure): Iterates with feedback until criteria met
+7. **Step Output**: Produces output for next flow step
 
 ---
 

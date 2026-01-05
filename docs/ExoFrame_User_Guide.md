@@ -1039,6 +1039,82 @@ exoctl flow validate <flow-id>
 exoctl flow validate research-pipeline
 ```
 
+##### Flow Step Types
+
+Flows support various step types for different orchestration patterns:
+
+| Step Type  | Purpose               | Key Features                    |
+| ---------- | --------------------- | ------------------------------- |
+| `agent`    | Execute an agent      | Agent invocation with context   |
+| `gate`     | Quality checkpoint    | Pass/fail criteria, retry logic |
+| `branch`   | Conditional branching | Expression-based path selection |
+| `parallel` | Concurrent execution  | Multiple steps in parallel      |
+| `loop`     | Iterative processing  | Repeat until condition met      |
+
+##### Condition Expressions
+
+Flow conditions use a safe expression syntax:
+
+```yaml
+# Simple comparisons
+condition: "status == 'success'"
+condition: "confidence >= 80"
+
+# Logical operators
+condition: "status == 'success' && score >= 70"
+condition: "isComplete || hasTimeout"
+
+# Step result access
+condition: "steps.validation.passed == true"
+condition: "steps.analysis.score >= threshold"
+```
+
+##### Quality Gates
+
+Gates enforce quality standards before proceeding:
+
+```yaml
+step:
+  type: gate
+  name: code_review_gate
+  condition: "score >= 80"
+  criteria:
+    - CODE_CORRECTNESS
+    - HAS_TESTS
+  onPass: continue
+  onFail:
+    action: feedback
+    maxRetries: 3
+```
+
+**Built-in Evaluation Criteria:**
+
+| Criteria           | Description                           |
+| ------------------ | ------------------------------------- |
+| `CODE_CORRECTNESS` | Validates syntax and semantics        |
+| `HAS_TESTS`        | Ensures test coverage exists          |
+| `FOLLOWS_SPEC`     | Matches specification requirements    |
+| `IS_SECURE`        | Checks security best practices        |
+| `PERFORMANCE_OK`   | Validates performance characteristics |
+
+##### Feedback Loops
+
+Feedback loops enable iterative refinement:
+
+```yaml
+step:
+  type: loop
+  name: refinement_loop
+  maxIterations: 5
+  exitCondition: "quality >= 90"
+  onMaxIterations: proceed_with_best
+  steps:
+    - type: agent
+      agent: reviewer
+    - type: gate
+      condition: "review.passed"
+```
+
 **Available Templates:**
 
 | Template     | Model                   | Best For                          |

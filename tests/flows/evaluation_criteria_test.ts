@@ -1,0 +1,428 @@
+/**
+ * Tests for EvaluationCriteria
+ * Phase 15.3: Built-in Criteria Library
+ */
+
+import { assertEquals, assertExists } from "jsr:@std/assert@1";
+import {
+  buildEvaluationPrompt,
+  calculateWeightedScore,
+  checkRequiredCriteria,
+  createCriterion,
+  CRITERIA,
+  CRITERION_SETS,
+  CriterionResult,
+  EvaluationCriterion,
+  EvaluationCriterionSchema,
+  getCriteriaByNames,
+} from "../../src/flows/evaluation_criteria.ts";
+
+// ============================================================
+// CRITERIA Constants Tests
+// ============================================================
+
+Deno.test("CRITERIA: contains CODE_CORRECTNESS", () => {
+  assertExists(CRITERIA.CODE_CORRECTNESS);
+  assertEquals(CRITERIA.CODE_CORRECTNESS.name, "code_correctness");
+  assertEquals(typeof CRITERIA.CODE_CORRECTNESS.description, "string");
+  assertEquals(typeof CRITERIA.CODE_CORRECTNESS.weight, "number");
+});
+
+Deno.test("CRITERIA: contains HAS_TESTS", () => {
+  assertExists(CRITERIA.HAS_TESTS);
+  assertEquals(CRITERIA.HAS_TESTS.name, "has_tests");
+});
+
+Deno.test("CRITERIA: contains CODE_COMPLETENESS", () => {
+  assertExists(CRITERIA.CODE_COMPLETENESS);
+  assertEquals(CRITERIA.CODE_COMPLETENESS.name, "code_completeness");
+});
+
+Deno.test("CRITERIA: contains NO_SECURITY_ISSUES", () => {
+  assertExists(CRITERIA.NO_SECURITY_ISSUES);
+  assertEquals(CRITERIA.NO_SECURITY_ISSUES.name, "no_security_issues");
+});
+
+Deno.test("CRITERIA: all criteria have valid schema", () => {
+  for (const [key, criterion] of Object.entries(CRITERIA)) {
+    const parsed = EvaluationCriterionSchema.safeParse(criterion);
+    assertEquals(parsed.success, true, `${key} should match schema`);
+    assertExists(criterion.name);
+    assertExists(criterion.description);
+    assertEquals(criterion.weight >= 0 && criterion.weight <= 10, true);
+  }
+});
+
+// ============================================================
+// CRITERION_SETS Tests
+// ============================================================
+
+Deno.test("CRITERION_SETS: contains CODE_REVIEW set", () => {
+  assertExists(CRITERION_SETS.CODE_REVIEW);
+  assertEquals(Array.isArray(CRITERION_SETS.CODE_REVIEW), true);
+  assertEquals(CRITERION_SETS.CODE_REVIEW.length > 0, true);
+});
+
+Deno.test("CRITERION_SETS: contains MINIMAL_GATE set", () => {
+  assertExists(CRITERION_SETS.MINIMAL_GATE);
+  assertEquals(Array.isArray(CRITERION_SETS.MINIMAL_GATE), true);
+});
+
+Deno.test("CRITERION_SETS: contains SECURITY_REVIEW set", () => {
+  assertExists(CRITERION_SETS.SECURITY_REVIEW);
+  assertEquals(Array.isArray(CRITERION_SETS.SECURITY_REVIEW), true);
+});
+
+Deno.test("CRITERION_SETS: CODE_REVIEW includes key criteria", () => {
+  const criteriaNames = CRITERION_SETS.CODE_REVIEW.map((c) => c.name);
+  assertEquals(criteriaNames.includes("code_correctness"), true);
+});
+
+// ============================================================
+// getCriteriaByNames Tests
+// ============================================================
+
+Deno.test("getCriteriaByNames: retrieves single criterion", () => {
+  const criteria = getCriteriaByNames(["CODE_CORRECTNESS"]);
+  assertEquals(criteria.length, 1);
+  assertEquals(criteria[0].name, "code_correctness");
+});
+
+Deno.test("getCriteriaByNames: retrieves multiple criteria", () => {
+  const criteria = getCriteriaByNames(["CODE_CORRECTNESS", "HAS_TESTS", "CODE_COMPLETENESS"]);
+  assertEquals(criteria.length, 3);
+
+  const names = criteria.map((c) => c.name);
+  assertEquals(names.includes("code_correctness"), true);
+  assertEquals(names.includes("has_tests"), true);
+  assertEquals(names.includes("code_completeness"), true);
+});
+
+Deno.test("getCriteriaByNames: handles hyphenated names", () => {
+  const criteria = getCriteriaByNames(["CODE-CORRECTNESS"]);
+  assertEquals(criteria.length, 1);
+  assertEquals(criteria[0].name, "code_correctness");
+});
+
+Deno.test("getCriteriaByNames: handles lowercase names", () => {
+  const criteria = getCriteriaByNames(["code_correctness"]);
+  assertEquals(criteria.length, 1);
+  assertEquals(criteria[0].name, "code_correctness");
+});
+
+Deno.test("getCriteriaByNames: skips unknown criteria with warning", () => {
+  const criteria = getCriteriaByNames(["CODE_CORRECTNESS", "UNKNOWN_CRITERION"]);
+  assertEquals(criteria.length, 1);
+  assertEquals(criteria[0].name, "code_correctness");
+});
+
+Deno.test("getCriteriaByNames: returns empty array for all unknown", () => {
+  const criteria = getCriteriaByNames(["FAKE_ONE", "FAKE_TWO"]);
+  assertEquals(criteria.length, 0);
+});
+
+// ============================================================
+// calculateWeightedScore Tests
+// ============================================================
+
+Deno.test("calculateWeightedScore: calculates simple average", () => {
+  const criteriaResults: Record<string, CriterionResult> = {
+    code_correctness: {
+      name: "code_correctness",
+      score: 0.8,
+      reasoning: "Good",
+      issues: [],
+      passed: true,
+    },
+    code_completeness: {
+      name: "code_completeness",
+      score: 0.6,
+      reasoning: "Acceptable",
+      issues: [],
+      passed: true,
+    },
+  };
+
+  // Assuming both have weight 1.0
+  const criteria: EvaluationCriterion[] = [
+    { name: "code_correctness", description: "Test", weight: 1.0, required: false },
+    { name: "code_completeness", description: "Test", weight: 1.0, required: false },
+  ];
+
+  const score = calculateWeightedScore(criteriaResults, criteria);
+  assertEquals(score, 0.7); // (0.8 + 0.6) / 2
+});
+
+Deno.test("calculateWeightedScore: applies weights correctly", () => {
+  const criteriaResults: Record<string, CriterionResult> = {
+    code_correctness: {
+      name: "code_correctness",
+      score: 1.0,
+      reasoning: "Perfect",
+      issues: [],
+      passed: true,
+    },
+    code_completeness: {
+      name: "code_completeness",
+      score: 0.0,
+      reasoning: "Missing",
+      issues: ["Everything missing"],
+      passed: false,
+    },
+  };
+
+  const criteria: EvaluationCriterion[] = [
+    { name: "code_correctness", description: "Test", weight: 0.8, required: false },
+    { name: "code_completeness", description: "Test", weight: 0.2, required: false },
+  ];
+
+  const score = calculateWeightedScore(criteriaResults, criteria);
+  // (1.0 * 0.8 + 0.0 * 0.2) / (0.8 + 0.2) = 0.8
+  assertEquals(score, 0.8);
+});
+
+Deno.test("calculateWeightedScore: handles missing results", () => {
+  const criteriaResults: Record<string, CriterionResult> = {
+    code_correctness: {
+      name: "code_correctness",
+      score: 0.9,
+      reasoning: "Great",
+      issues: [],
+      passed: true,
+    },
+    // code_completeness is missing
+  };
+
+  const criteria: EvaluationCriterion[] = [
+    { name: "code_correctness", description: "Test", weight: 1.0, required: false },
+    { name: "code_completeness", description: "Test", weight: 1.0, required: false },
+  ];
+
+  const score = calculateWeightedScore(criteriaResults, criteria);
+  // Only code_correctness counted: 0.9 * 1.0 / 1.0 = 0.9
+  assertEquals(score, 0.9);
+});
+
+Deno.test("calculateWeightedScore: returns 0 for empty criteria", () => {
+  const criteriaResults: Record<string, CriterionResult> = {};
+  const criteria: EvaluationCriterion[] = [];
+
+  const score = calculateWeightedScore(criteriaResults, criteria);
+  assertEquals(score, 0);
+});
+
+// ============================================================
+// checkRequiredCriteria Tests
+// ============================================================
+
+Deno.test("checkRequiredCriteria: passes when all required met", () => {
+  const criteriaResults: Record<string, CriterionResult> = {
+    code_correctness: { name: "code_correctness", score: 0.9, reasoning: "Good", issues: [], passed: true },
+    code_completeness: { name: "code_completeness", score: 0.8, reasoning: "OK", issues: [], passed: true },
+  };
+
+  const criteria: EvaluationCriterion[] = [
+    { name: "code_correctness", description: "Test", weight: 1.0, required: true },
+    { name: "code_completeness", description: "Test", weight: 1.0, required: false },
+  ];
+
+  const passed = checkRequiredCriteria(criteriaResults, criteria, 0.7);
+  assertEquals(passed, true);
+});
+
+Deno.test("checkRequiredCriteria: fails when required criterion below threshold", () => {
+  const criteriaResults: Record<string, CriterionResult> = {
+    code_correctness: {
+      name: "code_correctness",
+      score: 0.5,
+      reasoning: "Bad",
+      issues: ["Many errors"],
+      passed: false,
+    },
+    code_completeness: { name: "code_completeness", score: 0.9, reasoning: "Great", issues: [], passed: true },
+  };
+
+  const criteria: EvaluationCriterion[] = [
+    { name: "code_correctness", description: "Test", weight: 1.0, required: true },
+    { name: "code_completeness", description: "Test", weight: 1.0, required: false },
+  ];
+
+  const passed = checkRequiredCriteria(criteriaResults, criteria, 0.7);
+  assertEquals(passed, false);
+});
+
+Deno.test("checkRequiredCriteria: passes when no required criteria", () => {
+  const criteriaResults: Record<string, CriterionResult> = {
+    code_correctness: { name: "code_correctness", score: 0.4, reasoning: "Poor", issues: ["Errors"], passed: false },
+  };
+
+  const criteria: EvaluationCriterion[] = [
+    { name: "code_correctness", description: "Test", weight: 1.0, required: false },
+  ];
+
+  const passed = checkRequiredCriteria(criteriaResults, criteria, 0.7);
+  assertEquals(passed, true);
+});
+
+Deno.test("checkRequiredCriteria: uses custom threshold", () => {
+  const criteriaResults: Record<string, CriterionResult> = {
+    code_correctness: { name: "code_correctness", score: 0.85, reasoning: "Good", issues: [], passed: true },
+  };
+
+  const criteria: EvaluationCriterion[] = [
+    { name: "code_correctness", description: "Test", weight: 1.0, required: true },
+  ];
+
+  // With 0.9 threshold, 0.85 should fail
+  const passedHigh = checkRequiredCriteria(criteriaResults, criteria, 0.9);
+  assertEquals(passedHigh, false);
+
+  // With 0.8 threshold, 0.85 should pass
+  const passedLow = checkRequiredCriteria(criteriaResults, criteria, 0.8);
+  assertEquals(passedLow, true);
+});
+
+// ============================================================
+// createCriterion Tests
+// ============================================================
+
+Deno.test("createCriterion: creates criterion with defaults", () => {
+  const criterion = createCriterion("CUSTOM_CHECK", "Custom description");
+
+  assertEquals(criterion.name, "CUSTOM_CHECK");
+  assertEquals(criterion.description, "Custom description");
+  assertEquals(criterion.weight, 1.0);
+  assertEquals(criterion.required, false);
+});
+
+Deno.test("createCriterion: creates criterion with custom options", () => {
+  const criterion = createCriterion("SECURITY_CHECK", "Security validation", {
+    weight: 0.9,
+    required: true,
+  });
+
+  assertEquals(criterion.name, "SECURITY_CHECK");
+  assertEquals(criterion.weight, 0.9);
+  assertEquals(criterion.required, true);
+});
+
+Deno.test("createCriterion: validates through schema", () => {
+  // This should throw if schema validation fails
+  const criterion = createCriterion("VALID_NAME", "Valid description");
+  assertExists(criterion);
+});
+
+// ============================================================
+// buildEvaluationPrompt Tests
+// ============================================================
+
+Deno.test("buildEvaluationPrompt: includes content", () => {
+  const criteria: EvaluationCriterion[] = [CRITERIA.CODE_CORRECTNESS];
+  const prompt = buildEvaluationPrompt("function test() {}", criteria);
+
+  assertEquals(prompt.includes("function test() {}"), true);
+});
+
+Deno.test("buildEvaluationPrompt: includes criteria descriptions", () => {
+  const criteria: EvaluationCriterion[] = [
+    CRITERIA.CODE_CORRECTNESS,
+    CRITERIA.HAS_TESTS,
+  ];
+  const prompt = buildEvaluationPrompt("Test content", criteria);
+
+  assertEquals(prompt.includes("code_correctness"), true);
+  assertEquals(prompt.includes("has_tests"), true);
+});
+
+Deno.test("buildEvaluationPrompt: includes context when provided", () => {
+  const criteria: EvaluationCriterion[] = [CRITERIA.CODE_CORRECTNESS];
+  const prompt = buildEvaluationPrompt(
+    "Test content",
+    criteria,
+    "This is a utility function for parsing JSON",
+  );
+
+  assertEquals(prompt.includes("Context"), true);
+  assertEquals(prompt.includes("utility function for parsing JSON"), true);
+});
+
+Deno.test("buildEvaluationPrompt: omits context section when not provided", () => {
+  const criteria: EvaluationCriterion[] = [CRITERIA.CODE_CORRECTNESS];
+  const prompt = buildEvaluationPrompt("Test content", criteria);
+
+  // Should not have a Context section header without context
+  assertEquals(prompt.includes("### Context"), false);
+});
+
+Deno.test("buildEvaluationPrompt: marks required criteria", () => {
+  const criteria: EvaluationCriterion[] = [
+    { name: "MUST_PASS", description: "Required check", weight: 1.0, required: true },
+    { name: "OPTIONAL", description: "Optional check", weight: 0.5, required: false },
+  ];
+  const prompt = buildEvaluationPrompt("Content", criteria);
+
+  assertEquals(prompt.includes("REQUIRED"), true);
+});
+
+Deno.test("buildEvaluationPrompt: shows weights", () => {
+  const criteria: EvaluationCriterion[] = [
+    { name: "HIGH_WEIGHT", description: "Important", weight: 0.9, required: false },
+    { name: "LOW_WEIGHT", description: "Less important", weight: 0.3, required: false },
+  ];
+  const prompt = buildEvaluationPrompt("Content", criteria);
+
+  assertEquals(prompt.includes("weight: 0.9"), true);
+  assertEquals(prompt.includes("weight: 0.3"), true);
+});
+
+Deno.test("buildEvaluationPrompt: includes JSON format instructions", () => {
+  const criteria: EvaluationCriterion[] = [CRITERIA.CODE_CORRECTNESS];
+  const prompt = buildEvaluationPrompt("Content", criteria);
+
+  assertEquals(prompt.includes("overallScore"), true);
+  assertEquals(prompt.includes("criteriaScores"), true);
+  assertEquals(prompt.includes("JSON"), true);
+});
+
+// ============================================================
+// Schema Validation Tests
+// ============================================================
+
+Deno.test("EvaluationCriterionSchema: validates correct criterion", () => {
+  const result = EvaluationCriterionSchema.safeParse({
+    name: "TEST_CRITERION",
+    description: "A test criterion",
+    weight: 0.8,
+    required: true,
+    guidelines: ["Guideline 1"],
+  });
+
+  assertEquals(result.success, true);
+});
+
+Deno.test("EvaluationCriterionSchema: requires name", () => {
+  const result = EvaluationCriterionSchema.safeParse({
+    description: "Missing name",
+    weight: 1.0,
+  });
+
+  assertEquals(result.success, false);
+});
+
+Deno.test("EvaluationCriterionSchema: requires description", () => {
+  const result = EvaluationCriterionSchema.safeParse({
+    name: "NO_DESC",
+    weight: 1.0,
+  });
+
+  assertEquals(result.success, false);
+});
+
+Deno.test("EvaluationCriterionSchema: applies default weight", () => {
+  const result = EvaluationCriterionSchema.parse({
+    name: "DEFAULT_WEIGHT",
+    description: "Should get default weight",
+  });
+
+  assertEquals(result.weight, 1.0);
+});

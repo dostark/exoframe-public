@@ -833,6 +833,103 @@ Help me understand the project structure and architecture.
 - **PlanWriter:** Generates plan files for both routing types
 - **EventLogger:** Records all routing decisions and validation results
 
+### 5.8.2.2. Flow Orchestration Improvements (Phase 15 ✅ Implemented)
+
+**Purpose:** Enhanced Flow execution with quality gates, LLM-as-a-Judge evaluation, conditional branching, and feedback loops for iterative improvement.
+
+**New Flow Capabilities:**
+
+| Feature                  | Description                                      | Component            |
+| ------------------------ | ------------------------------------------------ | -------------------- |
+| **Condition Evaluation** | Execute steps conditionally based on expressions | `ConditionEvaluator` |
+| **Quality Gates**        | Evaluate output quality against thresholds       | `GateEvaluator`      |
+| **LLM-as-a-Judge**       | Use LLM agents to evaluate output quality        | `JudgeEvaluator`     |
+| **Feedback Loops**       | Iterative improvement via Reflexion pattern      | `FeedbackLoop`       |
+| **Evaluation Criteria**  | Built-in criteria library for quality assessment | `EvaluationCriteria` |
+
+**Flow Step Schema Extensions:**
+
+```typescript
+// New step types in FlowStepSchema
+interface GateStep {
+  type: "gate";
+  agent: string; // Judge agent ID
+  criteria: string[]; // Evaluation criteria names
+  threshold: number; // Pass threshold (0-1)
+  onFail: "halt" | "retry" | "continue-with-warning";
+  maxRetries?: number;
+}
+
+interface BranchStep {
+  type: "branch";
+  condition: string; // Expression to evaluate
+  trueBranch: FlowStep[];
+  falseBranch?: FlowStep[];
+}
+```
+
+**Condition Expressions:**
+
+Steps can include `condition` field for conditional execution:
+
+```typescript
+{
+  id: "improve",
+  agent: "senior-coder",
+  dependsOn: ["review"],
+  condition: "results['review'].score < 0.8",  // Only run if review score low
+}
+```
+
+**Quality Gate Configuration:**
+
+```typescript
+{
+  id: "quality-gate",
+  type: "gate",
+  agent: "quality-judge",
+  criteria: ["CODE_CORRECTNESS", "HAS_TESTS", "DOCUMENTATION_QUALITY"],
+  threshold: 0.8,
+  onFail: "retry",
+  maxRetries: 2,
+}
+```
+
+**Built-in Evaluation Criteria:**
+
+| Criterion             | Description                       | Weight |
+| --------------------- | --------------------------------- | ------ |
+| `CODE_CORRECTNESS`    | Syntactic and logical correctness | 2.0    |
+| `CODE_COMPLETENESS`   | All requirements addressed        | 1.5    |
+| `HAS_TESTS`           | Test coverage present             | 1.0    |
+| `NO_SECURITY_ISSUES`  | No obvious vulnerabilities        | 2.0    |
+| `FOLLOWS_CONVENTIONS` | Style and naming conventions      | 0.8    |
+| `ERROR_HANDLING`      | Proper error handling             | 1.0    |
+
+**Feedback Loop Pattern:**
+
+```typescript
+const feedbackConfig = {
+  maxIterations: 3,
+  targetScore: 0.9,
+  evaluator: "quality-judge",
+  criteria: ["CODE_CORRECTNESS", "HAS_TESTS"],
+  minImprovement: 0.05,
+};
+```
+
+**Implementation Files:**
+
+| File                               | Purpose                    | Tests |
+| ---------------------------------- | -------------------------- | ----- |
+| `src/flows/condition_evaluator.ts` | Safe expression evaluation | 21    |
+| `src/flows/gate_evaluator.ts`      | Quality gate logic         | 8     |
+| `src/flows/judge_evaluator.ts`     | LLM judge integration      | 14    |
+| `src/flows/feedback_loop.ts`       | Reflexion pattern          | 15    |
+| `src/flows/evaluation_criteria.ts` | Criteria library           | 37    |
+
+**Total Flow Tests:** 175 (all passing)
+
 ### 5.8.3. Step 5.12.1: Detection (✅ Implemented)
 
 **Purpose:** Detect approved plans in `System/Active/` and validate required metadata.
