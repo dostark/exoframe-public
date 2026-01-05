@@ -13,6 +13,18 @@ interface LogEntry {
   timestamp: string;
 }
 
+/** Activity record returned from database queries */
+export interface ActivityRecord {
+  id: string;
+  trace_id: string;
+  actor: string;
+  agent_id: string | null;
+  action_type: string;
+  target: string | null;
+  payload: string;
+  timestamp: string;
+}
+
 export class DatabaseService {
   private db: Database;
   private logQueue: LogEntry[] = [];
@@ -219,16 +231,7 @@ export class DatabaseService {
   /**
    * Query activities by trace_id (for testing/debugging)
    */
-  getActivitiesByTrace(traceId: string): Array<{
-    id: string;
-    trace_id: string;
-    actor: string;
-    agent_id: string | null;
-    action_type: string;
-    target: string | null;
-    payload: string;
-    timestamp: string;
-  }> {
+  getActivitiesByTrace(traceId: string): ActivityRecord[] {
     const stmt = this.db.prepare(
       `SELECT id, trace_id, actor, agent_id, action_type, target, payload, timestamp
        FROM activity
@@ -236,31 +239,13 @@ export class DatabaseService {
        ORDER BY timestamp`,
     );
 
-    return stmt.all(traceId) as Array<{
-      id: string;
-      trace_id: string;
-      actor: string;
-      agent_id: string | null;
-      action_type: string;
-      target: string | null;
-      payload: string;
-      timestamp: string;
-    }>;
+    return stmt.all(traceId) as unknown as ActivityRecord[];
   }
 
   /**
    * Query activities by action_type (for testing/debugging)
    */
-  getActivitiesByActionType(actionType: string): Array<{
-    id: string;
-    trace_id: string;
-    actor: string;
-    agent_id: string | null;
-    action_type: string;
-    target: string | null;
-    payload: string;
-    timestamp: string;
-  }> {
+  getActivitiesByActionType(actionType: string): ActivityRecord[] {
     const stmt = this.db.prepare(
       `SELECT id, trace_id, actor, agent_id, action_type, target, payload, timestamp
        FROM activity
@@ -268,16 +253,7 @@ export class DatabaseService {
        ORDER BY timestamp`,
     );
 
-    return stmt.all(actionType) as Array<{
-      id: string;
-      trace_id: string;
-      actor: string;
-      agent_id: string | null;
-      action_type: string;
-      target: string | null;
-      payload: string;
-      timestamp: string;
-    }>;
+    return stmt.all(actionType) as unknown as ActivityRecord[];
   }
 
   /**

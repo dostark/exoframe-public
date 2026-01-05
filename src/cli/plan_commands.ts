@@ -23,6 +23,26 @@ export interface PlanDetails extends PlanMetadata {
 }
 
 /**
+ * Extract plan metadata from parsed frontmatter
+ */
+function extractPlanMetadata(planId: string, frontmatter: Record<string, unknown>): PlanMetadata {
+  return {
+    id: planId,
+    status: (frontmatter.status as string) || "unknown",
+    trace_id: frontmatter.trace_id as string | undefined,
+    agent_id: frontmatter.agent_id as string | undefined,
+    created_at: frontmatter.created_at as string | undefined,
+    approved_by: frontmatter.approved_by as string | undefined,
+    approved_at: frontmatter.approved_at as string | undefined,
+    rejected_by: frontmatter.rejected_by as string | undefined,
+    rejected_at: frontmatter.rejected_at as string | undefined,
+    rejection_reason: frontmatter.rejection_reason as string | undefined,
+    reviewed_by: frontmatter.reviewed_by as string | undefined,
+    reviewed_at: frontmatter.reviewed_at as string | undefined,
+  };
+}
+
+/**
  * PlanCommands provides CLI operations for human review of AI-generated plans.
  * All operations are atomic and logged to activity_log with actor='human'.
  */
@@ -222,20 +242,7 @@ export class PlanCommands extends BaseCommand {
           const content = await Deno.readTextFile(planPath);
           const { frontmatter } = this.extractFrontmatterWithBody(content);
 
-          const metadata: PlanMetadata = {
-            id: planId,
-            status: (frontmatter.status as string) || "unknown",
-            trace_id: frontmatter.trace_id as string | undefined,
-            agent_id: frontmatter.agent_id as string | undefined,
-            created_at: frontmatter.created_at as string | undefined,
-            approved_by: frontmatter.approved_by as string | undefined,
-            approved_at: frontmatter.approved_at as string | undefined,
-            rejected_by: frontmatter.rejected_by as string | undefined,
-            rejected_at: frontmatter.rejected_at as string | undefined,
-            rejection_reason: frontmatter.rejection_reason as string | undefined,
-            reviewed_by: frontmatter.reviewed_by as string | undefined,
-            reviewed_at: frontmatter.reviewed_at as string | undefined,
-          };
+          const metadata = extractPlanMetadata(planId, frontmatter);
 
           // Apply filter if specified
           if (!statusFilter || metadata.status === statusFilter) {
@@ -278,20 +285,10 @@ export class PlanCommands extends BaseCommand {
 
     try {
       const { frontmatter, body } = this.extractFrontmatterWithBody(content);
+      const metadata = extractPlanMetadata(planId, frontmatter);
 
       return {
-        id: planId,
-        status: (frontmatter.status as string) || "unknown",
-        trace_id: frontmatter.trace_id as string | undefined,
-        agent_id: frontmatter.agent_id as string | undefined,
-        created_at: frontmatter.created_at as string | undefined,
-        approved_by: frontmatter.approved_by as string | undefined,
-        approved_at: frontmatter.approved_at as string | undefined,
-        rejected_by: frontmatter.rejected_by as string | undefined,
-        rejected_at: frontmatter.rejected_at as string | undefined,
-        rejection_reason: frontmatter.rejection_reason as string | undefined,
-        reviewed_by: frontmatter.reviewed_by as string | undefined,
-        reviewed_at: frontmatter.reviewed_at as string | undefined,
+        ...metadata,
         content: body,
       };
     } catch {

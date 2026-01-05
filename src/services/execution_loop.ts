@@ -56,6 +56,16 @@ interface TaskLease {
 // ExecutionLoop Implementation
 // ============================================================================
 
+/** Options for internal execution */
+interface ExecuteOptions {
+  /** Path to the plan file */
+  planPath: string;
+  /** Whether to require actions in the plan */
+  requireActions: boolean;
+  /** Whether to initialize Git with branch creation */
+  initGitBranch: boolean;
+}
+
 export class ExecutionLoop {
   private config: Config;
   private db?: DatabaseService;
@@ -71,9 +81,10 @@ export class ExecutionLoop {
   }
 
   /**
-   * Process a single task from /System/Active
+   * Core execution logic shared between processTask and executeNext
    */
-  async processTask(planPath: string): Promise<ExecutionResult> {
+  private async executeCore(options: ExecuteOptions): Promise<ExecutionResult> {
+    const { planPath, requireActions, initGitBranch } = options;
     let traceId: string | undefined;
     let requestId: string | undefined;
 
@@ -92,30 +103,28 @@ export class ExecutionLoop {
         plan_path: planPath,
       });
 
-      // Initialize Git
+      // Initialize Git service
       const gitService = new GitService({
         config: this.config,
         db: this.db,
         traceId,
         agentId: this.agentId,
       });
-      await gitService.ensureRepository();
-      await gitService.ensureIdentity();
 
-      // Create feature branch
-      await gitService.createBranch({
-        requestId,
-        traceId,
-      });
+      // Set up Git (branch creation only for processTask)
+      if (initGitBranch) {
+        await gitService.ensureRepository();
+        await gitService.ensureIdentity();
+        await gitService.createBranch({ requestId, traceId });
+      }
 
-      // Execute plan
+      // Read and validate plan content
       const planContent = await Deno.readTextFile(planPath);
 
       // Check for special failure markers for testing
       if (planContent.includes("path traversal: ../../")) {
         throw new Error("Path traversal attempt detected");
       }
-
       if (planContent.includes("Intentionally fail")) {
         throw new Error("Simulated execution failure");
       }
@@ -123,12 +132,15 @@ export class ExecutionLoop {
       // Parse and execute plan actions
       const actions = this.parsePlanActions(planContent);
 
-      if (actions.length > 0) {
-        await this.executePlanActions(actions, traceId, requestId);
-      } else {
+      if (actions.length === 0) {
+        if (requireActions) {
+          throw new Error("Plan contains no executable actions");
+        }
         // For testing or empty plans, create a dummy file to ensure we have changes
         const testFile = join(this.config.system.root, "test-execution.txt");
         await Deno.writeTextFile(testFile, `Execution by ${this.agentId} at ${new Date().toISOString()}`);
+      } else {
+        await this.executePlanActions(actions, traceId, requestId);
       }
 
       // Commit changes
@@ -137,106 +149,42 @@ export class ExecutionLoop {
       // Handle success
       await this.handleSuccess(planPath, traceId, requestId);
 
-      return {
-        success: true,
-        traceId,
-      };
+      return { success: true, traceId };
     } catch (error) {
-      // Handle failure
       const errorMessage = error instanceof Error ? error.message : String(error);
-
       if (traceId && requestId) {
         await this.handleFailure(planPath, traceId, requestId, errorMessage);
       }
-
-      return {
-        success: false,
-        traceId,
-        error: errorMessage,
-      };
+      return { success: false, traceId, error: errorMessage };
     } finally {
-      // Always release lease
-      if (planPath) {
-        this.releaseLease(planPath);
-      }
+      this.releaseLease(planPath);
     }
+  }
+
+  /**
+   * Process a single task from /System/Active
+   */
+  async processTask(planPath: string): Promise<ExecutionResult> {
+    return await this.executeCore({
+      planPath,
+      requireActions: false,
+      initGitBranch: true,
+    });
   }
 
   /**
    * Execute next available plan file
    */
   async executeNext(): Promise<ExecutionResult> {
-    let planPath: string | null = null;
-    let traceId: string | undefined;
-    let requestId: string | undefined;
-
-    try {
-      // Find the next plan to execute
-      planPath = await this.findNextPlan();
-      if (!planPath) {
-        return { success: true }; // No work to do
-      }
-
-      // Parse plan frontmatter
-      const frontmatter = await this.parsePlan(planPath);
-      traceId = frontmatter.trace_id;
-      requestId = frontmatter.request_id;
-
-      // Acquire lease on the plan
-      this.ensureLease(planPath, traceId);
-
-      // Log execution start
-      this.logActivity("execution.started", traceId, {
-        request_id: requestId,
-        plan_path: planPath,
-      });
-
-      // Parse plan actions
-      const planContent = await Deno.readTextFile(planPath);
-      const actions = this.parsePlanActions(planContent);
-
-      if (actions.length === 0) {
-        throw new Error("Plan contains no executable actions");
-      }
-
-      // Execute actions
-      await this.executePlanActions(actions, traceId, requestId);
-
-      // Commit changes to git
-      const gitService = new GitService({
-        config: this.config,
-        db: this.db,
-        traceId,
-        agentId: this.agentId,
-      });
-      await this.commitChanges(gitService, requestId!, traceId!);
-
-      // Handle success
-      await this.handleSuccess(planPath, traceId, requestId);
-
-      return {
-        success: true,
-        traceId,
-      };
-    } catch (error) {
-      // Handle failure
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      if (traceId && requestId && planPath) {
-        await this.handleFailure(planPath, traceId, requestId, errorMessage);
-      }
-
-      return {
-        success: false,
-        traceId,
-        error: errorMessage,
-      };
-    } finally {
-      // Always release lease
-      if (planPath) {
-        this.releaseLease(planPath);
-      }
+    const planPath = await this.findNextPlan();
+    if (!planPath) {
+      return { success: true }; // No work to do
     }
+    return this.executeCore({
+      planPath,
+      requireActions: true,
+      initGitBranch: false,
+    });
   }
 
   /**
