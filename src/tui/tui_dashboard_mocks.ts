@@ -140,6 +140,12 @@ export class MockRequestService {
         created: new Date().toISOString(),
         created_by: "test@example.com",
         source: "cli",
+        skills: {
+          explicit: [],
+          autoMatched: ["code-review"],
+          fromDefaults: ["typescript-patterns"],
+          skipped: [],
+        },
       },
       {
         trace_id: "87654321-abcd-1234-5678-123456789abc",
@@ -153,6 +159,12 @@ export class MockRequestService {
         created: new Date(Date.now() - 3600000).toISOString(),
         created_by: "user@example.com",
         source: "cli",
+        skills: {
+          explicit: ["security-audit"],
+          autoMatched: ["tdd-methodology"],
+          fromDefaults: ["code-review"],
+          skipped: [],
+        },
       },
     ];
 
@@ -217,6 +229,7 @@ export class MockAgentService {
         status: "active" as const,
         lastActivity: new Date().toISOString(),
         capabilities: ["code-review", "testing"],
+        defaultSkills: ["tdd-methodology", "code-review", "typescript-patterns"],
       },
       {
         id: "agent-2",
@@ -225,6 +238,7 @@ export class MockAgentService {
         status: "inactive" as const,
         lastActivity: new Date(Date.now() - 3600000).toISOString(),
         capabilities: ["documentation"],
+        defaultSkills: ["documentation-driven", "api-first"],
       },
     ]);
   }
@@ -483,5 +497,139 @@ export class MockMemoryService {
   /** Simulates rejecting a proposal. */
   rejectPending(_proposalId: string, _reason: string) {
     return Promise.resolve();
+  }
+}
+
+/**
+ * MockSkillsService
+ * Mock implementation of the SkillsViewService interface for TDD and dashboard wiring tests.
+ * Returns static skill data for testing.
+ */
+export class MockSkillsService {
+  /** Returns a list of mock skills. */
+  listSkills(filter?: { source?: string; status?: string }) {
+    const allSkills = [
+      {
+        id: "tdd-methodology",
+        name: "TDD Methodology",
+        version: "1.0.0",
+        status: "active" as const,
+        source: "core" as const,
+        description: "Test-Driven Development methodology for writing reliable code",
+        triggers: {
+          keywords: ["tdd", "test-first", "testing"],
+          taskTypes: ["implementation", "testing"],
+        },
+        instructions:
+          "When implementing new features:\n1. Write failing test first\n2. Implement minimum code to pass\n3. Refactor while keeping tests green",
+      },
+      {
+        id: "security-first",
+        name: "Security First",
+        version: "1.0.0",
+        status: "active" as const,
+        source: "core" as const,
+        description: "Security-focused development practices",
+        triggers: {
+          keywords: ["security", "auth", "password", "token"],
+          taskTypes: ["security-review", "implementation"],
+        },
+        instructions:
+          "Always consider security implications:\n1. Validate all inputs\n2. Use parameterized queries\n3. Follow OWASP Top 10 guidelines",
+      },
+      {
+        id: "code-review",
+        name: "Code Review",
+        version: "1.0.0",
+        status: "active" as const,
+        source: "core" as const,
+        description: "Best practices for code review",
+        triggers: {
+          keywords: ["review", "pr", "pull request"],
+          taskTypes: ["code-review"],
+        },
+        instructions:
+          "When reviewing code:\n1. Check for correctness\n2. Verify test coverage\n3. Assess readability and maintainability",
+      },
+      {
+        id: "typescript-patterns",
+        name: "TypeScript Patterns",
+        version: "1.0.0",
+        status: "active" as const,
+        source: "core" as const,
+        description: "TypeScript best practices and patterns",
+        triggers: {
+          keywords: ["typescript", "ts"],
+          filePatterns: ["**/*.ts", "**/*.tsx"],
+        },
+        instructions:
+          "Follow TypeScript best practices:\n1. Use strict mode\n2. Prefer interfaces over types for object shapes\n3. Use generics for reusable code",
+      },
+      {
+        id: "documentation-driven",
+        name: "Documentation Driven",
+        version: "1.0.0",
+        status: "active" as const,
+        source: "core" as const,
+        description: "Documentation-first approach to development",
+        triggers: {
+          keywords: ["docs", "documentation", "readme"],
+          taskTypes: ["documentation"],
+        },
+        instructions:
+          "Document before implementing:\n1. Write README first\n2. Document API contracts\n3. Include usage examples",
+      },
+      {
+        id: "project-conventions",
+        name: "Project Conventions",
+        version: "1.0.0",
+        status: "active" as const,
+        source: "project" as const,
+        description: "Project-specific coding conventions",
+        triggers: {
+          keywords: ["conventions", "standards"],
+        },
+        instructions:
+          "Follow project conventions:\n1. Use consistent naming\n2. Follow folder structure\n3. Use established patterns",
+      },
+      {
+        id: "api-design-learned",
+        name: "API Design (Learned)",
+        version: "1.0.0",
+        status: "draft" as const,
+        source: "learned" as const,
+        description: "Learned patterns for API design from past executions",
+        triggers: {
+          keywords: ["api", "endpoint", "rest"],
+        },
+        instructions:
+          "API design patterns learned from project:\n1. Use consistent response formats\n2. Version APIs\n3. Document all endpoints",
+      },
+    ];
+
+    let result = allSkills;
+    if (filter?.source) {
+      result = result.filter((s) => s.source === filter.source);
+    }
+    if (filter?.status) {
+      result = result.filter((s) => s.status === filter.status);
+    }
+    return Promise.resolve(result);
+  }
+
+  /** Returns a mock skill by ID. */
+  getSkill(skillId: string) {
+    return this.listSkills().then((skills) => skills.find((s) => s.id === skillId) || null);
+  }
+
+  /** Simulates deleting a skill. */
+  deleteSkill(skillId: string) {
+    // Only allow deleting non-core skills
+    return this.getSkill(skillId).then((skill) => {
+      if (skill && skill.source !== "core") {
+        return true;
+      }
+      return false;
+    });
   }
 }

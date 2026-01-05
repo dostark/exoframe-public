@@ -19,6 +19,7 @@ import { DaemonControlView } from "./daemon_control_view.ts";
 import { AgentStatusView } from "./agent_status_view.ts";
 import { RequestManagerView } from "./request_manager_view.ts";
 import { MemoryView } from "./memory_view.ts";
+import { SkillsManagerView } from "./skills_manager_view.ts";
 import {
   MockAgentService,
   MockDaemonService,
@@ -27,6 +28,7 @@ import {
   MockPlanService,
   MockPortalService,
   MockRequestService,
+  MockSkillsService,
 } from "./tui_dashboard_mocks.ts";
 import { colorize, getTheme, type TuiTheme } from "./utils/colors.ts";
 import { type HelpSection, renderHelpScreen } from "./utils/help_renderer.ts";
@@ -72,6 +74,7 @@ export const DASHBOARD_ICONS = {
     AgentStatusView: "🤖",
     RequestManagerView: "📥",
     MemoryView: "💾",
+    SkillsManagerView: "🎯",
   } as Record<string, string>,
   pane: {
     focused: "●",
@@ -505,6 +508,7 @@ export async function launchTuiDashboard(
   const agentService = new MockAgentService();
   const requestService = new MockRequestService();
   const memoryService = new MockMemoryService();
+  const skillsService = new MockSkillsService();
   const views = [
     Object.assign(new PortalManagerView(portalService), { name: "PortalManagerView" }),
     Object.assign(new PlanReviewerView(planService), { name: "PlanReviewerView" }),
@@ -513,6 +517,7 @@ export async function launchTuiDashboard(
     Object.assign(new AgentStatusView(agentService), { name: "AgentStatusView" }),
     Object.assign(new RequestManagerView(requestService), { name: "RequestManagerView" }),
     Object.assign(new MemoryView(memoryService), { name: "MemoryView" }),
+    Object.assign(new SkillsManagerView(skillsService), { name: "SkillsManagerView" }),
   ].map((view) => {
     const v: any = view;
     if (typeof v.getFocusableElements !== "function") {
