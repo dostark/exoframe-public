@@ -29,6 +29,9 @@ export interface Blueprint {
 
   /** Optional: Agent identifier for logging */
   agentId?: string;
+
+  /** Optional: Default skills to apply for all requests (Phase 17) */
+  defaultSkills?: string[];
 }
 
 /**
@@ -55,6 +58,12 @@ export interface ParsedRequest {
 
   /** Optional: Tags for skill matching */
   tags?: string[];
+
+  /** Optional: Explicit skills to apply (overrides trigger matching) - Phase 17 */
+  skills?: string[];
+
+  /** Optional: Skills to skip/disable for this request - Phase 17 */
+  skipSkills?: string[];
 }
 
 /**
@@ -176,17 +185,35 @@ export class AgentRunner {
 
     if (this.skillsService && !this.disableSkills) {
       try {
-        matchedSkills = await this.skillsService.matchSkills({
-          requestText: request.userPrompt,
-          keywords: this.extractKeywords(request.userPrompt),
-          taskType: request.taskType,
-          filePaths: request.filePaths,
-          tags: request.tags,
-          agentId,
-        });
+        // Step 1: Check for request-level explicit skills override
+        if (request.skills && request.skills.length > 0) {
+          // Use explicit skills from request
+          skillsApplied = request.skills;
+        } else {
+          // Step 2: Try trigger-based matching
+          matchedSkills = await this.skillsService.matchSkills({
+            requestText: request.userPrompt,
+            keywords: this.extractKeywords(request.userPrompt),
+            taskType: request.taskType,
+            filePaths: request.filePaths,
+            tags: request.tags,
+            agentId,
+          });
 
-        if (matchedSkills.length > 0) {
-          skillsApplied = matchedSkills.map((m) => m.skillId);
+          if (matchedSkills.length > 0) {
+            skillsApplied = matchedSkills.map((m) => m.skillId);
+          } else if (blueprint.defaultSkills && blueprint.defaultSkills.length > 0) {
+            // Step 3: Fall back to blueprint default skills if no matches
+            skillsApplied = blueprint.defaultSkills;
+          }
+        }
+
+        // Step 4: Filter out skipped skills
+        if (request.skipSkills && request.skipSkills.length > 0) {
+          skillsApplied = skillsApplied.filter((s) => !request.skipSkills!.includes(s));
+        }
+
+        if (skillsApplied.length > 0) {
           skillContext = await this.skillsService.buildSkillContext(skillsApplied);
 
           // Record skill usage

@@ -888,7 +888,12 @@ export class SkillsService {
   private async writeSkillToFile(skill: Skill, path: string): Promise<void> {
     const { instructions, ...frontmatterData } = skill;
 
-    const frontmatter = stringifyYaml(frontmatterData);
+    // Filter out undefined values to avoid YAML stringify errors
+    const cleanedFrontmatter = Object.fromEntries(
+      Object.entries(frontmatterData).filter(([_, v]) => v !== undefined),
+    );
+
+    const frontmatter = stringifyYaml(cleanedFrontmatter);
     const content = `---\n${frontmatter}---\n\n${instructions}`;
 
     await Deno.writeTextFile(path, content);
