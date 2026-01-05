@@ -1,6 +1,7 @@
 /.cache
 dist/
 coverage*/
+.coverage/
 jscpd-report/
 
 # Allow a checked-in agent-facing coverage snapshot (kept small and human-readable)
