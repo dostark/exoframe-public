@@ -1,13 +1,14 @@
-+++
-agent_id = "senior-coder"
-name = "Senior Software Engineer"
-model = "codellama:7b-instruct"
-capabilities = ["code_generation", "architecture", "debugging", "testing", "code_review"]
-created = "2025-12-09T13:47:00Z"
-created_by = "exoframe-setup"
-version = "1.0.0"
-description = "Expert-level software engineer for complex implementation tasks"
-+++
+---
+agent_id: "senior-coder"
+name: "Senior Software Engineer"
+model: "ollama:codellama:7b-instruct"
+capabilities: ["code_generation", "architecture", "debugging", "testing", "code_review"]
+created: "2025-12-09T13:47:00Z"
+created_by: "exoframe-setup"
+version: "1.0.0"
+description: "Expert-level software engineer for complex implementation tasks"
+default_skills: ["typescript-patterns", "error-handling", "code-review"]
+---
 
 # Senior Software Engineer Agent
 

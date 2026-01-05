@@ -1,12 +1,14 @@
-+++
-agent_id = "default"
-name = "Default Agent"
-model = "ollama:codellama:13b"
-capabilities = ["code_generation", "planning", "debugging"]
-created = "2025-12-09T13:47:00Z"
-created_by = "exoframe-setup"
-version = "1.0.0"
-+++
+---
+agent_id: "default"
+name: "Default Agent"
+model: "ollama:codellama:13b"
+capabilities: ["code_generation", "planning", "debugging"]
+created: "2025-12-09T13:47:00Z"
+created_by: "exoframe-setup"
+version: "1.0.0"
+description: "General-purpose coding assistant for planning and implementation"
+default_skills: ["error-handling"]
+---
 
 # Default Coding Agent
 

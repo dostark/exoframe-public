@@ -1,13 +1,14 @@
-+++
-agent_id = "quality-judge"
-name = "Quality Judge"
-model = "claude-3-5-sonnet-20241022"
-capabilities = ["evaluation", "quality_assessment", "structured_output", "code_review"]
-created = "2026-01-04T10:00:00Z"
-created_by = "exoframe-system"
-version = "1.0.0"
-description = "LLM-as-a-Judge agent for evaluating code and content quality"
-+++
+---
+agent_id: "quality-judge"
+name: "Quality Judge"
+model: "anthropic:claude-3-5-sonnet-20241022"
+capabilities: ["evaluation", "quality_assessment", "structured_output", "code_review"]
+created: "2026-01-04T10:00:00Z"
+created_by: "exoframe-system"
+version: "1.0.0"
+description: "LLM-as-a-Judge agent for evaluating code and content quality"
+default_skills: ["code-review"]
+---
 
 # Quality Judge Agent
 

@@ -1,13 +1,16 @@
-+++
-agent_id = "mock-agent"
-name = "Mock Testing Agent"
-model = "mock:test-model"
-capabilities = ["testing", "validation"]
-created = "2025-12-09T13:47:00Z"
-created_by = "exoframe-test-suite"
-version = "1.0.0"
-description = "Agent blueprint for testing and CI/CD"
-+++
+---
+agent_id: "mock-agent"
+name: "Mock Testing Agent"
+model: "mock:test-model"
+capabilities:
+  - testing
+  - validation
+created: "2025-12-09T13:47:00Z"
+created_by: "exoframe-test-suite"
+version: "1.0.0"
+description: "Agent blueprint for testing and CI/CD"
+default_skills: []
+---
 
 # Mock Testing Agent
 
