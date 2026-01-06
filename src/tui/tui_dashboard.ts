@@ -20,6 +20,7 @@ import { AgentStatusView } from "./agent_status_view.ts";
 import { RequestManagerView } from "./request_manager_view.ts";
 import { MemoryView } from "./memory_view.ts";
 import { SkillsManagerView } from "./skills_manager_view.ts";
+import { type MemoryNotification as TuiNotification, NotificationService } from "../services/notification.ts";
 import {
   MockAgentService,
   MockDaemonService,
@@ -47,20 +48,9 @@ export interface DashboardViewState {
   isLoading: boolean;
   loadingMessage: string;
   error: string | null;
-  notifications: Notification[];
   currentTheme: string;
   highContrast: boolean;
   screenReader: boolean;
-}
-
-export interface Notification {
-  id: string;
-  type: "info" | "success" | "warning" | "error";
-  message: string;
-  timestamp: Date;
-  dismissed: boolean;
-  autoExpire: boolean;
-  duration: number; // milliseconds
 }
 
 // ===== Dashboard Icons =====
@@ -228,16 +218,16 @@ export interface TuiDashboard {
   theme: Theme;
 
   // Core methods
-  handleKey(key: string): number;
+  handleKey(key: string): Promise<number>;
   render(): Promise<void>;
-  renderStatusBar(): string;
+  renderStatusBar(): Promise<string>;
   renderViewIndicator(): string;
   renderGlobalHelp(): string[];
-  renderNotifications(): string[];
+  renderNotifications(): Promise<string[]>;
 
   // Pane management
-  splitPane(direction: "vertical" | "horizontal"): void;
-  closePane(paneId: string): void;
+  splitPane(direction: "vertical" | "horizontal"): Promise<void>;
+  closePane(paneId: string): Promise<void>;
   resizePane(paneId: string, deltaWidth: number, deltaHeight: number): void;
   switchPane(paneId: string): void;
   maximizePane(paneId: string): void;
@@ -246,12 +236,13 @@ export interface TuiDashboard {
   // Layout persistence
   saveLayout(): Promise<void>;
   restoreLayout(): Promise<void>;
-  resetToDefault(): void;
+  resetToDefault(): Promise<void>;
 
   // Notifications
-  notify(message: string, type?: "info" | "success" | "warning" | "error"): void;
-  dismissNotification(id: string): void;
-  clearNotifications(): void;
+  notificationService: NotificationService;
+  notify(message: string, type?: string): Promise<void>;
+  dismissNotification(id: string): Promise<void>;
+  clearNotifications(): Promise<void>;
 
   // Legacy support
   portalManager: {
@@ -300,26 +291,7 @@ export function tryDisableRawMode(): boolean {
   return false;
 }
 
-// ===== Notification Management =====
-
-let notificationIdCounter = 0;
-
-export function createNotification(
-  message: string,
-  type: "info" | "success" | "warning" | "error" = "info",
-  autoExpire = true,
-  duration = 5000,
-): Notification {
-  return {
-    id: `notification-${++notificationIdCounter}`,
-    type,
-    message,
-    timestamp: new Date(),
-    dismissed: false,
-    autoExpire,
-    duration,
-  };
-}
+// Notification helpers are now handled by NotificationService
 
 // ===== Default Dashboard State =====
 
@@ -331,7 +303,6 @@ export function createDefaultDashboardState(): DashboardViewState {
     isLoading: false,
     loadingMessage: "",
     error: null,
-    notifications: [],
     currentTheme: "dark",
     highContrast: false,
     screenReader: false,
@@ -375,13 +346,13 @@ export function renderGlobalHelpOverlay(_theme: Theme): string[] {
 
 // ===== Notification Panel Rendering =====
 
-export function renderNotificationPanel(
-  notifications: Notification[],
+export async function renderNotificationPanel(
+  notificationService: NotificationService,
   theme: Theme,
   maxHeight = 10,
-): string[] {
+): Promise<string[]> {
   const lines: string[] = [];
-  const activeNotifications = notifications.filter((n) => !n.dismissed);
+  const activeNotifications = await notificationService.getNotifications();
 
   if (activeNotifications.length === 0) {
     lines.push(colorize("  No notifications", theme.textDim, theme.reset));
@@ -399,17 +370,20 @@ export function renderNotificationPanel(
   lines.push("");
 
   // Show most recent notifications (up to maxHeight - 2 for header)
-  const visibleNotifications = activeNotifications.slice(-(maxHeight - 2));
+  const visibleNotifications = activeNotifications.slice(0, maxHeight - 2);
 
   for (const notification of visibleNotifications) {
-    const icon = DASHBOARD_ICONS.notification[notification.type];
-    const timeAgo = formatTimeAgo(notification.timestamp);
+    const type = notification.type;
+    const icon = (DASHBOARD_ICONS.notification as any)[type] || "ℹ️";
+    const timestamp = notification.created_at ? new Date(notification.created_at) : new Date();
+    const timeAgo = formatTimeAgo(timestamp);
 
     let messageColor = theme.text;
-    if (notification.type === "error") messageColor = theme.error;
-    else if (notification.type === "warning") messageColor = theme.warning;
-    else if (notification.type === "success") messageColor = theme.success;
-    else if (notification.type === "info") messageColor = theme.primary;
+    const t = type as string;
+    if (t === "error" || t === "memory_rejected") messageColor = theme.error;
+    else if (t === "warning") messageColor = theme.warning;
+    else if (t === "success" || t === "memory_approved") messageColor = theme.success;
+    else if (t === "info" || t === "memory_update_pending") messageColor = theme.primary;
 
     const line = `  ${icon} ${colorize(notification.message, messageColor, theme.reset)} ${
       colorize(`(${timeAgo})`, theme.textDim, theme.reset)
@@ -498,7 +472,11 @@ export function renderPaneTitleBar(pane: Pane, theme: Theme): string {
 }
 
 export async function launchTuiDashboard(
-  options: { testMode?: boolean; nonInteractive?: boolean } = {},
+  options: {
+    testMode?: boolean;
+    nonInteractive?: boolean;
+    notificationService?: NotificationService;
+  } = {},
 ): Promise<TuiDashboard | undefined> {
   // Minimal idiomatic dashboard object for TDD
   const portalService = new MockPortalService();
@@ -530,6 +508,8 @@ export async function launchTuiDashboard(
     return v;
   });
 
+  const portalView = views[0];
+
   // Initialize with single pane
   const initialPane: Pane = {
     id: "main",
@@ -552,15 +532,43 @@ export async function launchTuiDashboard(
   let viewPickerIndex = 0;
 
   if (options.testMode) {
-    // Return a testable dashboard object with panes, keyboard nav, and rendering
-    const portalView = views[0];
+    // Initialize notification service if not provided
+    const localNotifs: any[] = [];
+    const notificationService = options.notificationService || {
+      async notify(message: string, type = "info") {
+        localNotifs.unshift({ // Newest first
+          id: crypto.randomUUID(),
+          type,
+          message,
+          created_at: new Date().toISOString(),
+        });
+        await Promise.resolve();
+      },
+      async getNotifications() {
+        return await Promise.resolve(localNotifs.filter((n) => !n.dismissed_at));
+      },
+      async getPendingCount() {
+        return await Promise.resolve(localNotifs.filter((n) => !n.dismissed_at).length);
+      },
+      async clearNotification(id: string) {
+        const notif = localNotifs.find((n) => n.id === id);
+        if (notif) notif.dismissed_at = new Date().toISOString();
+        await Promise.resolve();
+      },
+      async clearAllNotifications() {
+        localNotifs.forEach((n) => n.dismissed_at = new Date().toISOString());
+        await Promise.resolve();
+      },
+    } as unknown as NotificationService;
+
     return {
       panes,
       activePaneId,
       views,
       state,
       theme,
-      handleKey(key: string) {
+      notificationService,
+      async handleKey(key: string) {
         // Handle help overlay
         if (this.state.showHelp) {
           if (key === "?" || key === "escape" || key === "esc") {
@@ -633,7 +641,7 @@ export async function launchTuiDashboard(
             activePane.width = halfWidth;
             const newPane: Pane = {
               id: newId,
-              view: this.views[panes.length % this.views.length],
+              view: views[panes.length % views.length],
               x: activePane.x + halfWidth,
               y: activePane.y,
               width: activePane.width,
@@ -642,7 +650,7 @@ export async function launchTuiDashboard(
               maximized: false,
             };
             panes.push(newPane);
-            this.notify("Pane split vertically", "info");
+            await this.notify("Pane split vertically", "info");
           }
         } else if (key === "h") { // Split horizontal
           const activePane = panes.find((p) => p.id === this.activePaneId);
@@ -661,7 +669,7 @@ export async function launchTuiDashboard(
               maximized: false,
             };
             panes.push(newPane);
-            this.notify("Pane split horizontally", "info");
+            await this.notify("Pane split horizontally", "info");
           }
         } else if (key === "c") { // Close pane
           if (panes.length > 1) {
@@ -669,28 +677,28 @@ export async function launchTuiDashboard(
             panes.splice(index, 1);
             this.activePaneId = panes[0].id;
             panes[0].focused = true;
-            this.notify("Pane closed", "info");
+            await this.notify("Pane closed", "info");
           }
         } else if (key === "z") { // Maximize/restore
           this.maximizePane(this.activePaneId);
         } else if (key === "enter") { // Enter
           // No-op for test
         } else if (key === "s") { // Save layout
-          if (this.saveLayout) this.saveLayout();
+          if (this.saveLayout) await this.saveLayout();
         } else if (key === "r") { // Restore layout
-          if (this.restoreLayout) this.restoreLayout();
+          if (this.restoreLayout) await this.restoreLayout();
         } else if (key === "d") { // Reset to default
-          if (this.resetToDefault) this.resetToDefault();
+          if (this.resetToDefault) await this.resetToDefault();
         }
         return panes.findIndex((p) => p.id === this.activePaneId);
       },
       async render() {
         // Test mode render - does nothing
       },
-      renderStatusBar() {
+      async renderStatusBar() {
         const activePane = panes.find((p) => p.id === this.activePaneId);
         const indicator = renderViewIndicator(panes, this.activePaneId, this.theme);
-        const notificationCount = this.state.notifications.filter((n) => !n.dismissed).length;
+        const notificationCount = await this.notificationService.getPendingCount();
         const notificationBadge = notificationCount > 0 ? ` 🔔${notificationCount}` : "";
         return `${indicator} │ Active: ${activePane?.view.name}${notificationBadge}`;
       },
@@ -700,28 +708,21 @@ export async function launchTuiDashboard(
       renderGlobalHelp() {
         return renderGlobalHelpOverlay(this.theme);
       },
-      renderNotifications() {
-        return renderNotificationPanel(this.state.notifications, this.theme);
+      async renderNotifications() {
+        return await renderNotificationPanel(this.notificationService, this.theme);
       },
       portalManager: {
         service: (portalView as any).service,
         renderPortalList: (portalView as any).renderPortalList.bind(portalView),
       },
-      notify(message: string, type: "info" | "success" | "warning" | "error" = "info") {
-        const notification = createNotification(message, type);
-        this.state.notifications.push(notification);
-
-        // Auto-expire notifications - skip in test mode to avoid timer leaks
-        // In production mode, this would auto-dismiss after duration
+      async notify(message: string, type = "info") {
+        await this.notificationService.notify(message, type);
       },
-      dismissNotification(id: string) {
-        const notification = this.state.notifications.find((n) => n.id === id);
-        if (notification) {
-          notification.dismissed = true;
-        }
+      async dismissNotification(id: string) {
+        await this.notificationService.clearNotification(id);
       },
-      clearNotifications() {
-        this.state.notifications = [];
+      async clearNotifications() {
+        await this.notificationService.clearAllNotifications();
       },
       accessibility: {
         highContrast: false,
@@ -735,7 +736,7 @@ export async function launchTuiDashboard(
         splitHorizontal: "h",
         closePane: "c",
       },
-      splitPane(direction: "vertical" | "horizontal") {
+      async splitPane(direction: "vertical" | "horizontal") {
         const activePane = panes.find((p) => p.id === this.activePaneId);
         if (!activePane) return;
         const newId = `pane-${panes.length}`;
@@ -770,8 +771,9 @@ export async function launchTuiDashboard(
           };
           panes.push(newPane);
         }
+        await this.notify(`Pane split ${direction}`, "info");
       },
-      closePane(paneId: string) {
+      async closePane(paneId: string) {
         const index = panes.findIndex((p) => p.id === paneId);
         if (index === -1 || panes.length === 1) return; // Can't close last pane
         panes.splice(index, 1);
@@ -779,6 +781,7 @@ export async function launchTuiDashboard(
           this.activePaneId = panes[0].id;
           panes[0].focused = true;
         }
+        await this.notify("Pane closed", "info");
       },
       resizePane(paneId: string, deltaWidth: number, deltaHeight: number) {
         const pane = panes.find((p) => p.id === paneId);
@@ -836,7 +839,7 @@ export async function launchTuiDashboard(
         // For testing, we can override this method
         return Promise.resolve();
       },
-      resetToDefault() {
+      async resetToDefault() {
         // Reset to single pane with PortalManagerView
         panes.length = 0;
         panes.push({
@@ -850,8 +853,8 @@ export async function launchTuiDashboard(
           maximized: false,
         });
         this.activePaneId = "main";
-        this.state.notifications = [];
-        this.notify("Layout reset to default", "info");
+        await this.clearNotifications();
+        await this.notify("Layout reset to default", "info");
       },
     } as TuiDashboard;
   }
@@ -859,19 +862,33 @@ export async function launchTuiDashboard(
   // TODO: Replace with full deno-tui integration when available
 
   // Production state
+  // Initialize services for production
+  const _db = {} as any; // TODO: Initialize real DB service
+  const notificationService = options.notificationService || {
+    async getNotifications() {
+      return await Promise.resolve([]);
+    },
+    async getPendingCount() {
+      return await Promise.resolve(0);
+    },
+    async notify() {
+      await Promise.resolve();
+    },
+    async clearNotification() {
+      await Promise.resolve();
+    },
+    async clearAllNotifications() {
+      await Promise.resolve();
+    },
+  } as unknown as NotificationService;
+
   const prodState: DashboardViewState = createDefaultDashboardState();
-  const prodNotifications: Notification[] = [];
 
   // Helper to add notification
   const addNotification = (message: string, type: "info" | "success" | "warning" | "error" = "info") => {
-    const notification = createNotification(message, type);
-    prodNotifications.push(notification);
-    // Auto-expire
-    if (notification.autoExpire) {
-      setTimeout(() => {
-        notification.dismissed = true;
-      }, notification.duration);
-    }
+    // Legacy support for production TUI - using database is better
+    // For now we'll just log it
+    console.log(`[${type}] ${message}`);
   };
 
   // Layout persistence
@@ -952,8 +969,6 @@ export async function launchTuiDashboard(
   console.log("ExoFrame TUI Dashboard");
   console.log("======================");
 
-  const portalView = views[0];
-
   const render = async () => {
     console.clear();
 
@@ -979,7 +994,7 @@ export async function launchTuiDashboard(
 
     // Notification panel
     if (prodState.showNotifications) {
-      const notifLines = renderNotificationPanel(prodNotifications, theme);
+      const notifLines = await renderNotificationPanel(notificationService, theme);
       for (const line of notifLines) {
         console.log(line);
       }
@@ -1015,7 +1030,8 @@ export async function launchTuiDashboard(
     console.log("╠══════════════════════════════════════════════════════════════════════════════╣");
 
     // Show active notifications count
-    const activeNotifs = prodNotifications.filter((n) => !n.dismissed);
+    const allNotifs = await notificationService.getNotifications();
+    const activeNotifs = allNotifs.filter((n: TuiNotification) => !n.dismissed_at);
     const notifBadge = activeNotifs.length > 0 ? ` 🔔 ${activeNotifs.length}` : "";
 
     console.log(`║ Status: Ready${notifBadge.padEnd(64)}║`);

@@ -3,15 +3,14 @@
  *
  * Manages user notifications for memory updates.
  * Part of Phase 12.9: Agent Memory Updates
+ * Updated in Phase 19.2b: Migrated from file-based to SQLite storage
  *
  * Key responsibilities:
- * - Write notifications to System/Notifications/
+ * - Store notifications in journal.db notifications table
  * - Activity Journal integration for audit trail
- * - Notification lifecycle management
+ * - Notification lifecycle management with soft-deletes
  */
 
-import { join } from "@std/path";
-import { ensureDir, exists } from "@std/fs";
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "./db.ts";
 import type { MemoryUpdateProposal } from "../schemas/memory_bank.ts";
@@ -20,25 +19,27 @@ import type { MemoryUpdateProposal } from "../schemas/memory_bank.ts";
  * Notification structure for memory updates
  */
 export interface MemoryNotification {
+  id?: string;
   type: "memory_update_pending" | "memory_approved" | "memory_rejected";
   message: string;
-  proposal_id: string;
-  created_at: string;
+  proposal_id?: string;
+  trace_id?: string;
+  created_at?: string;
+  dismissed_at?: string | null;
+  metadata?: string;
 }
 
 /**
  * Notification Service
  *
- * Handles user notifications for memory updates.
+ * Handles user notifications for memory updates using SQLite storage.
  */
 export class NotificationService {
-  private notificationPath: string;
-
   constructor(
     private config: Config,
     private db: DatabaseService,
   ) {
-    this.notificationPath = join(config.system.root, "System", "Notifications", "memory.json");
+    // No file path needed - using database only!
   }
 
   /**
@@ -47,6 +48,19 @@ export class NotificationService {
    * @param proposal - The pending proposal
    */
   async notifyMemoryUpdate(proposal: MemoryUpdateProposal): Promise<void> {
+    const metadata = JSON.stringify({
+      learning_title: proposal.learning.title,
+      reason: proposal.reason,
+    });
+
+    await this.notify(
+      `Memory update pending: ${proposal.learning.title}`,
+      "memory_update_pending",
+      proposal.id,
+      undefined,
+      metadata,
+    );
+
     // Log to Activity Journal
     this.logActivity({
       event_type: "memory.update.pending",
@@ -57,17 +71,40 @@ export class NotificationService {
         reason: proposal.reason,
       },
     });
+  }
 
-    // Create notification
-    const notification: MemoryNotification = {
-      type: "memory_update_pending",
-      message: `Memory update pending: ${proposal.learning.title}`,
-      proposal_id: proposal.id,
-      created_at: new Date().toISOString(),
-    };
+  /**
+   * Generic notify method
+   */
+  async notify(
+    message: string,
+    type = "info",
+    proposalId?: string,
+    traceId?: string,
+    metadata?: string,
+  ): Promise<void> {
+    const id = crypto.randomUUID();
+    await Promise.resolve(
+      this.db.instance.prepare(`
+      INSERT INTO notifications (id, type, message, proposal_id, trace_id, created_at, metadata)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+          id,
+          type,
+          message,
+          proposalId || null,
+          traceId || null,
+          new Date().toISOString(),
+          metadata || null,
+        ),
+    );
+  }
 
-    // Append to notifications file
-    await this.appendNotification(notification);
+  /**
+   * Expose database for TUI needs
+   */
+  get database(): DatabaseService {
+    return this.db;
   }
 
   /**
@@ -105,21 +142,19 @@ export class NotificationService {
   }
 
   /**
-   * Get all pending notifications
+   * Get all pending notifications (not dismissed)
    *
    * @returns Array of notifications
    */
   async getNotifications(): Promise<MemoryNotification[]> {
-    if (!await exists(this.notificationPath)) {
-      return [];
-    }
+    const rows = this.db.instance.prepare(`
+      SELECT id, type, message, proposal_id, trace_id, created_at, dismissed_at, metadata
+      FROM notifications
+      WHERE dismissed_at IS NULL
+      ORDER BY created_at DESC
+    `).all() as unknown as MemoryNotification[];
 
-    try {
-      const content = await Deno.readTextFile(this.notificationPath);
-      return JSON.parse(content) as MemoryNotification[];
-    } catch {
-      return [];
-    }
+    return await Promise.resolve(rows);
   }
 
   /**
@@ -128,49 +163,44 @@ export class NotificationService {
    * @returns Number of pending notifications
    */
   async getPendingCount(): Promise<number> {
-    const notifications = await this.getNotifications();
-    return notifications.filter((n) => n.type === "memory_update_pending").length;
+    const result = this.db.instance.prepare(`
+      SELECT COUNT(*) as count
+      FROM notifications
+      WHERE type = 'memory_update_pending' AND dismissed_at IS NULL
+    `).get() as { count: number };
+
+    return await Promise.resolve(result?.count || 0);
   }
 
   /**
-   * Clear a specific notification
+   * Clear a specific notification (soft-delete)
    *
    * @param proposalId - Proposal ID to clear
    */
   async clearNotification(proposalId: string): Promise<void> {
-    const notifications = await this.getNotifications();
-    const filtered = notifications.filter((n) => n.proposal_id !== proposalId);
-    await this.writeNotifications(filtered);
+    await Promise.resolve(
+      this.db.instance.prepare(`
+      UPDATE notifications
+      SET dismissed_at = ?
+      WHERE proposal_id = ? AND dismissed_at IS NULL
+    `).run(new Date().toISOString(), proposalId),
+    );
   }
 
   /**
-   * Clear all notifications
+   * Clear all notifications (soft-delete)
    */
   async clearAllNotifications(): Promise<void> {
-    await this.writeNotifications([]);
+    await Promise.resolve(
+      this.db.instance.prepare(`
+      UPDATE notifications
+      SET dismissed_at = ?
+      WHERE dismissed_at IS NULL
+    `).run(new Date().toISOString()),
+    );
   }
 
   // ===== Private Helpers =====
-
-  /**
-   * Append a notification to the file
-   */
-  private async appendNotification(notification: MemoryNotification): Promise<void> {
-    const notifications = await this.getNotifications();
-    notifications.push(notification);
-    await this.writeNotifications(notifications);
-  }
-
-  /**
-   * Write notifications to file
-   */
-  private async writeNotifications(notifications: MemoryNotification[]): Promise<void> {
-    await ensureDir(join(this.config.system.root, "System", "Notifications"));
-    await Deno.writeTextFile(
-      this.notificationPath,
-      JSON.stringify(notifications, null, 2),
-    );
-  }
 
   /**
    * Log activity to Activity Journal

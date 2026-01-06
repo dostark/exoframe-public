@@ -3,6 +3,7 @@ import { ToolRegistry } from "../../src/services/tool_registry.ts";
 import type { DatabaseService } from "../../src/services/db.ts";
 import { createMockConfig } from "./config.ts";
 import { initTestDbService } from "./db.ts";
+import { getMemoryProjectsDir } from "./paths_helper.ts";
 
 /**
  * Test helper for ToolRegistry tests
@@ -42,7 +43,7 @@ export class ToolRegistryTestHelper {
    * Creates the Memory/Projects directory within the temp directory
    */
   async createMemoryProjectsDir(): Promise<string> {
-    const memoryDir = join(this.tempDir, "Memory", "Projects");
+    const memoryDir = getMemoryProjectsDir(this.tempDir);
     await Deno.mkdir(memoryDir, { recursive: true });
     return memoryDir;
   }

@@ -12,7 +12,6 @@
 
 import { assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
-import { exists } from "@std/fs";
 import { initTestDbService } from "../helpers/db.ts";
 import { NotificationService } from "../../src/services/notification.ts";
 import type { MemoryUpdateProposal } from "../../src/schemas/memory_bank.ts";
@@ -92,24 +91,26 @@ Deno.test("NotificationService: notifyMemoryUpdate logs to Activity Journal", as
   }
 });
 
-Deno.test("NotificationService: notifyMemoryUpdate writes notification file", async () => {
-  const { config, notification, cleanup } = await initNotificationTest();
+Deno.test("NotificationService: notifyMemoryUpdate writes notification to database", async () => {
+  const { db, notification, cleanup } = await initNotificationTest();
   try {
     const proposal = createTestProposal();
 
     await notification.notifyMemoryUpdate(proposal);
 
-    // Check notification file exists
-    const notifPath = join(config.system.root, "System", "Notifications", "memory.json");
-    assertEquals(await exists(notifPath), true);
+    // Check notification was written to database
+    const rows = db.instance.prepare(
+      "SELECT * FROM notifications WHERE proposal_id = ?",
+    ).all(proposal.id) as Array<{
+      id: string;
+      type: string;
+      message: string;
+      proposal_id: string;
+    }>;
 
-    // Read and validate content
-    const content = await Deno.readTextFile(notifPath);
-    const notifications = JSON.parse(content);
-    assertEquals(Array.isArray(notifications), true);
-    assertEquals(notifications.length, 1);
-    assertEquals(notifications[0].proposal_id, proposal.id);
-    assertEquals(notifications[0].type, "memory_update_pending");
+    assertEquals(rows.length, 1);
+    assertEquals(rows[0].proposal_id, proposal.id);
+    assertEquals(rows[0].type, "memory_update_pending");
   } finally {
     await cleanup();
   }
