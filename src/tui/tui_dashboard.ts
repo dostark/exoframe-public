@@ -12,6 +12,7 @@
  * - Layout persistence
  */
 
+import process from "node:process";
 import { PortalManagerView } from "./portal_manager_view.ts";
 import { PlanReviewerView } from "./plan_reviewer_view.ts";
 import { MonitorView } from "./monitor_view.ts";
@@ -51,6 +52,8 @@ export interface DashboardViewState {
   currentTheme: string;
   highContrast: boolean;
   screenReader: boolean;
+  showMemoryNotifications: boolean;
+  selectedMemoryNotifIndex: number;
 }
 
 // ===== Dashboard Icons =====
@@ -79,6 +82,9 @@ export const DASHBOARD_ICONS = {
     warning: "⚠️",
     error: "❌",
     bell: "🔔",
+    memory_update_pending: "📝",
+    memory_approved: "✅",
+    memory_rejected: "❌",
   },
   layout: {
     single: "□",
@@ -113,7 +119,8 @@ type DashboardAction =
   | "view_4"
   | "view_5"
   | "view_6"
-  | "view_7";
+  | "view_7"
+  | "show_memory_notifications";
 
 export const DASHBOARD_KEY_BINDINGS: KeyBinding<DashboardAction>[] = [
   // Navigation
@@ -133,6 +140,7 @@ export const DASHBOARD_KEY_BINDINGS: KeyBinding<DashboardAction>[] = [
   // Dialogs
   { key: "?", action: "show_help", description: "Show help", category: "General" },
   { key: "n", action: "show_notifications", description: "Toggle notifications", category: "General" },
+  { key: "m", action: "show_memory_notifications", description: "Memory updates", category: "General" },
   { key: "p", action: "show_view_picker", description: "View picker", category: "General" },
   { key: "Esc/q", action: "quit", description: "Quit dashboard", category: "General" },
 ];
@@ -171,6 +179,7 @@ export function getDashboardHelpSections(): HelpSection[] {
       items: [
         { key: "p", description: "Open view picker dialog" },
         { key: "n", description: "Toggle notification panel" },
+        { key: "m", description: "Toggle memory update notifications" },
         { key: "?", description: "Show this help screen" },
       ],
     },
@@ -243,6 +252,8 @@ export interface TuiDashboard {
   notify(message: string, type?: string): Promise<void>;
   dismissNotification(id: string): Promise<void>;
   clearNotifications(): Promise<void>;
+  approveMemoryUpdate(proposalId: string): Promise<void>;
+  rejectMemoryUpdate(proposalId: string): Promise<void>;
 
   // Legacy support
   portalManager: {
@@ -306,6 +317,8 @@ export function createDefaultDashboardState(): DashboardViewState {
     currentTheme: "dark",
     highContrast: false,
     screenReader: false,
+    showMemoryNotifications: false,
+    selectedMemoryNotifIndex: 0,
   };
 }
 
@@ -349,10 +362,15 @@ export function renderGlobalHelpOverlay(_theme: Theme): string[] {
 export async function renderNotificationPanel(
   notificationService: NotificationService,
   theme: Theme,
+  state: DashboardViewState,
   maxHeight = 10,
 ): Promise<string[]> {
   const lines: string[] = [];
-  const activeNotifications = await notificationService.getNotifications();
+  let activeNotifications = await notificationService.getNotifications();
+
+  if (state.showMemoryNotifications) {
+    activeNotifications = activeNotifications.filter((n) => n.type === "memory_update_pending");
+  }
 
   if (activeNotifications.length === 0) {
     lines.push(colorize("  No notifications", theme.textDim, theme.reset));
@@ -360,9 +378,10 @@ export async function renderNotificationPanel(
   }
 
   // Header
+  const title = state.showMemoryNotifications ? "Pending Memory Updates" : "Notifications";
   lines.push(
     colorize(
-      `${DASHBOARD_ICONS.notification.bell} Notifications (${activeNotifications.length})`,
+      `${DASHBOARD_ICONS.notification.bell} ${title} (${activeNotifications.length})`,
       theme.h2,
       theme.reset,
     ),
@@ -372,11 +391,14 @@ export async function renderNotificationPanel(
   // Show most recent notifications (up to maxHeight - 2 for header)
   const visibleNotifications = activeNotifications.slice(0, maxHeight - 2);
 
-  for (const notification of visibleNotifications) {
+  for (let i = 0; i < visibleNotifications.length; i++) {
+    const notification = visibleNotifications[i];
     const type = notification.type;
     const icon = (DASHBOARD_ICONS.notification as any)[type] || "ℹ️";
     const timestamp = notification.created_at ? new Date(notification.created_at) : new Date();
     const timeAgo = formatTimeAgo(timestamp);
+
+    const isSelected = state.showMemoryNotifications && i === state.selectedMemoryNotifIndex;
 
     let messageColor = theme.text;
     const t = type as string;
@@ -385,9 +407,14 @@ export async function renderNotificationPanel(
     else if (t === "success" || t === "memory_approved") messageColor = theme.success;
     else if (t === "info" || t === "memory_update_pending") messageColor = theme.primary;
 
-    const line = `  ${icon} ${colorize(notification.message, messageColor, theme.reset)} ${
+    const prefix = isSelected ? "▶ " : "  ";
+    let line = `${prefix}${icon} ${colorize(notification.message, messageColor, theme.reset)} ${
       colorize(`(${timeAgo})`, theme.textDim, theme.reset)
     }`;
+
+    if (isSelected) {
+      line = colorize(line, theme.primary, theme.reset);
+    }
     lines.push(line);
   }
 
@@ -577,6 +604,34 @@ export async function launchTuiDashboard(
           return panes.findIndex((p) => p.id === this.activePaneId);
         }
 
+        // Handle memory notifications
+        if (this.state.showMemoryNotifications) {
+          if (key === "escape" || key === "esc" || key === "m") {
+            this.state.showMemoryNotifications = false;
+          } else {
+            const allNotifs = await this.notificationService.getNotifications();
+            const memoryNotifs = allNotifs.filter((n) => n.type === "memory_update_pending");
+            const count = memoryNotifs.length;
+
+            if (key === "up" || key === "k") {
+              if (count > 0) {
+                this.state.selectedMemoryNotifIndex = (this.state.selectedMemoryNotifIndex - 1 + count) % count;
+              }
+            } else if (key === "down" || key === "j") {
+              if (count > 0) {
+                this.state.selectedMemoryNotifIndex = (this.state.selectedMemoryNotifIndex + 1) % count;
+              }
+            } else if (key === "a" && count > 0) {
+              const selected = memoryNotifs[this.state.selectedMemoryNotifIndex];
+              await this.approveMemoryUpdate((selected.proposal_id || selected.id) as string);
+            } else if (key === "r" && count > 0) {
+              const selected = memoryNotifs[this.state.selectedMemoryNotifIndex];
+              await this.rejectMemoryUpdate((selected.proposal_id || selected.id) as string);
+            }
+          }
+          return panes.findIndex((p) => p.id === this.activePaneId);
+        }
+
         // Handle view picker
         if (this.state.showViewPicker) {
           if (key === "escape" || key === "esc") {
@@ -613,6 +668,9 @@ export async function launchTuiDashboard(
           viewPickerIndex = 0;
         } else if (key === "n") {
           this.state.showNotifications = !this.state.showNotifications;
+        } else if (key === "m") {
+          this.state.showMemoryNotifications = !this.state.showMemoryNotifications;
+          this.state.selectedMemoryNotifIndex = 0;
         } else if (key === "tab") {
           const currentIndex = panes.findIndex((p) => p.id === this.activePaneId);
           const nextIndex = (currentIndex + 1) % panes.length;
@@ -709,7 +767,13 @@ export async function launchTuiDashboard(
         return renderGlobalHelpOverlay(this.theme);
       },
       async renderNotifications() {
-        return await renderNotificationPanel(this.notificationService, this.theme);
+        return await renderNotificationPanel(this.notificationService, this.theme, this.state);
+      },
+      async approveMemoryUpdate(_proposalId: string) {
+        await this.notify("Memory update approved (test)", "success");
+      },
+      async rejectMemoryUpdate(_proposalId: string) {
+        await this.notify("Memory update rejected (test)", "error");
       },
       portalManager: {
         service: (portalView as any).service,
@@ -993,12 +1057,18 @@ export async function launchTuiDashboard(
     }
 
     // Notification panel
-    if (prodState.showNotifications) {
-      const notifLines = await renderNotificationPanel(notificationService, theme);
+    if (prodState.showNotifications || prodState.showMemoryNotifications) {
+      const notifLines = await renderNotificationPanel(notificationService, theme, prodState);
       for (const line of notifLines) {
         console.log(line);
       }
-      console.log("\nPress n to close notifications");
+      const closeKey = prodState.showMemoryNotifications ? "m" : "n";
+      process.stdout.write(`\nPress ${closeKey} to close`);
+      if (prodState.showMemoryNotifications) {
+        process.stdout.write(" | a: Approve | r: Reject | Up/Down: Navigate\n");
+      } else {
+        process.stdout.write("\n");
+      }
       return;
     }
 
@@ -1074,6 +1144,41 @@ export async function launchTuiDashboard(
             continue;
           }
 
+          // Handle memory notifications
+          if (prodState.showMemoryNotifications) {
+            if (key === "m" || key === "\x1b") {
+              prodState.showMemoryNotifications = false;
+              await render();
+            } else {
+              const allNotifs = await notificationService.getNotifications();
+              const memoryNotifs = allNotifs.filter((n: TuiNotification) => n.type === "memory_update_pending");
+              const count = memoryNotifs.length;
+
+              if (key === "\x1b[A" || key === "k") { // Up arrow
+                if (count > 0) {
+                  prodState.selectedMemoryNotifIndex = (prodState.selectedMemoryNotifIndex - 1 + count) % count;
+                  await render();
+                }
+              } else if (key === "\x1b[B" || key === "j") { // Down arrow
+                if (count > 0) {
+                  prodState.selectedMemoryNotifIndex = (prodState.selectedMemoryNotifIndex + 1) % count;
+                  await render();
+                }
+              } else if (key === "a" && count > 0) {
+                const selected = memoryNotifs[prodState.selectedMemoryNotifIndex];
+                await notificationService.notify(`Approved: ${selected.message}`, "success");
+                await notificationService.clearNotification((selected.proposal_id || selected.id) as string);
+                await render();
+              } else if (key === "r" && count > 0) {
+                const selected = memoryNotifs[prodState.selectedMemoryNotifIndex];
+                await notificationService.notify(`Rejected: ${selected.message}`, "error");
+                await notificationService.clearNotification((selected.proposal_id || selected.id) as string);
+                await render();
+              }
+            }
+            continue;
+          }
+
           // Handle notification panel
           if (prodState.showNotifications) {
             if (key === "n" || key === "\x1b") {
@@ -1090,6 +1195,10 @@ export async function launchTuiDashboard(
             await render();
           } else if (key === "n") { // Notifications
             prodState.showNotifications = !prodState.showNotifications;
+            await render();
+          } else if (key === "m") { // Memory Updates
+            prodState.showMemoryNotifications = !prodState.showMemoryNotifications;
+            prodState.selectedMemoryNotifIndex = 0;
             await render();
           } else if (key === "\t") { // Tab
             const currentIndex = panes.findIndex((p) => p.id === activePaneId);
@@ -1222,6 +1331,41 @@ export async function launchTuiDashboard(
             continue;
           }
 
+          // Handle memory notifications
+          if (prodState.showMemoryNotifications) {
+            if (cmd === "m" || cmd === "esc" || cmd === "escape") {
+              prodState.showMemoryNotifications = false;
+              await render();
+            } else {
+              const allNotifs = await notificationService.getNotifications();
+              const memoryNotifs = allNotifs.filter((n: TuiNotification) => n.type === "memory_update_pending");
+              const count = memoryNotifs.length;
+
+              if (cmd === "up" || cmd === "k") {
+                if (count > 0) {
+                  prodState.selectedMemoryNotifIndex = (prodState.selectedMemoryNotifIndex - 1 + count) % count;
+                  await render();
+                }
+              } else if (cmd === "down" || cmd === "j") {
+                if (count > 0) {
+                  prodState.selectedMemoryNotifIndex = (prodState.selectedMemoryNotifIndex + 1) % count;
+                  await render();
+                }
+              } else if (cmd === "a" && count > 0) {
+                const selected = memoryNotifs[prodState.selectedMemoryNotifIndex];
+                await notificationService.notify(`Approved: ${selected.message}`, "success");
+                await notificationService.clearNotification((selected.proposal_id || selected.id) as string);
+                await render();
+              } else if (cmd === "r" && count > 0) {
+                const selected = memoryNotifs[prodState.selectedMemoryNotifIndex];
+                await notificationService.notify(`Rejected: ${selected.message}`, "error");
+                await notificationService.clearNotification((selected.proposal_id || selected.id) as string);
+                await render();
+              }
+            }
+            continue;
+          }
+
           // Handle notification panel
           if (prodState.showNotifications) {
             if (cmd === "n" || cmd === "esc" || cmd === "escape") {
@@ -1240,6 +1384,12 @@ export async function launchTuiDashboard(
           }
           if (cmd === "n") {
             prodState.showNotifications = !prodState.showNotifications;
+            await render();
+            continue;
+          }
+          if (cmd === "m") {
+            prodState.showMemoryNotifications = !prodState.showMemoryNotifications;
+            prodState.selectedMemoryNotifIndex = 0;
             await render();
             continue;
           }

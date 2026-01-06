@@ -20,7 +20,7 @@ import type { MemoryUpdateProposal } from "../schemas/memory_bank.ts";
  */
 export interface MemoryNotification {
   id?: string;
-  type: "memory_update_pending" | "memory_approved" | "memory_rejected";
+  type: "memory_update_pending" | "memory_approved" | "memory_rejected" | "info" | "success" | "warning" | "error";
   message: string;
   proposal_id?: string;
   trace_id?: string;
