@@ -1632,7 +1632,7 @@ if (planPath) {
 1. Parses TOML frontmatter from request files
 2. Loads agent blueprints from `Blueprints/Agents/`
 3. Calls AgentRunner with LLM provider to generate plan content
-4. Writes plans to `Inbox/Plans/` using PlanWriter
+4. Writes plans to `Workspace/Plans/` using PlanWriter
 5. Updates request status (`pending` → `planned` | `failed`)
 6. Logs all activities to Activity Journal with trace_id correlation
 

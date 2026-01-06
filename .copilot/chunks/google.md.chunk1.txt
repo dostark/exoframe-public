@@ -1,5 +1,5 @@
-- Process: `agents/process/self-improvement.md`
-- Template: `agents/prompts/self-improvement-loop.md`
+- Process: `.copilot/process/self-improvement.md`
+- Template: `.copilot/prompts/self-improvement-loop.md`
 - Gemini-specific tip: use long-context to include the relevant `agents/` docs + the exact gap list, then propose a small doc patch (examples/checklists) and continue.
 
 ## Task-Specific Prompts

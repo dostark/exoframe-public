@@ -147,4 +147,4 @@ Test your blueprint with:
 exoctl request "Your test request" --agent my-agent
 ```
 
-Check the generated plan in `Inbox/Plans/` - it should contain properly formatted markdown converted from JSON.
+Check the generated plan in `Workspace/Plans/` - it should contain properly formatted markdown converted from JSON.

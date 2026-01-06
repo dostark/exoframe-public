@@ -194,8 +194,8 @@ Deno.test("Integration: Plan Revision - Request to Revised Plan", async (t) => {
       const activePath = await env.approvePlan(planPath);
 
       // Verify plan moved to Active
-      const activeExists = await env.fileExists("System/Active/file-reader_plan.md");
-      assertEquals(activeExists, true, "Plan should be in /System/Active");
+      const activeExists = await env.fileExists("Workspace/Active/file-reader_plan.md");
+      assertEquals(activeExists, true, "Plan should be in Workspace/Active");
 
       // Verify status updated
       const content = await Deno.readTextFile(activePath);

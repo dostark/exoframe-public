@@ -2,7 +2,7 @@
  * Tests for scaffold.sh script (Step 1.1: Scaffold Directory Structure)
  *
  * Success Criteria:
- * - Test 1: Creates required directory structure (Inbox, Blueprints, etc.)
+ * - Test 1: Creates required directory structure (Workspace, Blueprints, etc.)
  * - Test 2: Creates .gitkeep files in empty directories
  * - Test 3: Copies exo.config.sample.toml template
  * - Test 4: Copies src/main.ts and Memory/README.md templates
@@ -54,8 +54,8 @@ Deno.test("scaffold.sh creates required directory structure", async () => {
       "System",
       "Blueprints/Agents",
       "Blueprints/Flows",
-      "Inbox/Requests",
-      "Inbox/Plans",
+      "Workspace/Requests",
+      "Workspace/Plans",
       "Memory/Projects",
       "Memory/Execution",
       "Memory/Tasks",
@@ -86,8 +86,8 @@ Deno.test("scaffold.sh creates .gitkeep files", async () => {
       "System/.gitkeep",
       "Blueprints/Agents/.gitkeep",
       "Blueprints/Flows/.gitkeep",
-      "Inbox/Requests/.gitkeep",
-      "Inbox/Plans/.gitkeep",
+      "Workspace/Requests/.gitkeep",
+      "Workspace/Plans/.gitkeep",
       "Memory/.gitkeep",
       "Portals/.gitkeep",
     ];
@@ -202,7 +202,7 @@ Deno.test("scaffold.sh is idempotent", async () => {
     const requiredDirs = [
       "System",
       "Blueprints/Agents",
-      "Inbox/Requests",
+      "Workspace/Requests",
       "Memory/Reports",
       "Portals",
     ];

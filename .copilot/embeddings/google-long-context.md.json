@@ -1,5 +1,5 @@
 {
-  "path": "agents/providers/google-long-context.md",
+  "path": ".copilot/providers/google-long-context.md",
   "title": "Gemini Long-Context Reasoning Guide",
   "vecs": [
     {

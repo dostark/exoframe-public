@@ -2,7 +2,7 @@
 agent: copilot
 scope: dev
 title: ExoFrame quick reference for Copilot
-short_summary: "Deno + TypeScript Flow-driven AI automation. Key dirs: src/, tests/, Blueprints/, docs/. Consult agents/manifest.json before edits."
+short_summary: "Deno + TypeScript Flow-driven AI automation. Key dirs: src/, tests/, Blueprints/, docs/. Consult .copilot/manifest.json before edits."
 version: "0.1"
 topics: ["repo-overview","testing","flows","obsidian"]
 ---
@@ -18,7 +18,7 @@ Quick notes
 - Tests: `tests/` (use `initTestDbService()` and `createCliTestContext()` helpers)
 
 Canonical prompt (short):
-"You are a repository-aware coding assistant for ExoFrame. Read the `agents/manifest.json` and include any `short_summary` matches before replying. When proposing code, prefer existing helpers and tests, and add unit tests for behavior changes."
+"You are a repository-aware coding assistant for ExoFrame. Read the `.copilot/manifest.json` and include any `short_summary` matches before replying. When proposing code, prefer existing helpers and tests, and add unit tests for behavior changes."
 
 Examples
 - "Add a test that verifies PlanWriter handles empty JSON files"
@@ -31,7 +31,7 @@ Philosophy & Workflow
 - **Question->Action Loop**: Ask questions -> Agent investigates -> You decide -> Agent implements. Don't let the agent guess.
 
 Do / Don't
-- ✅ Do consult `agents/manifest.json` and `agents/copilot/exoframe.md` before applying repo-specific assumptions.
+- ✅ Do consult `.copilot/manifest.json` and `agents/copilot/exoframe.md` before applying repo-specific assumptions.
 - ❌ Don't assume production agent blueprint semantics when modifying these docs — runtime agents live in `Blueprints/Agents/`.
 - ❌ Don't suggest Web UI/React for core features. ExoFrame is TUI-first (Terminal User Interface).
 - ✅ Do distinguish between `Flows/examples/` (runnable) and `Flows/templates/` (scaffolding).

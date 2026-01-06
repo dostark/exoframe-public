@@ -2,7 +2,7 @@
  * Integration Test: Plan Execution Detection
  * Tests Step 5.12.1 Detection - Plan Execution Flow
  *
- * Validates that the daemon detects approved plans in System/Active/
+ * Validates that the daemon detects approved plans in Workspace/Active/
  * and logs detection events to the Activity Journal.
  */
 
@@ -10,6 +10,7 @@ import { assertEquals, assertExists, assertStringIncludes } from "jsr:@std/asser
 import { join } from "@std/path";
 import { ensureDir } from "@std/fs";
 import { TestEnvironment } from "./helpers/test_environment.ts";
+import { getWorkspaceActiveDir } from "../helpers/paths_helper.ts";
 
 Deno.test("Integration: Plan Execution Detection - approved plan detected", async () => {
   const env = await TestEnvironment.create({
@@ -20,8 +21,8 @@ Deno.test("Integration: Plan Execution Detection - approved plan detected", asyn
   });
 
   try {
-    // Step 1: Ensure System/Active directory exists
-    const activePath = join(env.tempDir, "System", "Active");
+    // Step 1: Ensure Workspace/Active directory exists
+    const activePath = getWorkspaceActiveDir(env.tempDir);
     await ensureDir(activePath);
 
     // Step 2: Create an approved plan file (simulating plan approval)
@@ -95,8 +96,8 @@ Deno.test("Integration: Plan Execution Detection - ignores non-plan files", asyn
   });
 
   try {
-    // Step 1: Create various files in System/Active
-    const activePath = join(env.tempDir, "System", "Active");
+    // Step 1: Create various files in Workspace/Active
+    const activePath = getWorkspaceActiveDir(env.tempDir);
     await ensureDir(activePath);
 
     // Create non-plan files
@@ -150,8 +151,8 @@ Deno.test("Integration: Plan Execution Detection - handles invalid plan graceful
   });
 
   try {
-    // Step 1: Create System/Active directory
-    const activePath = join(env.tempDir, "System", "Active");
+    // Step 1: Create Workspace/Active directory
+    const activePath = getWorkspaceActiveDir(env.tempDir);
     await ensureDir(activePath);
 
     // Step 2: Create plan with invalid YAML
@@ -191,8 +192,8 @@ Deno.test("Integration: Plan Execution Detection - handles missing trace_id", as
   });
 
   try {
-    // Step 1: Create System/Active directory
-    const activePath = join(env.tempDir, "System", "Active");
+    // Step 1: Create Workspace/Active directory
+    const activePath = getWorkspaceActiveDir(env.tempDir);
     await ensureDir(activePath);
 
     // Step 2: Create plan without trace_id

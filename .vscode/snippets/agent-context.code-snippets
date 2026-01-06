@@ -5,10 +5,10 @@
     "body": [
       "<!-- Agent Context: Inserted by snippet -->",
       "System: You are a repository-aware coding assistant for ExoFrame.",
-      "Consult agents/manifest.json and include the short_summary for relevant docs before replying.",
+      "Consult .copilot/manifest.json and include the short_summary for relevant docs before replying.",
       "Task: $1",
       ""
     ],
-    "description": "Insert agent context template that instructs Copilot to consult agents/manifest.json"
+    "description": "Insert agent context template that instructs Copilot to consult .copilot/manifest.json"
   }
 }

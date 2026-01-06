@@ -4,7 +4,7 @@
  * Service for generating and searching embeddings for memory learnings.
  * Uses deterministic mock vectors (no external API calls) for semantic search.
  *
- * This follows the pattern established in agents/embeddings/ for
+ * This follows the pattern established in .copilot/embeddings/ for
  * precomputed embeddings.
  *
  * Phase 12.10: Tag-Based Search & Simple RAG
@@ -185,7 +185,7 @@ export class MemoryEmbeddingService {
    * @param learning - Learning to embed
    */
   async embedLearning(learning: Learning): Promise<void> {
-    await ensureDir(this.embeddingsDir);
+    await this.initializeManifest();
 
     // Generate text for embedding (title + description)
     const text = `${learning.title} ${learning.description}`;
@@ -258,6 +258,7 @@ export class MemoryEmbeddingService {
     query: string,
     options?: { limit?: number; threshold?: number },
   ): Promise<EmbeddingSearchResult[]> {
+    await this.initializeManifest();
     const limit = options?.limit || 10;
     const threshold = options?.threshold || 0.0;
 
@@ -318,6 +319,7 @@ export class MemoryEmbeddingService {
    * @returns Embedding vector or null if not found
    */
   async getEmbedding(id: string): Promise<number[] | null> {
+    await this.initializeManifest();
     const embeddingPath = join(this.embeddingsDir, `${id}.json`);
     if (!await exists(embeddingPath)) {
       return null;
@@ -338,6 +340,7 @@ export class MemoryEmbeddingService {
    * @param id - Learning ID
    */
   async deleteEmbedding(id: string): Promise<void> {
+    await this.initializeManifest();
     const embeddingPath = join(this.embeddingsDir, `${id}.json`);
     if (await exists(embeddingPath)) {
       await Deno.remove(embeddingPath);
@@ -359,6 +362,7 @@ export class MemoryEmbeddingService {
    * @returns Embedding statistics
    */
   async getStats(): Promise<{ total: number; generated_at: string }> {
+    await this.initializeManifest();
     if (!await exists(this.manifestPath)) {
       return { total: 0, generated_at: "" };
     }

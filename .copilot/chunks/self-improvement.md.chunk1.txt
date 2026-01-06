@@ -1,9 +1,9 @@
 2. **Retrieve relevant instructions**
-   - Start with `agents/cross-reference.md` to find the primary docs.
+   - Start with `.copilot/cross-reference.md` to find the primary docs.
    - Read the provider guide for the active model:
-     - Claude: `agents/providers/claude.md`
-     - OpenAI: `agents/providers/openai.md`
-     - Google: `agents/providers/google.md`
+     - Claude: `.copilot/providers/claude.md`
+     - OpenAI: `.copilot/providers/openai.md`
+     - Google: `.copilot/providers/google.md`
    - Inject additional docs via `scripts/inject_agent_context.ts` when needed.
 
 3. **Adequacy verdict**

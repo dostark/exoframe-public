@@ -1,5 +1,5 @@
 {
-  "path": "agents/prompts/openai-rag-context-injection.md",
+  "path": ".copilot/prompts/openai-rag-context-injection.md",
   "title": "OpenAI RAG Context Injection (inspect → inject)",
   "vecs": [
     {

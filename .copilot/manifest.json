@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-01-05T18:42:10.612Z",
+  "generated_at": "2026-01-06T19:17:37.507Z",
   "docs": [
     {
-      "path": "agents/docs/documentation.md",
+      "path": ".copilot/docs/documentation.md",
       "agent": "copilot",
       "scope": "dev",
       "title": "ExoFrame Documentation Development Guidelines",
@@ -14,23 +14,23 @@
         "publishing"
       ],
       "chunks": [
-        "agents/chunks/documentation.md.chunk0.txt",
-        "agents/chunks/documentation.md.chunk1.txt",
-        "agents/chunks/documentation.md.chunk2.txt",
-        "agents/chunks/documentation.md.chunk3.txt",
-        "agents/chunks/documentation.md.chunk4.txt",
-        "agents/chunks/documentation.md.chunk5.txt"
+        ".copilot/chunks/documentation.md.chunk0.txt",
+        ".copilot/chunks/documentation.md.chunk1.txt",
+        ".copilot/chunks/documentation.md.chunk2.txt",
+        ".copilot/chunks/documentation.md.chunk3.txt",
+        ".copilot/chunks/documentation.md.chunk4.txt",
+        ".copilot/chunks/documentation.md.chunk5.txt"
       ]
     },
     {
-      "path": "agents/coverage/coverage-summary.md",
+      "path": ".copilot/coverage/coverage-summary.md",
       "short_summary": "",
       "chunks": [
-        "agents/chunks/coverage-summary.md.chunk0.txt"
+        ".copilot/chunks/coverage-summary.md.chunk0.txt"
       ]
     },
     {
-      "path": "agents/prompts/openai-debugging-systematic.md",
+      "path": ".copilot/prompts/openai-debugging-systematic.md",
       "agent": "openai",
       "scope": "dev",
       "title": "OpenAI Debugging: Reproduce → Diagnose → Fix → Verify",
@@ -43,12 +43,12 @@
         "diff-first"
       ],
       "chunks": [
-        "agents/chunks/openai-debugging-systematic.md.chunk0.txt",
-        "agents/chunks/openai-debugging-systematic.md.chunk1.txt"
+        ".copilot/chunks/openai-debugging-systematic.md.chunk0.txt",
+        ".copilot/chunks/openai-debugging-systematic.md.chunk1.txt"
       ]
     },
     {
-      "path": "agents/prompts/refactoring-with-thinking.md",
+      "path": ".copilot/prompts/refactoring-with-thinking.md",
       "agent": "claude",
       "scope": "dev",
       "title": "Refactoring with Thinking Protocol Prompt",
@@ -61,14 +61,14 @@
         "examples"
       ],
       "chunks": [
-        "agents/chunks/refactoring-with-thinking.md.chunk0.txt",
-        "agents/chunks/refactoring-with-thinking.md.chunk1.txt",
-        "agents/chunks/refactoring-with-thinking.md.chunk2.txt",
-        "agents/chunks/refactoring-with-thinking.md.chunk3.txt"
+        ".copilot/chunks/refactoring-with-thinking.md.chunk0.txt",
+        ".copilot/chunks/refactoring-with-thinking.md.chunk1.txt",
+        ".copilot/chunks/refactoring-with-thinking.md.chunk2.txt",
+        ".copilot/chunks/refactoring-with-thinking.md.chunk3.txt"
       ]
     },
     {
-      "path": "agents/prompts/commit-message.md",
+      "path": ".copilot/prompts/commit-message.md",
       "agent": "claude",
       "scope": "dev",
       "title": "Detailed Commit Message Prompt",
@@ -81,18 +81,18 @@
         "best-practices"
       ],
       "chunks": [
-        "agents/chunks/commit-message.md.chunk0.txt",
-        "agents/chunks/commit-message.md.chunk1.txt",
-        "agents/chunks/commit-message.md.chunk2.txt",
-        "agents/chunks/commit-message.md.chunk3.txt",
-        "agents/chunks/commit-message.md.chunk4.txt",
-        "agents/chunks/commit-message.md.chunk5.txt",
-        "agents/chunks/commit-message.md.chunk6.txt",
-        "agents/chunks/commit-message.md.chunk7.txt"
+        ".copilot/chunks/commit-message.md.chunk0.txt",
+        ".copilot/chunks/commit-message.md.chunk1.txt",
+        ".copilot/chunks/commit-message.md.chunk2.txt",
+        ".copilot/chunks/commit-message.md.chunk3.txt",
+        ".copilot/chunks/commit-message.md.chunk4.txt",
+        ".copilot/chunks/commit-message.md.chunk5.txt",
+        ".copilot/chunks/commit-message.md.chunk6.txt",
+        ".copilot/chunks/commit-message.md.chunk7.txt"
       ]
     },
     {
-      "path": "agents/prompts/debugging-systematic.md",
+      "path": ".copilot/prompts/debugging-systematic.md",
       "agent": "claude",
       "scope": "dev",
       "title": "Systematic Debugging Prompt",
@@ -105,17 +105,17 @@
         "examples"
       ],
       "chunks": [
-        "agents/chunks/debugging-systematic.md.chunk0.txt",
-        "agents/chunks/debugging-systematic.md.chunk1.txt",
-        "agents/chunks/debugging-systematic.md.chunk2.txt",
-        "agents/chunks/debugging-systematic.md.chunk3.txt",
-        "agents/chunks/debugging-systematic.md.chunk4.txt",
-        "agents/chunks/debugging-systematic.md.chunk5.txt",
-        "agents/chunks/debugging-systematic.md.chunk6.txt"
+        ".copilot/chunks/debugging-systematic.md.chunk0.txt",
+        ".copilot/chunks/debugging-systematic.md.chunk1.txt",
+        ".copilot/chunks/debugging-systematic.md.chunk2.txt",
+        ".copilot/chunks/debugging-systematic.md.chunk3.txt",
+        ".copilot/chunks/debugging-systematic.md.chunk4.txt",
+        ".copilot/chunks/debugging-systematic.md.chunk5.txt",
+        ".copilot/chunks/debugging-systematic.md.chunk6.txt"
       ]
     },
     {
-      "path": "agents/prompts/google-quickstart.md",
+      "path": ".copilot/prompts/google-quickstart.md",
       "agent": "google",
       "scope": "dev",
       "title": "Gemini Quickstart Prompt",
@@ -128,12 +128,12 @@
         "long-context"
       ],
       "chunks": [
-        "agents/chunks/google-quickstart.md.chunk0.txt",
-        "agents/chunks/google-quickstart.md.chunk1.txt"
+        ".copilot/chunks/google-quickstart.md.chunk0.txt",
+        ".copilot/chunks/google-quickstart.md.chunk1.txt"
       ]
     },
     {
-      "path": "agents/prompts/openai-tdd-workflow.md",
+      "path": ".copilot/prompts/openai-tdd-workflow.md",
       "agent": "openai",
       "scope": "dev",
       "title": "OpenAI TDD Workflow (tests first)",
@@ -147,12 +147,12 @@
         "diff-first"
       ],
       "chunks": [
-        "agents/chunks/openai-tdd-workflow.md.chunk0.txt",
-        "agents/chunks/openai-tdd-workflow.md.chunk1.txt"
+        ".copilot/chunks/openai-tdd-workflow.md.chunk0.txt",
+        ".copilot/chunks/openai-tdd-workflow.md.chunk1.txt"
       ]
     },
     {
-      "path": "agents/prompts/README.md",
+      "path": ".copilot/prompts/README.md",
       "agent": "claude",
       "scope": "dev",
       "title": "Prompt Examples README",
@@ -165,18 +165,18 @@
         "best-practices"
       ],
       "chunks": [
-        "agents/chunks/README.md.chunk0.txt",
-        "agents/chunks/README.md.chunk1.txt",
-        "agents/chunks/README.md.chunk2.txt",
-        "agents/chunks/README.md.chunk3.txt",
-        "agents/chunks/README.md.chunk4.txt",
-        "agents/chunks/README.md.chunk5.txt",
-        "agents/chunks/README.md.chunk6.txt",
-        "agents/chunks/README.md.chunk7.txt"
+        ".copilot/chunks/README.md.chunk0.txt",
+        ".copilot/chunks/README.md.chunk1.txt",
+        ".copilot/chunks/README.md.chunk2.txt",
+        ".copilot/chunks/README.md.chunk3.txt",
+        ".copilot/chunks/README.md.chunk4.txt",
+        ".copilot/chunks/README.md.chunk5.txt",
+        ".copilot/chunks/README.md.chunk6.txt",
+        ".copilot/chunks/README.md.chunk7.txt"
       ]
     },
     {
-      "path": "agents/prompts/rag-context-injection.md",
+      "path": ".copilot/prompts/rag-context-injection.md",
       "agent": "claude",
       "scope": "dev",
       "title": "RAG Context Injection Prompt",
@@ -189,15 +189,15 @@
         "prompts"
       ],
       "chunks": [
-        "agents/chunks/rag-context-injection.md.chunk0.txt",
-        "agents/chunks/rag-context-injection.md.chunk1.txt",
-        "agents/chunks/rag-context-injection.md.chunk2.txt",
-        "agents/chunks/rag-context-injection.md.chunk3.txt",
-        "agents/chunks/rag-context-injection.md.chunk4.txt"
+        ".copilot/chunks/rag-context-injection.md.chunk0.txt",
+        ".copilot/chunks/rag-context-injection.md.chunk1.txt",
+        ".copilot/chunks/rag-context-injection.md.chunk2.txt",
+        ".copilot/chunks/rag-context-injection.md.chunk3.txt",
+        ".copilot/chunks/rag-context-injection.md.chunk4.txt"
       ]
     },
     {
-      "path": "agents/prompts/openai-rag-context-injection.md",
+      "path": ".copilot/prompts/openai-rag-context-injection.md",
       "agent": "openai",
       "scope": "dev",
       "title": "OpenAI RAG Context Injection (inspect → inject)",
@@ -211,12 +211,12 @@
         "prompts"
       ],
       "chunks": [
-        "agents/chunks/openai-rag-context-injection.md.chunk0.txt",
-        "agents/chunks/openai-rag-context-injection.md.chunk1.txt"
+        ".copilot/chunks/openai-rag-context-injection.md.chunk0.txt",
+        ".copilot/chunks/openai-rag-context-injection.md.chunk1.txt"
       ]
     },
     {
-      "path": "agents/prompts/tdd-workflow.md",
+      "path": ".copilot/prompts/tdd-workflow.md",
       "agent": "claude",
       "scope": "dev",
       "title": "TDD Workflow Prompt Example",
@@ -229,13 +229,13 @@
         "examples"
       ],
       "chunks": [
-        "agents/chunks/tdd-workflow.md.chunk0.txt",
-        "agents/chunks/tdd-workflow.md.chunk1.txt",
-        "agents/chunks/tdd-workflow.md.chunk2.txt"
+        ".copilot/chunks/tdd-workflow.md.chunk0.txt",
+        ".copilot/chunks/tdd-workflow.md.chunk1.txt",
+        ".copilot/chunks/tdd-workflow.md.chunk2.txt"
       ]
     },
     {
-      "path": "agents/prompts/google-tdd-workflow.md",
+      "path": ".copilot/prompts/google-tdd-workflow.md",
       "agent": "google",
       "scope": "dev",
       "title": "Gemini TDD Workflow Prompt",
@@ -248,12 +248,12 @@
         "exhaustive-testing"
       ],
       "chunks": [
-        "agents/chunks/google-tdd-workflow.md.chunk0.txt",
-        "agents/chunks/google-tdd-workflow.md.chunk1.txt"
+        ".copilot/chunks/google-tdd-workflow.md.chunk0.txt",
+        ".copilot/chunks/google-tdd-workflow.md.chunk1.txt"
       ]
     },
     {
-      "path": "agents/prompts/openai-quickstart.md",
+      "path": ".copilot/prompts/openai-quickstart.md",
       "agent": "openai",
       "scope": "dev",
       "title": "OpenAI Quickstart: Use agents/ first",
@@ -267,12 +267,12 @@
         "prompts"
       ],
       "chunks": [
-        "agents/chunks/openai-quickstart.md.chunk0.txt",
-        "agents/chunks/openai-quickstart.md.chunk1.txt"
+        ".copilot/chunks/openai-quickstart.md.chunk0.txt",
+        ".copilot/chunks/openai-quickstart.md.chunk1.txt"
       ]
     },
     {
-      "path": "agents/prompts/implementation-plan-driven.md",
+      "path": ".copilot/prompts/implementation-plan-driven.md",
       "agent": "claude",
       "scope": "dev",
       "title": "Implementation Plan Driven Development Prompt",
@@ -285,18 +285,18 @@
         "examples"
       ],
       "chunks": [
-        "agents/chunks/implementation-plan-driven.md.chunk0.txt",
-        "agents/chunks/implementation-plan-driven.md.chunk1.txt",
-        "agents/chunks/implementation-plan-driven.md.chunk2.txt",
-        "agents/chunks/implementation-plan-driven.md.chunk3.txt",
-        "agents/chunks/implementation-plan-driven.md.chunk4.txt",
-        "agents/chunks/implementation-plan-driven.md.chunk5.txt",
-        "agents/chunks/implementation-plan-driven.md.chunk6.txt",
-        "agents/chunks/implementation-plan-driven.md.chunk7.txt"
+        ".copilot/chunks/implementation-plan-driven.md.chunk0.txt",
+        ".copilot/chunks/implementation-plan-driven.md.chunk1.txt",
+        ".copilot/chunks/implementation-plan-driven.md.chunk2.txt",
+        ".copilot/chunks/implementation-plan-driven.md.chunk3.txt",
+        ".copilot/chunks/implementation-plan-driven.md.chunk4.txt",
+        ".copilot/chunks/implementation-plan-driven.md.chunk5.txt",
+        ".copilot/chunks/implementation-plan-driven.md.chunk6.txt",
+        ".copilot/chunks/implementation-plan-driven.md.chunk7.txt"
       ]
     },
     {
-      "path": "agents/prompts/cross-reference-navigation.md",
+      "path": ".copilot/prompts/cross-reference-navigation.md",
       "agent": "claude",
       "scope": "dev",
       "title": "Cross-Reference Navigation Prompt",
@@ -309,15 +309,15 @@
         "workflow"
       ],
       "chunks": [
-        "agents/chunks/cross-reference-navigation.md.chunk0.txt",
-        "agents/chunks/cross-reference-navigation.md.chunk1.txt",
-        "agents/chunks/cross-reference-navigation.md.chunk2.txt",
-        "agents/chunks/cross-reference-navigation.md.chunk3.txt",
-        "agents/chunks/cross-reference-navigation.md.chunk4.txt"
+        ".copilot/chunks/cross-reference-navigation.md.chunk0.txt",
+        ".copilot/chunks/cross-reference-navigation.md.chunk1.txt",
+        ".copilot/chunks/cross-reference-navigation.md.chunk2.txt",
+        ".copilot/chunks/cross-reference-navigation.md.chunk3.txt",
+        ".copilot/chunks/cross-reference-navigation.md.chunk4.txt"
       ]
     },
     {
-      "path": "agents/prompts/update-building-with-ai-agents.md",
+      "path": ".copilot/prompts/update-building-with-ai-agents.md",
       "agent": "claude",
       "scope": "docs",
       "title": "Update Building with AI Agents Documentation",
@@ -330,18 +330,18 @@
         "field-guide"
       ],
       "chunks": [
-        "agents/chunks/update-building-with-ai-agents.md.chunk0.txt",
-        "agents/chunks/update-building-with-ai-agents.md.chunk1.txt",
-        "agents/chunks/update-building-with-ai-agents.md.chunk2.txt",
-        "agents/chunks/update-building-with-ai-agents.md.chunk3.txt",
-        "agents/chunks/update-building-with-ai-agents.md.chunk4.txt",
-        "agents/chunks/update-building-with-ai-agents.md.chunk5.txt",
-        "agents/chunks/update-building-with-ai-agents.md.chunk6.txt",
-        "agents/chunks/update-building-with-ai-agents.md.chunk7.txt"
+        ".copilot/chunks/update-building-with-ai-agents.md.chunk0.txt",
+        ".copilot/chunks/update-building-with-ai-agents.md.chunk1.txt",
+        ".copilot/chunks/update-building-with-ai-agents.md.chunk2.txt",
+        ".copilot/chunks/update-building-with-ai-agents.md.chunk3.txt",
+        ".copilot/chunks/update-building-with-ai-agents.md.chunk4.txt",
+        ".copilot/chunks/update-building-with-ai-agents.md.chunk5.txt",
+        ".copilot/chunks/update-building-with-ai-agents.md.chunk6.txt",
+        ".copilot/chunks/update-building-with-ai-agents.md.chunk7.txt"
       ]
     },
     {
-      "path": "agents/prompts/self-improvement-loop.md",
+      "path": ".copilot/prompts/self-improvement-loop.md",
       "agent": "general",
       "scope": "dev",
       "title": "Self-improvement loop prompt template",
@@ -354,13 +354,13 @@
         "maintenance"
       ],
       "chunks": [
-        "agents/chunks/self-improvement-loop.md.chunk0.txt",
-        "agents/chunks/self-improvement-loop.md.chunk1.txt",
-        "agents/chunks/self-improvement-loop.md.chunk2.txt"
+        ".copilot/chunks/self-improvement-loop.md.chunk0.txt",
+        ".copilot/chunks/self-improvement-loop.md.chunk1.txt",
+        ".copilot/chunks/self-improvement-loop.md.chunk2.txt"
       ]
     },
     {
-      "path": "agents/source/exoframe.md",
+      "path": ".copilot/source/exoframe.md",
       "agent": "copilot",
       "scope": "dev",
       "title": "ExoFrame Source Development Guidelines",
@@ -373,34 +373,34 @@
         "patterns"
       ],
       "chunks": [
-        "agents/chunks/exoframe.md.chunk0.txt",
-        "agents/chunks/exoframe.md.chunk1.txt",
-        "agents/chunks/exoframe.md.chunk2.txt",
-        "agents/chunks/exoframe.md.chunk3.txt",
-        "agents/chunks/exoframe.md.chunk4.txt",
-        "agents/chunks/exoframe.md.chunk5.txt"
+        ".copilot/chunks/exoframe.md.chunk0.txt",
+        ".copilot/chunks/exoframe.md.chunk1.txt",
+        ".copilot/chunks/exoframe.md.chunk2.txt",
+        ".copilot/chunks/exoframe.md.chunk3.txt",
+        ".copilot/chunks/exoframe.md.chunk4.txt",
+        ".copilot/chunks/exoframe.md.chunk5.txt"
       ]
     },
     {
-      "path": "agents/README.md",
+      "path": ".copilot/README.md",
       "agent": "general",
       "scope": "dev",
       "title": "Agents directory README",
-      "short_summary": "Overview of the agents/ directory, schema, and maintenance guidelines.",
+      "short_summary": "Overview of the .copilot/ directory, schema, and maintenance guidelines.",
       "version": "0.1",
       "chunks": [
-        "agents/chunks/README.md.chunk0.txt",
-        "agents/chunks/README.md.chunk1.txt",
-        "agents/chunks/README.md.chunk2.txt",
-        "agents/chunks/README.md.chunk3.txt",
-        "agents/chunks/README.md.chunk4.txt",
-        "agents/chunks/README.md.chunk5.txt",
-        "agents/chunks/README.md.chunk6.txt",
-        "agents/chunks/README.md.chunk7.txt"
+        ".copilot/chunks/README.md.chunk0.txt",
+        ".copilot/chunks/README.md.chunk1.txt",
+        ".copilot/chunks/README.md.chunk2.txt",
+        ".copilot/chunks/README.md.chunk3.txt",
+        ".copilot/chunks/README.md.chunk4.txt",
+        ".copilot/chunks/README.md.chunk5.txt",
+        ".copilot/chunks/README.md.chunk6.txt",
+        ".copilot/chunks/README.md.chunk7.txt"
       ]
     },
     {
-      "path": "agents/cross-reference.md",
+      "path": ".copilot/cross-reference.md",
       "agent": "general",
       "scope": "dev",
       "title": "Agent Documentation Cross-Reference Map",
@@ -412,22 +412,22 @@
         "task-mapping"
       ],
       "chunks": [
-        "agents/chunks/cross-reference.md.chunk0.txt",
-        "agents/chunks/cross-reference.md.chunk1.txt",
-        "agents/chunks/cross-reference.md.chunk2.txt",
-        "agents/chunks/cross-reference.md.chunk3.txt",
-        "agents/chunks/cross-reference.md.chunk4.txt",
-        "agents/chunks/cross-reference.md.chunk5.txt",
-        "agents/chunks/cross-reference.md.chunk6.txt",
-        "agents/chunks/cross-reference.md.chunk7.txt"
+        ".copilot/chunks/cross-reference.md.chunk0.txt",
+        ".copilot/chunks/cross-reference.md.chunk1.txt",
+        ".copilot/chunks/cross-reference.md.chunk2.txt",
+        ".copilot/chunks/cross-reference.md.chunk3.txt",
+        ".copilot/chunks/cross-reference.md.chunk4.txt",
+        ".copilot/chunks/cross-reference.md.chunk5.txt",
+        ".copilot/chunks/cross-reference.md.chunk6.txt",
+        ".copilot/chunks/cross-reference.md.chunk7.txt"
       ]
     },
     {
-      "path": "agents/copilot/exoframe.md",
+      "path": ".copilot/copilot/exoframe.md",
       "agent": "copilot",
       "scope": "dev",
       "title": "ExoFrame quick reference for Copilot",
-      "short_summary": "Deno + TypeScript Flow-driven AI automation. Key dirs: src/, tests/, Blueprints/, docs/. Consult agents/manifest.json before edits.",
+      "short_summary": "Deno + TypeScript Flow-driven AI automation. Key dirs: src/, tests/, Blueprints/, docs/. Consult .copilot/manifest.json before edits.",
       "version": "0.1",
       "topics": [
         "repo-overview",
@@ -436,13 +436,13 @@
         "obsidian"
       ],
       "chunks": [
-        "agents/chunks/exoframe.md.chunk0.txt",
-        "agents/chunks/exoframe.md.chunk1.txt",
-        "agents/chunks/exoframe.md.chunk2.txt"
+        ".copilot/chunks/exoframe.md.chunk0.txt",
+        ".copilot/chunks/exoframe.md.chunk1.txt",
+        ".copilot/chunks/exoframe.md.chunk2.txt"
       ]
     },
     {
-      "path": "agents/copilot/summary.md",
+      "path": ".copilot/copilot/summary.md",
       "agent": "copilot",
       "scope": "dev",
       "title": "ExoFrame Quick Summary",
@@ -453,15 +453,15 @@
         "overview"
       ],
       "chunks": [
-        "agents/chunks/summary.md.chunk0.txt"
+        ".copilot/chunks/summary.md.chunk0.txt"
       ]
     },
     {
-      "path": "agents/process/self-improvement.md",
+      "path": ".copilot/process/self-improvement.md",
       "agent": "general",
       "scope": "dev",
       "title": "Self-improvement loop for agent instructions",
-      "short_summary": "How to detect instruction gaps during work and patch agents/ docs safely with minimal, test-backed updates.",
+      "short_summary": "How to detect instruction gaps during work and patch .copilot/ docs safely with minimal, test-backed updates.",
       "version": "0.1",
       "topics": [
         "self-improvement",
@@ -471,18 +471,18 @@
         "rag"
       ],
       "chunks": [
-        "agents/chunks/self-improvement.md.chunk0.txt",
-        "agents/chunks/self-improvement.md.chunk1.txt",
-        "agents/chunks/self-improvement.md.chunk2.txt",
-        "agents/chunks/self-improvement.md.chunk3.txt",
-        "agents/chunks/self-improvement.md.chunk4.txt",
-        "agents/chunks/self-improvement.md.chunk5.txt",
-        "agents/chunks/self-improvement.md.chunk6.txt",
-        "agents/chunks/self-improvement.md.chunk7.txt"
+        ".copilot/chunks/self-improvement.md.chunk0.txt",
+        ".copilot/chunks/self-improvement.md.chunk1.txt",
+        ".copilot/chunks/self-improvement.md.chunk2.txt",
+        ".copilot/chunks/self-improvement.md.chunk3.txt",
+        ".copilot/chunks/self-improvement.md.chunk4.txt",
+        ".copilot/chunks/self-improvement.md.chunk5.txt",
+        ".copilot/chunks/self-improvement.md.chunk6.txt",
+        ".copilot/chunks/self-improvement.md.chunk7.txt"
       ]
     },
     {
-      "path": "agents/process/review-research-improvement.md",
+      "path": ".copilot/process/review-research-improvement.md",
       "agent": "general",
       "scope": "dev",
       "title": "Review-Research-Improvement Pattern",
@@ -496,18 +496,18 @@
         "quality"
       ],
       "chunks": [
-        "agents/chunks/review-research-improvement.md.chunk0.txt",
-        "agents/chunks/review-research-improvement.md.chunk1.txt",
-        "agents/chunks/review-research-improvement.md.chunk2.txt",
-        "agents/chunks/review-research-improvement.md.chunk3.txt",
-        "agents/chunks/review-research-improvement.md.chunk4.txt",
-        "agents/chunks/review-research-improvement.md.chunk5.txt",
-        "agents/chunks/review-research-improvement.md.chunk6.txt",
-        "agents/chunks/review-research-improvement.md.chunk7.txt"
+        ".copilot/chunks/review-research-improvement.md.chunk0.txt",
+        ".copilot/chunks/review-research-improvement.md.chunk1.txt",
+        ".copilot/chunks/review-research-improvement.md.chunk2.txt",
+        ".copilot/chunks/review-research-improvement.md.chunk3.txt",
+        ".copilot/chunks/review-research-improvement.md.chunk4.txt",
+        ".copilot/chunks/review-research-improvement.md.chunk5.txt",
+        ".copilot/chunks/review-research-improvement.md.chunk6.txt",
+        ".copilot/chunks/review-research-improvement.md.chunk7.txt"
       ]
     },
     {
-      "path": "agents/providers/claude.md",
+      "path": ".copilot/providers/claude.md",
       "agent": "claude",
       "scope": "dev",
       "title": "Claude provider adaptation notes",
@@ -522,18 +522,18 @@
         "tool-use"
       ],
       "chunks": [
-        "agents/chunks/claude.md.chunk0.txt",
-        "agents/chunks/claude.md.chunk1.txt",
-        "agents/chunks/claude.md.chunk2.txt",
-        "agents/chunks/claude.md.chunk3.txt",
-        "agents/chunks/claude.md.chunk4.txt",
-        "agents/chunks/claude.md.chunk5.txt",
-        "agents/chunks/claude.md.chunk6.txt",
-        "agents/chunks/claude.md.chunk7.txt"
+        ".copilot/chunks/claude.md.chunk0.txt",
+        ".copilot/chunks/claude.md.chunk1.txt",
+        ".copilot/chunks/claude.md.chunk2.txt",
+        ".copilot/chunks/claude.md.chunk3.txt",
+        ".copilot/chunks/claude.md.chunk4.txt",
+        ".copilot/chunks/claude.md.chunk5.txt",
+        ".copilot/chunks/claude.md.chunk6.txt",
+        ".copilot/chunks/claude.md.chunk7.txt"
       ]
     },
     {
-      "path": "agents/providers/google.md",
+      "path": ".copilot/providers/google.md",
       "agent": "google",
       "scope": "dev",
       "title": "Google Gemini Provider Adaptation Guide",
@@ -546,14 +546,14 @@
         "long-context"
       ],
       "chunks": [
-        "agents/chunks/google.md.chunk0.txt",
-        "agents/chunks/google.md.chunk1.txt",
-        "agents/chunks/google.md.chunk2.txt",
-        "agents/chunks/google.md.chunk3.txt"
+        ".copilot/chunks/google.md.chunk0.txt",
+        ".copilot/chunks/google.md.chunk1.txt",
+        ".copilot/chunks/google.md.chunk2.txt",
+        ".copilot/chunks/google.md.chunk3.txt"
       ]
     },
     {
-      "path": "agents/providers/openai-rag.md",
+      "path": ".copilot/providers/openai-rag.md",
       "agent": "openai",
       "scope": "dev",
       "title": "OpenAI RAG (Retrieval-Augmented Generation) Usage Guide",
@@ -567,16 +567,16 @@
         "provider-adaptations"
       ],
       "chunks": [
-        "agents/chunks/openai-rag.md.chunk0.txt",
-        "agents/chunks/openai-rag.md.chunk1.txt",
-        "agents/chunks/openai-rag.md.chunk2.txt",
-        "agents/chunks/openai-rag.md.chunk3.txt",
-        "agents/chunks/openai-rag.md.chunk4.txt",
-        "agents/chunks/openai-rag.md.chunk5.txt"
+        ".copilot/chunks/openai-rag.md.chunk0.txt",
+        ".copilot/chunks/openai-rag.md.chunk1.txt",
+        ".copilot/chunks/openai-rag.md.chunk2.txt",
+        ".copilot/chunks/openai-rag.md.chunk3.txt",
+        ".copilot/chunks/openai-rag.md.chunk4.txt",
+        ".copilot/chunks/openai-rag.md.chunk5.txt"
       ]
     },
     {
-      "path": "agents/providers/google-long-context.md",
+      "path": ".copilot/providers/google-long-context.md",
       "agent": "google",
       "scope": "dev",
       "title": "Gemini Long-Context Reasoning Guide",
@@ -589,13 +589,13 @@
         "context-saturation"
       ],
       "chunks": [
-        "agents/chunks/google-long-context.md.chunk0.txt",
-        "agents/chunks/google-long-context.md.chunk1.txt",
-        "agents/chunks/google-long-context.md.chunk2.txt"
+        ".copilot/chunks/google-long-context.md.chunk0.txt",
+        ".copilot/chunks/google-long-context.md.chunk1.txt",
+        ".copilot/chunks/google-long-context.md.chunk2.txt"
       ]
     },
     {
-      "path": "agents/providers/claude-rag.md",
+      "path": ".copilot/providers/claude-rag.md",
       "agent": "claude",
       "scope": "dev",
       "title": "Claude RAG (Retrieval-Augmented Generation) Usage Guide",
@@ -608,18 +608,18 @@
         "semantic-search"
       ],
       "chunks": [
-        "agents/chunks/claude-rag.md.chunk0.txt",
-        "agents/chunks/claude-rag.md.chunk1.txt",
-        "agents/chunks/claude-rag.md.chunk2.txt",
-        "agents/chunks/claude-rag.md.chunk3.txt",
-        "agents/chunks/claude-rag.md.chunk4.txt",
-        "agents/chunks/claude-rag.md.chunk5.txt",
-        "agents/chunks/claude-rag.md.chunk6.txt",
-        "agents/chunks/claude-rag.md.chunk7.txt"
+        ".copilot/chunks/claude-rag.md.chunk0.txt",
+        ".copilot/chunks/claude-rag.md.chunk1.txt",
+        ".copilot/chunks/claude-rag.md.chunk2.txt",
+        ".copilot/chunks/claude-rag.md.chunk3.txt",
+        ".copilot/chunks/claude-rag.md.chunk4.txt",
+        ".copilot/chunks/claude-rag.md.chunk5.txt",
+        ".copilot/chunks/claude-rag.md.chunk6.txt",
+        ".copilot/chunks/claude-rag.md.chunk7.txt"
       ]
     },
     {
-      "path": "agents/providers/openai.md",
+      "path": ".copilot/providers/openai.md",
       "agent": "openai",
       "scope": "dev",
       "title": "OpenAI adaptation notes",
@@ -633,18 +633,18 @@
         "thinking-protocol"
       ],
       "chunks": [
-        "agents/chunks/openai.md.chunk0.txt",
-        "agents/chunks/openai.md.chunk1.txt",
-        "agents/chunks/openai.md.chunk2.txt",
-        "agents/chunks/openai.md.chunk3.txt",
-        "agents/chunks/openai.md.chunk4.txt",
-        "agents/chunks/openai.md.chunk5.txt",
-        "agents/chunks/openai.md.chunk6.txt",
-        "agents/chunks/openai.md.chunk7.txt"
+        ".copilot/chunks/openai.md.chunk0.txt",
+        ".copilot/chunks/openai.md.chunk1.txt",
+        ".copilot/chunks/openai.md.chunk2.txt",
+        ".copilot/chunks/openai.md.chunk3.txt",
+        ".copilot/chunks/openai.md.chunk4.txt",
+        ".copilot/chunks/openai.md.chunk5.txt",
+        ".copilot/chunks/openai.md.chunk6.txt",
+        ".copilot/chunks/openai.md.chunk7.txt"
       ]
     },
     {
-      "path": "agents/tests/testing.md",
+      "path": ".copilot/tests/testing.md",
       "agent": "copilot",
       "scope": "dev",
       "title": "ExoFrame Test Development Guidelines",
@@ -656,16 +656,16 @@
         "helpers"
       ],
       "chunks": [
-        "agents/chunks/testing.md.chunk0.txt",
-        "agents/chunks/testing.md.chunk1.txt",
-        "agents/chunks/testing.md.chunk2.txt",
-        "agents/chunks/testing.md.chunk3.txt",
-        "agents/chunks/testing.md.chunk4.txt",
-        "agents/chunks/testing.md.chunk5.txt"
+        ".copilot/chunks/testing.md.chunk0.txt",
+        ".copilot/chunks/testing.md.chunk1.txt",
+        ".copilot/chunks/testing.md.chunk2.txt",
+        ".copilot/chunks/testing.md.chunk3.txt",
+        ".copilot/chunks/testing.md.chunk4.txt",
+        ".copilot/chunks/testing.md.chunk5.txt"
       ]
     },
     {
-      "path": "agents/tests/jscpd-guide.md",
+      "path": ".copilot/tests/jscpd-guide.md",
       "agent": "copilot",
       "scope": "dev",
       "title": "jscpd Code Duplication Detection Guide",
@@ -678,14 +678,14 @@
         "jscpd"
       ],
       "chunks": [
-        "agents/chunks/jscpd-guide.md.chunk0.txt",
-        "agents/chunks/jscpd-guide.md.chunk1.txt",
-        "agents/chunks/jscpd-guide.md.chunk2.txt",
-        "agents/chunks/jscpd-guide.md.chunk3.txt",
-        "agents/chunks/jscpd-guide.md.chunk4.txt",
-        "agents/chunks/jscpd-guide.md.chunk5.txt",
-        "agents/chunks/jscpd-guide.md.chunk6.txt",
-        "agents/chunks/jscpd-guide.md.chunk7.txt"
+        ".copilot/chunks/jscpd-guide.md.chunk0.txt",
+        ".copilot/chunks/jscpd-guide.md.chunk1.txt",
+        ".copilot/chunks/jscpd-guide.md.chunk2.txt",
+        ".copilot/chunks/jscpd-guide.md.chunk3.txt",
+        ".copilot/chunks/jscpd-guide.md.chunk4.txt",
+        ".copilot/chunks/jscpd-guide.md.chunk5.txt",
+        ".copilot/chunks/jscpd-guide.md.chunk6.txt",
+        ".copilot/chunks/jscpd-guide.md.chunk7.txt"
       ]
     }
   ]

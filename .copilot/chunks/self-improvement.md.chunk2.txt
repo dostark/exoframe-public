@@ -1,7 +1,7 @@
 1. **List the gaps** (actionable, not vague)
    - Examples:
      - “No guidance on which test helper to use for this subsystem.”
-     - “No canonical command for validating manifest/chunks after agents/ edits.”
+     - “No canonical command for validating manifest/chunks after .copilot/ edits.”
      - “No example of the required output format for this provider in this scenario.”
 
 2. **Choose the smallest fix**

@@ -5,7 +5,7 @@
 import { parse } from "https://deno.land/std@0.203.0/yaml/mod.ts";
 import { walk } from "https://deno.land/std@0.203.0/fs/mod.ts";
 
-const AGENTS_DIR = "agents";
+const AGENTS_DIR = ".copilot";
 const OUT_DIR = `${AGENTS_DIR}/embeddings`;
 
 function extractFrontmatter(md: string): string | null {

@@ -1,5 +1,5 @@
 {
-  "path": "agents/prompts/implementation-plan-driven.md",
+  "path": ".copilot/prompts/implementation-plan-driven.md",
   "title": "Implementation Plan Driven Development Prompt",
   "vecs": [
     {

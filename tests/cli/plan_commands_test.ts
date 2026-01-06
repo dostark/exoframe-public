@@ -2,8 +2,8 @@
  * Tests for PlanCommands (CLI Plan Management)
  *
  * Success Criteria:
- * - Test 1: approve moves plan to /System/Active and updates status
- * - Test 2: reject moves plan to /Inbox/Rejected with reason
+ * - Test 1: approve moves plan to Workspace/Active and updates status
+ * - Test 2: reject moves plan to Workspace/Rejected with reason
  * - Test 3: revise appends review comments and keeps plan in review
  * - Test 4: list returns all plans with status indicators
  * - Test 5: show displays plan content and metadata
@@ -17,28 +17,36 @@ import { join } from "@std/path";
 import { PlanCommands } from "../../src/cli/plan_commands.ts";
 import { DatabaseService } from "../../src/services/db.ts";
 import { createCliTestContext } from "./helpers/test_setup.ts";
+import {
+  getWorkspaceActiveDir,
+  getWorkspaceArchiveDir,
+  getWorkspacePlansDir,
+  getWorkspaceRejectedDir,
+} from "../helpers/paths_helper.ts";
 
 describe("PlanCommands", () => {
   let tempDir: string;
   let db: DatabaseService;
   let planCommands: PlanCommands;
   let inboxPlansDir: string;
-  let systemActiveDir: string;
-  let inboxRejectedDir: string;
+  let activeDir: string;
+  let rejectedDir: string;
   let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
     // Initialize shared CLI test context
-    const result = await createCliTestContext({ createDirs: ["Inbox/Plans", "System/Active", "Inbox/Rejected"] });
+    const result = await createCliTestContext({
+      createDirs: ["Workspace/Plans", "Workspace/Active", "Workspace/Rejected"],
+    });
     tempDir = result.tempDir;
     db = result.db;
     cleanup = result.cleanup;
     const config = result.config;
 
     // Derived paths
-    inboxPlansDir = join(tempDir, "Inbox", "Plans");
-    systemActiveDir = join(tempDir, "System", "Active");
-    inboxRejectedDir = join(tempDir, "Inbox", "Rejected");
+    inboxPlansDir = getWorkspacePlansDir(tempDir);
+    activeDir = getWorkspaceActiveDir(tempDir);
+    rejectedDir = getWorkspaceRejectedDir(tempDir);
 
     // Initialize PlanCommands
     planCommands = new PlanCommands({ config, db }, tempDir);
@@ -49,7 +57,7 @@ describe("PlanCommands", () => {
   });
 
   describe("approve", () => {
-    it("should approve a plan and move it to /System/Active", async () => {
+    it("should approve a plan and move it to Workspace/Active", async () => {
       // Create a plan file with status='review'
       const planId = "test-plan-001";
       const planContent = `---
@@ -75,10 +83,10 @@ created_at: "2025-11-25T10:00:00Z"
       // Approve the plan
       await planCommands.approve(planId);
 
-      // Verify plan moved to /System/Active
-      const activePlanPath = join(systemActiveDir, `${planId}.md`);
+      // Verify plan moved to Workspace/Active
+      const activePlanPath = join(activeDir, `${planId}.md`);
       const exists = await Deno.stat(activePlanPath).then(() => true).catch(() => false);
-      assertEquals(exists, true, "Plan should be moved to /System/Active");
+      assertEquals(exists, true, "Plan should be moved to Workspace/Active");
 
       // Verify original plan removed
       const originalExists = await Deno.stat(planPath).then(() => true).catch(() => false);
@@ -139,17 +147,17 @@ status: review
 
       // Create existing file in Active
       const existingContent = "existing file content";
-      await Deno.writeTextFile(join(systemActiveDir, `${planId}.md`), existingContent);
+      await Deno.writeTextFile(join(activeDir, `${planId}.md`), existingContent);
 
       // Approve should succeed now
       await planCommands.approve(planId);
 
       // Verify new content in Active
-      const activeContent = await Deno.readTextFile(join(systemActiveDir, `${planId}.md`));
+      const activeContent = await Deno.readTextFile(join(activeDir, `${planId}.md`));
       assertEquals(activeContent.includes("# Test Plan (New)"), true, "New plan should be in Active");
 
       // Verify old content archived
-      const archiveDir = join(tempDir, "System", "Archive");
+      const archiveDir = getWorkspaceArchiveDir(tempDir);
       const archiveEntries = [];
       for await (const entry of Deno.readDir(archiveDir)) {
         archiveEntries.push(entry);
@@ -164,7 +172,7 @@ status: review
   });
 
   describe("reject", () => {
-    it("should reject a plan with reason and move to /Inbox/Rejected", async () => {
+    it("should reject a plan with reason and move to /Workspace/Rejected", async () => {
       const planId = "test-plan-004";
       const planContent = `---
 trace_id: "trace-abc"
@@ -179,10 +187,10 @@ status: review
       const reason = "Plan is too vague and lacks specific actions";
       await planCommands.reject(planId, reason);
 
-      // Verify plan moved to /Inbox/Rejected with _rejected.md suffix
-      const rejectedPath = join(inboxRejectedDir, `${planId}_rejected.md`);
+      // Verify plan moved to /Workspace/Rejected with _rejected.md suffix
+      const rejectedPath = join(rejectedDir, `${planId}_rejected.md`);
       const exists = await Deno.stat(rejectedPath).then(() => true).catch(() => false);
-      assertEquals(exists, true, "Plan should be moved to /Inbox/Rejected");
+      assertEquals(exists, true, "Plan should be moved to /Workspace/Rejected");
 
       // Verify original plan removed
       const originalPath = join(inboxPlansDir, `${planId}.md`);
@@ -241,10 +249,10 @@ Some actions here
       const comment = "Please add more specific file paths";
       await planCommands.revise(planId, [comment]);
 
-      // Verify file still in /Inbox/Plans
+      // Verify file still in /Workspace/Plans
       const planPath = join(inboxPlansDir, `${planId}.md`);
       const exists = await Deno.stat(planPath).then(() => true).catch(() => false);
-      assertEquals(exists, true, "Plan should remain in /Inbox/Plans");
+      assertEquals(exists, true, "Plan should remain in /Workspace/Plans");
 
       // Verify content updated
       const updatedContent = await Deno.readTextFile(planPath);

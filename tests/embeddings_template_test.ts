@@ -1,7 +1,7 @@
 import { assert, assertEquals, assertExists } from "https://deno.land/std@0.203.0/assert/mod.ts";
 
 Deno.test("example precomputed template is valid JSON and contains required keys", async () => {
-  const raw = await Deno.readTextFile("agents/embeddings/example_precomputed_template.json");
+  const raw = await Deno.readTextFile(".copilot/embeddings/example_precomputed_template.json");
   const obj = JSON.parse(raw) as Record<string, unknown>;
 
   assertExists(obj.path, "template should include 'path'");

@@ -16,13 +16,19 @@
  */
 
 import { assertEquals, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
-import { join } from "@std/path";
 import { MemoryCommands } from "../../src/cli/memory_commands.ts";
 import { MemoryBankService } from "../../src/services/memory_bank.ts";
 import { MemoryEmbeddingService } from "../../src/services/memory_embedding.ts";
 import { initTestDbService } from "../helpers/db.ts";
 import { createMockConfig } from "../helpers/config.ts";
 import type { Learning, ProjectMemory } from "../../src/schemas/memory_bank.ts";
+import {
+  getMemoryExecutionDir,
+  getMemoryGlobalDir,
+  getMemoryIndexDir,
+  getMemoryPendingDir,
+  getMemoryProjectsDir,
+} from "../helpers/paths_helper.ts";
 
 /**
  * Creates a complete memory test environment
@@ -33,12 +39,11 @@ async function initMemoryTest() {
   const { db, cleanup: dbCleanup } = await initTestDbService();
 
   // Create required directories
-  await Deno.mkdir(join(tempRoot, "Memory", "Projects"), { recursive: true });
-  await Deno.mkdir(join(tempRoot, "Memory", "Execution"), { recursive: true });
-  await Deno.mkdir(join(tempRoot, "Memory", "Index", "embeddings"), { recursive: true });
-  await Deno.mkdir(join(tempRoot, "Memory", "Global"), { recursive: true });
-  await Deno.mkdir(join(tempRoot, "Memory", "Pending"), { recursive: true });
-
+  await Deno.mkdir(getMemoryProjectsDir(tempRoot), { recursive: true });
+  await Deno.mkdir(getMemoryExecutionDir(tempRoot), { recursive: true });
+  await Deno.mkdir(getMemoryIndexDir(tempRoot), { recursive: true });
+  await Deno.mkdir(getMemoryGlobalDir(tempRoot), { recursive: true });
+  await Deno.mkdir(getMemoryPendingDir(tempRoot), { recursive: true });
   const config = createMockConfig(tempRoot);
   const commands = new MemoryCommands({ config, db });
   const memoryBank = new MemoryBankService(config, db);

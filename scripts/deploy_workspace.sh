@@ -36,12 +36,12 @@ if [ -f "$REPO_ROOT/scripts/scaffold.sh" ]; then
   bash "$REPO_ROOT/scripts/scaffold.sh" "$DEST"
 else
   echo "Warning: scaffold script not found; falling back to minimal layout"
-  mkdir -p "$DEST/System" "$DEST/Memory/Projects" "$DEST/Memory/Execution" "$DEST/Inbox/Requests" "$DEST/Inbox/Plans" "$DEST/Portals"
+  mkdir -p "$DEST/.exo" "$DEST/Memory/Projects" "$DEST/Memory/Execution" "$DEST/Workspace/Requests" "$DEST/Workspace/Plans" "$DEST/Portals"
 fi
 
 # Copy runtime artifacts needed for an installed workspace (configs, tasks)
 rsync -a --exclude='node_modules' --exclude='.git' --exclude='*.log' \
-  "$REPO_ROOT/deno.json" "$REPO_ROOT/import_map.json" "$REPO_ROOT/templates/exo.config.sample.toml" "$DEST/" || true
+  "$REPO_ROOT/deno.json" "$REPO_ROOT/import_map.json" "$REPO_ROOT/exo.config.sample.toml" "$DEST/" || true
 
 # Copy runtime scripts (setup + deploy + scaffold + migrate)
 mkdir -p "$DEST/scripts"
@@ -109,7 +109,7 @@ exoctl daemon restart  # Restart daemon
 ## Directory Structure
 
 - `Blueprints/` - Agent definitions
-- `Inbox/` - Request and plan queue
+- `Workspace/` - Request and plan queue
 - `Memory/` - Memory Banks for execution history and project context
 - `System/` - Database and active tasks
 - `Portals/` - Symlinks to external projects

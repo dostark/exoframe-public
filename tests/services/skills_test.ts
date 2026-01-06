@@ -9,6 +9,7 @@ import { join } from "@std/path";
 import { exists } from "@std/fs";
 import { SkillsService } from "../../src/services/skills.ts";
 import { initTestDbService } from "../helpers/db.ts";
+import { getMemorySkillsDir } from "../helpers/paths_helper.ts";
 
 // ===== Directory Structure Tests =====
 
@@ -19,7 +20,7 @@ Deno.test("SkillsService: initialize creates directory structure", async () => {
     const service = new SkillsService(config, db);
     await service.initialize();
 
-    const skillsDir = join(config.system.root, "Memory", "Skills");
+    const skillsDir = getMemorySkillsDir(config.system.root);
     assertEquals(await exists(skillsDir), true);
     assertEquals(await exists(join(skillsDir, "core")), true);
     assertEquals(await exists(join(skillsDir, "learned")), true);
@@ -60,7 +61,7 @@ Deno.test("SkillsService: createSkill creates and indexes skill", async () => {
     assertEquals(skill.usage_count, 0);
 
     // Verify file was created
-    const skillPath = join(config.system.root, "Memory", "Skills", "learned", "test-skill.skill.md");
+    const skillPath = join(getMemorySkillsDir(config.system.root), "learned", "test-skill.skill.md");
     assertEquals(await exists(skillPath), true);
   } finally {
     await cleanup();

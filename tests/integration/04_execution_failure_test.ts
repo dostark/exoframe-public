@@ -6,7 +6,7 @@
  * - Test 1: Execution failure is detected and captured
  * - Test 2: Git changes are rolled back on failure (branch may remain but no merge)
  * - Test 3: Failure report is generated with error details
- * - Test 4: Plan is moved back to /Inbox/Plans or marked as failed
+ * - Test 4: Plan is moved back to /Workspace/Plans or marked as failed
  * - Test 5: Lease is released even on failure
  * - Test 6: All failure steps logged to Activity Journal with trace_id
  * - Test 7: Original request is not affected by execution failure
@@ -50,7 +50,7 @@ Deno.test("Integration: Execution Failure - Plan fails during execution", async 
       activePlanPath = await env.approvePlan(planPath);
 
       // Verify setup
-      const activeExists = await env.fileExists("System/Active/failing-task_plan.md");
+      const activeExists = await env.fileExists("Workspace/Active/failing-task_plan.md");
       assertEquals(activeExists, true, "Plan should be in Active");
     });
 
@@ -124,10 +124,10 @@ Deno.test("Integration: Execution Failure - Plan fails during execution", async 
     await t.step("Test 4: Plan moved or marked as failed", async () => {
       // After failure, plan may be archived or remain in Active
       // Check all possible locations
-      const inPlans = await env.fileExists("Inbox/Plans/failing-task_plan.md");
-      const inActive = await env.fileExists("System/Active/failing-task_plan.md");
-      const inArchive = await env.fileExists("System/Archive/failing-task_plan.md");
-      const inFailed = await env.fileExists("System/Failed/failing-task_plan.md");
+      const inPlans = await env.fileExists("Workspace/Plans/failing-task_plan.md");
+      const inActive = await env.fileExists("Workspace/Active/failing-task_plan.md");
+      const inArchive = await env.fileExists("Workspace/Archive/failing-task_plan.md");
+      const inFailed = await env.fileExists("Workspace/Failed/failing-task_plan.md");
 
       // Should be in one of these locations
       const _planExists = inPlans || inActive || inArchive || inFailed;
@@ -136,7 +136,7 @@ Deno.test("Integration: Execution Failure - Plan fails during execution", async 
 
       // If still in Active, should have failure marker or status
       if (inActive) {
-        const content = await env.readFile("System/Active/failing-task_plan.md");
+        const content = await env.readFile("Workspace/Active/failing-task_plan.md");
         // May have status: failed or failure section
         const hasFailureIndicator = content.includes("failed") ||
           content.includes("error") ||
@@ -202,7 +202,7 @@ Deno.test("Integration: Execution Failure - Plan fails during execution", async 
     await t.step("Test 7: Original request not affected by failure", async () => {
       // Request should still exist
       const requestExists = await env.fileExists(
-        `Inbox/Requests/request-${traceId.substring(0, 8)}.md`,
+        `Workspace/Requests/request-${traceId.substring(0, 8)}.md`,
       );
       assertEquals(requestExists, true, "Request should still exist");
 

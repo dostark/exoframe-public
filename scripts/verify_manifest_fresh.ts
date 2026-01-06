@@ -18,9 +18,9 @@ async function main() {
   const generated = await generateManifestObject();
   let existingText = "";
   try {
-    existingText = await Deno.readTextFile("agents/manifest.json");
+    existingText = await Deno.readTextFile(".copilot/manifest.json");
   } catch (_e) {
-    console.error("Existing manifest.json not found: agents/manifest.json");
+    console.error("Existing manifest.json not found: .copilot/manifest.json");
     Deno.exit(2);
   }
   const existing = JSON.parse(existingText);
@@ -33,12 +33,12 @@ async function main() {
 
   if (sa !== sb) {
     console.error(
-      "agents/manifest.json is out of date with current agents/ sources. Run scripts/build_agents_index.ts and commit the updated manifest.",
+      ".copilot/manifest.json is out of date with current .copilot/ sources. Run scripts/build_agents_index.ts and commit the updated manifest.",
     );
     Deno.exit(1);
   }
 
-  console.log("agents/manifest.json is up-to-date.");
+  console.log(".copilot/manifest.json is up-to-date.");
 }
 
 if (import.meta.main) await main();

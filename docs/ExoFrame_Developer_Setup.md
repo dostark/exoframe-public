@@ -99,7 +99,7 @@ cd ~/ExoFrame
 deno task cache
 
 # Scaffold runtime directories and configuration
-# This creates Inbox, Knowledge, System, Portals and copies exo.config.toml
+# This creates Workspace, Memory, .exo, Portals and copies exo.config.toml
 ./scripts/scaffold.sh .
 
 # Initialize the database
@@ -192,7 +192,7 @@ Notes specific to WSL2:
 
 ```bash
 exoctl portal add ~/Dev/MyProject MyProject
-echo "# Test Request" > ~/ExoFrame/Inbox/Requests/test.md
+echo "# Test Request" > ~/ExoFrame/Workspace/Requests/test.md
 
 # Observe daemon logs in real time
 exoctl daemon logs --follow
@@ -334,15 +334,15 @@ The tests validate manifest generation, file copying, and basic shape of the emb
 ExoFrame includes a dedicated `agents/` directory containing machine-friendly documentation, provider adaptation notes (OpenAI, Claude, Google), and canonical prompt templates. This directory is designed to be consumed by both VS Code Copilot (dev-time) and the ExoFrame runtime system.
 
 **Usage with VS Code / Copilot:**
-When asking Copilot to perform repository tasks, it is highly recommended to instruct it to consult `agents/manifest.json`. The recommended canonical prompt is:
+When asking Copilot to perform repository tasks, it is highly recommended to instruct it to consult `.copilot/manifest.json`. The recommended canonical prompt is:
 
-> "You are a dev-time agent. Before performing repository-specific changes, consult `agents/manifest.json` and include matching `short_summary` items for relevant docs in `agents/`."
+> "You are a dev-time agent. Before performing repository-specific changes, consult `.copilot/manifest.json` and include matching `short_summary` items for relevant docs in `agents/`."
 
 **Key components:**
 
-- `agents/manifest.json`: An index of all available agent docs, topics, and chunk references.
-- `agents/providers/`: Specific guidance for different LLM providers (token limits, prompt structures).
-- `agents/copilot/`: Quick-start context for IDE agents.
+- `.copilot/manifest.json`: An index of all available agent docs, topics, and chunk references.
+- `.copilot/providers/`: Specific guidance for different LLM providers (token limits, prompt structures).
+- `.copilot/`: Quick-start context for IDE agents.
 
 **Maintenance:**
 If you add or update documentation in `agents/`, you must regenerate the manifest and chunks to keep the index fresh:
@@ -378,7 +378,7 @@ Recommended workflow:
 - From the development repo you produce a _deployed workspace_ using `./scripts/deploy_workspace.sh /target/path` (see
   `docs/ExoFrame_Repository_Build.md` for details).
 - The deployed workspace is intended for running the daemon, storing `System/journal.db`, and housing user content
-  (`/Knowledge`). It should not be used as a primary development checkout (no tests, no CI config required there).
+  (`Memory`). It should not be used as a primary development checkout (no tests, no CI config required there).
 
 Planned automation (Phase 1 deliverable):
 
@@ -409,6 +409,6 @@ deno task start
 Notes:
 
 - The deployed workspace is a runtime instance and should not be treated as a development checkout. It contains only
-  runtime artifacts (configs, minimal src, scripts) and user data (Knowledge, System/journal.db).
+  runtime artifacts (configs, minimal src, scripts) and user data (Memory, .exo/journal.db).
 - Keep migration SQL and schema under `migrations/` or `sql/` in the development repo rather than committing `.db`
   files.

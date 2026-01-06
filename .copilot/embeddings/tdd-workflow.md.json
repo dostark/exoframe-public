@@ -1,5 +1,5 @@
 {
-  "path": "agents/prompts/tdd-workflow.md",
+  "path": ".copilot/prompts/tdd-workflow.md",
   "title": "TDD Workflow Prompt Example",
   "vecs": [
     {

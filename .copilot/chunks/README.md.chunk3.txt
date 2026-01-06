@@ -1,4 +1,4 @@
-See `agents/embeddings/example_precomputed_template.json` for a minimal, valid template to create precomputed embedding files.
+See `.copilot/embeddings/example_precomputed_template.json` for a minimal, valid template to create precomputed embedding files.
 
 How to Add a New Agent Doc
 ---------------------------

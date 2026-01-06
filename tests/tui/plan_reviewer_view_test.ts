@@ -27,7 +27,7 @@ class MockDB {
 
 async function setupWorkspace(planId: string, frontmatter: Record<string, string>, body = "") {
   const root = await Deno.makeTempDir();
-  const inbox = `${root}/Inbox/Plans`;
+  const inbox = `${root}/Workspace/Plans`;
   await Deno.mkdir(inbox, { recursive: true });
   const content = yamlFrontmatter(frontmatter) + body;
   await Deno.writeTextFile(`${inbox}/${planId}.md`, content);
@@ -38,7 +38,7 @@ Deno.test("lists pending plans via PlanCommands", async () => {
   const planId = "p1";
   const root = await setupWorkspace(planId, { status: "pending", title: "Add login" }, "# Plan Body\n");
   const db = new MockDB();
-  const context: any = { config: {} as any, db };
+  const context: any = { config: { paths: { workspace: "Workspace" } }, db };
   const cmd = new PlanCommands(context, root);
   const view = new PlanReviewerView(new PlanCommandsServiceAdapter(cmd));
   const pending = await view.listPending();
@@ -52,7 +52,7 @@ Deno.test("returns plan content as diff via PlanCommands", async () => {
   const body = "- old\n+ new\n";
   const root = await setupWorkspace(planId, { status: "pending", title: "Change README" }, body);
   const db = new MockDB();
-  const context: any = { config: {} as any, db };
+  const context: any = { config: { paths: { workspace: "Workspace" } }, db };
   const cmd = new PlanCommands(context, root);
   const view = new PlanReviewerView(new PlanCommandsServiceAdapter(cmd));
   const diff = await view.getDiff(planId);
@@ -64,14 +64,14 @@ Deno.test("approve moves plan and logs activity via PlanCommands", async () => {
   const planId = "p3";
   const root = await setupWorkspace(planId, { status: "review", title: "Refactor" }, "# Body\n");
   const db = new MockDB();
-  const context: any = { config: {} as any, db };
+  const context: any = { config: { paths: { workspace: "Workspace" } }, db };
   const cmd = new PlanCommands(context, root);
   const view = new PlanReviewerView(new PlanCommandsServiceAdapter(cmd));
   const ok = await view.approve(planId, "reviewer-1");
   assert(ok);
-  // Check that plan file moved to System/Active
+  // Check that plan file moved to Workspace/Active
   try {
-    const activePath = `${root}/System/Active/${planId}.md`;
+    const activePath = `${root}/Workspace/Active/${planId}.md`;
     const exists = await Deno.stat(activePath).then(() => true).catch(() => false);
     assertEquals(exists, true);
   } finally {
@@ -98,17 +98,17 @@ Deno.test("DB-like path logs reviewer and reason", async () => {
   assert(rejectLog && rejectLog.reviewer === "alice@example.com" && rejectLog.reason === "too risky");
 });
 
-Deno.test("reject moves plan to Inbox/Rejected and logs reason via PlanCommands", async () => {
+Deno.test("reject moves plan to Workspace/Rejected and logs reason via PlanCommands", async () => {
   const planId = "p4";
   const root = await setupWorkspace(planId, { status: "pending", title: "WIP" }, "# Body\n");
   const db = new MockDB();
-  const context: any = { config: {} as any, db };
+  const context: any = { config: { paths: { workspace: "Workspace" } }, db };
   const cmd = new PlanCommands(context, root);
   const view = new PlanReviewerView(new PlanCommandsServiceAdapter(cmd));
   const ok = await view.reject(planId, "reviewer-2", "needs changes");
   assert(ok);
   try {
-    const rejectedPath = `${root}/Inbox/Rejected/${planId}_rejected.md`;
+    const rejectedPath = `${root}/Workspace/Rejected/${planId}_rejected.md`;
     const exists = await Deno.stat(rejectedPath).then(() => true).catch(() => false);
     assertEquals(exists, true);
   } finally {
@@ -121,7 +121,7 @@ Deno.test("handles very large plan content via PlanCommands", async () => {
   const large = "a".repeat(100_000);
   const root = await setupWorkspace(planId, { status: "pending", title: "Big change" }, large);
   const db = new MockDB();
-  const context: any = { config: {} as any, db };
+  const context: any = { config: { paths: { workspace: "Workspace" } }, db };
   const cmd = new PlanCommands(context, root);
   const view = new PlanReviewerView(new PlanCommandsServiceAdapter(cmd));
   const diff = await view.getDiff(planId);

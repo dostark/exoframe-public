@@ -39,7 +39,7 @@ async function main() {
       `*Last updated: ${new Date().toLocaleString()}*`,
     ].join("\n");
 
-    const exportPath = join(config.system.root, "System", "activity_export.md");
+    const exportPath = join(config.system.root, ".exo", "activity_export.md");
     await Deno.writeTextFile(exportPath, markdown);
 
     console.log(`✅ Activity exported to ${exportPath}`);

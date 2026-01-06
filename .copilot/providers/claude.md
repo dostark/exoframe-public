@@ -294,12 +294,12 @@ await Deno.readTextFile(filePath);
 ### 5. Hardcoding paths
 ❌ **Bad:**
 ```typescript
-"/home/user/ExoFrame/System/Active"
+"/home/user/ExoFrame/Workspace/Active"
 ```
 
 ✅ **Good:**
 ```typescript
-join(workspaceRoot, "System", "Active") // use PathResolver
+join(workspaceRoot, "Workspace", "Active") // use PathResolver
 ```
 
 ### 6. Missing activity logging

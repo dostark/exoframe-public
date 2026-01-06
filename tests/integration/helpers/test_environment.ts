@@ -13,6 +13,20 @@ import type { Config } from "../../../src/config/schema.ts";
 import { MockLLMProvider } from "../../../src/ai/providers/mock_llm_provider.ts";
 import { RequestProcessor } from "../../../src/services/request_processor.ts";
 import { ExecutionLoop } from "../../../src/services/execution_loop.ts";
+import {
+  getBlueprintsAgentsDir,
+  getMemoryDir,
+  getMemoryExecutionDir,
+  getMemoryProjectsDir,
+  getMemoryTasksDir,
+  getPortalsDir,
+  getRuntimeDir,
+  getWorkspaceActiveDir,
+  getWorkspaceArchiveDir,
+  getWorkspacePlansDir,
+  getWorkspaceRejectedDir,
+  getWorkspaceRequestsDir,
+} from "../../helpers/paths_helper.ts";
 
 export interface TestEnvironmentOptions {
   /** Custom config overrides */
@@ -47,17 +61,18 @@ export class TestEnvironment {
     const { db, tempDir, config, cleanup } = await initTestDbService();
 
     // Create any additional directory structure required for integration tests
-    await ensureDir(join(tempDir, "Inbox", "Requests"));
-    await ensureDir(join(tempDir, "Inbox", "Plans"));
-    await ensureDir(join(tempDir, "Inbox", "Rejected"));
-    await ensureDir(join(tempDir, "System", "Active"));
-    await ensureDir(join(tempDir, "System", "Archive"));
-    await ensureDir(join(tempDir, "Memory", "Execution"));
-    await ensureDir(join(tempDir, "Memory", "Projects"));
-    await ensureDir(join(tempDir, "Memory", "Tasks"));
-    await ensureDir(join(tempDir, "Blueprints", "Agents"));
-    await ensureDir(join(tempDir, "Portals"));
-
+    await ensureDir(getWorkspaceRequestsDir(tempDir));
+    await ensureDir(getWorkspacePlansDir(tempDir));
+    await ensureDir(getWorkspaceRejectedDir(tempDir));
+    await ensureDir(getWorkspaceActiveDir(tempDir));
+    await ensureDir(getWorkspaceArchiveDir(tempDir));
+    await ensureDir(getMemoryExecutionDir(tempDir));
+    await ensureDir(getMemoryProjectsDir(tempDir));
+    await ensureDir(getMemoryTasksDir(tempDir));
+    await ensureDir(getMemoryDir(tempDir));
+    await ensureDir(getRuntimeDir(tempDir));
+    await ensureDir(getBlueprintsAgentsDir(tempDir));
+    await ensureDir(getPortalsDir(tempDir));
     // Initialize git if requested
     if (options.initGit !== false) {
       await new Deno.Command("git", {
@@ -80,7 +95,7 @@ export class TestEnvironment {
       // Create initial commit with .gitignore to prevent collateral damage from git reset --hard
       await Deno.writeTextFile(
         join(tempDir, ".gitignore"),
-        "Inbox/\nSystem/journal.db*\nSystem/daemon.*\ndeno.lock\n",
+        "Workspace/\n.exo/journal.db*\n.exo/daemon.*\ndeno.lock\n",
       );
       await Deno.writeTextFile(join(tempDir, ".gitkeep"), "");
       await new Deno.Command("git", {
@@ -97,7 +112,7 @@ export class TestEnvironment {
   }
 
   /**
-   * Create a request file in /Inbox/Requests
+   * Create a request file in /Workspace/Requests
    */
   async createRequest(
     description: string,
@@ -112,7 +127,7 @@ export class TestEnvironment {
     const traceId = options.traceId ?? crypto.randomUUID();
     const shortId = traceId.substring(0, 8);
     const fileName = `request-${shortId}.md`;
-    const filePath = join(this.tempDir, "Inbox", "Requests", fileName);
+    const filePath = join(getWorkspaceRequestsDir(this.tempDir), fileName);
 
     const frontmatter = [
       "---",
@@ -136,7 +151,7 @@ export class TestEnvironment {
   }
 
   /**
-   * Create a plan file in /Inbox/Plans (simulating plan generation)
+   * Create a plan file in /Workspace/Plans (simulating plan generation)
    */
   async createPlan(
     traceId: string,
@@ -149,10 +164,10 @@ export class TestEnvironment {
   ): Promise<string> {
     const _shortId = traceId.substring(0, 8);
     const fileName = `${requestId}_plan.md`;
-    const filePath = join(this.tempDir, "Inbox", "Plans", fileName);
+    const filePath = join(getWorkspacePlansDir(this.tempDir), fileName);
 
     // Ensure plans directory exists (some tests may remove/recreate dirs concurrently)
-    await ensureDir(join(this.tempDir, "Inbox", "Plans"));
+    await ensureDir(getWorkspacePlansDir(this.tempDir));
 
     const actions = options.actions ?? [
       { tool: "write_file", params: { path: "test.txt", content: "Hello World" } },
@@ -193,12 +208,12 @@ This plan will accomplish the requested task.
   }
 
   /**
-   * Move plan to /System/Active (approve)
+   * Move plan to Workspace/Active (approve)
    */
   async approvePlan(planPath: string): Promise<string> {
     const fileName = planPath.split("/").pop()!;
     const requestId = fileName.replace(/_plan\.md$/, "");
-    const activePath = join(this.tempDir, "System", "Active", fileName);
+    const activePath = join(getWorkspaceActiveDir(this.tempDir), fileName);
 
     // Robustly wait for the plan to appear. In high-concurrency tests the file may
     // be created slightly later or with a slightly different name/format. We poll
@@ -217,9 +232,9 @@ This plan will accomplish the requested task.
           break;
         }
 
-        // Scan Inbox/Plans for file with exact name or matching prefix
+        // Scan Workspace/Plans for file with exact name or matching prefix
         try {
-          const plansDir = join(this.tempDir, "Inbox", "Plans");
+          const plansDir = getWorkspacePlansDir(this.tempDir);
           for await (const entry of Deno.readDir(plansDir)) {
             if (!entry.isFile) continue;
             // Exact name match
@@ -253,12 +268,12 @@ This plan will accomplish the requested task.
     }
 
     if (!planExists) {
-      // As a last resort, scan both Inbox/Plans and System/Active for a matching
+      // As a last resort, scan both Workspace/Plans and Workspace/Active for a matching
       // plan by `request_id` or `trace_id`. If an approved copy already exists in
-      // System/Active, return that path (tests are happy as long as the plan is
+      // Workspace/Active, return that path (tests are happy as long as the plan is
       // available for processing).
-      const plansDir = join(this.tempDir, "Inbox", "Plans");
-      const activeDir = join(this.tempDir, "System", "Active");
+      const plansDir = getWorkspacePlansDir(this.tempDir);
+      const activeDir = getWorkspaceActiveDir(this.tempDir);
 
       try {
         for await (const dir of [plansDir, activeDir]) {
@@ -305,7 +320,7 @@ This plan will accomplish the requested task.
     }
 
     // Ensure active directory exists (some tests may remove/recreate dirs)
-    await ensureDir(join(this.tempDir, "System", "Active"));
+    await ensureDir(getWorkspaceActiveDir(this.tempDir));
 
     await Deno.writeTextFile(activePath, content);
 
@@ -320,11 +335,11 @@ This plan will accomplish the requested task.
   }
 
   /**
-   * Move plan to /Inbox/Rejected
+   * Move plan to /Workspace/Rejected
    */
   async rejectPlan(planPath: string, reason: string): Promise<string> {
     const fileName = planPath.split("/").pop()!;
-    const rejectedPath = join(this.tempDir, "Inbox", "Rejected", fileName);
+    const rejectedPath = join(getWorkspaceRejectedDir(this.tempDir), fileName);
 
     // Read and update status
     let content = await Deno.readTextFile(planPath);
@@ -338,10 +353,10 @@ This plan will accomplish the requested task.
   }
 
   /**
-   * Get plan from /Inbox/Plans by trace ID
+   * Get plan from /Workspace/Plans by trace ID
    */
   async getPlanByTraceId(traceId: string): Promise<string | null> {
-    const plansDir = join(this.tempDir, "Inbox", "Plans");
+    const plansDir = getWorkspacePlansDir(this.tempDir);
 
     try {
       for await (const entry of Deno.readDir(plansDir)) {
@@ -491,7 +506,7 @@ Always respond with valid JSON containing a plan with actionable steps.`;
     providerMode?: "recorded" | "scripted" | "pattern" | "failing" | "slow";
     recordings?: any[];
     includeReasoning?: boolean;
-    inboxPath?: string;
+    requestsDir?: string;
     blueprintsPath?: string;
   }): {
     provider: MockLLMProvider;
@@ -507,7 +522,8 @@ Always respond with valid JSON containing a plan with actionable steps.`;
       provider,
       this.db,
       {
-        inboxPath: options?.inboxPath ?? join(this.tempDir, "Inbox"),
+        workspacePath: join(this.tempDir, "Workspace"),
+        requestsDir: options?.requestsDir ?? getWorkspaceRequestsDir(this.tempDir),
         blueprintsPath: options?.blueprintsPath ??
           join(this.tempDir, "Blueprints", "Agents"),
         includeReasoning: options?.includeReasoning ?? true,

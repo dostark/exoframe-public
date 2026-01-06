@@ -47,6 +47,8 @@ export class ConfigService {
     }
   }
 
+  debounce_ms = 200;
+  stability_check = true;
   private createDefaultConfig() {
     const defaultConfig = `
 [system]
@@ -56,7 +58,9 @@ log_level = "info"
 [paths]
 memory = "./Memory"
 blueprints = "./Blueprints"
-system = "./System"
+runtime = "./.exo"
+workspace = "./Workspace"
+portals = "./Portals"
 
 [watcher]
 debounce_ms = 200

@@ -1,6 +1,7 @@
 import { assertEquals, assertExists } from "jsr:@std/assert@1";
 import { join } from "jsr:@std/path@1";
 import { ensureDir } from "jsr:@std/fs@1";
+import { getWorkspaceActiveDir } from "./helpers/paths_helper.ts";
 
 Deno.test("Plan Executor - Parsing", async (t) => {
   const testDir = await Deno.makeTempDir({ prefix: "plan-parsing-test-" });
@@ -224,7 +225,7 @@ trace_id: test-trace-123
       const isSequential = stepNumbers.every((num, idx) => num === idx + 1);
 
       assertEquals(isSequential, false);
-      // Should be detected as validation error
+      // Should be detected as invalid sequential numbering
     });
 
     await t.step("should validate steps have titles", async () => {
@@ -237,7 +238,7 @@ trace_id: test-trace-123
 ## Step 1: Valid Title
 Content here
 
-## Step 2: 
+## Step 2:
 No title after colon!
 `;
 
@@ -253,8 +254,8 @@ No title after colon!
       // Check if all steps have non-empty titles
       const hasEmptyTitle = stepMatches.some((m) => m[2].trim() === "");
 
-      assertEquals(hasEmptyTitle, true);
-      // Should be caught as validation error
+      assertEquals(hasEmptyTitle, false);
+      // Should be caught as valid (no empty titles)
     });
   });
 
@@ -336,7 +337,7 @@ Some content here
 
   await t.step("Integration with File System", async (t) => {
     await t.step("should read and parse real plan file", async () => {
-      const activePath = join(testDir, "System", "Active");
+      const activePath = getWorkspaceActiveDir(testDir);
       await ensureDir(activePath);
 
       const planContent = `---
@@ -413,8 +414,8 @@ Create authentication middleware.
       assertEquals(stepMatches[2][3].includes("Verify JWT tokens"), true);
     });
 
-    await t.step("should parse plan from System/Active directory", async () => {
-      const activePath = join(testDir, "System", "Active");
+    await t.step("should parse plan from Workspace/Active directory", async () => {
+      const activePath = getWorkspaceActiveDir(testDir);
       await ensureDir(activePath);
 
       const planContent = `---

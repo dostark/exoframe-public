@@ -3,8 +3,8 @@ import { ensureDir } from "@std/fs";
 import { join } from "@std/path";
 
 const ROOT = Deno.cwd();
-const SYSTEM_DIR = join(ROOT, "System");
-const DB_PATH = join(SYSTEM_DIR, "journal.db");
+const RUNTIME_DIR = join(ROOT, ".exo");
+const DB_PATH = join(RUNTIME_DIR, "journal.db");
 const MIGRATIONS_DIR = join(ROOT, "migrations");
 
 async function main() {
@@ -16,7 +16,7 @@ async function main() {
     Deno.exit(1);
   }
 
-  await ensureDir(SYSTEM_DIR);
+  await ensureDir(RUNTIME_DIR);
   const db = new Database(DB_PATH);
 
   try {

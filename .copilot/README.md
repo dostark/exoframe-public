@@ -2,11 +2,11 @@
 agent: general
 scope: dev
 title: Agents directory README
-short_summary: "Overview of the agents/ directory, schema, and maintenance guidelines."
+short_summary: "Overview of the .copilot/ directory, schema, and maintenance guidelines."
 version: "0.1"
 ---
 
-# agents/ — IDE & Dev Agent Instructions
+# .copilot/ — IDE & Dev Agent Instructions
 
 Purpose
 -------
@@ -14,10 +14,10 @@ This directory contains short, machine-discoverable instruction documents intend
 
 Layout
 ------
-- `agents/manifest.json` — auto-generated manifest listing available agent docs (`scripts/build_agents_index.ts`)
-- `agents/copilot/` — Copilot-focused docs and short summaries
-- `agents/providers/` — provider-specific adaptation notes and prompt templates
-- `agents/chunks/` — (auto-generated) pre-chunked text files for quick retrieval
+- `.copilot/manifest.json` — auto-generated manifest listing available agent docs (`scripts/build_agents_index.ts`)
+- `.copilot/copilot/` — Copilot-focused docs and short summaries
+- `.copilot/providers/` — provider-specific adaptation notes and prompt templates
+- `.copilot/chunks/` — (auto-generated) pre-chunked text files for quick retrieval
 
 Schema
 ------
@@ -36,7 +36,7 @@ Maintenance
 
 Regenerating manifest & chunks
 ------------------------------
-If you add or update files under `agents/`, regenerate the manifest and pre-chunk artifacts with:
+If you add or update files under `.copilot/`, regenerate the manifest and pre-chunk artifacts with:
 
 ```bash
 # Rebuild manifest.json and chunks/
@@ -52,14 +52,14 @@ deno run --allow-read scripts/verify_manifest_fresh.ts
 
 Building embeddings
 -------------------
-Precompute and import embeddings with `scripts/build_agents_embeddings.ts`. For precomputed embeddings, drop JSON files that follow the example template into `agents/embeddings/` and then run:
+Precompute and import embeddings with `scripts/build_agents_embeddings.ts`. For precomputed embeddings, drop JSON files that follow the example template into `.copilot/embeddings/` and then run:
 
 ```bash
 # Build embeddings from a directory of precomputed JSON files
-deno run --allow-read --allow-write --unstable scripts/build_agents_embeddings.ts --mode precomputed --dir agents/embeddings
+deno run --allow-read --allow-write --unstable scripts/build_agents_embeddings.ts --mode precomputed --dir .copilot/embeddings
 ```
 
-See `agents/embeddings/example_precomputed_template.json` for a minimal, valid template to create precomputed embedding files.
+See `.copilot/embeddings/example_precomputed_template.json` for a minimal, valid template to create precomputed embedding files.
 
 How to Add a New Agent Doc
 ---------------------------
@@ -189,9 +189,9 @@ deno run --allow-read scripts/inject_agent_context.ts --query "your test query" 
 ### Template File
 
 Copy an existing doc as a starting point:
-- For provider-specific: `agents/providers/claude.md`
-- For testing guidance: `agents/tests/testing.md`
-- For source patterns: `agents/source/exoframe.md`
+- For provider-specific: `.copilot/providers/claude.md`
+- For testing guidance: `.copilot/tests/testing.md`
+- For source patterns: `.copilot/source/exoframe.md`
 
 ### Common Mistakes to Avoid
 

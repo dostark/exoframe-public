@@ -16,10 +16,11 @@ export function createMockConfig(root: string, overrides: Partial<Config> = {}):
       ...overrides.system,
     },
     paths: {
-      inbox: "Inbox",
+      workspace: "Workspace",
+      runtime: ".exo",
       memory: "Memory",
-      system: "System",
       blueprints: "Blueprints",
+      portals: "Portals",
       ...overrides.paths,
     },
     database: {
@@ -66,7 +67,9 @@ root = "${root}"
 [paths]
 memory = "Memory"
 blueprints = "Blueprints"
-system = "System"
+runtime = ".exo"
+portals = "Portals"
+workspace = "Workspace"
 
 [database]
 batch_flush_ms = 100

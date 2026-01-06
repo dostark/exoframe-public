@@ -9,6 +9,7 @@
 
 import { assert } from "https://deno.land/std@0.201.0/testing/asserts.ts";
 import { dirname, fromFileUrl, join } from "https://deno.land/std@0.201.0/path/mod.ts";
+import { getRuntimeDir } from "./helpers/paths_helper.ts";
 
 // Resolve repository root (two levels up from this test file)
 const __dirname = dirname(fromFileUrl(import.meta.url));
@@ -89,7 +90,7 @@ Deno.test("setup_db.ts initializes journal.db with expected tables", async () =>
 
     assert(res.code === 0, `setup_db.ts exited with code ${res.code}: ${err}`);
 
-    const dbPath = join(tmp, "System", "journal.db");
+    const dbPath = join(getRuntimeDir(tmp), "journal.db");
     // Verify DB file exists
     const stat = await Deno.stat(dbPath);
     assert(stat.isFile, "journal.db was not created");

@@ -16,7 +16,7 @@ Use pre-generated embeddings from external sources:
 1. **Prepare embedding files** following the template:
 ```json
 {
-  "path": "agents/tests/testing.md",
+  "path": ".copilot/tests/testing.md",
   "title": "ExoFrame Test Development Guidelines",
   "vecs": [
     {

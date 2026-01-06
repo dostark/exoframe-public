@@ -6,6 +6,7 @@ import { join } from "@std/path";
 import { PortalCommands } from "../../../src/cli/portal_commands.ts";
 import { initTestDbService } from "../../helpers/db.ts";
 import { createMockConfig } from "../../helpers/config.ts";
+import { getMemoryProjectsDir } from "../../helpers/paths_helper.ts";
 
 /**
  * Creates a complete portal test environment with all necessary directories
@@ -21,7 +22,7 @@ export async function initPortalTest(options?: {
 
   // Create required directories
   await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-  await Deno.mkdir(join(tempRoot, "Memory", "Projects"), { recursive: true });
+  await Deno.mkdir(getMemoryProjectsDir(tempRoot), { recursive: true });
 
   // Create target directory files if specified
   if (targetDir && options?.targetFiles) {
@@ -112,6 +113,21 @@ export function getPortalCardPath(tempRoot: string, alias: string): string {
  */
 export async function createCliTestContext(options?: { createDirs?: string[] }) {
   const { db, tempDir, config, cleanup } = await initTestDbService();
+
+  // Always create required Workspace and .exo directories for CLI tests
+  const requiredDirs = [
+    "Workspace/Plans",
+    "Workspace/Active",
+    "Workspace/Archive",
+    "Workspace/Rejected",
+    ".exo",
+    "Memory",
+    "Portals",
+    "Blueprints/Agents",
+  ];
+  for (const dir of requiredDirs) {
+    await Deno.mkdir(join(tempDir, dir), { recursive: true });
+  }
 
   if (options?.createDirs) {
     for (const dir of options.createDirs) {

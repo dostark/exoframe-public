@@ -1,5 +1,5 @@
 // Edge-case and end-to-end tests for TUI dashboard
-import { launchTuiDashboard } from "../../src/tui/tui_dashboard.ts";
+import { launchTuiDashboard, type TuiDashboard } from "../../src/tui/tui_dashboard.ts";
 import { assertEquals } from "https://deno.land/std@0.204.0/assert/assert_equals.ts";
 Deno.test("TUI dashboard handles empty portal list and error state", async () => {
   const dashboard = await launchTuiDashboard({ testMode: true }) as TuiDashboard;

@@ -2,7 +2,7 @@
 
 ## 1. Problem Statement
 
-The current ExoFrame workflow relies on manual file manipulation in the `Inbox/Requests` directory or CLI commands. While functional, it lacks a cohesive "cockpit" for monitoring agent activity, reviewing plans, and managing portals.
+The current ExoFrame workflow relies on manual file manipulation in the `Workspace/Requests` directory or CLI commands. While functional, it lacks a cohesive "cockpit" for monitoring agent activity, reviewing plans, and managing portals.
 
 ## 2. Evaluation Matrix
 

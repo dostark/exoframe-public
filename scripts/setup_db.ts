@@ -6,13 +6,13 @@ import { ensureDir } from "@std/fs";
 import { join } from "@std/path";
 
 const ROOT = Deno.cwd();
-const SYSTEM_DIR = join(ROOT, "System");
+const RUNTIME_DIR = join(ROOT, ".exo");
 
 async function main() {
   console.log("Initializing ExoFrame Database...");
 
   // Ensure System directory exists
-  await ensureDir(SYSTEM_DIR);
+  await ensureDir(RUNTIME_DIR);
 
   // Run migrations
   const p = new Deno.Command(Deno.execPath(), {

@@ -1,4 +1,4 @@
-# agents/ — IDE & Dev Agent Instructions
+# .copilot/ — IDE & Dev Agent Instructions
 
 Purpose
 -------
@@ -6,7 +6,7 @@ This directory contains short, machine-discoverable instruction documents intend
 
 Layout
 ------
-- `agents/manifest.json` — auto-generated manifest listing available agent docs (`scripts/build_agents_index.ts`)
-- `agents/copilot/` — Copilot-focused docs and short summaries
-- `agents/providers/` — provider-specific adaptation notes and prompt templates
-- `agents/chunks/` — (auto-generated) pre-chunked text files for quick retrieval
+- `.copilot/manifest.json` — auto-generated manifest listing available agent docs (`scripts/build_agents_index.ts`)
+- `.copilot/copilot/` — Copilot-focused docs and short summaries
+- `.copilot/providers/` — provider-specific adaptation notes and prompt templates
+- `.copilot/chunks/` — (auto-generated) pre-chunked text files for quick retrieval

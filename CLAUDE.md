@@ -6,12 +6,12 @@
 
 | Need | Location |
 |------|----------|
-| Task → Doc mapping | [agents/cross-reference.md](agents/cross-reference.md) |
-| Source patterns | [agents/source/exoframe.md](agents/source/exoframe.md) |
-| Testing patterns | [agents/tests/testing.md](agents/tests/testing.md) |
-| Documentation guide | [agents/docs/documentation.md](agents/docs/documentation.md) |
-| Planning documents | [agents/planning/](agents/planning/) |
-| All agent docs index | [agents/manifest.json](agents/manifest.json) |
+| Task → Doc mapping | [.copilot/cross-reference.md](.copilot/cross-reference.md) |
+| Source patterns | [.copilot/source/exoframe.md](.copilot/source/exoframe.md) |
+| Testing patterns | [.copilot/tests/testing.md](.copilot/tests/testing.md) |
+| Documentation guide | [.copilot/docs/documentation.md](.copilot/docs/documentation.md) |
+| Planning documents | [.copilot/planning/](.copilot/planning/) |
+| All agent docs index | [.copilot/manifest.json](.copilot/manifest.json) |
 
 ## Project Overview
 
@@ -28,7 +28,7 @@ deno task test              # Run all tests
 deno task test:cov          # Run with coverage
 deno task fmt               # Format code
 deno task lint              # Lint code
-deno task check:docs        # Verify agents/manifest.json is fresh
+deno task check:docs        # Verify .copilot/manifest.json is fresh
 ```
 
 ## Development Workflow
@@ -58,17 +58,17 @@ src/
 └── main.ts      # Entry point
 
 tests/           # Mirror of src/ structure
-agents/          # AI assistant guidance (see below)
+.copilot/          # AI assistant guidance (see below)
 docs/            # User & architecture documentation
 ```
 
-## agents/ Directory — Your Knowledge Base
+## .copilot/ Directory — Your Knowledge Base
 
-The `agents/` folder contains **machine-readable guidance** for AI assistants:
+The `.copilot/` folder contains **machine-readable guidance** for AI assistants:
 
 ### Structure
 ```
-agents/
+.copilot/
 ├── manifest.json       # Index of all agent docs (auto-generated)
 ├── cross-reference.md  # Task → Document quick reference
 ├── source/             # Source code development patterns
@@ -81,16 +81,16 @@ agents/
 └── chunks/             # Pre-chunked docs for RAG (auto-generated)
 ```
 
-### When to Consult agents/
+### When to Consult .copilot/
 
 | Task | Consult |
 |------|---------|
-| Writing tests | `agents/tests/testing.md` |
-| Adding features | `agents/source/exoframe.md` + `agents/tests/testing.md` |
-| Refactoring | `agents/source/exoframe.md` |
-| Documentation | `agents/docs/documentation.md` |
-| Planning/roadmap | `agents/planning/*.md` |
-| Finding the right doc | `agents/cross-reference.md` |
+| Writing tests | `.copilot/tests/testing.md` |
+| Adding features | `.copilot/source/exoframe.md` + `.copilot/tests/testing.md` |
+| Refactoring | `.copilot/source/exoframe.md` |
+| Documentation | `.copilot/docs/documentation.md` |
+| Planning/roadmap | `.copilot/planning/*.md` |
+| Finding the right doc | `.copilot/cross-reference.md` |
 
 ## Key Patterns & Constraints
 
@@ -99,7 +99,7 @@ agents/
 - Keep side effects out of constructors
 
 ### File System as Database
-- `/System/Active`, `/Inbox/Requests`, `/Inbox/Plans` are the "database"
+- `.exo/Active`, `Workspace/Requests`, `Workspace/Plans` are the "database"
 - Use atomic file operations (write + rename)
 - All side-effects MUST log to Activity Journal via `EventLogger`
 
@@ -139,7 +139,7 @@ await withEnv({ MY_VAR: "value" }, async () => { ... });
   - Comprehensive keyboard shortcuts
 
 ### Planning Documents
-Check `agents/planning/` for:
+Check `.copilot/planning/` for:
 - `phase-12-obsidian-retirement.md`
 - `phase-12.5-memory-bank-enhanced.md`
 - `phase-13-tui-enhancement.md` ✅ COMPLETED
@@ -147,18 +147,18 @@ Check `agents/planning/` for:
 ## Common Workflows
 
 ### "Add a new feature"
-1. Check `agents/planning/` for relevant phase
-2. Follow TDD from `agents/source/exoframe.md`
-3. Use test helpers from `agents/tests/testing.md`
-4. Update docs per `agents/docs/documentation.md`
+1. Check `.copilot/planning/` for relevant phase
+2. Follow TDD from `.copilot/source/exoframe.md`
+3. Use test helpers from `.copilot/tests/testing.md`
+4. Update docs per `.copilot/docs/documentation.md`
 
 ### "Fix a bug"
 1. Write failing test first
-2. Fix code following patterns in `agents/source/exoframe.md`
+2. Fix code following patterns in `.copilot/source/exoframe.md`
 3. Verify all tests pass
 
 ### "Update agent docs"
-After adding/changing files in `agents/`:
+After adding/changing files in `.copilot/`:
 ```bash
 deno run --allow-read --allow-write scripts/build_agents_index.ts
 ```
@@ -167,7 +167,7 @@ deno run --allow-read --allow-write scripts/build_agents_index.ts
 
 ### ✅ Do
 - Follow TDD (tests first, always)
-- Consult `agents/cross-reference.md` to find relevant docs
+- Consult `.copilot/cross-reference.md` to find relevant docs
 - Use established test helpers (`initTestDbService`, etc.)
 - Keep Problems tab clean (fix TS errors before completing)
 - Run `deno task test` before committing
@@ -177,4 +177,4 @@ deno run --allow-read --allow-write scripts/build_agents_index.ts
 - Proceed without checking relevant agent docs
 - Use raw SQL table creation in tests (use helpers)
 - Ignore pre-commit hook failures
-- Guess at patterns — check `agents/` docs first
+- Guess at patterns — check `.copilot/` docs first

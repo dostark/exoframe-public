@@ -5,7 +5,7 @@
 ```
 I want to [task type].
 
-First, consult agents/cross-reference.md for the workflow:
+First, consult .copilot/cross-reference.md for the workflow:
 1. Find my task type in "Task → Agent Doc Quick Reference"
 2. Read the Primary Doc listed
 3. Check Secondary Docs if needed

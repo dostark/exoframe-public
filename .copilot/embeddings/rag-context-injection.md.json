@@ -1,5 +1,5 @@
 {
-  "path": "agents/prompts/rag-context-injection.md",
+  "path": ".copilot/prompts/rag-context-injection.md",
   "title": "RAG Context Injection Prompt",
   "vecs": [
     {

@@ -87,7 +87,7 @@ exoctl --help
 **Step 2:**
 
 - Deploy script completes without errors
-- Creates runtime folders (`System`, `Knowledge`, `Inbox`, `Portals`)
+- Creates runtime folders (`System`, `Memory`, `Workspace`, `Portals`, `.exo`)
 - Copies runtime artifacts to target workspace
 - Runs `deno task cache` and `deno task setup` automatically
 - Installs `exoctl` CLI globally to `~/.deno/bin/`
@@ -102,7 +102,7 @@ exoctl --help
 ```bash
 # Check directory structure was created
 ls -la ~/ExoFrame/
-# Expected: Blueprints/ Inbox/ Knowledge/ Portals/ System/
+# Expected: Blueprints/ Workspace/ Memory/ Portals/ .exo/
 
 ls -la ~/ExoFrame/System/
 # Expected: Active/ Archive/ Templates/ journal.db
@@ -116,7 +116,7 @@ exoctl --help
 
 ### Pass Criteria
 
-- [ ] All directories created (Blueprints, Inbox, Knowledge, Portals, System)
+- [ ] All directories created (Blueprints, Workspace, Memory, Portals, .exo)
 - [ ] Config file exists and is valid TOML
 - [ ] Database initialized (`System/journal.db`)
 - [ ] `exoctl` CLI accessible
@@ -404,7 +404,7 @@ ls ~/ExoFrame/Blueprints/Agents/*.md 2>/dev/null | grep -E "(test-agent|coder-te
 # Expected: No test blueprint files remain
 
 # Check request was created with custom agent
-cat ~/ExoFrame/Inbox/Requests/request-*.md | grep "mock-agent"
+cat ~/ExoFrame/Workspace/Requests/request-*.md | grep "mock-agent"
 # Expected: Request references mock-agent
 ````
 
@@ -422,7 +422,7 @@ rm -f ~/ExoFrame/Blueprints/Agents/invalid-test.md
 rm -f /tmp/custom-prompt.txt
 
 # Remove test request
-rm -f ~/ExoFrame/Inbox/Requests/request-*.md
+rm -f ~/ExoFrame/Workspace/Requests/request-*.md
 
 # Reset EDITOR
 unset EDITOR
@@ -472,7 +472,7 @@ exoctl request "Add a hello world function to utils.ts" --agent mock-agent
 exoctl request list
 
 # Step 4: Verify request file
-ls -la ~/ExoFrame/Inbox/Requests/
+ls -la ~/ExoFrame/Workspace/Requests/
 ```
 
 ### Expected Results
@@ -503,7 +503,7 @@ ls -la ~/ExoFrame/Inbox/Requests/
 
 ```bash
 # Read the request file
-cat ~/ExoFrame/Inbox/Requests/request-*.md
+cat ~/ExoFrame/Workspace/Requests/request-*.md
 
 # Expected content (YAML frontmatter):
 # ---
@@ -525,12 +525,12 @@ cat ~/ExoFrame/Inbox/Requests/request-*.md
 
 ```bash
 # Remove test request if not proceeding to MT-05
-rm -f ~/ExoFrame/Inbox/Requests/request-*.md
+rm -f ~/ExoFrame/Workspace/Requests/request-*.md
 ```
 
 ### Pass Criteria
 
-- [ ] Request file created in `Inbox/Requests/`
+- [ ] Request file created in `Workspace/Requests/`
 - [ ] Valid YAML frontmatter with trace_id
 - [ ] Request content matches input
 - [ ] `exoctl request list` shows the request
@@ -570,7 +570,7 @@ exoctl plan list
 exoctl plan show <plan-id>
 
 # Step 6: Verify plan file
-ls -la ~/ExoFrame/Inbox/Plans/
+ls -la ~/ExoFrame/Workspace/Plans/
 ```
 
 ### Expected Results
@@ -602,13 +602,13 @@ ls -la ~/ExoFrame/Inbox/Plans/
 
 **Step 6:**
 
-- Plan file exists in `Inbox/Plans/` with format `<request-id>_plan.md`
+- Plan file exists in `Workspace/Plans/` with format `<request-id>_plan.md`
 
 ### Verification
 
 ```bash
 # Read the plan file
-cat ~/ExoFrame/Inbox/Plans/*_plan.md
+cat ~/ExoFrame/Workspace/Plans/*_plan.md
 
 # Expected structure with YAML frontmatter:
 # ---
@@ -670,10 +670,10 @@ grep -i "request.*processing\|plan.*generated\|error" ~/ExoFrame/System/daemon.l
 grep -i "watcher\|detected" ~/ExoFrame/System/daemon.log | tail -20
 
 # Verify request file is valid YAML
-cat ~/ExoFrame/Inbox/Requests/request-*.md
+cat ~/ExoFrame/Workspace/Requests/request-*.md
 
 # Check request status
-cat ~/ExoFrame/Inbox/Requests/request-*.md | grep "^status:"
+cat ~/ExoFrame/Workspace/Requests/request-*.md | grep "^status:"
 
 # Try restarting daemon
 exoctl daemon stop
@@ -728,7 +728,7 @@ exoctl plan approve <plan-id>
 
 # Step 3: Verify plan moved
 exoctl plan list --status approved
-ls -la ~/ExoFrame/System/Active/
+ls -la ~/ExoFrame/Workspace/Active/
 ```
 
 ### Expected Results
@@ -745,19 +745,19 @@ ls -la ~/ExoFrame/System/Active/
 **Step 3:**
 
 - Plan appears in approved list
-- Plan file moved to `System/Active/`
+- Plan file moved to `Workspace/Active/`
 
 ### Verification
 
 ```bash
-# Check plan is no longer in Inbox
-ls ~/ExoFrame/Inbox/Plans/ | grep "_plan.md"  # Should be empty
+# Check plan is no longer in Workspace
+ls ~/ExoFrame/Workspace/Plans/ | grep "_plan.md"  # Should be empty
 
 # Check plan is in Active
-ls ~/ExoFrame/System/Active/ | grep "_plan.md"  # Should show file
+ls ~/ExoFrame/Workspace/Active/ | grep "_plan.md"  # Should show file
 
 # Read moved plan file
-cat ~/ExoFrame/System/Active/*_plan.md
+cat ~/ExoFrame/Workspace/Active/*_plan.md
 # YAML frontmatter should show:
 # ---
 # status: approved
@@ -767,7 +767,7 @@ cat ~/ExoFrame/System/Active/*_plan.md
 ### Pass Criteria
 
 - [ ] Plan status changed to `approved`
-- [ ] Plan file moved to `System/Active/`
+- [ ] Plan file moved to `Workspace/Active/`
 - [ ] Original request updated
 
 ---
@@ -816,7 +816,7 @@ ls -la ~/ExoFrame/System/Archive/
 ```bash
 # Read archived plan
 cat ~/ExoFrame/System/Archive/*_plan.md 2>/dev/null || \
-cat ~/ExoFrame/Inbox/Plans/*_rejected.md 2>/dev/null
+cat ~/ExoFrame/Workspace/Plans/*_rejected.md 2>/dev/null
 
 # YAML frontmatter should contain:
 # ---
@@ -1009,7 +1009,7 @@ git branch -a
 
 ```bash
 # Step 1: Test Path Restriction
-# ToolRegistry prevents access outside allowed roots (Inbox, Knowledge, Blueprints, Portals)
+# ToolRegistry prevents access outside allowed roots (Workspace, Memory, Blueprints, Portals)
 
 # Create a request that tries to read /etc/passwd
 exoctl request "Read /etc/passwd" --agent senior-coder
@@ -1395,7 +1395,7 @@ unset OPENAI_API_KEY
 
 ```bash
 # Step 1: Create request with invalid YAML
-cat > ~/ExoFrame/Inbox/Requests/invalid-test.md << 'EOF'
+cat > ~/ExoFrame/Workspace/Requests/invalid-test.md << 'EOF'
 ---
 id: broken
 status: [invalid yaml
@@ -1435,7 +1435,7 @@ exoctl daemon status
 
 ```bash
 # Remove invalid file
-rm ~/ExoFrame/Inbox/Requests/invalid-test.md
+rm ~/ExoFrame/Workspace/Requests/invalid-test.md
 ```
 
 ### Pass Criteria
@@ -1591,7 +1591,7 @@ grep -i "error\|conflict\|race" ~/ExoFrame/System/daemon.log
 ```bash
 # Step 1: Create files rapidly (proper format with frontmatter)
 for i in $(seq 1 5); do
-  cat > ~/ExoFrame/Inbox/Requests/rapid-$i.md << EOF
+  cat > ~/ExoFrame/Workspace/Requests/rapid-$i.md << EOF
 ---
 trace_id: "00000000-0000-0000-0000-00000000000$i"
 created: "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
@@ -1610,7 +1610,7 @@ done
 
 # Step 2: Modify files (update status)
 for i in $(seq 1 5); do
-  sed -i 's/status: pending/status: processing/' ~/ExoFrame/Inbox/Requests/rapid-$i.md
+  sed -i 's/status: pending/status: processing/' ~/ExoFrame/Workspace/Requests/rapid-$i.md
   sleep 0.1
 done
 
@@ -1640,7 +1640,7 @@ tail -50 ~/ExoFrame/System/daemon.log | grep -c "file\|detected\|changed"
 
 ```bash
 # Remove test files
-rm ~/ExoFrame/Inbox/Requests/rapid-*.md
+rm ~/ExoFrame/Workspace/Requests/rapid-*.md
 ```
 
 ### Pass Criteria
@@ -1967,9 +1967,9 @@ exoctl dashboard
 sqlite3 ~/ExoFrame/System/journal.db "SELECT action_type, target, payload FROM activity WHERE action_type LIKE '%plan%' ORDER BY timestamp DESC LIMIT 5;"
 
 # Verify plans moved to correct directories
-ls ~/ExoFrame/Inbox/Plans/  # Should not contain approved/rejected plans
-ls ~/ExoFrame/Inbox/Approved/  # Should contain approved plans
-ls ~/ExoFrame/Inbox/Rejected/  # Should contain rejected plans
+ls ~/ExoFrame/Workspace/Plans/  # Should not contain approved/rejected plans
+ls ~/ExoFrame/Workspace/Approved/  # Should contain approved plans
+ls ~/ExoFrame/Workspace/Rejected/  # Should contain rejected plans
 ```
 
 ### Pass Criteria

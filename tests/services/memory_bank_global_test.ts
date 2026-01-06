@@ -23,6 +23,7 @@ import {
   LearningSchema,
   type ProjectMemory,
 } from "../../src/schemas/memory_bank.ts";
+import { getMemoryGlobalDir } from "../helpers/paths_helper.ts";
 
 // ===== Learning Schema Tests =====
 
@@ -213,7 +214,7 @@ Deno.test("MemoryBankService: initGlobalMemory creates Global directory structur
     const service = new MemoryBankService(config, db);
     await service.initGlobalMemory();
 
-    const globalDir = join(config.system.root, "Memory", "Global");
+    const globalDir = getMemoryGlobalDir(config.system.root);
     assertEquals(await exists(globalDir), true);
     assertEquals(await exists(join(globalDir, "learnings.md")), true);
     assertEquals(await exists(join(globalDir, "learnings.json")), true);
@@ -298,7 +299,7 @@ Deno.test("MemoryBankService: addGlobalLearning updates markdown file", async ()
 
     await service.addGlobalLearning(learning);
 
-    const mdPath = join(config.system.root, "Memory", "Global", "learnings.md");
+    const mdPath = join(getMemoryGlobalDir(config.system.root), "learnings.md");
     const content = await Deno.readTextFile(mdPath);
     assertStringIncludes(content, "Input Validation Pattern");
     assertStringIncludes(content, "Always validate user input");

@@ -1,7 +1,7 @@
 # Project ExoFrame: Technical Specification & Architecture
 
-- **Version:** 1.10.0
-- **Release Date:** 2026-01-05
+- **Version:** 1.11.0
+- **Release Date:** 2026-01-06
 - **Status:** Engineering Specification
 - **Reference:** [ExoFrame White Paper](./ExoFrame_White_Paper.md)
 - **Architecture:** [ExoFrame Architecture Diagrams](./ExoFrame_Architecture.md)
@@ -13,9 +13,9 @@
 
 - **Activity Journal:** The SQLite database logging all events
 - **Portal:** A symlinked directory providing agent access to external projects
-- **Request:** A markdown file in `/Inbox/Requests` containing user intent
-- **Plan:** An agent-generated proposal in `/Inbox/Plans`
-- **Active Task:** An approved request in `/System/Active` being executed
+- **Request:** A markdown file in `Workspace/Requests` containing user intent
+- **Plan:** An agent-generated proposal in `Workspace/Plans`
+- **Active Task:** An approved request in `Workspace/Active` being executed
 - **Report:** An agent-generated summary in `/Memory/Execution` after completion
 - **Trace ID:** UUID linking request → plan → execution → report
 - **Lease:** Exclusive lock on a file (stored in `leases` table)
@@ -75,7 +75,7 @@ The TUI dashboard, launched via `exoctl dashboard`, is a terminal-based cockpit 
 
 **Data Flow:**
 
-- Reads from Activity Journal (SQLite), Inbox/Plans, Portals, and System directories
+- Reads from Activity Journal (SQLite), Workspace/Plans, Portals, and System directories
 - Writes actions (approvals, portal changes, daemon control) back to the Activity Journal and relevant files
 - All actions are auditable and reflected in the system log
 
@@ -176,19 +176,19 @@ ExoFrame uses a **hybrid format strategy** optimized for different use cases:
 
 ### Complete Format Reference
 
-| Category             | Format                      | Extension      | Location             | Purpose                                    |
-| -------------------- | --------------------------- | -------------- | -------------------- | ------------------------------------------ |
-| **System Config**    | TOML                        | `.toml`        | `exo.config.toml`    | Main configuration                         |
-| **Deno Config**      | JSON                        | `.json`        | `deno.json`          | Runtime, imports, tasks (Deno requirement) |
-| **Agent Blueprints** | TOML                        | `.toml`        | `Blueprints/Agents/` | Agent definitions                          |
-| **Flow Definitions** | TypeScript                  | `.ts`          | `Blueprints/Flows/`  | Orchestration logic                        |
-| **Requests**         | Markdown + YAML frontmatter | `.md`          | `Inbox/Requests/`    | User task requests                         |
-| **Plans**            | Markdown + YAML frontmatter | `.md`          | `Inbox/Plans/`       | Agent proposals                            |
-| **Reports**          | Markdown + JSON metadata    | `.md`, `.json` | `Memory/Execution/`  | Mission completion reports                 |
-| **Memory Banks**     | Markdown + JSON             | `.md`, `.json` | `Memory/`            | Execution history and project context      |
-| **Project Memory**   | Markdown                    | `.md`          | `Memory/Projects/`   | Auto-generated project context             |
-| **Activity Journal** | SQLite                      | `.db`          | `System/exo.db`      | Audit log & file locks                     |
-| **Migrations**       | SQL                         | `.sql`         | `migrations/`        | Database schema changes                    |
+| Category             | Format                      | Extension      | Location              | Purpose                                    |
+| -------------------- | --------------------------- | -------------- | --------------------- | ------------------------------------------ |
+| **System Config**    | TOML                        | `.toml`        | `exo.config.toml`     | Main configuration                         |
+| **Deno Config**      | JSON                        | `.json`        | `deno.json`           | Runtime, imports, tasks (Deno requirement) |
+| **Agent Blueprints** | TOML                        | `.toml`        | `Blueprints/Agents/`  | Agent definitions                          |
+| **Flow Definitions** | TypeScript                  | `.ts`          | `Blueprints/Flows/`   | Orchestration logic                        |
+| **Requests**         | Markdown + YAML frontmatter | `.md`          | `Workspace/Requests/` | User task requests                         |
+| **Plans**            | Markdown + YAML frontmatter | `.md`          | `Workspace/Plans/`    | Agent proposals                            |
+| **Reports**          | Markdown + JSON metadata    | `.md`, `.json` | `Memory/Execution/`   | Mission completion reports                 |
+| **Memory Banks**     | Markdown + JSON             | `.md`, `.json` | `Memory/`             | Execution history and project context      |
+| **Project Memory**   | Markdown                    | `.md`          | `Memory/Projects/`    | Auto-generated project context             |
+| **Activity Journal** | SQLite                      | `.db`          | `System/exo.db`       | Audit log & file locks                     |
+| **Migrations**       | SQL                         | `.sql`         | `migrations/`         | Database schema changes                    |
 
 ### YAML Frontmatter Format (Requests, Plans, Reports)
 
@@ -281,7 +281,7 @@ folders are treated as fatal errors during daemon startup so that watchers do no
 ├── /Blueprints                 <-- "Source Code" of the Swarm
 │   ├── /Agents                 <-- TOML definitions
 │   └── /Flows                  <-- TS logic
-├── /Inbox                      <-- The Input Layer
+├── /Workspace                      <-- The Input Layer
 │   ├── /Requests               <-- User drops ideas here
 │   ├── /Plans                  <-- Agents submit proposals
 │   └── /Archive                <-- Processed requests/plans
@@ -389,121 +389,6 @@ exoctl plan list --status=review
 
 ### 5.4. Implementation Strategy
 
-**CLI Command Handler:**
-
-```typescript
-// src/cli/plan_commands.ts
-
-export class PlanCommands {
-  constructor(
-    private config: Config,
-    private db: DatabaseService,
-  ) {}
-
-  async approve(planId: string): Promise<void> {
-    // 1. Validate plan exists in /Inbox/Plans
-    const planPath = join(this.config.system.root, "Inbox", "Plans", `${planId}_plan.md`);
-    if (!await exists(planPath)) {
-      throw new Error(`Plan not found: ${planId}`);
-    }
-
-    // 2. Parse and validate frontmatter
-    const plan = await this.parsePlan(planPath);
-    if (plan.status !== "review") {
-      throw new Error(`Plan cannot be approved (status: ${plan.status})`);
-    }
-
-    // 3. Move to /System/Active (atomic operation)
-    const activePath = join(this.config.system.root, "System", "Active", `${planId}.md`);
-    await Deno.rename(planPath, activePath);
-
-    // 4. Log approval action
-    this.db.logActivity(
-      "human",
-      "plan.approved",
-      planId,
-      {
-        approved_by: await this.getUserIdentity(),
-        approved_at: new Date().toISOString(),
-      },
-      plan.trace_id,
-      null,
-    );
-
-    console.log(`✓ Plan '${planId}' approved and moved to /System/Active`);
-  }
-
-  async reject(planId: string, reason: string): Promise<void> {
-    // 1. Validate and parse plan
-    const planPath = join(this.config.system.root, "Inbox", "Plans", `${planId}_plan.md`);
-    const plan = await this.parsePlan(planPath);
-
-    // 2. Update frontmatter with rejection details
-    const updatedContent = await this.addRejectionMetadata(
-      await Deno.readTextFile(planPath),
-      reason,
-    );
-
-    // 3. Move to /Inbox/Rejected
-    const rejectedPath = join(this.config.system.root, "Inbox", "Rejected", `${planId}_rejected.md`);
-    await Deno.writeTextFile(rejectedPath, updatedContent);
-    await Deno.remove(planPath);
-
-    // 4. Log rejection
-    this.db.logActivity(
-      "human",
-      "plan.rejected",
-      planId,
-      {
-        rejected_by: await this.getUserIdentity(),
-        rejection_reason: reason,
-        rejected_at: new Date().toISOString(),
-      },
-      plan.trace_id,
-      null,
-    );
-
-    console.log(`✗ Plan '${planId}' rejected: ${reason}`);
-  }
-
-  async revise(planId: string, comments: string[]): Promise<void> {
-    // 1. Validate and parse plan
-    const planPath = join(this.config.system.root, "Inbox", "Plans", `${planId}_plan.md`);
-    const plan = await this.parsePlan(planPath);
-
-    // 2. Append review comments section
-    const updatedContent = await this.addReviewComments(
-      await Deno.readTextFile(planPath),
-      comments,
-    );
-
-    // 3. Update frontmatter status
-    const finalContent = updatedContent.replace(
-      /status: "review"/,
-      'status: "needs_revision"',
-    );
-
-    await Deno.writeTextFile(planPath, finalContent);
-
-    // 4. Log revision request
-    this.db.logActivity(
-      "human",
-      "plan.revision_requested",
-      planId,
-      {
-        reviewed_by: await this.getUserIdentity(),
-        comment_count: comments.length,
-        reviewed_at: new Date().toISOString(),
-      },
-      plan.trace_id,
-      null,
-    );
-
-    console.log(`⚠ Revision requested for '${planId}' (${comments.length} comments)`);
-  }
-}
-```
-
 **CLI Interface:**
 
 ```typescript
@@ -516,7 +401,7 @@ const planCommand = new Command()
   .description("Manage agent plans")
   .command(
     "approve <plan-id>",
-    "Approve a plan and move it to /System/Active for execution",
+    "Approve a plan and move it to Workspace/Active for execution",
   )
   .action(async (options, planId: string) => {
     const commands = new PlanCommands(config, db);
@@ -524,7 +409,7 @@ const planCommand = new Command()
   })
   .command(
     "reject <plan-id>",
-    "Reject a plan and move it to /Inbox/Rejected",
+    "Reject a plan and move it to /Workspace/Rejected",
   )
   .option("-r, --reason <reason:string>", "Rejection reason (required)", { required: true })
   .action(async ({ reason }, planId: string) => {
@@ -565,16 +450,16 @@ const planCommand = new Command()
 **Action Validation:**
 
 1. **Plan Approval:**
-   - ✓ Plan file exists in `/Inbox/Plans`
+   - ✓ Plan file exists in `/Workspace/Plans`
    - ✓ Frontmatter has `status: "review"`
    - ✓ Required fields present (trace_id, request_id)
-   - ✓ Target path in `/System/Active` is available
+   - ✓ Target path in `Workspace/Active` is available
    - ✓ Atomic file operation (rename)
 
 2. **Plan Rejection:**
    - ✓ Reason is required and non-empty
    - ✓ Frontmatter updated with rejection metadata
-   - ✓ File moved to `/Inbox/Rejected` with `_rejected.md` suffix
+   - ✓ File moved to `/Workspace/Rejected` with `_rejected.md` suffix
 
 3. **Revision Request:**
    - ✓ At least one comment required
@@ -635,7 +520,7 @@ export class PlanReviewer {
     await commands.approve(planId);
 
     // Update TUI display
-    this.showNotification("✓ Plan approved and moved to /System/Active");
+    this.showNotification("✓ Plan approved and moved to Workspace/Active");
     this.refreshPlanList();
   }
 
@@ -669,18 +554,18 @@ export class PlanReviewer {
 
 ### 5.8.1. Overview
 
-The Plan Execution Engine automatically executes approved plans moved to `System/Active/`. It uses an **agent-driven architecture via MCP (Model Context Protocol) server** where LLM agents connect to ExoFrame's MCP server and use standardized tools for portal operations. This eliminates fragile response parsing, provides strong security boundaries, and supports configurable security modes (sandboxed or hybrid). It consists of six sub-steps, with Detection (5.12.1) and Parsing (5.12.2) currently implemented.
+The Plan Execution Engine automatically executes approved plans moved to `Workspace/Active/`. It uses an **agent-driven architecture via MCP (Model Context Protocol) server** where LLM agents connect to ExoFrame's MCP server and use standardized tools for portal operations. This eliminates fragile response parsing, provides strong security boundaries, and supports configurable security modes (sandboxed or hybrid). It consists of six sub-steps, with Detection (5.12.1) and Parsing (5.12.2) currently implemented.
 
 **Implementation Status:**
 
-| Sub-Step | Name                | Status         | Description                                 |
-| -------- | ------------------- | -------------- | ------------------------------------------- |
-| 5.12.1   | Detection           | ✅ Implemented | Monitors System/Active for approved plans   |
-| 5.12.2   | Parsing             | ✅ Implemented | Extracts and validates plan structure       |
-| 5.12.3   | Agent Orchestration | 📋 Planned     | Invokes LLM agent via MCP server with tools |
-| 5.12.4   | Changeset Registry  | 📋 Planned     | Registers changeset created by agent        |
-| 5.12.5   | Status Update       | 📋 Planned     | Marks plan executed, moves to archive       |
-| 5.12.6   | Error Handling      | 📋 Planned     | Handles agent/MCP/Git errors gracefully     |
+| Sub-Step | Name                | Status         | Description                                  |
+| -------- | ------------------- | -------------- | -------------------------------------------- |
+| 5.12.1   | Detection           | ✅ Implemented | Monitors Workspace/Active for approved plans |
+| 5.12.2   | Parsing             | ✅ Implemented | Extracts and validates plan structure        |
+| 5.12.3   | Agent Orchestration | 📋 Planned     | Invokes LLM agent via MCP server with tools  |
+| 5.12.4   | Changeset Registry  | 📋 Planned     | Registers changeset created by agent         |
+| 5.12.5   | Status Update       | 📋 Planned     | Marks plan executed, moves to archive        |
+| 5.12.6   | Error Handling      | 📋 Planned     | Handles agent/MCP/Git errors gracefully      |
 
 ### 5.8.2. Dual FileWatcher Architecture
 
@@ -688,13 +573,13 @@ The daemon runs two independent FileWatcher instances:
 
 **Request Watcher (Existing):**
 
-- Path: `Inbox/Requests/`
+- Path: `Workspace/Requests/`
 - Purpose: Detects new user requests
 - Handler: RequestProcessor
 
 **Plan Watcher (New - Step 5.12.1):**
 
-- Path: `System/Active/`
+- Path: `Workspace/Active/`
 - Purpose: Detects approved plans ready for execution
 - Handler: Plan Executor (in-progress)
 - Filter: Only processes files ending in `_plan.md`
@@ -714,7 +599,7 @@ const planWatcher = new FileWatcher(
     // Detection and parsing logic (Steps 5.12.1-5.12.2)
   },
   db,
-  activePath, // Custom watch path: System/Active/
+  activePath, // Custom watch path: Workspace/Active/
 );
 
 // Start both watchers concurrently
@@ -727,7 +612,7 @@ await Promise.all([requestWatcher.start(), planWatcher.start()]);
 
 **Request Processing Flow:**
 
-1. **File Detection:** RequestWatcher detects new `.md` file in `Inbox/Requests/`
+1. **File Detection:** RequestWatcher detects new `.md` file in `Workspace/Requests/`
 2. **Frontmatter Parsing:** Extract YAML frontmatter with routing fields (`flow`, `agent`)
 3. **Routing Decision:**
    - If `flow` field present → Route to FlowRunner (multi-agent)
@@ -932,11 +817,11 @@ const feedbackConfig = {
 
 ### 5.8.3. Step 5.12.1: Detection (✅ Implemented)
 
-**Purpose:** Detect approved plans in `System/Active/` and validate required metadata.
+**Purpose:** Detect approved plans in `Workspace/Active/` and validate required metadata.
 
 **Detection Flow:**
 
-1. FileWatcher detects file creation in `System/Active/`
+1. FileWatcher detects file creation in `Workspace/Active/`
 2. Filter files by `_plan.md` suffix (ignore other files)
 3. Read file content
 4. Parse YAML frontmatter using `@std/yaml`
@@ -1121,7 +1006,7 @@ Create REST API routes.
 - Detection runs on FileWatcher event
 - Parsing runs immediately after successful detection
 - Parsed plan structure logged to Activity Journal
-- Plan remains in `System/Active/` awaiting execution
+- Plan remains in `Workspace/Active/` awaiting execution
 
 **Future (Steps 5.12.3-5.12.6):**
 
@@ -1341,7 +1226,7 @@ All portal operations are logged to Activity Journal:
 
 **Plan Execution Events (Step 5.12):**
 
-- `plan.detected` - Approved plan found in System/Active
+- `plan.detected` - Approved plan found in Workspace/Active
 - `plan.ready_for_execution` - Valid plan parsed, ready for execution
 - `plan.parsed` - Plan structure successfully extracted
 - `plan.invalid_frontmatter` - YAML frontmatter parsing failed
@@ -1634,14 +1519,14 @@ class A2AAdapter {
   async start(): Promise<void> {
     // Serve Agent Card at /.well-known/agent.json
     // Handle POST /tasks for task submission
-    // Poll /Inbox/Plans for responses
+    // Poll /Workspace/Plans for responses
   }
 
   /**
    * Translate A2A task to ExoFrame request file
    */
   private async ingestA2ATask(task: A2ATask): Promise<string> {
-    const requestPath = `${this.exoRoot}/Inbox/Requests/${task.id}.md`;
+    const requestPath = `${this.exoRoot}/Workspace/Requests/${task.id}.md`;
     const markdown = this.toExoFrameMarkdown(task);
     await Deno.writeTextFile(requestPath, markdown);
     return task.id;
@@ -1651,7 +1536,7 @@ class A2AAdapter {
    * Monitor for plan file and translate back to A2A response
    */
   private async pollForPlan(taskId: string): Promise<A2AResponse> {
-    const planPath = `${this.exoRoot}/Inbox/Plans/${taskId}_plan.md`;
+    const planPath = `${this.exoRoot}/Workspace/Plans/${taskId}_plan.md`;
     const watcher = Deno.watchFs(planPath);
     // Wait for file creation, parse, return A2A response
   }
@@ -1662,9 +1547,9 @@ class A2AAdapter {
 
 1. **Inbound (External → ExoFrame)**:
    - External agent calls A2A endpoint
-   - Adapter creates request file in `/Inbox/Requests`
+   - Adapter creates request file in `/Workspace/Requests`
    - ExoFrame agent processes normally
-   - Adapter watches `/Inbox/Plans`, translates to A2A response
+   - Adapter watches `/Workspace/Plans`, translates to A2A response
 
 2. **Outbound (ExoFrame → External)**:
    - ExoFrame agent specifies A2A-compatible remote in blueprint

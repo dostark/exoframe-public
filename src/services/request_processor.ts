@@ -8,7 +8,7 @@
  * 2. Route requests using RequestRouter (flow vs agent validation)
  * 3. Load agent blueprints or validate flows
  * 4. Call AgentRunner.run() or generate flow execution plans
- * 5. Write plans to Inbox/Plans/ using PlanWriter
+ * 5. Write plans to Workspace/Plans/ using PlanWriter
  * 6. Update request status (pending → planned | failed)
  * 7. Log all activities to Activity Journal
  */
@@ -35,8 +35,11 @@ import { ProviderFactory } from "../ai/provider_factory.ts";
  * Configuration for RequestProcessor
  */
 export interface RequestProcessorConfig {
-  /** Path to Inbox directory (contains Requests/ and Plans/) */
-  inboxPath: string;
+  /** Path to Workspace directory (contains Requests/ and Plans/) */
+  workspacePath: string;
+
+  /** Directory within Workspace for request files */
+  requestsDir: string;
 
   /** Path to agent blueprints directory */
   blueprintsPath: string;
@@ -77,7 +80,7 @@ interface ParsedRequestFile {
 /**
  * RequestProcessor handles the request-to-plan pipeline:
  * 1. Detect request file → Parse frontmatter → Load blueprint
- * 2. Run agent → Generate plan → Write to Inbox/Plans/
+ * 2. Run agent → Generate plan → Write to Workspace/Plans/
  * 3. Update request status → Log activities
  */
 export class RequestProcessor {
@@ -103,12 +106,12 @@ export class RequestProcessor {
     this.agentRunner = new AgentRunner(provider, { db });
 
     // Initialize PlanWriter
-    this.plansDir = join(processorConfig.inboxPath, "Plans");
+    this.plansDir = join(config.system.root, config.paths.workspace, "Plans");
     this.planWriter = new PlanWriter({
       plansDirectory: this.plansDir,
       includeReasoning: processorConfig.includeReasoning,
       generateWikiLinks: true, // Enable for Memory Banks compatibility
-      systemRoot: join(config.system.root, config.paths.system),
+      runtimeRoot: join(config.system.root, config.paths.runtime),
       db,
     });
 

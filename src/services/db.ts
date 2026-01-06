@@ -34,7 +34,7 @@ export class DatabaseService {
   private isClosing = false;
 
   constructor(config: Config) {
-    const dbPath = join(config.system.root, "System", "journal.db");
+    const dbPath = join(config.system.root, config.paths.runtime, "journal.db");
     this.db = new Database(dbPath);
     // Enable WAL mode for concurrency
     this.db.exec("PRAGMA journal_mode = WAL;");

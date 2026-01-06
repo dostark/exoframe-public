@@ -77,7 +77,7 @@ export class ExecutionLoop {
     this.config = config;
     this.db = db;
     this.agentId = agentId;
-    this.plansDir = join(config.system.root, "Inbox", "Plans");
+    this.plansDir = join(config.system.root, config.paths.workspace, "Plans");
   }
 
   /**
@@ -162,7 +162,7 @@ export class ExecutionLoop {
   }
 
   /**
-   * Process a single task from /System/Active
+   * Process a single task from Workspace/Active
    */
   async processTask(planPath: string): Promise<ExecutionResult> {
     return await this.executeCore({
@@ -408,7 +408,7 @@ export class ExecutionLoop {
     await this.generateMissionReport(traceId, requestId);
 
     // Archive plan
-    const archiveDir = join(this.config.system.root, "Inbox", "Archive");
+    const archiveDir = join(this.config.system.root, this.config.paths.workspace, "Archive");
     await Deno.mkdir(archiveDir, { recursive: true });
 
     const planFileName = planPath.split("/").pop()!;
@@ -435,8 +435,8 @@ export class ExecutionLoop {
     // Generate failure report
     await this.generateFailureReport(traceId, requestId, error);
 
-    // Move plan back to Inbox/Requests
-    const requestsDir = join(this.config.system.root, "Inbox", "Requests");
+    // Move plan back to Workspace/Requests
+    const requestsDir = join(this.config.system.root, this.config.paths.workspace, "Requests");
     await Deno.mkdir(requestsDir, { recursive: true });
 
     const planFileName = planPath.split("/").pop()!;
@@ -479,7 +479,7 @@ export class ExecutionLoop {
   private createMissionReporter(): MissionReporter {
     const memoryBank = new MemoryBankService(this.config, this.db!);
     const reportConfig = {
-      reportsDirectory: join(this.config.system.root, "Memory", "Execution"),
+      reportsDirectory: join(this.config.system.root, this.config.paths.memory, "Execution"),
     };
     return new MissionReporter(this.config, reportConfig, memoryBank, this.db);
   }
@@ -577,7 +577,7 @@ export class ExecutionLoop {
 
       // Also write a human-readable failure.md file for easy access (tests expect this file)
       try {
-        const failureDir = join(this.config.system.root, "Memory", "Execution", traceId);
+        const failureDir = join(this.config.system.root, this.config.paths.memory, "Execution", traceId);
         await Deno.mkdir(failureDir, { recursive: true });
         const failureContent =
           `# Failure Report\n\n**Trace ID:** ${traceId}\n**Request ID:** ${requestId}\n**Agent:** ${this.agentId}\n**Error:** ${error}\n\n**Summary:** ${traceData.summary}\n**Reasoning:** ${traceData.reasoning}\n\nGenerated at ${

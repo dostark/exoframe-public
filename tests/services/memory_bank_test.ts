@@ -14,6 +14,7 @@ import { exists } from "@std/fs";
 import { MemoryBankService } from "../../src/services/memory_bank.ts";
 import { initTestDbService } from "../helpers/db.ts";
 import type { Decision, ExecutionMemory, Pattern, ProjectMemory } from "../../src/schemas/memory_bank.ts";
+import { getMemoryExecutionDir, getMemoryIndexDir, getMemoryProjectsDir } from "../helpers/paths_helper.ts";
 
 // ===== Project Memory Tests =====
 
@@ -45,7 +46,7 @@ Deno.test("MemoryBankService: createProjectMemory creates directory structure", 
     await service.createProjectMemory(projectMem);
 
     // Verify directory structure created
-    const projectDir = join(config.system.root, "Memory", "Projects", "test-project");
+    const projectDir = join(getMemoryProjectsDir(config.system.root), "test-project");
     assertEquals(await exists(projectDir), true);
     assertEquals(await exists(join(projectDir, "overview.md")), true);
     assertEquals(await exists(join(projectDir, "patterns.md")), true);
@@ -228,7 +229,7 @@ Deno.test("MemoryBankService: createExecutionRecord creates directory structure"
     await service.createExecutionRecord(execution);
 
     // Verify directory structure
-    const execDir = join(config.system.root, "Memory", "Execution", traceId);
+    const execDir = join(getMemoryExecutionDir(config.system.root), traceId);
     assertEquals(await exists(execDir), true);
     assertEquals(await exists(join(execDir, "summary.md")), true);
     assertEquals(await exists(join(execDir, "context.json")), true);
@@ -609,7 +610,7 @@ Deno.test("MemoryBankService: rebuildIndices generates index files", async () =>
     await service.rebuildIndices();
 
     // Verify index files exist
-    const indexDir = join(config.system.root, "Memory", "Index");
+    const indexDir = getMemoryIndexDir(config.system.root);
     assertEquals(await exists(join(indexDir, "files.json")), true);
     assertEquals(await exists(join(indexDir, "patterns.json")), true);
     assertEquals(await exists(join(indexDir, "tags.json")), true);

@@ -4,7 +4,7 @@ import { inject } from "../scripts/inject_agent_context.ts";
 
 Deno.test("retrieval smoke: build manifest and inject context", async () => {
   await buildIndex();
-  assertExists("agents/manifest.json");
+  assertExists(".copilot/manifest.json");
 
   const res = await inject("copilot", "copilot");
   if (res.found === false) return;

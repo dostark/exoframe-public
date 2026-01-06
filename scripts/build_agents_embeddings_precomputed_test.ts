@@ -5,7 +5,7 @@ Deno.test("build precomputed embeddings copies files and writes manifest", async
   // create temp dir with a single precomputed embedding file
   const tmp = await Deno.makeTempDir();
   const sample = {
-    path: "agents/tests/testing.md",
+    path: ".copilot/tests/testing.md",
     title: "ExoFrame Test Development Guidelines",
     vecs: [
       { text: "snippet 1", vector: new Array(64).fill(0.123) },
@@ -40,8 +40,8 @@ Deno.test("build precomputed embeddings copies files and writes manifest", async
   }
 
   // assert manifest exists
-  assertExists("agents/embeddings/manifest.json");
-  const manifest = JSON.parse(await Deno.readTextFile("agents/embeddings/manifest.json"));
+  assertExists(".copilot/embeddings/manifest.json");
+  const manifest = JSON.parse(await Deno.readTextFile(".copilot/embeddings/manifest.json"));
   assert(Array.isArray(manifest.index) && manifest.index.length > 0, "manifest should have index entries");
 
   // ensure the copied file exists

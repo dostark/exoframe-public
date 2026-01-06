@@ -15,6 +15,7 @@ import { assert, assertEquals, assertStringIncludes } from "https://deno.land/st
 import { dirname, fromFileUrl, join } from "https://deno.land/std@0.201.0/path/mod.ts";
 import { exists } from "https://deno.land/std@0.201.0/fs/mod.ts";
 import { Database } from "@db/sqlite";
+import { getRuntimeDir } from "./helpers/paths_helper.ts";
 
 const __dirname = dirname(fromFileUrl(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
@@ -125,7 +126,7 @@ Deno.test("migrate_db.ts up creates database and applies migrations", async () =
     assertStringIncludes(result.stdout, "All migrations up to date");
 
     // Verify database was created
-    const dbPath = join(tmp, "System", "journal.db");
+    const dbPath = join(getRuntimeDir(tmp), "journal.db");
     assert(await exists(dbPath), "journal.db should be created");
 
     // Verify schema_migrations table has entries
@@ -159,12 +160,12 @@ Deno.test("migrate_db.ts up is idempotent", async () => {
     assertStringIncludes(result2.stdout, "All migrations up to date");
 
     // Should not have duplicate migrations
-    const dbPath = join(tmp, "System", "journal.db");
+    const dbPath = join(getRuntimeDir(tmp), "journal.db");
     const count = queryDb(
       dbPath,
       "SELECT COUNT(*) FROM schema_migrations;",
     );
-    assertEquals(count.trim(), "2", "Should have exactly 2 migrations applied");
+    assertEquals(count.trim(), "3", "Should have exactly 3 migrations applied");
   } finally {
     await Deno.remove(tmp, { recursive: true }).catch(() => {});
   }
@@ -183,12 +184,12 @@ Deno.test("migrate_db.ts down reverts last migration", async () => {
     assertStringIncludes(downResult.stdout, "Reverted");
 
     // Verify migration was removed from tracking table
-    const dbPath = join(tmp, "System", "journal.db");
+    const dbPath = join(getRuntimeDir(tmp), "journal.db");
     const count = queryDb(
       dbPath,
       "SELECT COUNT(*) FROM schema_migrations;",
     );
-    assertEquals(count.trim(), "1", "Should have 1 migration after reverting last one");
+    assertEquals(count.trim(), "2", "Should have 2 migrations after reverting last one");
   } finally {
     await Deno.remove(tmp, { recursive: true }).catch(() => {});
   }
@@ -214,17 +215,17 @@ Deno.test("migrate_db.ts creates System directory if missing", async () => {
   const tmp = await setupTestWorkspace();
   try {
     // Ensure System doesn't exist
-    const systemDir = join(tmp, "System");
-    if (await exists(systemDir)) {
-      await Deno.remove(systemDir, { recursive: true });
+    const exoDir = join(tmp, ".exo");
+    if (await exists(exoDir)) {
+      await Deno.remove(exoDir, { recursive: true });
     }
 
     const result = await runMigrate(tmp, ["up"]);
 
     assertEquals(result.code, 0, `migrate up failed: ${result.stderr}`);
-    assert(await exists(systemDir), "System directory should be created");
+    assert(await exists(exoDir), ".exo directory should be created");
     assert(
-      await exists(join(systemDir, "journal.db")),
+      await exists(join(exoDir, "journal.db")),
       "journal.db should be created",
     );
   } finally {
@@ -252,16 +253,17 @@ DROP TABLE IF EXISTS test_order_table;
     assertEquals(result.code, 0, `migrate up failed: ${result.stderr}`);
 
     // Verify all migrations were applied in order
-    const dbPath = join(tmp, "System", "journal.db");
+    const dbPath = join(getRuntimeDir(tmp), "journal.db");
     const migrations = queryDb(
       dbPath,
       "SELECT version FROM schema_migrations ORDER BY id;",
     );
     const versions = migrations.trim().split("\n");
-    assertEquals(versions.length, 3);
+    assertEquals(versions.length, 4);
     assertEquals(versions[0], "001_init.sql");
     assertEquals(versions[1], "002_changesets.sql");
     assertEquals(versions[2], "002_test_order.sql");
+    assertEquals(versions[3], "003_notifications.sql");
 
     // Verify test table was created
     const tables = queryDb(
@@ -299,7 +301,7 @@ DROP TABLE IF EXISTS good_table;
     assertStringIncludes(result.stderr, "Failed to apply");
 
     // Verify first migration was applied
-    const dbPath = join(tmp, "System", "journal.db");
+    const dbPath = join(getRuntimeDir(tmp), "journal.db");
     const count = queryDb(
       dbPath,
       "SELECT COUNT(*) FROM schema_migrations;",

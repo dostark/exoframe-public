@@ -8,4 +8,4 @@ Key points
 
 ## Self-improvement loop
 
-If the current `agents/` instructions are insufficient for the task, patch them during execution (minimal, grounded), then rebuild/validate artifacts before continuing.
+If the current `.copilot/` instructions are insufficient for the task, patch them during execution (minimal, grounded), then rebuild/validate artifacts before continuing.

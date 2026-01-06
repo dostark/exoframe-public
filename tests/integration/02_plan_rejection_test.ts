@@ -3,11 +3,11 @@
  * Request → Plan → Reject → Archive
  *
  * Success Criteria:
- * - Test 1: Plan can be rejected with a reason from /Inbox/Plans
- * - Test 2: Rejected plan is moved to /Inbox/Rejected directory
+ * - Test 1: Plan can be rejected with a reason from /Workspace/Plans
+ * - Test 2: Rejected plan is moved to /Workspace/Rejected directory
  * - Test 3: Rejected plan status is updated to "rejected"
  * - Test 4: Rejection reason is appended to plan content
- * - Test 5: Original request remains in /Inbox/Requests (not modified)
+ * - Test 5: Original request remains in /Workspace/Requests (not modified)
  * - Test 6: Rejection is logged to Activity Journal with trace_id
  * - Test 7: Rejected plan preserves original trace_id for correlation
  */
@@ -15,9 +15,14 @@
 import { assert, assertEquals, assertExists, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { join as _join } from "@std/path";
 import { TestEnvironment } from "./helpers/test_environment.ts";
+import { ensureDir } from "@std/fs";
 
 Deno.test("Integration: Plan Rejection - Request to Archive", async (t) => {
   const env = await TestEnvironment.create();
+  // Ensure all required directories exist for rejection tests
+  await ensureDir(env.tempDir + "/Workspace/Plans");
+  await ensureDir(env.tempDir + "/Workspace/Rejected");
+  await ensureDir(env.tempDir + "/Workspace/Requests");
 
   try {
     let traceId: string;
@@ -50,7 +55,7 @@ Deno.test("Integration: Plan Rejection - Request to Archive", async (t) => {
       });
 
       // Verify setup
-      const planExists = await env.fileExists("Inbox/Plans/callback-reader_plan.md");
+      const planExists = await env.fileExists("Workspace/Plans/callback-reader_plan.md");
       assertEquals(planExists, true, "Plan should exist before rejection");
     });
 
@@ -70,20 +75,20 @@ Deno.test("Integration: Plan Rejection - Request to Archive", async (t) => {
     });
 
     // ========================================================================
-    // Test 2: Rejected plan moved to /Inbox/Rejected
+    // Test 2: Rejected plan moved to /Workspace/Rejected
     // ========================================================================
-    await t.step("Test 2: Rejected plan moved to /Inbox/Rejected", async () => {
+    await t.step("Test 2: Rejected plan moved to /Workspace/Rejected", async () => {
       // Verify plan is in Rejected directory
-      const rejectedExists = await env.fileExists("Inbox/Rejected/callback-reader_plan.md");
-      assertEquals(rejectedExists, true, "Plan should exist in /Inbox/Rejected");
+      const rejectedExists = await env.fileExists("Workspace/Rejected/callback-reader_plan.md");
+      assert(rejectedExists === true);
 
       // Verify plan is NOT in Plans directory anymore
-      const plansExists = await env.fileExists("Inbox/Plans/callback-reader_plan.md");
-      assertEquals(plansExists, false, "Plan should be removed from /Inbox/Plans");
+      const plansExists = await env.fileExists("Workspace/Plans/callback-reader_plan.md");
+      assert(plansExists === false);
 
       // Verify plan is NOT in Active directory
-      const activeExists = await env.fileExists("System/Active/callback-reader_plan.md");
-      assertEquals(activeExists, false, "Plan should NOT be in /System/Active");
+      const activeExists = await env.fileExists("Workspace/Active/callback-reader_plan.md");
+      assertEquals(activeExists, false, "Plan should NOT be in /Workspace/Active");
     });
 
     // ========================================================================
@@ -118,9 +123,9 @@ Deno.test("Integration: Plan Rejection - Request to Archive", async (t) => {
     await t.step("Test 5: Original request remains unchanged", async () => {
       // Request should still exist
       const requestExists = await env.fileExists(
-        `Inbox/Requests/request-${traceId.substring(0, 8)}.md`,
+        `Workspace/Requests/request-${traceId.substring(0, 8)}.md`,
       );
-      assertEquals(requestExists, true, "Request should still exist");
+      assert(requestExists === true);
 
       // Request content should be unchanged
       const content = await Deno.readTextFile(requestPath);
@@ -196,8 +201,8 @@ Deno.test("Integration: Plan Rejection - Multiple plans can be rejected", async 
     const rejected2 = await env.rejectPlan(plan2, "Reason 2");
 
     // Verify both in Rejected directory
-    const exists1 = await env.fileExists("Inbox/Rejected/first-task_plan.md");
-    const exists2 = await env.fileExists("Inbox/Rejected/second-task_plan.md");
+    const exists1 = await env.fileExists("Workspace/Rejected/first-task_plan.md");
+    const exists2 = await env.fileExists("Workspace/Rejected/second-task_plan.md");
 
     assertEquals(exists1, true, "First rejected plan should exist");
     assertEquals(exists2, true, "Second rejected plan should exist");
@@ -224,7 +229,7 @@ Deno.test("Integration: Plan Rejection - Empty reason is handled", async () => {
     const rejectedPath = await env.rejectPlan(planPath, "");
 
     // Should still move the file
-    const exists = await env.fileExists("Inbox/Rejected/empty-reason_plan.md");
+    const exists = await env.fileExists("Workspace/Rejected/empty-reason_plan.md");
     assertEquals(exists, true, "Plan should be moved even with empty reason");
 
     // Should still have rejection section

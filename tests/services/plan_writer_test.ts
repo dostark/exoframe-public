@@ -29,7 +29,7 @@ function createMockPlanWriterConfig(tempDir: string, db?: any): PlanWriterConfig
     plansDirectory: plansDir,
     includeReasoning: true,
     generateWikiLinks: true,
-    systemRoot: tempDir,
+    runtimeRoot: tempDir,
     db,
   };
 }

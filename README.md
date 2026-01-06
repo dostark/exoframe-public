@@ -128,7 +128,7 @@ exoctl request "Implement a new user authentication module in the MyProject port
 
 ExoFrame is built on a "Files-as-API" philosophy:
 
-- **`Inbox/`**: Where new **Requests** and AI-generated **Plans** live.
+- **`Workspace/`**: Where new **Requests** and AI-generated **Plans** live.
 - **`Portals/`**: Symlinks to your actual project repositories.
 - **`Memory/`**: Memory Banks containing execution history, project context, global learnings, and structured knowledge with CLI search capabilities. Learnings are auto-extracted from executions and require approval.
 - **`System/`**: Internal state, SQLite database, and active task tracking.
@@ -151,17 +151,17 @@ ExoFrame takes security seriously. Unlike other agent frameworks that run with f
 - [Technical Spec](./docs/ExoFrame_Technical_Spec.md) - Architecture and Schemas
 - [User Guide](./docs/ExoFrame_User_Guide.md) - Detailed Usage and Setup
 - [Building with AI Agents](./docs/Building_with_AI_Agents.md) - Our TDD-first development philosophy
-- [Agent Context Guide](./agents/README.md) - How to use the `agents/` directory for IDE/Copilot context
+- [Agent Context Guide](./.copilot/README.md) - How to use the `.copilot/` directory for IDE/Copilot context
 
 ## 🤖 Dev-time Agents
 
-ExoFrame includes a curated set of machine-friendly instructions in the `agents/` directory to help IDE agents (like Copilot) understand the repository structure and conventions.
+ExoFrame includes a curated set of machine-friendly instructions in the `.copilot/` directory to help IDE agents (like Copilot) understand the repository structure and conventions.
 
-- **`agents/manifest.json`**: Index of all developer documentation.
-- **`agents/providers/`**: Adaptation notes for OpenAI, Claude, and Google models.
+- **`.copilot/manifest.json`**: Index of all developer documentation.
+- **`.copilot/providers/`**: Adaptation notes for OpenAI, Claude, and Google models.
 - **`scripts/build_agents_index.ts`**: Tooling to keep agent context fresh.
 
-See [agents/README.md](agents/README.md) for full usage instructions.
+See [.copilot/README.md](.copilot/README.md) for full usage instructions.
 
 ---
 
@@ -170,18 +170,18 @@ See [agents/README.md](agents/README.md) for full usage instructions.
 Please follow our test patterns when contributing tests or refactoring existing ones:
 
 - Use the centralized DB helper `initTestDbService()` (in `tests/helpers/db.ts`) to create an in-memory SQLite DB, initialize required tables, and obtain a `cleanup()` helper for deterministic teardown.
-- For CLI tests, prefer `createCliTestContext()` (in `tests/cli/helpers/test_setup.ts`) which wraps `initTestDbService()` and optionally pre-creates common directories (e.g., `Inbox/Requests`, `System/Active`). This reduces boilerplate and avoids leaking temp directories.
+- For CLI tests, prefer `createCliTestContext()` (in `tests/cli/helpers/test_setup.ts`) which wraps `initTestDbService()` and optionally pre-creates common directories (e.g., `Workspace/Requests`, `Workspace/Active`). This reduces boilerplate and avoids leaking temp directories.
 
 Quick example (recommended):
 
 ```typescript
 import { createCliTestContext } from "tests/cli/helpers/test_setup.ts";
 let db, tempDir, config, cleanup;
-beforeEach(async () => ({ db, tempDir, config, cleanup } = await createCliTestContext({ createDirs: ["Inbox/Requests"] }));
+beforeEach(async () => ({ db, tempDir, config, cleanup } = await createCliTestContext({ createDirs: ["Workspace/Requests"] }));
 afterEach(async () => await cleanup());
 ```
 
-For more details and examples, see `agents/tests/testing.md` under **CLI Test Context — Recommended Pattern**.
+For more details and examples, see `.copilot/tests/testing.md` under **CLI Test Context — Recommended Pattern**.
 
 ---
 

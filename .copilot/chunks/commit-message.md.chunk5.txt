@@ -1,11 +1,11 @@
 Files changed:
-- agents/providers/claude.md (v0.1→v0.2, 16→330+ lines)
-- agents/providers/claude-rag.md (NEW, 360+ lines)
-- agents/cross-reference.md (NEW, 180+ lines)
-- agents/prompts/*.md (NEW, 7 prompt templates)
-- agents/README.md (79→267+ lines)
-- agents/copilot/summary.md (added frontmatter)
-- agents/copilot/exoframe.md (optimized summary)
+- .copilot/providers/claude.md (v0.1→v0.2, 16→330+ lines)
+- .copilot/providers/claude-rag.md (NEW, 360+ lines)
+- .copilot/cross-reference.md (NEW, 180+ lines)
+- .copilot/prompts/*.md (NEW, 7 prompt templates)
+- .copilot/README.md (79→267+ lines)
+- .copilot/copilot/summary.md (added frontmatter)
+- .copilot/copilot/exoframe.md (optimized summary)
 - tests/agents/claude_enhancements_test.ts (NEW, 12 tests)
 - docs/ExoFrame_Implementation_Plan.md (added Step 10.5)
 

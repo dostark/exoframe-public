@@ -2,6 +2,7 @@ import { join } from "@std/path";
 import { FileWatcher } from "../../src/services/watcher.ts";
 import type { DatabaseService } from "../../src/services/db.ts";
 import { createMockConfig } from "./config.ts";
+import { getWorkspaceRequestsDir } from "./paths_helper.ts";
 
 /**
  * Test helper for FileWatcher tests
@@ -9,20 +10,20 @@ import { createMockConfig } from "./config.ts";
  */
 export class WatcherTestHelper {
   public tempDir: string;
-  public inboxPath: string;
+  public requestDir: string;
   private watcher?: FileWatcher;
   private watcherPromise?: Promise<void>;
 
   constructor(tempDir: string) {
     this.tempDir = tempDir;
-    this.inboxPath = join(tempDir, "Inbox", "Requests");
+    this.requestDir = getWorkspaceRequestsDir(tempDir);
   }
 
   /**
-   * Creates inbox directory structure
+   * Creates workspace directory structure
    */
-  async createInboxStructure(): Promise<void> {
-    await Deno.mkdir(this.inboxPath, { recursive: true });
+  async createWorkspaceStructure(): Promise<void> {
+    await Deno.mkdir(this.requestDir, { recursive: true });
   }
 
   /**
@@ -76,7 +77,7 @@ export class WatcherTestHelper {
     content: string,
     waitMs: number = 200,
   ): Promise<string> {
-    const filePath = join(this.inboxPath, filename);
+    const filePath = join(this.requestDir, filename);
     await Deno.writeTextFile(filePath, content);
     await new Promise((resolve) => setTimeout(resolve, waitMs));
     return filePath;
@@ -90,10 +91,10 @@ export class WatcherTestHelper {
     waitMs: number = 200,
   ): Promise<string[]> {
     const _paths = await Promise.all(
-      files.map((f) => Deno.writeTextFile(join(this.inboxPath, f.name), f.content)),
+      files.map((f) => Deno.writeTextFile(join(this.requestDir, f.name), f.content)),
     );
     await new Promise((resolve) => setTimeout(resolve, waitMs));
-    return files.map((f) => join(this.inboxPath, f.name));
+    return files.map((f) => join(this.requestDir, f.name));
   }
 
   /**

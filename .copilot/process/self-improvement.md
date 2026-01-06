@@ -2,16 +2,16 @@
 agent: general
 scope: dev
 title: Self-improvement loop for agent instructions
-short_summary: "How to detect instruction gaps during work and patch agents/ docs safely with minimal, test-backed updates."
+short_summary: "How to detect instruction gaps during work and patch .copilot/ docs safely with minimal, test-backed updates."
 version: "0.1"
 topics: ["self-improvement", "instruction-adequacy", "agents", "maintenance", "rag"]
 ---
 
-# Self-improvement loop for `agents/` instructions
+# Self-improvement loop for `.copilot/` instructions
 
 Key points
 - Before non-trivial work, run an **Instruction Adequacy Check**: do we have enough ExoFrame-specific guidance to act and verify?
-- If guidance is missing, do a **Doc Patch Loop**: add the smallest, task-scoped update to `agents/`, then rebuild/validate, then continue the primary task.
+- If guidance is missing, do a **Doc Patch Loop**: add the smallest, task-scoped update to `.copilot/`, then rebuild/validate, then continue the primary task.
 - Keep updates grounded: add checklists, examples, and commands; avoid speculative “nice-to-have” prose.
 - Treat doc changes like code changes: minimal diff, clear success criteria, and a regression test when appropriate.
 
@@ -23,11 +23,11 @@ Use this at the start of a session or before a multi-step change.
    - TDD / bugfix / refactor / docs / CI / security / portal permissions / RAG usage
 
 2. **Retrieve relevant instructions**
-   - Start with `agents/cross-reference.md` to find the primary docs.
+   - Start with `.copilot/cross-reference.md` to find the primary docs.
    - Read the provider guide for the active model:
-     - Claude: `agents/providers/claude.md`
-     - OpenAI: `agents/providers/openai.md`
-     - Google: `agents/providers/google.md`
+     - Claude: `.copilot/providers/claude.md`
+     - OpenAI: `.copilot/providers/openai.md`
+     - Google: `.copilot/providers/google.md`
    - Inject additional docs via `scripts/inject_agent_context.ts` when needed.
 
 3. **Adequacy verdict**
@@ -42,7 +42,7 @@ Use this at the start of a session or before a multi-step change.
 1. **List the gaps** (actionable, not vague)
    - Examples:
      - “No guidance on which test helper to use for this subsystem.”
-     - “No canonical command for validating manifest/chunks after agents/ edits.”
+     - “No canonical command for validating manifest/chunks after .copilot/ edits.”
      - “No example of the required output format for this provider in this scenario.”
 
 2. **Choose the smallest fix**
@@ -54,7 +54,7 @@ Use this at the start of a session or before a multi-step change.
    - Keep changes directly relevant to the current user request.
    - Prefer checklists + examples over long narrative.
 
-4. **Rebuild + validate `agents/` artifacts**
+4. **Rebuild + validate `.copilot/` artifacts**
    - Rebuild manifest/chunks:
      - `deno run --allow-read --allow-write scripts/build_agents_index.ts`
    - Verify freshness:
@@ -82,25 +82,25 @@ Use this at the start of a session or before a multi-step change.
 Do / Don’t
 - ✅ Do keep doc updates minimal and scoped to the current task.
 - ✅ Do ask 1–3 clarifying questions if the requirement is ambiguous before changing docs.
-- ✅ Do rebuild `agents/manifest.json`, chunks, and embeddings after agent doc edits.
+- ✅ Do rebuild `.copilot/manifest.json`, chunks, and embeddings after agent doc edits.
 - ✅ Do add a regression test when a missing instruction caused a real failure.
 - ❌ Don’t broaden scope into “general best practices” unrelated to ExoFrame.
 - ❌ Don’t update many docs at once without a clear gap list.
 
 Canonical prompt (short)
-"Before implementing changes, run an Instruction Adequacy Check against agents/. If instructions are insufficient, patch agents/ with the smallest update needed (doc/template/cross-reference), rebuild/validate artifacts, then proceed with the primary task using the improved instructions."
+"Before implementing changes, run an Instruction Adequacy Check against .copilot/. If instructions are insufficient, patch .copilot/ with the smallest update needed (doc/template/cross-reference), rebuild/validate artifacts, then proceed with the primary task using the improved instructions."
 
 Examples
 
 - Example: Missing test helper guidance
   - Task: “Add regression tests for a CLI config edge case.”
   - Gap: no mention of the correct test context helper.
-  - Patch: add a small section to `agents/tests/testing.md` pointing to `createCliTestContext()` usage for CLI tests; add one focused test under `tests/agents/` to ensure the section exists.
+  - Patch: add a small section to `.copilot/tests/testing.md` pointing to `createCliTestContext()` usage for CLI tests; add one focused test under `tests/agents/` to ensure the section exists.
 
 - Example: Missing provider-specific output contract
   - Task: “Perform a multi-file refactor with OpenAI.”
   - Gap: provider doc doesn’t enforce diff-first structure.
-  - Patch: add/update a prompt template under `agents/prompts/` requiring Files → Plan → Diffs → Verification.
+  - Patch: add/update a prompt template under `.copilot/prompts/` requiring Files → Plan → Diffs → Verification.
 ## Related Documents
 
 - [Review-Research-Improvement Pattern](./review-research-improvement.md) - For architectural reviews and improvement planning (larger scope than instruction gaps)

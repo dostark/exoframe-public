@@ -14,7 +14,7 @@ topics: ["cross-reference", "navigation", "prompts", "workflow"]
 ```
 I want to [task type].
 
-First, consult agents/cross-reference.md for the workflow:
+First, consult .copilot/cross-reference.md for the workflow:
 1. Find my task type in "Task → Agent Doc Quick Reference"
 2. Read the Primary Doc listed
 3. Check Secondary Docs if needed
@@ -31,10 +31,10 @@ Then proceed with the work following guidance from those docs.
 ```
 I want to add a new feature: Flow parameter validation.
 
-First, consult agents/cross-reference.md for the workflow:
+First, consult .copilot/cross-reference.md for the workflow:
 1. Task type: "Add new feature"
-2. Primary Docs: agents/source/exoframe.md + agents/tests/testing.md
-3. Secondary Docs: agents/docs/documentation.md
+2. Primary Docs: .copilot/source/exoframe.md + .copilot/tests/testing.md
+3. Secondary Docs: .copilot/docs/documentation.md
 4. Workflow example: "I want to add a new feature"
 
 Then proceed with:
@@ -50,10 +50,10 @@ Then proceed with:
 ```
 I want to perform a security audit on Portal permission boundaries.
 
-First, consult agents/cross-reference.md for the workflow:
+First, consult .copilot/cross-reference.md for the workflow:
 1. Task type: "Security audit"
-2. Primary Docs: agents/tests/testing.md (#Security Tests)
-3. Secondary Docs: agents/source/exoframe.md (#System Constraints)
+2. Primary Docs: .copilot/tests/testing.md (#Security Tests)
+3. Secondary Docs: .copilot/source/exoframe.md (#System Constraints)
 4. Topics to search: "security", "Portal"
 
 Then design security tests covering:
@@ -69,10 +69,10 @@ Then design security tests covering:
 ```
 I have TypeScript errors in src/flows/plan_executor.ts
 
-First, consult agents/cross-reference.md for the workflow:
+First, consult .copilot/cross-reference.md for the workflow:
 1. Task type: "Fix TypeScript errors"
-2. Primary Docs: agents/source/exoframe.md
-3. Secondary Docs: agents/copilot/exoframe.md
+2. Primary Docs: .copilot/source/exoframe.md
+3. Secondary Docs: .copilot/copilot/exoframe.md
 
 Read the errors, understand the patterns from source/exoframe.md, then fix following:
 - Service Pattern if it's a service
@@ -86,9 +86,9 @@ Read the errors, understand the patterns from source/exoframe.md, then fix follo
 ```
 I need help with embeddings and RAG.
 
-Use agents/cross-reference.md topic search:
-- Topic: "embeddings" → agents/providers/claude-rag.md, agents/README.md
-- Topic: "rag" → agents/providers/claude-rag.md
+Use .copilot/cross-reference.md topic search:
+- Topic: "embeddings" → .copilot/providers/claude-rag.md, .copilot/README.md
+- Topic: "rag" → .copilot/providers/claude-rag.md
 
 Read claude-rag.md sections:
 - RAG Workflow (4 steps)
@@ -101,7 +101,7 @@ Then answer my questions about using embeddings.
 ## Expected Response Pattern
 
 Claude should:
-1. Open and read [agents/cross-reference.md](../cross-reference.md)
+1. Open and read [.copilot/cross-reference.md](../cross-reference.md)
 2. Find the relevant task type or topic
 3. Navigate to Primary Doc(s) listed
 4. Read relevant sections from those docs

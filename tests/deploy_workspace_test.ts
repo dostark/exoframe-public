@@ -11,10 +11,12 @@
 
 import { assert, assertStringIncludes } from "https://deno.land/std@0.201.0/testing/asserts.ts";
 import { dirname, fromFileUrl, join } from "https://deno.land/std@0.201.0/path/mod.ts";
+import { getDefaultPaths } from "../src/config/paths.ts";
 import { exists } from "https://deno.land/std@0.201.0/fs/mod.ts";
 
 const __dirname = dirname(fromFileUrl(import.meta.url));
 const REPO_ROOT = join(__dirname, "..");
+const _paths = getDefaultPaths(REPO_ROOT);
 
 Deno.test("deploy_workspace.sh --no-run creates deploy files", async () => {
   const tmp = await Deno.makeTempDir({ prefix: "exoframe-deploy-test-" });

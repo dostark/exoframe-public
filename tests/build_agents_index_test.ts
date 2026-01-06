@@ -2,15 +2,15 @@ import { assert, assertEquals, assertExists } from "https://deno.land/std@0.203.
 import { buildIndex, chunkText, extractFrontmatter } from "../scripts/build_agents_index.ts";
 
 Deno.test("build_agents_index creates manifest and chunks (skips if no write access)", async () => {
-  const perm = await Deno.permissions.query({ name: "write", path: "agents/chunks" } as any);
+  const perm = await Deno.permissions.query({ name: "write", path: ".copilot/chunks" } as any);
   if (perm.state !== "granted") {
-    console.warn("Skipping buildIndex test because write permission to agents/chunks is not granted");
+    console.warn("Skipping buildIndex test because write permission to .copilot/chunks is not granted");
     return;
   }
 
   await buildIndex();
-  assertExists("agents/manifest.json");
-  const mf = JSON.parse(await Deno.readTextFile("agents/manifest.json"));
+  assertExists(".copilot/manifest.json");
+  const mf = JSON.parse(await Deno.readTextFile(".copilot/manifest.json"));
   assert(Array.isArray(mf.docs) && mf.docs.length > 0, "manifest should contain docs");
 });
 

@@ -13,6 +13,8 @@
 
 import { assertEquals, assertExists, assertRejects } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
+import { ensureDir } from "@std/fs";
+import { dirname } from "@std/path";
 import { PortalCommands } from "../../src/cli/portal_commands.ts";
 import {
   createTestPortal,
@@ -79,15 +81,9 @@ Deno.test("PortalCommands: rejects reserved alias names", async () => {
   const { targetDir, commands, cleanup } = await initPortalTest();
   try {
     await assertRejects(
-      async () => await commands.add(targetDir, "System"),
+      async () => await commands.add(targetDir, "Memory"),
       Error,
-      "reserved",
-    );
-
-    await assertRejects(
-      async () => await commands.add(targetDir, "Inbox"),
-      Error,
-      "reserved",
+      "Alias 'Memory' is reserved",
     );
   } finally {
     await cleanup();
@@ -557,6 +553,7 @@ Deno.test("PortalCommands: verify detects missing config entry", async () => {
 
     // Create context card
     const cardPath = helper.getCardPath("Orphaned");
+    await ensureDir(dirname(cardPath));
     await Deno.writeTextFile(cardPath, "# Orphaned Portal");
 
     // Verify should detect missing config

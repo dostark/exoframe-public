@@ -3,7 +3,7 @@
  * Tests for Step 5.12 Detection - Plan Execution Flow
  *
  * Success Criteria:
- * - Detects approved plans moved to System/Active/
+ * - Detects approved plans moved to Workspace/Active/
  * - Identifies plan files by _plan.md suffix
  * - Ignores non-plan files in Active directory
  * - Reads plan file content correctly
@@ -17,6 +17,7 @@ import { join } from "@std/path";
 import { ensureDir } from "@std/fs";
 import { initTestDbService } from "./helpers/db.ts";
 import { createMockConfig } from "./helpers/config.ts";
+import { getWorkspaceActiveDir } from "./helpers/paths_helper.ts";
 
 describe("Plan Executor - Detection", () => {
   let tempDir: string;
@@ -28,8 +29,8 @@ describe("Plan Executor - Detection", () => {
     tempDir = result.tempDir;
     cleanup = result.cleanup;
 
-    // Create System/Active directory
-    activePath = join(tempDir, "System", "Active");
+    // Create Workspace/Active directory
+    activePath = getWorkspaceActiveDir(tempDir);
     await ensureDir(activePath);
   });
 

@@ -15,7 +15,7 @@ Key points
 - Keep Problems tab clean: fix TypeScript errors and linter issues before marking a step complete
 
 Canonical prompt (short):
-"You are a repository-aware coding assistant for ExoFrame. Consult `agents/manifest.json` and include the `short_summary` for relevant docs before replying. Follow the TDD-first workflow: suggest tests first, implement minimal code, and add verification steps."
+"You are a repository-aware coding assistant for ExoFrame. Consult `.copilot/manifest.json` and include the `short_summary` for relevant docs before replying. Follow the TDD-first workflow: suggest tests first, implement minimal code, and add verification steps."
 
 Examples
 - "Add unit tests for a service's error handling and implement the minimal change to pass them."
@@ -58,7 +58,7 @@ Use Zod for config validation and keep config options in `exo.config.toml` examp
 Constructor-based DI: pass `config`, `db`, and `provider` into services. Keep side effects out of constructors where feasible.
 
 ### System Constraints & Patterns
-- **Runtime Persistence**: The /System/Active, /Inbox/Requests, and /Inbox/Plans folders are the "Database". Code must respect file-system atomicity (use `writeTextFile` with atomic renaming where possible).
+- **Runtime Persistence**: The .exo/Active, Workspace/Requests, and Workspace/Plans folders are the "Database". Code must respect file-system atomicity (use `writeTextFile` with atomic renaming where possible).
 - **Activity Journal**: All side-effects (file writes, executions, errors) MUST be logged to the Activity Journal (`System/journal.db`) via `EventLogger`.
 - **Security Modes**:
     - **Sandboxed**: No network, no file access (default).

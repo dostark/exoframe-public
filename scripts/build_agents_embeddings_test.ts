@@ -22,7 +22,7 @@ Deno.test("build mock embeddings produces manifest and files", async () => {
     throw new Error(`script failed: ${err}`);
   }
 
-  const manifest = JSON.parse(await Deno.readTextFile("agents/embeddings/manifest.json"));
+  const manifest = JSON.parse(await Deno.readTextFile(".copilot/embeddings/manifest.json"));
   assert(manifest.generated_at, "manifest should have generated_at");
   assert(Array.isArray(manifest.index), "manifest.index should be an array");
   // ensure there's at least one embedding file referenced

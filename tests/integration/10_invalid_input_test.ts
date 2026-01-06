@@ -45,7 +45,7 @@ tags: [unclosed, bracket
 
 Do something
 `;
-      const filePath = join(env.tempDir, "Inbox/Requests/invalid_request.md");
+      const filePath = join(env.tempDir, "Workspace/Requests/invalid_request.md");
       await Deno.writeTextFile(filePath, invalidContent);
 
       // Attempt to parse should fail or return error
@@ -89,7 +89,7 @@ trace_id: !!!invalid yaml here!!!
       env.db.logActivity(
         "system",
         "validation.failed",
-        "Inbox/Requests/invalid_request.md",
+        "Workspace/Requests/invalid_request.md",
         {
           error: "Invalid YAML frontmatter",
           details: "Unexpected token at line 2",
@@ -141,7 +141,7 @@ Valid content here
 // Unclosed code block
 function broken() {
 `;
-      const filePath = join(env.tempDir, "Inbox/Requests/partial_request.md");
+      const filePath = join(env.tempDir, "Workspace/Requests/partial_request.md");
       await Deno.writeTextFile(filePath, partialContent);
 
       // Should parse frontmatter even if body is incomplete
@@ -159,7 +159,7 @@ function broken() {
     // ========================================================================
     await t.step("Test 6: Recovery from corrupt files possible", async () => {
       // Create corrupt file
-      const corruptPath = join(env.tempDir, "Inbox/Requests/corrupt.md");
+      const corruptPath = join(env.tempDir, "Workspace/Requests/corrupt.md");
       await Deno.writeTextFile(corruptPath, "CORRUPT\x00BINARY\xFFDATA");
 
       // Attempt to read/parse
@@ -187,7 +187,7 @@ function broken() {
 
       // Create invalid file in same directory
       await Deno.writeTextFile(
-        join(env.tempDir, "Inbox/Requests/broken.md"),
+        join(env.tempDir, "Workspace/Requests/broken.md"),
         "---\ninvalid:\n---\nbad",
       );
 
@@ -329,7 +329,7 @@ Deno.test("Integration: Invalid Input - Empty file", async () => {
   const parser = new FrontmatterParser(env.db);
 
   try {
-    const emptyPath = join(env.tempDir, "Inbox/Requests/empty.md");
+    const emptyPath = join(env.tempDir, "Workspace/Requests/empty.md");
     await Deno.writeTextFile(emptyPath, "");
 
     const content = await Deno.readTextFile(emptyPath);

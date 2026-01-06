@@ -34,8 +34,7 @@ export class FileWatcher {
     db?: DatabaseService,
     customWatchPath?: string,
   ) {
-    this.watchPath = customWatchPath ||
-      join(config.system.root, config.paths.inbox, "Requests");
+    this.watchPath = customWatchPath || join(config.system.root, config.paths.workspace, "Requests");
     this.debounceMs = config.watcher.debounce_ms;
     this.stabilityCheck = config.watcher.stability_check;
     this.onFileReady = onFileReady;

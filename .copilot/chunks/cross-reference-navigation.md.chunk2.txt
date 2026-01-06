@@ -1,7 +1,7 @@
-First, consult agents/cross-reference.md for the workflow:
+First, consult .copilot/cross-reference.md for the workflow:
 1. Task type: "Security audit"
-2. Primary Docs: agents/tests/testing.md (#Security Tests)
-3. Secondary Docs: agents/source/exoframe.md (#System Constraints)
+2. Primary Docs: .copilot/tests/testing.md (#Security Tests)
+3. Secondary Docs: .copilot/source/exoframe.md (#System Constraints)
 4. Topics to search: "security", "Portal"
 
 Then design security tests covering:
@@ -17,7 +17,7 @@ Then design security tests covering:
 ```
 I have TypeScript errors in src/flows/plan_executor.ts
 
-First, consult agents/cross-reference.md for the workflow:
+First, consult .copilot/cross-reference.md for the workflow:
 1. Task type: "Fix TypeScript errors"
-2. Primary Docs: agents/source/exoframe.md
-3. Secondary Docs: agents/copilot/exoframe.md
+2. Primary Docs: .copilot/source/exoframe.md
+3. Secondary Docs: .copilot/copilot/exoframe.md

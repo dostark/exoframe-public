@@ -6,7 +6,7 @@
  * 1. Parses valid request file (YAML frontmatter + body)
  * 2. Skips invalid frontmatter (logs error, returns null)
  * 3. Generates plan with MockLLMProvider
- * 4. Writes plan to Inbox/Plans/
+ * 4. Writes plan to Workspace/Plans/
  * 5. Plan has correct frontmatter (trace_id, request_id, status)
  * 6. Updates request status to "planned"
  * 7. Logs activity to database
@@ -22,6 +22,12 @@ import { MockLLMProvider } from "../src/ai/providers/mock_llm_provider.ts";
 import { DatabaseService } from "../src/services/db.ts";
 import { initTestDbService } from "./helpers/db.ts";
 import type { Config } from "../src/config/schema.ts";
+import {
+  getBlueprintsAgentsDir,
+  getWorkspaceDir,
+  getWorkspacePlansDir,
+  getWorkspaceRequestsDir,
+} from "./helpers/paths_helper.ts";
 
 // ============================================================================
 // Test Utilities
@@ -34,6 +40,11 @@ function createMockResponse(thought: string, content: string): string {
   return `<thought>${thought}</thought>\n<content>${content}</content>`;
 }
 
+function createTestRequestPath(tempDir: string): { traceId: string; requestPath: string } {
+  const traceId = crypto.randomUUID();
+  const requestPath = join(getWorkspaceRequestsDir(tempDir), `request-${traceId.slice(0, 8)}.md`);
+  return { traceId, requestPath };
+}
 /**
  * Create a request file with YAML frontmatter
  */
@@ -110,8 +121,8 @@ describe("RequestProcessor", () => {
     cleanup = testDbResult.cleanup;
 
     // Create additional required directories
-    await Deno.mkdir(join(testDir, "Inbox", "Requests"), { recursive: true });
-    await Deno.mkdir(join(testDir, "Inbox", "Plans"), { recursive: true });
+    await Deno.mkdir(getWorkspaceRequestsDir(testDir), { recursive: true });
+    await Deno.mkdir(getWorkspacePlansDir(testDir), { recursive: true });
     await Deno.mkdir(join(testDir, "Blueprints", "Agents"), { recursive: true });
 
     // Create default blueprint
@@ -122,8 +133,9 @@ describe("RequestProcessor", () => {
 
     // Create processor config
     processorConfig = {
-      inboxPath: join(testDir, "Inbox"),
-      blueprintsPath: join(testDir, "Blueprints", "Agents"),
+      workspacePath: getWorkspaceDir(testDir),
+      requestsDir: getWorkspaceRequestsDir(testDir),
+      blueprintsPath: getBlueprintsAgentsDir(testDir),
       includeReasoning: true,
     };
   });
@@ -135,8 +147,7 @@ describe("RequestProcessor", () => {
 
   describe("Request Parsing", () => {
     it("should parse valid request file with YAML frontmatter", async () => {
-      const traceId = crypto.randomUUID();
-      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const { traceId, requestPath } = createTestRequestPath(testDir);
       const requestContent = createRequestContent({
         traceId,
         agent: "default",
@@ -164,7 +175,7 @@ describe("RequestProcessor", () => {
     });
 
     it("should return null for invalid YAML frontmatter", async () => {
-      const requestPath = join(testDir, "Inbox", "Requests", "invalid-request.md");
+      const requestPath = join(getWorkspaceRequestsDir(testDir), "invalid-request.md");
       const invalidContent = `+++
 this is toml not yaml
 +++
@@ -187,7 +198,7 @@ Do something
     });
 
     it("should return null for request missing trace_id", async () => {
-      const requestPath = join(testDir, "Inbox", "Requests", "missing-trace.md");
+      const requestPath = join(getWorkspaceRequestsDir(testDir), "missing-trace.md");
       const invalidContent = `+++
 status = "pending"
 agent = "default"
@@ -213,8 +224,7 @@ Do something
 
   describe("Plan Generation", () => {
     it("should generate plan using MockLLMProvider", async () => {
-      const traceId = crypto.randomUUID();
-      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const { traceId, requestPath } = createTestRequestPath(testDir);
       const requestContent = createRequestContent({
         traceId,
         body: "Create a user authentication system",
@@ -243,9 +253,8 @@ Do something
       assert(planContent.length > 0, "Plan content should not be empty");
     });
 
-    it("should write plan to Inbox/Plans/ directory", async () => {
-      const traceId = crypto.randomUUID();
-      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+    it("should write plan to Workspace/Plans/ directory", async () => {
+      const { traceId, requestPath } = createTestRequestPath(testDir);
       const requestContent = createRequestContent({
         traceId,
         body: "Add logging to the service layer",
@@ -268,13 +277,12 @@ Do something
       const planPath = await processor.process(requestPath);
 
       assert(planPath !== null);
-      assertStringIncludes(planPath!, join(testDir, "Inbox", "Plans"));
+      assertStringIncludes(planPath!, getWorkspacePlansDir(testDir));
     });
 
     it("should create plan with correct frontmatter", async () => {
-      const traceId = crypto.randomUUID();
+      const { traceId, requestPath } = createTestRequestPath(testDir);
       const requestId = `request-${traceId.slice(0, 8)}`;
-      const requestPath = join(testDir, "Inbox", "Requests", `${requestId}.md`);
       const requestContent = createRequestContent({
         traceId,
         body: "Implement error handling",
@@ -308,8 +316,7 @@ Do something
 
   describe("Request Status Update", () => {
     it("should update request status to 'planned'", async () => {
-      const traceId = crypto.randomUUID();
-      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const { traceId, requestPath } = createTestRequestPath(testDir);
       const requestContent = createRequestContent({
         traceId,
         status: "pending",
@@ -340,8 +347,7 @@ Do something
 
   describe("Activity Logging", () => {
     it("should log processing start and completion", async () => {
-      const traceId = crypto.randomUUID();
-      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const { traceId, requestPath } = createTestRequestPath(testDir);
       const requestContent = createRequestContent({
         traceId,
         body: "Refactor the database layer",
@@ -379,8 +385,7 @@ Do something
 
   describe("Error Handling", () => {
     it("should handle LLM errors gracefully", async () => {
-      const traceId = crypto.randomUUID();
-      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const { traceId, requestPath } = createTestRequestPath(testDir);
       const requestContent = createRequestContent({
         traceId,
         body: "This will fail",
@@ -405,8 +410,7 @@ Do something
     });
 
     it("should handle missing blueprint gracefully", async () => {
-      const traceId = crypto.randomUUID();
-      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const { traceId, requestPath } = createTestRequestPath(testDir);
       const requestContent = createRequestContent({
         traceId,
         agent: "nonexistent-agent",
@@ -453,8 +457,7 @@ You are an expert code reviewer. Analyze code changes and provide feedback.
 `,
       );
 
-      const traceId = crypto.randomUUID();
-      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const { traceId, requestPath } = createTestRequestPath(testDir);
       const requestContent = createRequestContent({
         traceId,
         agent: "code-reviewer",
@@ -481,8 +484,7 @@ You are an expert code reviewer. Analyze code changes and provide feedback.
     });
 
     it("should use default blueprint when agent is 'default'", async () => {
-      const traceId = crypto.randomUUID();
-      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const { traceId, requestPath } = createTestRequestPath(testDir);
       const requestContent = createRequestContent({
         traceId,
         agent: "default",
@@ -511,8 +513,7 @@ You are an expert code reviewer. Analyze code changes and provide feedback.
 
   describe("Flow Request Support", () => {
     it("should process requests with flow field", async () => {
-      const traceId = crypto.randomUUID();
-      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const { traceId, requestPath } = createTestRequestPath(testDir);
       const requestContent = `---
 trace_id: "${traceId}"
 created: "${new Date().toISOString()}"
@@ -555,8 +556,7 @@ Review this pull request for security issues.`;
     });
 
     it("should process requests with nonexistent flow when validation is disabled", async () => {
-      const traceId = crypto.randomUUID();
-      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const { traceId, requestPath } = createTestRequestPath(testDir);
       const requestContent = `---
 trace_id: "${traceId}"
 created: "${new Date().toISOString()}"
@@ -582,8 +582,7 @@ Test flow processing.`;
     });
 
     it("should reject requests with both flow and agent fields", async () => {
-      const traceId = crypto.randomUUID();
-      const requestPath = join(testDir, "Inbox", "Requests", `request-${traceId.slice(0, 8)}.md`);
+      const { traceId, requestPath } = createTestRequestPath(testDir);
       const requestContent = `---
 trace_id: "${traceId}"
 created: "${new Date().toISOString()}"

@@ -1,7 +1,7 @@
 import { assert } from "jsr:@std/assert@^1.0.0";
 
 Deno.test("Agent docs: testing.md documents CI pitfalls", async () => {
-  const md = await Deno.readTextFile("agents/tests/testing.md");
+  const md = await Deno.readTextFile(".copilot/tests/testing.md");
 
   assert(md.includes("CI (GitHub Actions)"), "testing.md should have a CI section");
   assert(md.includes("CI=true"), "CI section should mention CI=true behavior");

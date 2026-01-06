@@ -1,18 +1,18 @@
 // Unit tests to verify Step 10.6 OpenAI enhancements are properly implemented
-// Usage: deno test --allow-read tests/agents/openai_enhancements_test.ts
+// Usage: deno test --allow-read tests/.copilot/openai_enhancements_test.ts
 
 import { assert, assertExists } from "https://deno.land/std@0.203.0/assert/mod.ts";
 import { parse } from "https://deno.land/std@0.203.0/yaml/mod.ts";
 
 Deno.test("OpenAI enhancements: verify required files exist", async () => {
   const files = [
-    "agents/providers/openai.md",
-    "agents/providers/openai-rag.md",
-    "agents/cross-reference.md",
-    "agents/prompts/openai-quickstart.md",
-    "agents/prompts/openai-rag-context-injection.md",
-    "agents/prompts/openai-tdd-workflow.md",
-    "agents/prompts/openai-debugging-systematic.md",
+    ".copilot/providers/openai.md",
+    ".copilot/providers/openai-rag.md",
+    ".copilot/cross-reference.md",
+    ".copilot/prompts/openai-quickstart.md",
+    ".copilot/prompts/openai-rag-context-injection.md",
+    ".copilot/prompts/openai-tdd-workflow.md",
+    ".copilot/prompts/openai-debugging-systematic.md",
   ];
 
   for (const file of files) {
@@ -22,7 +22,7 @@ Deno.test("OpenAI enhancements: verify required files exist", async () => {
 });
 
 Deno.test("OpenAI enhancements: verify openai.md required sections", async () => {
-  const md = await Deno.readTextFile("agents/providers/openai.md");
+  const md = await Deno.readTextFile(".copilot/providers/openai.md");
 
   assert(md.includes("Key points"), "Should have Key points");
   assert(/Canonical prompt \(short\)/.test(md), "Should have Canonical prompt (short)");
@@ -36,7 +36,7 @@ Deno.test("OpenAI enhancements: verify openai.md required sections", async () =>
 });
 
 Deno.test("OpenAI enhancements: verify openai-rag.md structure", async () => {
-  const md = await Deno.readTextFile("agents/providers/openai-rag.md");
+  const md = await Deno.readTextFile(".copilot/providers/openai-rag.md");
 
   assert(md.includes("Key points"), "Should have Key points");
   assert(md.includes("## Overview"), "Should have Overview section");
@@ -54,12 +54,12 @@ Deno.test("OpenAI enhancements: verify openai-rag.md structure", async () => {
 
 Deno.test("OpenAI enhancements: verify frontmatter schema + short_summary limits", async () => {
   const files = [
-    "agents/providers/openai.md",
-    "agents/providers/openai-rag.md",
-    "agents/prompts/openai-quickstart.md",
-    "agents/prompts/openai-rag-context-injection.md",
-    "agents/prompts/openai-tdd-workflow.md",
-    "agents/prompts/openai-debugging-systematic.md",
+    ".copilot/providers/openai.md",
+    ".copilot/providers/openai-rag.md",
+    ".copilot/prompts/openai-quickstart.md",
+    ".copilot/prompts/openai-rag-context-injection.md",
+    ".copilot/prompts/openai-tdd-workflow.md",
+    ".copilot/prompts/openai-debugging-systematic.md",
   ];
 
   for (const filePath of files) {
@@ -81,15 +81,15 @@ Deno.test("OpenAI enhancements: verify frontmatter schema + short_summary limits
 });
 
 Deno.test("OpenAI enhancements: verify manifest includes openai-rag", async () => {
-  const manifestText = await Deno.readTextFile("agents/manifest.json");
+  const manifestText = await Deno.readTextFile(".copilot/manifest.json");
   const manifest = JSON.parse(manifestText);
 
   assert(Array.isArray(manifest.docs), "Manifest should have docs array");
 
   const paths = manifest.docs.map((d: { path: string }) => d.path);
-  assert(paths.includes("agents/providers/openai-rag.md"), "Manifest should include openai-rag.md");
+  assert(paths.includes(".copilot/providers/openai-rag.md"), "Manifest should include openai-rag.md");
 
-  const openaiRagDoc = manifest.docs.find((d: { path: string }) => d.path === "agents/providers/openai-rag.md");
+  const openaiRagDoc = manifest.docs.find((d: { path: string }) => d.path === ".copilot/providers/openai-rag.md");
   assertExists(openaiRagDoc, "openai-rag.md should be in manifest");
   assert(Array.isArray(openaiRagDoc.chunks), "openai-rag.md should have chunks array");
   assert(openaiRagDoc.chunks.length > 0, "openai-rag.md should have at least 1 chunk");
@@ -97,8 +97,8 @@ Deno.test("OpenAI enhancements: verify manifest includes openai-rag", async () =
 
 Deno.test("OpenAI enhancements: verify embeddings generated", async () => {
   const embeddingFiles = [
-    "agents/embeddings/openai.md.json",
-    "agents/embeddings/openai-rag.md.json",
+    ".copilot/embeddings/openai.md.json",
+    ".copilot/embeddings/openai-rag.md.json",
   ];
 
   for (const file of embeddingFiles) {
@@ -127,11 +127,11 @@ Deno.test("OpenAI enhancements: verify chunks were generated", async () => {
 
   for (const pattern of patterns) {
     let found = false;
-    for await (const entry of Deno.readDir("agents/chunks")) {
+    for await (const entry of Deno.readDir(".copilot/chunks")) {
       if (!entry.isFile) continue;
       if (!entry.name.startsWith(pattern)) continue;
       found = true;
-      const content = await Deno.readTextFile(`agents/chunks/${entry.name}`);
+      const content = await Deno.readTextFile(`.copilot/chunks/${entry.name}`);
       assert(content.length > 0, `Chunk file ${entry.name} should not be empty`);
     }
     assert(found, `Should have at least one chunk file matching ${pattern}`);
@@ -144,8 +144,8 @@ Deno.test("OpenAI enhancements: verify context injection works", async () => {
   const ragResult = await inject("openai", "OpenAI RAG context injection", 4);
   assert(ragResult.found, "Should find RAG-related OpenAI doc");
   assert(
-    (ragResult.path || "").includes("agents/providers/openai") ||
-      (ragResult.path || "").includes("agents/prompts/openai-"),
+    (ragResult.path || "").includes(".copilot/providers/openai") ||
+      (ragResult.path || "").includes(".copilot/prompts/openai-"),
     "Should return an OpenAI agent doc or OpenAI prompt template",
   );
   assert(

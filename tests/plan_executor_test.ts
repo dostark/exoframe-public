@@ -50,7 +50,7 @@ content = "Hello World"
     };
 
     // Execute plan
-    const planPath = join(tempDir, "System/Active/plan.md");
+    const planPath = join(tempDir, "Workspace/Active/plan.md");
     const sha = await executor.execute(planPath, context);
 
     // Verify result

@@ -1,155 +1,209 @@
 {
-  "generated_at": "2026-01-02T17:15:57.562Z",
+  "generated_at": "2026-01-06T15:35:14.138Z",
   "index": [
     {
-      "path": "agents/docs/documentation.md",
+      "path": ".copilot/docs/documentation.md",
       "title": "ExoFrame Documentation Development Guidelines",
-      "embeddingFile": "agents/embeddings/documentation.md.json"
+      "embeddingFile": ".copilot/embeddings/documentation.md.json"
     },
     {
-      "path": "agents/prompts/openai-debugging-systematic.md",
+      "path": ".copilot/coverage/coverage-summary.md",
+      "embeddingFile": ".copilot/embeddings/coverage-summary.md.json"
+    },
+    {
+      "path": ".copilot/prompts/openai-debugging-systematic.md",
       "title": "OpenAI Debugging: Reproduce → Diagnose → Fix → Verify",
-      "embeddingFile": "agents/embeddings/openai-debugging-systematic.md.json"
+      "embeddingFile": ".copilot/embeddings/openai-debugging-systematic.md.json"
     },
     {
-      "path": "agents/prompts/refactoring-with-thinking.md",
+      "path": ".copilot/prompts/refactoring-with-thinking.md",
       "title": "Refactoring with Thinking Protocol Prompt",
-      "embeddingFile": "agents/embeddings/refactoring-with-thinking.md.json"
+      "embeddingFile": ".copilot/embeddings/refactoring-with-thinking.md.json"
     },
     {
-      "path": "agents/prompts/commit-message.md",
+      "path": ".copilot/prompts/commit-message.md",
       "title": "Detailed Commit Message Prompt",
-      "embeddingFile": "agents/embeddings/commit-message.md.json"
+      "embeddingFile": ".copilot/embeddings/commit-message.md.json"
     },
     {
-      "path": "agents/prompts/debugging-systematic.md",
+      "path": ".copilot/prompts/debugging-systematic.md",
       "title": "Systematic Debugging Prompt",
-      "embeddingFile": "agents/embeddings/debugging-systematic.md.json"
+      "embeddingFile": ".copilot/embeddings/debugging-systematic.md.json"
     },
     {
-      "path": "agents/prompts/google-quickstart.md",
+      "path": ".copilot/prompts/google-quickstart.md",
       "title": "Gemini Quickstart Prompt",
-      "embeddingFile": "agents/embeddings/google-quickstart.md.json"
+      "embeddingFile": ".copilot/embeddings/google-quickstart.md.json"
     },
     {
-      "path": "agents/prompts/openai-tdd-workflow.md",
+      "path": ".copilot/prompts/openai-tdd-workflow.md",
       "title": "OpenAI TDD Workflow (tests first)",
-      "embeddingFile": "agents/embeddings/openai-tdd-workflow.md.json"
+      "embeddingFile": ".copilot/embeddings/openai-tdd-workflow.md.json"
     },
     {
-      "path": "agents/prompts/README.md",
+      "path": ".copilot/prompts/README.md",
       "title": "Prompt Examples README",
-      "embeddingFile": "agents/embeddings/README.md.json"
+      "embeddingFile": ".copilot/embeddings/README.md.json"
     },
     {
-      "path": "agents/prompts/rag-context-injection.md",
+      "path": ".copilot/prompts/rag-context-injection.md",
       "title": "RAG Context Injection Prompt",
-      "embeddingFile": "agents/embeddings/rag-context-injection.md.json"
+      "embeddingFile": ".copilot/embeddings/rag-context-injection.md.json"
     },
     {
-      "path": "agents/prompts/openai-rag-context-injection.md",
+      "path": ".copilot/prompts/openai-rag-context-injection.md",
       "title": "OpenAI RAG Context Injection (inspect → inject)",
-      "embeddingFile": "agents/embeddings/openai-rag-context-injection.md.json"
+      "embeddingFile": ".copilot/embeddings/openai-rag-context-injection.md.json"
     },
     {
-      "path": "agents/prompts/tdd-workflow.md",
+      "path": ".copilot/prompts/tdd-workflow.md",
       "title": "TDD Workflow Prompt Example",
-      "embeddingFile": "agents/embeddings/tdd-workflow.md.json"
+      "embeddingFile": ".copilot/embeddings/tdd-workflow.md.json"
     },
     {
-      "path": "agents/prompts/google-tdd-workflow.md",
+      "path": ".copilot/prompts/google-tdd-workflow.md",
       "title": "Gemini TDD Workflow Prompt",
-      "embeddingFile": "agents/embeddings/google-tdd-workflow.md.json"
+      "embeddingFile": ".copilot/embeddings/google-tdd-workflow.md.json"
     },
     {
-      "path": "agents/prompts/openai-quickstart.md",
+      "path": ".copilot/prompts/openai-quickstart.md",
       "title": "OpenAI Quickstart: Use agents/ first",
-      "embeddingFile": "agents/embeddings/openai-quickstart.md.json"
+      "embeddingFile": ".copilot/embeddings/openai-quickstart.md.json"
     },
     {
-      "path": "agents/prompts/implementation-plan-driven.md",
+      "path": ".copilot/prompts/implementation-plan-driven.md",
       "title": "Implementation Plan Driven Development Prompt",
-      "embeddingFile": "agents/embeddings/implementation-plan-driven.md.json"
+      "embeddingFile": ".copilot/embeddings/implementation-plan-driven.md.json"
     },
     {
-      "path": "agents/prompts/cross-reference-navigation.md",
+      "path": ".copilot/prompts/cross-reference-navigation.md",
       "title": "Cross-Reference Navigation Prompt",
-      "embeddingFile": "agents/embeddings/cross-reference-navigation.md.json"
+      "embeddingFile": ".copilot/embeddings/cross-reference-navigation.md.json"
     },
     {
-      "path": "agents/prompts/update-building-with-ai-agents.md",
+      "path": ".copilot/prompts/update-building-with-ai-agents.md",
       "title": "Update Building with AI Agents Documentation",
-      "embeddingFile": "agents/embeddings/update-building-with-ai-agents.md.json"
+      "embeddingFile": ".copilot/embeddings/update-building-with-ai-agents.md.json"
     },
     {
-      "path": "agents/prompts/self-improvement-loop.md",
+      "path": ".copilot/prompts/self-improvement-loop.md",
       "title": "Self-improvement loop prompt template",
-      "embeddingFile": "agents/embeddings/self-improvement-loop.md.json"
+      "embeddingFile": ".copilot/embeddings/self-improvement-loop.md.json"
     },
     {
-      "path": "agents/source/exoframe.md",
+      "path": ".copilot/source/exoframe.md",
       "title": "ExoFrame Source Development Guidelines",
-      "embeddingFile": "agents/embeddings/exoframe.md.json"
+      "embeddingFile": ".copilot/embeddings/exoframe.md.json"
     },
     {
-      "path": "agents/README.md",
+      "path": ".copilot/planning/phase-19-folder-restructuring.md",
+      "embeddingFile": ".copilot/embeddings/phase-19-folder-restructuring.md.json"
+    },
+    {
+      "path": ".copilot/planning/phase-15-flow-orchestration-improvements.md",
+      "embeddingFile": ".copilot/embeddings/phase-15-flow-orchestration-improvements.md.json"
+    },
+    {
+      "path": ".copilot/planning/phase-13-tui-enhancement.md",
+      "embeddingFile": ".copilot/embeddings/phase-13-tui-enhancement.md.json"
+    },
+    {
+      "path": ".copilot/planning/phase-18-blueprint-modernization.md",
+      "embeddingFile": ".copilot/embeddings/phase-18-blueprint-modernization.md.json"
+    },
+    {
+      "path": ".copilot/planning/phase-12.5-memory-bank-enhanced.md",
+      "embeddingFile": ".copilot/embeddings/phase-12.5-memory-bank-enhanced.md.json"
+    },
+    {
+      "path": ".copilot/planning/phase-14-code-deduplication.md",
+      "embeddingFile": ".copilot/embeddings/phase-14-code-deduplication.md.json"
+    },
+    {
+      "path": ".copilot/planning/phase-16-agent-orchestration-improvements.md",
+      "embeddingFile": ".copilot/embeddings/phase-16-agent-orchestration-improvements.md.json"
+    },
+    {
+      "path": ".copilot/planning/phase-12-obsidian-retirement.md",
+      "embeddingFile": ".copilot/embeddings/phase-12-obsidian-retirement.md.json"
+    },
+    {
+      "path": ".copilot/planning/step-19.2b-tui-integration.md",
+      "embeddingFile": ".copilot/embeddings/step-19.2b-tui-integration.md.json"
+    },
+    {
+      "path": ".copilot/planning/phase-17-skills-architecture.md",
+      "embeddingFile": ".copilot/embeddings/phase-17-skills-architecture.md.json"
+    },
+    {
+      "path": ".copilot/README.md",
       "title": "Agents directory README",
-      "embeddingFile": "agents/embeddings/README.md.json"
+      "embeddingFile": ".copilot/embeddings/README.md.json"
     },
     {
-      "path": "agents/cross-reference.md",
+      "path": ".copilot/cross-reference.md",
       "title": "Agent Documentation Cross-Reference Map",
-      "embeddingFile": "agents/embeddings/cross-reference.md.json"
+      "embeddingFile": ".copilot/embeddings/cross-reference.md.json"
     },
     {
-      "path": "agents/copilot/exoframe.md",
+      "path": ".copilot/copilot/exoframe.md",
       "title": "ExoFrame quick reference for Copilot",
-      "embeddingFile": "agents/embeddings/exoframe.md.json"
+      "embeddingFile": ".copilot/embeddings/exoframe.md.json"
     },
     {
-      "path": "agents/copilot/summary.md",
+      "path": ".copilot/copilot/summary.md",
       "title": "ExoFrame Quick Summary",
-      "embeddingFile": "agents/embeddings/summary.md.json"
+      "embeddingFile": ".copilot/embeddings/summary.md.json"
     },
     {
-      "path": "agents/process/self-improvement.md",
+      "path": ".copilot/process/self-improvement.md",
       "title": "Self-improvement loop for agent instructions",
-      "embeddingFile": "agents/embeddings/self-improvement.md.json"
+      "embeddingFile": ".copilot/embeddings/self-improvement.md.json"
     },
     {
-      "path": "agents/providers/claude.md",
+      "path": ".copilot/process/review-research-improvement.md",
+      "title": "Review-Research-Improvement Pattern",
+      "embeddingFile": ".copilot/embeddings/review-research-improvement.md.json"
+    },
+    {
+      "path": ".copilot/providers/claude.md",
       "title": "Claude provider adaptation notes",
-      "embeddingFile": "agents/embeddings/claude.md.json"
+      "embeddingFile": ".copilot/embeddings/claude.md.json"
     },
     {
-      "path": "agents/providers/google.md",
+      "path": ".copilot/providers/google.md",
       "title": "Google Gemini Provider Adaptation Guide",
-      "embeddingFile": "agents/embeddings/google.md.json"
+      "embeddingFile": ".copilot/embeddings/google.md.json"
     },
     {
-      "path": "agents/providers/openai-rag.md",
+      "path": ".copilot/providers/openai-rag.md",
       "title": "OpenAI RAG (Retrieval-Augmented Generation) Usage Guide",
-      "embeddingFile": "agents/embeddings/openai-rag.md.json"
+      "embeddingFile": ".copilot/embeddings/openai-rag.md.json"
     },
     {
-      "path": "agents/providers/google-long-context.md",
+      "path": ".copilot/providers/google-long-context.md",
       "title": "Gemini Long-Context Reasoning Guide",
-      "embeddingFile": "agents/embeddings/google-long-context.md.json"
+      "embeddingFile": ".copilot/embeddings/google-long-context.md.json"
     },
     {
-      "path": "agents/providers/claude-rag.md",
+      "path": ".copilot/providers/claude-rag.md",
       "title": "Claude RAG (Retrieval-Augmented Generation) Usage Guide",
-      "embeddingFile": "agents/embeddings/claude-rag.md.json"
+      "embeddingFile": ".copilot/embeddings/claude-rag.md.json"
     },
     {
-      "path": "agents/providers/openai.md",
+      "path": ".copilot/providers/openai.md",
       "title": "OpenAI adaptation notes",
-      "embeddingFile": "agents/embeddings/openai.md.json"
+      "embeddingFile": ".copilot/embeddings/openai.md.json"
     },
     {
-      "path": "agents/tests/testing.md",
+      "path": ".copilot/tests/testing.md",
       "title": "ExoFrame Test Development Guidelines",
-      "embeddingFile": "agents/embeddings/testing.md.json"
+      "embeddingFile": ".copilot/embeddings/testing.md.json"
+    },
+    {
+      "path": ".copilot/tests/jscpd-guide.md",
+      "title": "jscpd Code Duplication Detection Guide",
+      "embeddingFile": ".copilot/embeddings/jscpd-guide.md.json"
     }
   ]
 }

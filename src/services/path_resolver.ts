@@ -75,14 +75,16 @@ export class PathResolver {
     // Map aliases to config paths
     // We resolve these relative to system.root
     switch (alias) {
-      case "@Inbox":
-        return join(system.root, paths.inbox);
+      case "@Runtime":
+        return join(system.root, paths.runtime);
       case "@Memory":
         return join(system.root, paths.memory);
-      case "@System":
-        return join(system.root, paths.system);
+      case "@Portals":
+        return join(system.root, paths.portals);
       case "@Blueprints":
         return join(system.root, paths.blueprints);
+      case "@Workspace":
+        return join(system.root, paths.workspace);
       default: {
         // Check for user-defined portals
         const portalAlias = alias.startsWith("@") ? alias.substring(1) : alias;

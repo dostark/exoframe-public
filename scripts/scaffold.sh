@@ -13,8 +13,8 @@ echo "Scaffolding runtime workspace at: $TARGET"
 mkdir -p "$TARGET/System" \
   "$TARGET/Blueprints/Agents" \
   "$TARGET/Blueprints/Flows" \
-  "$TARGET/Inbox/Requests" \
-  "$TARGET/Inbox/Plans" \
+  "$TARGET/Workspace/Requests" \
+  "$TARGET/Workspace/Plans" \
   "$TARGET/Memory/Projects" \
   "$TARGET/Memory/Execution" \
   "$TARGET/Memory/Tasks" \
@@ -27,11 +27,12 @@ mkdir -p "$TARGET/System" \
 touch "$TARGET/System/.gitkeep" || true
 touch "$TARGET/Blueprints/Agents/.gitkeep" || true
 touch "$TARGET/Blueprints/Flows/.gitkeep" || true
-touch "$TARGET/Inbox/Requests/.gitkeep" || true
-touch "$TARGET/Inbox/Plans/.gitkeep" || true
+touch "$TARGET/Workspace/Requests/.gitkeep" || true
+touch "$TARGET/Workspace/Plans/.gitkeep" || true
 touch "$TARGET/Memory/.gitkeep" || true
 touch "$TARGET/Memory/Reports/.gitkeep" || true
 touch "$TARGET/Portals/.gitkeep" || true
+
 
 # Copy templates into target if they don't already exist
 if [ -f "$ROOT_DIR/templates/exo.config.sample.toml" ] && [ ! -f "$TARGET/exo.config.sample.toml" ]; then
@@ -39,13 +40,11 @@ if [ -f "$ROOT_DIR/templates/exo.config.sample.toml" ] && [ ! -f "$TARGET/exo.co
   echo "Copied exo.config.sample.toml"
 fi
 
-if [ -f "$ROOT_DIR/templates/README.template.md" ] && [ ! -f "$TARGET/README.md" ]; then
-  cp "$ROOT_DIR/templates/README.template.md" "$TARGET/README.md"
-  echo "Copied README template"
+# Copy README.md template if not present
+if [ -f "$ROOT_DIR/templates/README.md" ] && [ ! -f "$TARGET/README.md" ]; then
+  cp "$ROOT_DIR/templates/README.md" "$TARGET/README.md"
+  echo "Copied README.md"
 fi
-
-# Note: Obsidian-specific dashboard template removed as part of Memory Banks migration
-
 
 echo "Scaffold complete. You can now run in the target workspace:"
 echo "  deno task cache"

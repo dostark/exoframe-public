@@ -1,5 +1,5 @@
 {
-  "path": "agents/prompts/openai-quickstart.md",
+  "path": ".copilot/prompts/openai-quickstart.md",
   "title": "OpenAI Quickstart: Use agents/ first",
   "vecs": [
     {

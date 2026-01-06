@@ -22,7 +22,7 @@ export class DaemonCommands extends BaseCommand {
 
   constructor(context: CommandContext) {
     super(context);
-    this.pidFile = join(this.config.system.root, "System", "daemon.pid");
+    this.pidFile = join(this.config.system.root, this.config.paths.runtime, "daemon.pid");
   }
 
   /**
@@ -39,7 +39,7 @@ export class DaemonCommands extends BaseCommand {
     this.logger.info("daemon.starting", "daemon");
 
     const workspaceRoot = this.config.system.root;
-    const logFile = join(workspaceRoot, "System", "daemon.log");
+    const logFile = join(workspaceRoot, this.config.paths.runtime, "daemon.log");
 
     // Get the path to main.ts relative to workspace
     // In deployed workspace, we need to reference the installed version
@@ -53,8 +53,8 @@ export class DaemonCommands extends BaseCommand {
     }
 
     // Ensure log file directory exists
-    const systemDir = join(workspaceRoot, "System");
-    await ensureDir(systemDir);
+    const exoDir = join(workspaceRoot, this.config.paths.runtime);
+    await ensureDir(exoDir);
 
     // Start daemon process in background using shell for true detachment
     // This allows the CLI to exit while daemon continues running
@@ -233,7 +233,7 @@ export class DaemonCommands extends BaseCommand {
    * @param follow Follow log output (tail -f)
    */
   async logs(lines: number = 50, follow: boolean = false): Promise<void> {
-    const logFile = join(this.config.system.root, "System", "daemon.log");
+    const logFile = join(this.config.system.root, this.config.paths.runtime, "daemon.log");
 
     if (!await exists(logFile)) {
       this.logger.info("daemon.no_logs", logFile, { hint: "Daemon may not have been started yet" });

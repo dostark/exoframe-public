@@ -37,7 +37,7 @@ export class PortalCommands {
   private configService?: ConfigService;
   private portalsDir: string;
   private contextCardGenerator: ContextCardGenerator;
-  private reservedNames = ["System", "Inbox", "Memory", "Blueprints", "Active", "Archive", "Portals"];
+  private reservedNames = ["System", "Workspace", "Memory", "Blueprints", "Active", "Archive", "Portals"];
 
   constructor(context: PortalCommandsContext) {
     this.config = context.config;

@@ -15,6 +15,7 @@ import { MemoryBankService } from "../../src/services/memory_bank.ts";
 import { MemoryEmbeddingService } from "../../src/services/memory_embedding.ts";
 import { initTestDbService } from "../helpers/db.ts";
 import type { Learning, ProjectMemory } from "../../src/schemas/memory_bank.ts";
+import { getMemoryGlobalDir, getMemoryIndexDir } from "../helpers/paths_helper.ts";
 
 // ===== Test Setup Helpers =====
 
@@ -84,7 +85,7 @@ async function setupTestData(
     },
   ];
 
-  const globalDir = join(configRoot, "Memory", "Global");
+  const globalDir = getMemoryGlobalDir(configRoot);
   await Deno.mkdir(globalDir, { recursive: true });
   await Deno.writeTextFile(
     join(globalDir, "learnings.json"),
@@ -105,7 +106,7 @@ Deno.test("MemoryBankService: rebuildIndices regenerates all indices", async () 
     await service.rebuildIndices();
 
     // Check that index files were created
-    const indexDir = join(config.system.root, "Memory", "Index");
+    const indexDir = getMemoryIndexDir(config.system.root);
     assertEquals(await exists(join(indexDir, "files.json")), true);
     assertEquals(await exists(join(indexDir, "patterns.json")), true);
     assertEquals(await exists(join(indexDir, "tags.json")), true);
@@ -138,7 +139,7 @@ Deno.test("MemoryBankService: rebuildIndicesWithEmbeddings includes embeddings",
     await memoryService.rebuildIndicesWithEmbeddings(embeddingService);
 
     // Check that embedding files were created
-    const embeddingsDir = join(config.system.root, "Memory", "Index", "embeddings");
+    const embeddingsDir = join(getMemoryIndexDir(config.system.root), "embeddings");
     assertEquals(await exists(embeddingsDir), true);
     assertEquals(await exists(join(embeddingsDir, "manifest.json")), true);
 
@@ -165,7 +166,7 @@ Deno.test("MemoryBankService: rebuildIndices indexes learnings tags", async () =
     await service.rebuildIndices();
 
     // Check that learnings tags are indexed
-    const indexDir = join(config.system.root, "Memory", "Index");
+    const indexDir = getMemoryIndexDir(config.system.root);
     const tagsContent = await Deno.readTextFile(join(indexDir, "tags.json"));
     const tagsIndex = JSON.parse(tagsContent);
 
@@ -200,7 +201,7 @@ Deno.test("MemoryBankService: rebuildIndices preserves existing data on rebuild"
     await service.rebuildIndices();
 
     // Verify all patterns are still indexed
-    const indexDir = join(config.system.root, "Memory", "Index");
+    const indexDir = getMemoryIndexDir(config.system.root);
     const patternsContent = await Deno.readTextFile(join(indexDir, "patterns.json"));
     const patternsIndex = JSON.parse(patternsContent);
 
@@ -224,7 +225,7 @@ Deno.test("MemoryBankService: rebuildIndices handles empty memory banks", async 
     await service.rebuildIndices();
 
     // Check that index files were still created (empty)
-    const indexDir = join(config.system.root, "Memory", "Index");
+    const indexDir = getMemoryIndexDir(config.system.root);
     assertEquals(await exists(join(indexDir, "files.json")), true);
     assertEquals(await exists(join(indexDir, "patterns.json")), true);
     assertEquals(await exists(join(indexDir, "tags.json")), true);
@@ -257,7 +258,7 @@ Deno.test("MemoryBankService: rebuildIndicesWithEmbeddings handles no learnings"
     await memoryService.rebuildIndicesWithEmbeddings(embeddingService);
 
     // Check that embeddings directory was created
-    const embeddingsDir = join(config.system.root, "Memory", "Index", "embeddings");
+    const embeddingsDir = join(getMemoryIndexDir(config.system.root), "embeddings");
     assertEquals(await exists(embeddingsDir), true);
 
     // Manifest should exist with empty index

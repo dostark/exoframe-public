@@ -35,8 +35,8 @@ graph TB
 
     subgraph Core["⚙️ Core System"]
         Main[main.ts - Daemon]
-        ReqWatch[Request Watcher<br/>Inbox/Requests]
-        PlanWatch[Plan Watcher<br/>System/Active]
+        ReqWatch[Request Watcher<br/>Workspace/Requests]
+        PlanWatch[Plan Watcher<br/>Workspace/Active]
         ReqProc[Request Processor]
         ReqRouter[Request Router]
         PlanExec[Plan Executor]
@@ -67,13 +67,13 @@ graph TB
     end
 
     subgraph Storage["💾 Storage"]
-        DB[(SQLite DB<br/>journal.db)]
+        DB[(SQLite DB<br/>.exo/System/journal.db)]
         FS[/File System<br/>~/ExoFrame/]
-        Inbox[/Inbox/<br/>Requests & Plans/]
-        Blueprint[/Blueprints/<br/>Agents & Flows/]
-        Memory[/Memory/<br/>Memory Banks/]
-        Portals[/Portals/<br/>External Projects/]
-        System[/System/<br/>Active & Archive/]
+        Workspace[Workspace/<br/>Requests & Plans/]
+        Blueprint[Blueprints/<br/>Agents & Flows/]
+        Memory[Memory/<br/>Memory Banks/]
+        Portals[Portals/<br/>External Projects/]
+        Runtime[/.exo/<br/>Active & Archive/]
     end
 
     subgraph AI["🤖 AI Providers"]
@@ -87,7 +87,7 @@ graph TB
 
     %% User interactions
     User -->|CLI Commands| Exoctl
-    User -->|Drop .md files| Inbox
+    User -->|Drop .md files| Requests
     Agent -->|Read/Write| Portals
 
     %% CLI routing
@@ -101,8 +101,8 @@ graph TB
     Exoctl --> DashCmd
 
     %% CLI to Services
-    ReqCmd --> Inbox
-    PlanCmd --> Inbox
+    ReqCmd --> Requests
+    PlanCmd --> Plans
     ChangeCmd --> GitSvc
     GitCmd --> GitSvc
     DaemonCmd --> Main
@@ -121,7 +121,7 @@ graph TB
     Main --> ReqProc
     Main --> ReqRouter
     Main --> PlanExec
-    ReqWatch --> Inbox
+    ReqWatch --> Requests
     PlanWatch --> System
     ReqProc --> ReqRouter
     ReqRouter --> AgentRun
@@ -140,7 +140,7 @@ graph TB
     ExecLoop --> GitSvc
     ContextLoad --> Memory
     ContextLoad --> Portals
-    PlanWriter --> Inbox
+    PlanWriter --> Plans
     PlanWriter --> PlanAdapter
     EventLog --> DB
     GitSvc --> FS
@@ -181,7 +181,7 @@ graph TB
     class Exoctl,ReqCmd,PlanCmd,ChangeCmd,GitCmd,DaemonCmd,PortalCmd,BlueprintCmd,DashCmd cli
     class Main,ReqWatch,PlanWatch,ReqProc,ReqRouter,PlanExec,AgentRun,FlowEng,FlowRun,ExecLoop core
     class ConfigSvc,DBSvc,GitSvc,EventLog,ContextLoad,PlanWriter,MissionRpt,PathRes,ToolReg,CtxCard,OutputVal,RetryPol,ReflexAgt,ConfScore,SessMem,ToolRefl service
-    class DB,FS,Inbox,Blueprint,Memory,Portals,System storage
+    class DB,FS,Workspace,Blueprint,Memory,Portals,System storage
     class Factory,Ollama,Claude,GPT,Gemini,Mock ai
 
     class TuiDash,TuiViews cli
@@ -195,7 +195,7 @@ graph TB
 sequenceDiagram
     participant U as User
     participant CLI as exoctl CLI
-    participant I as Inbox/Requests
+    participant I as Workspace/Requests
     participant W as File Watcher
     participant RP as Request Processor
     participant RR as Request Router
@@ -205,7 +205,7 @@ sequenceDiagram
     participant AI as AI Provider
     participant PA as Plan Adapter
     participant PS as Plan Schema
-    participant P as Inbox/Plans
+    participant P as Workspace/Plans
     participant DB as Activity Journal
 
     U->>CLI: exoctl request "Fix bug"
@@ -287,7 +287,7 @@ graph TD
     J --> O[Generate Agent Plan]
     M --> O
 
-    N --> P[Write Plan to Inbox]
+    N --> P[Write Plan to Workspace/Plans]
     O --> P
 ```
 
@@ -329,7 +329,8 @@ Help me understand this codebase.
 
 Before routing to FlowRunner, the Request Router validates:
 
-- **Flow Existence:** Flow blueprint exists in `/Blueprints/Flows/`
+    - **Flow Existence:** Flow blueprint exists in `/Workspace/Blueprints/Flows/`
+
 - **Schema Validity:** Flow conforms to expected structure
 - **Dependencies:** All referenced agents and transforms exist
 - **No Cycles:** Flow doesn't contain circular dependencies
@@ -372,7 +373,7 @@ sequenceDiagram
     participant Git as Git Service
     participant DB as Activity Journal
 
-    Note over W: Monitors System/Active/
+    Note over W: Monitors Workspace/Active/
 
     W->>Main: Detects plan.md
     Main->>PE: execute(planPath)
@@ -409,7 +410,7 @@ sequenceDiagram
 ```mermaid
 graph TB
     subgraph Detection[Detection]
-        D1[File Watcher<br/>System/Active/]
+        D1[File Watcher<br/>Workspace/Active/]
         D2[Filter _plan.md files]
         D3[Parse YAML frontmatter]
         D4[Validate trace_id]
@@ -553,7 +554,8 @@ graph TB
 
 **Detection Events:**
 
-- `plan.detected` - Plan file found in System/Active
+    - `plan.detected` - Plan file found in Workspace/Active
+
 - `plan.ready_for_execution` - Valid plan parsed, ready for execution
 - `plan.invalid_frontmatter` - YAML parsing failed
 - `plan.missing_trace_id` - Required trace_id field not found
@@ -839,11 +841,11 @@ graph TB
 ```mermaid
 graph TB
     subgraph FileSystem["File System (~/ExoFrame)"]
-        Inbox["Inbox<br/>Requests & Plans"]
+        Workspace["Workspace/<br/>Requests & Plans"]
         Blueprint["Blueprints<br/>Agents & Flows"]
         Memory["Memory<br/>Memory Banks"]
         Portals["Portals<br/>Symlinks"]
-        System["System<br/>Active & Archive"]
+        Runtime[".exo/<br/>Active & Archive"]
     end
 
     subgraph Database["SQLite Database"]
@@ -859,11 +861,11 @@ graph TB
         Git["GitService"]
     end
 
-    Inbox -->|Watch| Watcher["File Watcher"]
+    Workspace -->|Watch| Watcher["File Watcher"]
     Blueprint -->|Read| ReqProc["Request Processor"]
     Memory -->|Generate| CtxCard["Context Card Gen"]
     Portals -->|Access| AgentRun["Agent Runner"]
-    System -->|Store| Archive["Archive Service"]
+    Runtime -->|Store| Archive["Archive Service"]
 
     Journal --> DB
     Activities --> Event
@@ -877,7 +879,7 @@ graph TB
     classDef db fill:#b2dfdb,stroke:#00695c,stroke-width:2px
     classDef service fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
 
-    class Inbox,Blueprint,Memory,Portals,System storage
+    class Workspace,Blueprint,Memory,Portals,Runtime storage
     class Journal,Activities,Schema db
     class DB,Event,Config,Git service
 ```
@@ -1249,8 +1251,8 @@ graph LR
 
 ### 1. **Files as API**
 
-- Request input: Markdown files in `Inbox/Requests`
-- Plan output: Markdown files in `Inbox/Plans`
+- Request input: Markdown files in `Workspace/Requests`
+- Plan output: Markdown files in `Workspace/Plans`
 - Configuration: TOML with Zod validation
 - Context: File system is source of truth
 
@@ -1286,40 +1288,40 @@ graph LR
 
 ## Component Responsibilities
 
-| Component               | Responsibility                     | Key Files                           |
-| ----------------------- | ---------------------------------- | ----------------------------------- |
-| **CLI Layer**           | Human interface for system control | `src/cli/*.ts`                      |
-| **Daemon**              | Background orchestration engine    | `src/main.ts`                       |
-| **Request Watcher**     | Detect new requests in Inbox       | `src/services/watcher.ts`           |
-| **Plan Watcher**        | Detect approved plans              | `src/services/watcher.ts`           |
-| **Request Processor**   | Parse requests, generate plans     | `src/services/request_processor.ts` |
-| **Plan Executor**       | Execute approved plans             | `src/services/plan_executor.ts`     |
-| **Agent Runner**        | Execute agent logic with LLM       | `src/services/agent_runner.ts`      |
-| **Event Logger**        | Write to Activity Journal          | `src/services/event_logger.ts`      |
-| **Config Service**      | Load and validate exo.config.toml  | `src/config/service.ts`             |
-| **Database Service**    | SQLite journal.db operations       | `src/services/db.ts`                |
-| **Git Service**         | Git operations with trace metadata | `src/services/git_service.ts`       |
-| **Provider Factory**    | Create LLM provider instances      | `src/ai/provider_factory.ts`        |
-| **Context Loader**      | Load context for agent execution   | `src/services/context_loader.ts`    |
-| **Portal Commands**     | Manage external project access     | `src/cli/portal_commands.ts`        |
-| **Blueprint Commands**  | Manage agent templates             | `src/cli/blueprint_commands.ts`     |
-| **Dashboard Commands**  | Launch terminal dashboard          | `src/cli/dashboard_commands.ts`     |
-| **TUI Dashboard**       | Multi-view terminal UI             | `src/tui/*.ts`                      |
-| **Parsers**             | Parse markdown + frontmatter       | `src/parsers/*.ts`                  |
-| **Schemas**             | Zod validation layer               | `src/schemas/*.ts`                  |
-| **MCP Server**          | JSON-RPC server for tool execution | `src/mcp/server.ts`                 |
-| **Blueprint Loader**    | Unified blueprint parsing          | `src/services/blueprint_loader.ts`  |
-| **Output Validator**    | Schema validation with JSON repair | `src/services/output_validator.ts`  |
-| **Retry Policy**        | Exponential backoff with jitter    | `src/services/retry_policy.ts`      |
-| **Reflexive Agent**     | Self-critique improvement loop     | `src/services/reflexive_agent.ts`   |
-| **Tool Reflector**      | Tool result evaluation and retry   | `src/services/tool_reflector.ts`    |
-| **Session Memory**      | Memory context injection           | `src/services/session_memory.ts`    |
-| **Confidence Scorer**   | Output confidence assessment       | `src/services/confidence_scorer.ts` |
-| **Condition Evaluator** | Flow condition expression eval     | `src/flows/condition_evaluator.ts`  |
-| **Gate Evaluator**      | Quality gate checkpoint validation | `src/flows/gate_evaluator.ts`       |
-| **Judge Evaluator**     | LLM-as-a-Judge assessment          | `src/flows/judge_evaluator.ts`      |
-| **Feedback Loop**       | Iterative refinement control       | `src/flows/feedback_loop.ts`        |
-| **Evaluation Criteria** | Quality standards validation       | `src/flows/evaluation_criteria.ts`  |
+| Component               | Responsibility                            | Key Files                           |
+| ----------------------- | ----------------------------------------- | ----------------------------------- |
+| **CLI Layer**           | Human interface for system control        | `src/cli/*.ts`                      |
+| **Daemon**              | Background orchestration engine           | `src/main.ts`                       |
+| **Request Watcher**     | Detect new requests in Workspace/Requests | `src/services/watcher.ts`           |
+| **Plan Watcher**        | Detect approved plans                     | `src/services/watcher.ts`           |
+| **Request Processor**   | Parse requests, generate plans            | `src/services/request_processor.ts` |
+| **Plan Executor**       | Execute approved plans                    | `src/services/plan_executor.ts`     |
+| **Agent Runner**        | Execute agent logic with LLM              | `src/services/agent_runner.ts`      |
+| **Event Logger**        | Write to Activity Journal                 | `src/services/event_logger.ts`      |
+| **Config Service**      | Load and validate exo.config.toml         | `src/config/service.ts`             |
+| **Database Service**    | SQLite journal.db operations              | `src/services/db.ts`                |
+| **Git Service**         | Git operations with trace metadata        | `src/services/git_service.ts`       |
+| **Provider Factory**    | Create LLM provider instances             | `src/ai/provider_factory.ts`        |
+| **Context Loader**      | Load context for agent execution          | `src/services/context_loader.ts`    |
+| **Portal Commands**     | Manage external project access            | `src/cli/portal_commands.ts`        |
+| **Blueprint Commands**  | Manage agent templates                    | `src/cli/blueprint_commands.ts`     |
+| **Dashboard Commands**  | Launch terminal dashboard                 | `src/cli/dashboard_commands.ts`     |
+| **TUI Dashboard**       | Multi-view terminal UI                    | `src/tui/*.ts`                      |
+| **Parsers**             | Parse markdown + frontmatter              | `src/parsers/*.ts`                  |
+| **Schemas**             | Zod validation layer                      | `src/schemas/*.ts`                  |
+| **MCP Server**          | JSON-RPC server for tool execution        | `src/mcp/server.ts`                 |
+| **Blueprint Loader**    | Unified blueprint parsing                 | `src/services/blueprint_loader.ts`  |
+| **Output Validator**    | Schema validation with JSON repair        | `src/services/output_validator.ts`  |
+| **Retry Policy**        | Exponential backoff with jitter           | `src/services/retry_policy.ts`      |
+| **Reflexive Agent**     | Self-critique improvement loop            | `src/services/reflexive_agent.ts`   |
+| **Tool Reflector**      | Tool result evaluation and retry          | `src/services/tool_reflector.ts`    |
+| **Session Memory**      | Memory context injection                  | `src/services/session_memory.ts`    |
+| **Confidence Scorer**   | Output confidence assessment              | `src/services/confidence_scorer.ts` |
+| **Condition Evaluator** | Flow condition expression eval            | `src/flows/condition_evaluator.ts`  |
+| **Gate Evaluator**      | Quality gate checkpoint validation        | `src/flows/gate_evaluator.ts`       |
+| **Judge Evaluator**     | LLM-as-a-Judge assessment                 | `src/flows/judge_evaluator.ts`      |
+| **Feedback Loop**       | Iterative refinement control              | `src/flows/feedback_loop.ts`        |
+| **Evaluation Criteria** | Quality standards validation              | `src/flows/evaluation_criteria.ts`  |
 
 ---
 

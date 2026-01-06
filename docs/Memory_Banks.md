@@ -46,7 +46,7 @@ Memory/
 │   └── {proposal-id}.json # Proposed learning from execution
 │
 ├── Tasks/                 # Active and historical tasks
-│   ├── active/            # Currently executing (symlinks to System/Active/)
+│   ├── active/            # Currently executing (symlinks to Workspace/Active/)
 │   ├── completed/         # Successfully completed tasks
 │   └── failed/            # Failed tasks with error analysis
 │

@@ -74,7 +74,7 @@ deno run --allow-read scripts/inject_agent_context.ts --query "write security te
 # Output: JSON with path, title, short_summary, and snippet
 {
   "found": true,
-  "path": "agents/tests/testing.md",
+  "path": ".copilot/tests/testing.md",
   "title": "ExoFrame Test Development Guidelines",
   "short_summary": "Testing patterns and unified test context...",
   "snippet": "# ExoFrame Test Development Guidelines\n\nKey points\n- Use `initTestDbService()`..."
@@ -141,7 +141,7 @@ Use pre-generated embeddings from external sources:
 1. **Prepare embedding files** following the template:
 ```json
 {
-  "path": "agents/tests/testing.md",
+  "path": ".copilot/tests/testing.md",
   "title": "ExoFrame Test Development Guidelines",
   "vecs": [
     {
@@ -152,15 +152,15 @@ Use pre-generated embeddings from external sources:
 }
 ```
 
-2. **Place files** in `agents/embeddings/` (format: `<doc-name>.json`)
+2. **Place files** in `.copilot/embeddings/` (format: `<doc-name>.json`)
 
 3. **Validate and import**:
 ```bash
 deno run --allow-read --allow-write scripts/build_agents_embeddings.ts \
-  --mode precomputed --dir agents/embeddings
+  --mode precomputed --dir .copilot/embeddings
 ```
 
-**Template:** See `agents/embeddings/example_precomputed_template.json`
+**Template:** See `.copilot/embeddings/example_precomputed_template.json`
 
 ## Example: Multi-Step Task with RAG
 

@@ -45,7 +45,7 @@ Deno.test("Integration: Concurrent Requests - Multiple requests in parallel", as
       // All request files should exist
       for (const result of results) {
         const exists = await env.fileExists(
-          `Inbox/Requests/request-${result.traceId.substring(0, 8)}.md`,
+          `Workspace/Requests/request-${result.traceId.substring(0, 8)}.md`,
         );
         assertEquals(exists, true, `Request for ${result.traceId} should exist`);
       }

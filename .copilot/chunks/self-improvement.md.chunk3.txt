@@ -1,4 +1,4 @@
-4. **Rebuild + validate `agents/` artifacts**
+4. **Rebuild + validate `.copilot/` artifacts**
    - Rebuild manifest/chunks:
      - `deno run --allow-read --allow-write scripts/build_agents_index.ts`
    - Verify freshness:

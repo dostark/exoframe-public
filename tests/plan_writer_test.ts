@@ -52,7 +52,7 @@ describe("PlanWriter - JSON Integration", () => {
 
   beforeEach(async () => {
     testDir = await Deno.makeTempDir({ prefix: "plan_writer_json_test_" });
-    plansDir = `${testDir}/Inbox/Plans`;
+    plansDir = `${testDir}/Workspace/Plans`;
     knowledgeDir = `${testDir}/Memory`;
 
     await Deno.mkdir(plansDir, { recursive: true });
@@ -62,7 +62,7 @@ describe("PlanWriter - JSON Integration", () => {
       plansDirectory: plansDir,
       includeReasoning: true,
       generateWikiLinks: true,
-      systemRoot: `${testDir}/System`,
+      runtimeRoot: `${testDir}/System`,
     };
 
     planWriter = new PlanWriter(config);

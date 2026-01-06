@@ -47,10 +47,10 @@ function extractPlanMetadata(planId: string, frontmatter: Record<string, unknown
  * All operations are atomic and logged to activity_log with actor='human'.
  */
 export class PlanCommands extends BaseCommand {
-  private inboxPlansDir: string;
-  private systemActiveDir: string;
-  private inboxRejectedDir: string;
-  private systemArchiveDir: string;
+  private workspacePlansDir: string;
+  private workspaceActiveDir: string;
+  private workspaceRejectedDir: string;
+  private workspaceArchiveDir: string;
   private parser: FrontmatterParser;
 
   constructor(
@@ -58,20 +58,21 @@ export class PlanCommands extends BaseCommand {
     workspaceRoot: string,
   ) {
     super(context);
-    this.inboxPlansDir = join(workspaceRoot, "Inbox", "Plans");
-    this.systemActiveDir = join(workspaceRoot, "System", "Active");
-    this.inboxRejectedDir = join(workspaceRoot, "Inbox", "Rejected");
-    this.systemArchiveDir = join(workspaceRoot, "System", "Archive");
+    const config = context.config;
+    this.workspacePlansDir = join(workspaceRoot, config.paths.workspace, "Plans");
+    this.workspaceActiveDir = join(workspaceRoot, config.paths.workspace, "Active");
+    this.workspaceRejectedDir = join(workspaceRoot, config.paths.workspace, "Rejected");
+    this.workspaceArchiveDir = join(workspaceRoot, config.paths.workspace, "Archive");
     this.parser = new FrontmatterParser();
   }
 
   /**
-   * Approve a plan: move from /Inbox/Plans to /System/Active
+   * Approve a plan: move from Workspace/Plans to Workspace/Active
    * Only plans with status='review' can be approved.
    */
   async approve(planId: string): Promise<void> {
-    const sourcePath = join(this.inboxPlansDir, `${planId}.md`);
-    const targetPath = join(this.systemActiveDir, `${planId}.md`);
+    const sourcePath = join(this.workspacePlansDir, `${planId}.md`);
+    const targetPath = join(this.workspaceActiveDir, `${planId}.md`);
 
     // Load and parse plan
     const { frontmatter, body } = await this.loadPlan(sourcePath);
@@ -86,9 +87,9 @@ export class PlanCommands extends BaseCommand {
     // Validate target path doesn't exist, or archive existing plan
     if (await exists(targetPath)) {
       // Archive existing plan
-      await ensureDir(this.systemArchiveDir);
+      await ensureDir(this.workspaceArchiveDir);
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const archivePath = join(this.systemArchiveDir, `${planId}_archived_${timestamp}.md`);
+      const archivePath = join(this.workspaceArchiveDir, `${planId}_archived_${timestamp}.md`);
       await Deno.rename(targetPath, archivePath);
     }
 
@@ -104,7 +105,7 @@ export class PlanCommands extends BaseCommand {
     };
 
     // Write updated plan to target
-    await ensureDir(this.systemActiveDir);
+    await ensureDir(this.workspaceActiveDir);
     const updatedContent = this.serializePlan(updatedFrontmatter, body);
     await Deno.writeTextFile(targetPath, updatedContent);
 
@@ -120,7 +121,7 @@ export class PlanCommands extends BaseCommand {
   }
 
   /**
-   * Reject a plan: move from /Inbox/Plans to /Inbox/Rejected with _rejected.md suffix
+   * Reject a plan: move from Workspace/Plans to Workspace/Rejected with _rejected.md suffix
    * Requires a rejection reason.
    */
   async reject(planId: string, reason: string): Promise<void> {
@@ -128,8 +129,8 @@ export class PlanCommands extends BaseCommand {
       throw new Error("Rejection reason is required");
     }
 
-    const sourcePath = join(this.inboxPlansDir, `${planId}.md`);
-    const targetPath = join(this.inboxRejectedDir, `${planId}_rejected.md`);
+    const sourcePath = join(this.workspacePlansDir, `${planId}.md`);
+    const targetPath = join(this.workspaceRejectedDir, `${planId}_rejected.md`);
 
     // Load and parse plan
     const { frontmatter, body } = await this.loadPlan(sourcePath);
@@ -147,7 +148,7 @@ export class PlanCommands extends BaseCommand {
     };
 
     // Write updated plan to target
-    await ensureDir(this.inboxRejectedDir);
+    await ensureDir(this.workspaceRejectedDir);
     const updatedContent = this.serializePlan(updatedFrontmatter, body);
     await Deno.writeTextFile(targetPath, updatedContent);
 
@@ -165,14 +166,14 @@ export class PlanCommands extends BaseCommand {
 
   /**
    * Request revision: append review comments to plan and update status to 'needs_revision'
-   * Plan remains in /Inbox/Plans for the agent to address.
+   * Plan remains in Workspace/Plans for the agent to address.
    */
   async revise(planId: string, comments: string[]): Promise<void> {
     if (!comments || comments.length === 0) {
       throw new Error("At least one comment is required");
     }
 
-    const planPath = join(this.inboxPlansDir, `${planId}.md`);
+    const planPath = join(this.workspacePlansDir, `${planId}.md`);
 
     // Load and parse plan
     const { frontmatter, body } = await this.loadPlan(planPath);
@@ -220,23 +221,23 @@ export class PlanCommands extends BaseCommand {
   }
 
   /**
-   * List all plans in /Inbox/Plans, optionally filtered by status
+   * List all plans in Workspace/Plans, optionally filtered by status
    */
   async list(statusFilter?: string): Promise<PlanMetadata[]> {
     const plans: PlanMetadata[] = [];
 
     try {
       // Ensure directory exists
-      await ensureDir(this.inboxPlansDir);
+      await ensureDir(this.workspacePlansDir);
 
       // Read directory
-      for await (const entry of Deno.readDir(this.inboxPlansDir)) {
+      for await (const entry of Deno.readDir(this.workspacePlansDir)) {
         if (!entry.isFile || !entry.name.endsWith(".md")) {
           continue;
         }
 
         const planId = entry.name.replace(/\.md$/, "");
-        const planPath = join(this.inboxPlansDir, entry.name);
+        const planPath = join(this.workspacePlansDir, entry.name);
 
         try {
           const content = await Deno.readTextFile(planPath);
@@ -275,7 +276,7 @@ export class PlanCommands extends BaseCommand {
    * Show details of a specific plan
    */
   async show(planId: string): Promise<PlanDetails> {
-    const planPath = join(this.inboxPlansDir, `${planId}.md`);
+    const planPath = join(this.workspacePlansDir, `${planId}.md`);
 
     if (!await exists(planPath)) {
       throw new Error(`Plan not found: ${planId}`);

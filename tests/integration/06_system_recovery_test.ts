@@ -137,11 +137,11 @@ Deno.test("Integration: System Recovery - Recover from crash mid-execution", asy
       );
 
       // Check Active directory for plans with executing status
-      const activeFiles = await env.listFiles("System/Active");
+      const activeFiles = await env.listFiles("Workspace/Active");
       const executingPlans = [];
       for (const file of activeFiles) {
         if (file.endsWith("_plan.md")) {
-          const content = await env.readFile(`System/Active/${file}`);
+          const content = await env.readFile(`Workspace/Active/${file}`);
           if (content.includes("status: executing")) {
             executingPlans.push(file);
           }

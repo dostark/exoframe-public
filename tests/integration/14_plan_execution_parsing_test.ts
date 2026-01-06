@@ -1,6 +1,7 @@
 import { assertEquals, assertExists } from "jsr:@std/assert@1";
 import { join } from "jsr:@std/path@1";
 import { TestEnvironment } from "./helpers/test_environment.ts";
+import { getWorkspaceActiveDir } from "../helpers/paths_helper.ts";
 
 Deno.test("Integration: Plan Execution Parsing", async (t) => {
   await t.step("parses complete multi-step plan", async () => {
@@ -84,7 +85,7 @@ Protect routes with authentication checks.
 - All tests pass
 `;
 
-      const planPath = join(env.tempDir, "System", "Active", "auth_plan.md");
+      const planPath = join(getWorkspaceActiveDir(env.tempDir), "auth_plan.md");
       await Deno.writeTextFile(planPath, planContent);
 
       // Wait for file to be written
@@ -155,7 +156,7 @@ trace_id: ${crypto.randomUUID()}
 Bump version number in package.json
 `;
 
-      const planPath = join(env.tempDir, "System", "Active", "version_bump_plan.md");
+      const planPath = join(getWorkspaceActiveDir(env.tempDir), "version_bump_plan.md");
       await Deno.writeTextFile(planPath, planContent);
       await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -197,7 +198,7 @@ trace_id: ${crypto.randomUUID()}
 This plan has no step headers, which should be detected as invalid.
 `;
 
-      const planPath = join(env.tempDir, "System", "Active", "invalid_structure_plan.md");
+      const planPath = join(getWorkspaceActiveDir(env.tempDir), "invalid_structure_plan.md");
       await Deno.writeTextFile(planPath, planContent);
       await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -240,7 +241,7 @@ created_at: 2024-01-01T10:00:00Z
 Initial setup
 `;
 
-      const planPath = join(env.tempDir, "System", "Active", "context_test_plan.md");
+      const planPath = join(getWorkspaceActiveDir(env.tempDir), "context_test_plan.md");
       await Deno.writeTextFile(planPath, planContent);
       await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -288,7 +289,7 @@ Skip step 2
 Another gap
 `;
 
-      const planPath = join(env.tempDir, "System", "Active", "gap_plan.md");
+      const planPath = join(getWorkspaceActiveDir(env.tempDir), "gap_plan.md");
       await Deno.writeTextFile(planPath, planContent);
       await new Promise((resolve) => setTimeout(resolve, 100));
 

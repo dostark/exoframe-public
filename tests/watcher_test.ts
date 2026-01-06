@@ -408,7 +408,7 @@ Deno.test("File stability - eventual consistency with delayed write", async () =
 Deno.test("FileWatcher: processes .md files and ignores dotfiles", async () => {
   const { helper, cleanup } = await createWatcherTestContext("watcher-class-filter-");
   try {
-    await helper.createInboxStructure();
+    await helper.createWorkspaceStructure();
 
     const eventsReceived: string[] = [];
     const watcher = helper.createWatcher((event) => {
@@ -418,9 +418,9 @@ Deno.test("FileWatcher: processes .md files and ignores dotfiles", async () => {
     await helper.startWatcher(watcher);
 
     // Create test files
-    await Deno.writeTextFile(join(helper.inboxPath, "valid.md"), "Valid file");
-    await Deno.writeTextFile(join(helper.inboxPath, ".hidden.md"), "Hidden file");
-    await Deno.writeTextFile(join(helper.inboxPath, "readme.txt"), "Text file");
+    await Deno.writeTextFile(join(helper.requestDir, "valid.md"), "Valid file");
+    await Deno.writeTextFile(join(helper.requestDir, ".hidden.md"), "Hidden file");
+    await Deno.writeTextFile(join(helper.requestDir, "readme.txt"), "Text file");
 
     // Wait for processing
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -459,7 +459,7 @@ Deno.test("FileWatcher: throws error when watch directory not found", async () =
 Deno.test("FileWatcher: processes file without stability check", async () => {
   const { helper, cleanup } = await createWatcherTestContext("watcher-no-stability-");
   try {
-    await helper.createInboxStructure();
+    await helper.createWorkspaceStructure();
 
     let receivedContent = "";
     const watcher = helper.createWatcher((event) => {
@@ -480,7 +480,7 @@ Deno.test("FileWatcher: processes file without stability check", async () => {
 Deno.test("FileWatcher: handles onFileReady callback errors gracefully", async () => {
   const { helper, cleanup } = await createWatcherTestContext("watcher-callback-error-");
   try {
-    await helper.createInboxStructure();
+    await helper.createWorkspaceStructure();
 
     let callbackInvoked = false;
     const watcher = helper.createWatcher(() => {
@@ -502,7 +502,7 @@ Deno.test("FileWatcher: handles onFileReady callback errors gracefully", async (
 Deno.test("FileWatcher: logs activity with database", async () => {
   const { helper, cleanup } = await createWatcherTestContext("watcher-db-logging-");
   try {
-    await helper.createInboxStructure();
+    await helper.createWorkspaceStructure();
 
     const { db } = await initTestDbService();
     const watcher = helper.createWatcher(() => {}, { db });
@@ -531,7 +531,7 @@ Deno.test("FileWatcher: logs activity with database", async () => {
 Deno.test("FileWatcher: handles file read errors during processing", async () => {
   const { helper, cleanup } = await createWatcherTestContext("watcher-read-error-");
   try {
-    await helper.createInboxStructure();
+    await helper.createWorkspaceStructure();
 
     const watcher = helper.createWatcher(() => {
       // This shouldn't be called if file read fails
@@ -540,7 +540,7 @@ Deno.test("FileWatcher: handles file read errors during processing", async () =>
     await helper.startWatcher(watcher);
 
     // Create file then remove it quickly (race condition)
-    const testFile = join(helper.inboxPath, "disappear.md");
+    const testFile = join(helper.requestDir, "disappear.md");
     await Deno.writeTextFile(testFile, "content");
     await Deno.remove(testFile);
 
@@ -558,7 +558,7 @@ Deno.test("FileWatcher: handles file read errors during processing", async () =>
 Deno.test("FileWatcher: handles non-Error exceptions", async () => {
   const { helper, cleanup } = await createWatcherTestContext("watcher-non-error-");
   try {
-    await helper.createInboxStructure();
+    await helper.createWorkspaceStructure();
 
     // Create a callback that throws a non-Error object
     const watcher = helper.createWatcher(() => {
@@ -580,7 +580,7 @@ Deno.test("FileWatcher: handles non-Error exceptions", async () => {
 Deno.test("FileWatcher: clears pending timers on stop", async () => {
   const { helper, cleanup } = await createWatcherTestContext("watcher-clear-timers-");
   try {
-    await helper.createInboxStructure();
+    await helper.createWorkspaceStructure();
 
     let eventsProcessed = 0;
     const watcher = helper.createWatcher(() => {
@@ -590,7 +590,7 @@ Deno.test("FileWatcher: clears pending timers on stop", async () => {
     await helper.startWatcher(watcher);
 
     // Create file but stop before debounce completes
-    await Deno.writeTextFile(join(helper.inboxPath, "pending.md"), "content");
+    await Deno.writeTextFile(join(helper.requestDir, "pending.md"), "content");
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Stop immediately (before debounce timer fires)
@@ -609,7 +609,7 @@ Deno.test("FileWatcher: clears pending timers on stop", async () => {
 Deno.test("FileWatcher: handles modify events", async () => {
   const { helper, cleanup } = await createWatcherTestContext("watcher-modify-");
   try {
-    await helper.createInboxStructure();
+    await helper.createWorkspaceStructure();
 
     const eventsReceived: string[] = [];
     const watcher = helper.createWatcher((event) => {
@@ -618,7 +618,7 @@ Deno.test("FileWatcher: handles modify events", async () => {
 
     await helper.startWatcher(watcher);
 
-    const testFile = join(helper.inboxPath, "modify.md");
+    const testFile = join(helper.requestDir, "modify.md");
     await Deno.writeTextFile(testFile, "Version 1");
     await new Promise((resolve) => setTimeout(resolve, 150));
 
@@ -638,7 +638,7 @@ Deno.test("FileWatcher: handles modify events", async () => {
 Deno.test("FileWatcher: debounces rapid file modifications", async () => {
   const { helper, cleanup } = await createWatcherTestContext("watcher-rapid-debounce-");
   try {
-    await helper.createInboxStructure();
+    await helper.createWorkspaceStructure();
 
     let processCount = 0;
     const watcher = helper.createWatcher(() => {
@@ -647,7 +647,7 @@ Deno.test("FileWatcher: debounces rapid file modifications", async () => {
 
     await helper.startWatcher(watcher);
 
-    const testFile = join(helper.inboxPath, "rapid.md");
+    const testFile = join(helper.requestDir, "rapid.md");
 
     // Rapidly modify file multiple times
     for (let i = 0; i < 5; i++) {
@@ -670,7 +670,7 @@ Deno.test("FileWatcher: debounces rapid file modifications", async () => {
 Deno.test("FileWatcher: handles rename events (file moves)", async () => {
   const { helper, cleanup } = await createWatcherTestContext("watcher-rename-");
   try {
-    await helper.createInboxStructure();
+    await helper.createWorkspaceStructure();
 
     const eventsReceived: string[] = [];
     const watcher = helper.createWatcher((event) => {
@@ -684,7 +684,7 @@ Deno.test("FileWatcher: handles rename events (file moves)", async () => {
     await Deno.writeTextFile(outsideFile, "Moved content");
 
     // Move file into watch dir
-    const insideFile = join(helper.inboxPath, "moved.md");
+    const insideFile = join(helper.requestDir, "moved.md");
     await Deno.rename(outsideFile, insideFile);
 
     // Wait for processing

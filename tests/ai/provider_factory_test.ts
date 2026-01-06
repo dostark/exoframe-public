@@ -41,9 +41,10 @@ function createTestConfig(aiConfig?: Partial<AiConfig>): Config {
       log_level: "info" as const,
     },
     paths: {
-      inbox: "Inbox",
+      portals: "Portals",
+      workspace: "Workspace",
       memory: "Memory",
-      system: "System",
+      runtime: ".exo",
       blueprints: "Blueprints",
     },
     database: {

@@ -97,7 +97,7 @@ export function sampleLogEntry(overrides: Record<string, unknown> = {}) {
     actor: overrides.actor ?? "agent",
     agent_id: overrides.agent_id ?? "default",
     action_type: overrides.action_type ?? "request_created",
-    target: overrides.target ?? "Inbox/Requests/test.md",
+    target: overrides.target ?? "Workspace/Requests/test.md",
     payload: overrides.payload ?? {},
     timestamp: overrides.timestamp ?? new Date().toISOString(),
     ...overrides,
@@ -112,7 +112,7 @@ export function sampleLogEntries(arr: Array<Record<string, unknown>>) {
 export function createTwoAgentLogs() {
   return sampleLogEntries([
     { agent_id: "researcher", action_type: "request_created" },
-    { agent_id: "architect", action_type: "plan_approved", target: "Inbox/Plans/test.md" },
+    { agent_id: "architect", action_type: "plan_approved", target: "Workspace/Plans/test.md" },
   ]);
 }
 

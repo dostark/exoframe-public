@@ -6,6 +6,7 @@ import { TestEnvironment } from "./helpers/test_environment.ts";
 import { ModelFactory } from "../../src/ai/providers.ts";
 import { RequestProcessor } from "../../src/services/request_processor.ts";
 import { getTestModel } from "../ai/helpers/test_model.ts";
+import { getWorkspaceDir, getWorkspaceRequestsDir } from "../helpers/paths_helper.ts";
 
 const _enabled = Deno.env.get("EXO_ENABLE_PAID_LLM");
 Deno.test(
@@ -56,7 +57,8 @@ Always respond with:
         provider,
         env.db,
         {
-          inboxPath: `${env.tempDir}/Inbox`,
+          workspacePath: getWorkspaceDir(`${env.tempDir}`),
+          requestsDir: getWorkspaceRequestsDir(`${env.tempDir}`),
           blueprintsPath: `${env.tempDir}/Blueprints/Agents`,
           includeReasoning: true,
         },

@@ -1,5 +1,5 @@
 {
-  "path": "agents/prompts/debugging-systematic.md",
+  "path": ".copilot/prompts/debugging-systematic.md",
   "title": "Systematic Debugging Prompt",
   "vecs": [
     {

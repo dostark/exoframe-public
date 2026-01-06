@@ -59,7 +59,7 @@ Deno.test("Integration: Context Overflow - Large file references", async (t) => 
 
       // Request file should exist
       const exists = await env.fileExists(
-        `Inbox/Requests/request-${traceId.substring(0, 8)}.md`,
+        `Workspace/Requests/request-${traceId.substring(0, 8)}.md`,
       );
       assertEquals(exists, true, "Request should be saved");
     });

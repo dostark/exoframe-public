@@ -7,6 +7,7 @@ import { join } from "@std/path";
 import { ExecutionLoop } from "../src/services/execution_loop.ts";
 import { createMockConfig } from "./helpers/config.ts";
 import { initTestDbService } from "./helpers/db.ts";
+import { getWorkspaceActiveDir, getWorkspacePlansDir } from "./helpers/paths_helper.ts";
 
 // ===== executeNext tests =====
 
@@ -16,8 +17,8 @@ Deno.test("ExecutionLoop.executeNext: returns success when no plans available", 
 
   try {
     const config = createMockConfig(tempDir);
-    // Create empty Inbox/Plans directory
-    const plansDir = join(tempDir, "Inbox", "Plans");
+    // Create empty Workspace/Plans directory
+    const plansDir = getWorkspacePlansDir(tempDir);
     await Deno.mkdir(plansDir, { recursive: true });
 
     const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
@@ -37,7 +38,7 @@ Deno.test("ExecutionLoop.executeNext: processes pending plan", async () => {
 
   try {
     const config = createMockConfig(tempDir);
-    const plansDir = join(tempDir, "Inbox", "Plans");
+    const plansDir = getWorkspacePlansDir(tempDir);
     await Deno.mkdir(plansDir, { recursive: true });
 
     const planContent = `---
@@ -77,7 +78,7 @@ Deno.test("ExecutionLoop.executeNext: skips non-pending plans", async () => {
 
   try {
     const config = createMockConfig(tempDir);
-    const plansDir = join(tempDir, "Inbox", "Plans");
+    const plansDir = getWorkspacePlansDir(tempDir);
     await Deno.mkdir(plansDir, { recursive: true });
 
     // Create plan with "active" status (not "pending")
@@ -111,7 +112,7 @@ Deno.test("ExecutionLoop.executeNext: handles plans directory not found", async 
 
   try {
     const config = createMockConfig(tempDir);
-    // Don't create the Inbox/Plans directory
+    // Don't create the Workspace/Plans directory
 
     const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
     const result = await loop.executeNext();
@@ -131,7 +132,7 @@ Deno.test("ExecutionLoop.executeNext: skips plans with invalid frontmatter", asy
 
   try {
     const config = createMockConfig(tempDir);
-    const plansDir = join(tempDir, "Inbox", "Plans");
+    const plansDir = getWorkspacePlansDir(tempDir);
     await Deno.mkdir(plansDir, { recursive: true });
 
     // Create plan with no frontmatter
@@ -163,8 +164,8 @@ Deno.test("ExecutionLoop: skips non-TOML code blocks", async () => {
 
   try {
     const config = createMockConfig(tempDir);
-    const systemActiveDir = join(tempDir, "System", "Active");
-    await Deno.mkdir(systemActiveDir, { recursive: true });
+    const activeDir = getWorkspaceActiveDir(tempDir);
+    await Deno.mkdir(activeDir, { recursive: true });
 
     const planContent = `---
 trace_id: "test-non-toml"
@@ -187,7 +188,7 @@ print("Hello")
 No TOML actions here.
 `;
 
-    const planPath = join(systemActiveDir, "non-toml-test.md");
+    const planPath = join(getWorkspaceActiveDir(tempDir), "non-toml-test.md");
     await Deno.writeTextFile(planPath, planContent);
 
     const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
@@ -207,8 +208,8 @@ Deno.test("ExecutionLoop: skips invalid TOML blocks", async () => {
 
   try {
     const config = createMockConfig(tempDir);
-    const systemActiveDir = join(tempDir, "System", "Active");
-    await Deno.mkdir(systemActiveDir, { recursive: true });
+    const activeDir = getWorkspaceActiveDir(tempDir);
+    await Deno.mkdir(activeDir, { recursive: true });
 
     const planContent = `---
 trace_id: "test-bad-toml"
@@ -225,7 +226,7 @@ this is not valid toml = [broken
 Should skip the invalid block.
 `;
 
-    const planPath = join(systemActiveDir, "bad-toml-test.md");
+    const planPath = join(getWorkspaceActiveDir(tempDir), "bad-toml-test.md");
     await Deno.writeTextFile(planPath, planContent);
 
     const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
@@ -245,8 +246,8 @@ Deno.test("ExecutionLoop: skips TOML blocks without tool field", async () => {
 
   try {
     const config = createMockConfig(tempDir);
-    const systemActiveDir = join(tempDir, "System", "Active");
-    await Deno.mkdir(systemActiveDir, { recursive: true });
+    const activeDir = getWorkspaceActiveDir(tempDir);
+    await Deno.mkdir(activeDir, { recursive: true });
 
     const planContent = `---
 trace_id: "test-no-tool"
@@ -264,7 +265,7 @@ value = 42
 Should skip this block.
 `;
 
-    const planPath = join(systemActiveDir, "no-tool-test.md");
+    const planPath = join(getWorkspaceActiveDir(tempDir), "no-tool-test.md");
     await Deno.writeTextFile(planPath, planContent);
 
     const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
@@ -286,8 +287,8 @@ Deno.test("ExecutionLoop: logs action with null result", async () => {
 
   try {
     const config = createMockConfig(tempDir);
-    const systemActiveDir = join(tempDir, "System", "Active");
-    await Deno.mkdir(systemActiveDir, { recursive: true });
+    const activeDir = getWorkspaceActiveDir(tempDir);
+    await Deno.mkdir(activeDir, { recursive: true });
 
     // Use a tool that returns null/undefined
     const planContent = `---
@@ -307,7 +308,7 @@ path = "does-not-exist.txt"
 \`\`\`
 `;
 
-    const planPath = join(systemActiveDir, "null-result-test.md");
+    const planPath = join(getWorkspaceActiveDir(tempDir), "null-result-test.md");
     await Deno.writeTextFile(planPath, planContent);
 
     const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
@@ -332,8 +333,8 @@ Deno.test("ExecutionLoop: same agent can reacquire own lease", async () => {
 
   try {
     const config = createMockConfig(tempDir);
-    const systemActiveDir = join(tempDir, "System", "Active");
-    await Deno.mkdir(systemActiveDir, { recursive: true });
+    const activeDir = getWorkspaceActiveDir(tempDir);
+    await Deno.mkdir(activeDir, { recursive: true });
 
     const planContent = `---
 trace_id: "test-reacquire"
@@ -344,7 +345,7 @@ status: active
 # Reacquire Lease Test
 `;
 
-    const planPath = join(systemActiveDir, "reacquire-test.md");
+    const planPath = join(activeDir, "reacquire-test.md");
     await Deno.writeTextFile(planPath, planContent);
 
     const loop = new ExecutionLoop({ config, db, agentId: "same-agent" });
@@ -373,8 +374,8 @@ Deno.test("ExecutionLoop: handles missing request_id in frontmatter", async () =
 
   try {
     const config = createMockConfig(tempDir);
-    const systemActiveDir = join(tempDir, "System", "Active");
-    await Deno.mkdir(systemActiveDir, { recursive: true });
+    const activeDir = getWorkspaceActiveDir(tempDir);
+    await Deno.mkdir(activeDir, { recursive: true });
 
     const planContent = `---
 trace_id: "test-no-request"
@@ -384,7 +385,7 @@ status: active
 # Plan Missing request_id
 `;
 
-    const planPath = join(systemActiveDir, "no-request.md");
+    const planPath = join(activeDir, "no-request.md");
     await Deno.writeTextFile(planPath, planContent);
 
     const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
@@ -404,8 +405,8 @@ Deno.test("ExecutionLoop: handles empty frontmatter content", async () => {
 
   try {
     const config = createMockConfig(tempDir);
-    const systemActiveDir = join(tempDir, "System", "Active");
-    await Deno.mkdir(systemActiveDir, { recursive: true });
+    const activeDir = getWorkspaceActiveDir(tempDir);
+    await Deno.mkdir(activeDir, { recursive: true });
 
     const planContent = `---
 ---
@@ -413,7 +414,7 @@ Deno.test("ExecutionLoop: handles empty frontmatter content", async () => {
 # Plan with Empty Frontmatter
 `;
 
-    const planPath = join(systemActiveDir, "empty-frontmatter.md");
+    const planPath = join(activeDir, "empty-frontmatter.md");
     await Deno.writeTextFile(planPath, planContent);
 
     const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
@@ -436,7 +437,7 @@ Deno.test("ExecutionLoop.executeNext: fails when plan has no actions", async () 
 
   try {
     const config = createMockConfig(tempDir);
-    const plansDir = join(tempDir, "Inbox", "Plans");
+    const plansDir = getWorkspacePlansDir(tempDir);
     await Deno.mkdir(plansDir, { recursive: true });
 
     const planContent = `---
@@ -473,8 +474,8 @@ Deno.test("ExecutionLoop: handles nothing to commit gracefully", async () => {
 
   try {
     const config = createMockConfig(tempDir);
-    const systemActiveDir = join(tempDir, "System", "Active");
-    await Deno.mkdir(systemActiveDir, { recursive: true });
+    const activeDir = getWorkspaceActiveDir(tempDir);
+    await Deno.mkdir(activeDir, { recursive: true });
 
     // Create initial file and commit it first
     const testFile = join(tempDir, "existing.txt");
@@ -515,7 +516,7 @@ path = "existing.txt"
 \`\`\`
 `;
 
-    const planPath = join(systemActiveDir, "no-changes-test.md");
+    const planPath = join(activeDir, "no-changes-test.md");
     await Deno.writeTextFile(planPath, planContent);
 
     const loop = new ExecutionLoop({ config, db, agentId: "test-agent" });
@@ -542,8 +543,8 @@ Deno.test("ExecutionLoop: works without database (no logging)", async () => {
 
   try {
     const config = createMockConfig(tempDir);
-    const systemActiveDir = join(tempDir, "System", "Active");
-    await Deno.mkdir(systemActiveDir, { recursive: true });
+    const activeDir = getWorkspaceActiveDir(tempDir);
+    await Deno.mkdir(activeDir, { recursive: true });
 
     const planContent = `---
 trace_id: "test-no-db"
@@ -556,7 +557,7 @@ status: active
 No actions - just testing without db.
 `;
 
-    const planPath = join(systemActiveDir, "no-db-test.md");
+    const planPath = join(activeDir, "no-db-test.md");
     await Deno.writeTextFile(planPath, planContent);
 
     // Create ExecutionLoop without db parameter

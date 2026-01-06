@@ -19,6 +19,7 @@ import { AgentRunner } from "../../src/services/agent_runner.ts";
 import { PlanWriter, type RequestMetadata } from "../../src/services/plan_writer.ts";
 import { PlanAdapter } from "../../src/services/plan_adapter.ts";
 import { initTestDbService } from "../helpers/db.ts";
+import { getWorkspacePlansDir } from "../helpers/paths_helper.ts";
 
 // ============================================================================
 // Test Configuration
@@ -167,14 +168,14 @@ Deno.test({
 
     // Step 4: Write plan with PlanWriter
     console.log("\n💾 Writing plan with PlanWriter...");
-    const planDir = join(tempDir, "Inbox", "Plans");
+    const planDir = getWorkspacePlansDir(tempDir);
     await Deno.mkdir(planDir, { recursive: true });
 
     const planWriter = new PlanWriter({
       plansDirectory: planDir,
       includeReasoning: true,
       generateWikiLinks: false,
-      systemRoot: join(tempDir, "System"),
+      runtimeRoot: join(tempDir, ".exo"),
       db,
     });
 

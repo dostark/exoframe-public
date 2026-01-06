@@ -4,8 +4,8 @@
  *
  * Success Criteria:
  * - Test 1: Request file is created with valid frontmatter and unique trace_id
- * - Test 2: Plan is generated in /Inbox/Plans referencing the request's trace_id
- * - Test 3: Plan approval moves it to /System/Active with status=approved
+ * - Test 2: Plan is generated in /Workspace/Plans referencing the request's trace_id
+ * - Test 3: Plan approval moves it to Workspace/Active with status=approved
  * - Test 4: Execution creates a feature branch with naming convention feat/{requestId}-{traceId}
  * - Test 5: Execution commits changes with trace_id in commit message footer
  * - Test 6: Report is generated in /Memory/Reports with execution summary
@@ -46,7 +46,7 @@ Deno.test("Integration: Happy Path - Request to Report", async (t) => {
 
       // Verify file exists
       const exists = await env.fileExists(
-        `Inbox/Requests/request-${traceId.substring(0, 8)}.md`,
+        `Workspace/Requests/request-${traceId.substring(0, 8)}.md`,
       );
       assertEquals(exists, true, "Request file should exist");
 
@@ -84,7 +84,7 @@ Deno.test("Integration: Happy Path - Request to Report", async (t) => {
 
       // Verify plan exists
       const foundPlan = await env.getPlanByTraceId(traceId);
-      assertExists(foundPlan, "Plan should exist in /Inbox/Plans");
+      assertExists(foundPlan, "Plan should exist in /Workspace/Plans");
 
       // Verify plan content
       const content = await Deno.readTextFile(planPath);
@@ -97,16 +97,16 @@ Deno.test("Integration: Happy Path - Request to Report", async (t) => {
     // ========================================================================
     // Test 3: Plan Approval
     // ========================================================================
-    await t.step("Test 3: Plan approval moves to /System/Active", async () => {
+    await t.step("Test 3: Plan approval moves to Workspace/Active with status=approved", async () => {
       activePlanPath = await env.approvePlan(planPath);
 
       // Verify plan moved to Active
-      const activeExists = await env.fileExists("System/Active/implement-hello_plan.md");
-      assertEquals(activeExists, true, "Plan should exist in /System/Active");
+      const activeExists = await env.fileExists("Workspace/Active/implement-hello_plan.md");
+      assertEquals(activeExists, true, "Plan should exist in /Workspace/Active");
 
-      // Verify original removed from Inbox
-      const inboxExists = await env.fileExists("Inbox/Plans/implement-hello_plan.md");
-      assertEquals(inboxExists, false, "Plan should be removed from /Inbox/Plans");
+      // Verify original removed from Workspace
+      const inboxExists = await env.fileExists("Workspace/Plans/implement-hello_plan.md");
+      assertEquals(inboxExists, false, "Plan should be removed from /Workspace/Plans");
 
       // Verify status updated
       const content = await Deno.readTextFile(activePlanPath);

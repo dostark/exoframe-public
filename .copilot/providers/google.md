@@ -17,10 +17,10 @@ Key points
 
 ## Self-improvement loop
 
-If the current `agents/` instructions are insufficient for the task, patch them during execution (minimal, grounded), then rebuild/validate artifacts before continuing.
+If the current `.copilot/` instructions are insufficient for the task, patch them during execution (minimal, grounded), then rebuild/validate artifacts before continuing.
 
-- Process: `agents/process/self-improvement.md`
-- Template: `agents/prompts/self-improvement-loop.md`
+- Process: `.copilot/process/self-improvement.md`
+- Template: `.copilot/prompts/self-improvement-loop.md`
 - Gemini-specific tip: use long-context to include the relevant `agents/` docs + the exact gap list, then propose a small doc patch (examples/checklists) and continue.
 
 ## Task-Specific Prompts
@@ -32,7 +32,7 @@ If the current `agents/` instructions are insufficient for the task, patch them 
 "Analyze how changing [Module] affects all dependencies. Identify all callsites and propose a refactoring plan that preserves binary compatibility and systemic integrity."
 
 Canonical prompt (short):
-"You are a Gemini-based assistant for ExoFrame. Leverage your 2M context window to analyze repository-wide patterns. Before acting, check `agents/manifest.json` and include all relevant docs."
+"You are a Gemini-based assistant for ExoFrame. Leverage your 2M context window to analyze repository-wide patterns. Before acting, check `.copilot/manifest.json` and include all relevant docs."
 
 Examples
 - Example prompt: "Using the full provided context, identify all modules that use `initTestDbService()` and refactor them to use the new `DatabaseService` singleton pattern."

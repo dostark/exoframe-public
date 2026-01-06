@@ -1,5 +1,5 @@
 {
-  "path": "agents/prompts/openai-debugging-systematic.md",
+  "path": ".copilot/prompts/openai-debugging-systematic.md",
   "title": "OpenAI Debugging: Reproduce → Diagnose → Fix → Verify",
   "vecs": [
     {

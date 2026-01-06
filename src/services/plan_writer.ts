@@ -42,7 +42,7 @@ export interface RequestMetadata {
  * Configuration for plan writing
  */
 export interface PlanWriterConfig {
-  /** Directory to write plans to (default: /Inbox/Plans) */
+  /** Directory to write plans to (default: Workspace/Plans) */
   plansDirectory: string;
 
   /** Whether to include reasoning section */
@@ -52,7 +52,7 @@ export interface PlanWriterConfig {
   generateWikiLinks: boolean;
 
   /** System directory root for database access (default: /System) */
-  systemRoot: string;
+  runtimeRoot: string;
 
   /** Optional: Database service for activity logging */
   db?: DatabaseService;
@@ -92,7 +92,7 @@ export interface AgentExecutionResult {
 
 /**
  * PlanWriter formats agent execution results into structured markdown plans
- * and writes them to /Inbox/Plans for user review
+ * and writes them to Workspace/Plans for user review
  */
 export class PlanWriter {
   private adapter: PlanAdapter;
@@ -323,7 +323,7 @@ export class PlanWriter {
     return [
       "## Next Steps\n",
       "1. Review this plan for correctness and completeness",
-      `2. If approved, move to \`/System/Active/${requestId}.md\``,
+      `2. If approved, move to \`Workspace/Active/${requestId}.md\``,
       "3. Agent will execute changes on a separate git branch",
       "4. Review the pull request before merging to main\n",
     ].join("\n");

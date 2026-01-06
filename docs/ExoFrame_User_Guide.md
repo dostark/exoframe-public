@@ -71,7 +71,7 @@ From the repository root run the included script to create a user workspace (def
 
 **What the deploy script does:**
 
-- Creates the standard runtime folders (`System`, `Knowledge`, `Inbox`, `Portals`).
+- Creates the standard runtime folders (`System`, `Memory`, `Workspace`, `Portals`).
 - Copies runtime artifacts (`deno.json`, `import_map.json`, `scripts/`, `migrations/`, `src/`) into the target workspace.
 - Runs `deno task cache` and `deno task setup` to initialize the database.
 - Installs `exoctl` CLI globally to `~/.deno/bin/`.
@@ -242,7 +242,7 @@ deno task start
 
 ### 3.1 Directory Structure
 
-- **Inbox/**: Drop requests here.
+- **Workspace/**: Drop requests here.
 - **Memory/**: Memory Banks for execution history and project knowledge.
 - **System/**: Database and logs (do not touch manually).
 - **Portals/**: Symlinks to your projects.
@@ -570,7 +570,7 @@ ExoFrame CLI is organized into six main command groups:
 
 #### **Request Commands** - Primary Interface for Creating Requests
 
-> **⚠️ RECOMMENDED:** Use `exoctl request` to create requests. Do NOT manually create files in `/Inbox/Requests/` — this is error-prone and bypasses validation.
+> **⚠️ RECOMMENDED:** Use `exoctl request` to create requests. Do NOT manually create files in `/Workspace/Requests/` — this is error-prone and bypasses validation.
 
 The `exoctl request` command is the **primary interface** for submitting work to ExoFrame agents:
 
@@ -622,7 +622,7 @@ $ exoctl request "Add input validation to all API endpoints"
   Trace ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890
   Priority: normal
   Agent: default
-  Path: /home/user/ExoFrame/Inbox/Requests/request-a1b2c3d4.md
+  Path: /home/user/ExoFrame/Workspace/Requests/request-a1b2c3d4.md
   Next: Daemon will process this automatically
 
 # 2. Check if plan was generated
@@ -658,7 +658,7 @@ $ exoctl request list
 
 Review and approve plans before agents execute them:
 
-> **⚠️ IMPLEMENTATION STATUS:** Plan approval moves plans to `System/Active/` where they are detected and parsed (Steps 5.12.1-5.12.2 ✅). Automatic agent-driven execution (Steps 5.12.3-5.12.6) is in development. In the agent-driven model, LLM agents will have direct portal access through scoped tools (read_file, write_file, git_create_branch, git_commit) and will create changesets themselves. See [ExoFrame Architecture](./ExoFrame_Architecture.md#plan-execution-flow-step-512) for details.
+> **⚠️ IMPLEMENTATION STATUS:** Plan approval moves plans to `Workspace/Active/` where they are detected and parsed (Steps 5.12.1-5.12.2 ✅). Automatic agent-driven execution (Steps 5.12.3-5.12.6) is in development. In the agent-driven model, LLM agents will have direct portal access through scoped tools (read_file, write_file, git_create_branch, git_commit) and will create changesets themselves. See [ExoFrame Architecture](./ExoFrame_Architecture.md#plan-execution-flow-step-512) for details.
 
 ```bash
 # List all plans awaiting review
@@ -668,7 +668,7 @@ exoctl plan list --status review          # Filter by status
 # Show plan details
 exoctl plan show <plan-id>
 
-# Approve a plan (moves to /System/Active for detection and parsing)
+# Approve a plan (moves to Workspace/Active for detection and parsing)
 exoctl plan approve <plan-id>
 
 # Reject a plan with reason
@@ -701,7 +701,7 @@ $ exoctl plan show implement-auth
 # 3. Approve or request changes
 $ exoctl plan approve implement-auth
 ✓ Plan 'implement-auth' approved
-  Moved to: /System/Active/implement-auth.md
+  Moved to: Workspace/Active/implement-auth.md
   Status: Plan detected and parsed (agent-driven execution in development)
 
   Note: Currently, approved plans are detected and validated. Future: agents
@@ -834,7 +834,7 @@ exoctl portal list
 #   Status: Active ✓
 #   Target: /home/user/Dev/MyWebsite
 #   Symlink: ~/ExoFrame/Portals/MyWebsite
-#   Context: ~/ExoFrame/Knowledge/Portals/MyWebsite.md
+#   Context: ~/ExoFrame/Memory/Projects/MyWebsite.md
 #
 # MyAPI
 #   Status: Broken ⚠
@@ -862,7 +862,7 @@ exoctl portal refresh MyWebsite
 **What happens when adding a portal:**
 
 1. Creates symlink: `~/ExoFrame/Portals/<alias>` → `<target-path>`
-2. Generates context card: `~/ExoFrame/Knowledge/Portals/<alias>.md`
+2. Generates context card: `~/ExoFrame/Portals/<alias>.md`
 3. Updates `exo.config.toml` with portal configuration
 4. Validates Deno permissions for new path
 5. Restarts daemon if running (or prompts for manual restart)
@@ -892,7 +892,7 @@ exoctl portal refresh MyWebsite
 $ exoctl portal add ~/Dev/MyWebsite MyWebsite
 ✓ Validated target: /home/user/Dev/MyWebsite
 ✓ Created symlink: ~/ExoFrame/Portals/MyWebsite
-✓ Generated context card: ~/ExoFrame/Knowledge/Portals/MyWebsite.md
+✓ Generated context card: ~/ExoFrame/Memory/Portals/MyWebsite.md
 ✓ Updated configuration: exo.config.toml
 ✓ Validated permissions
 ✓ Logged to Activity Journal
@@ -906,13 +906,13 @@ MyWebsite
   Status: Active ✓
   Target: /home/user/Dev/MyWebsite
   Symlink: ~/ExoFrame/Portals/MyWebsite
-  Context: ~/ExoFrame/Knowledge/Portals/MyWebsite.md
+  Context: ~/ExoFrameMemory/Portals/MyWebsite.md
 
 MyAPI
   Status: Active ✓
   Target: /home/user/Dev/MyAPI
   Symlink: ~/ExoFrame/Portals/MyAPI
-  Context: ~/ExoFrame/Knowledge/Portals/MyAPI.md
+  Context: ~/ExoFrameMemory/Portals/MyAPI.md
 
 OldProject
   Status: Broken ⚠
@@ -926,7 +926,7 @@ $ exoctl portal show MyWebsite
 Target Path:    /home/user/Dev/MyWebsite
 Symlink:        ~/ExoFrame/Portals/MyWebsite
 Status:         Active ✓
-Context Card:   ~/ExoFrame/Knowledge/Portals/MyWebsite.md
+Context Card:   ~/ExoFrameMemory/Portals/MyWebsite.md
 Permissions:    Read/Write ✓
 Created:        2025-11-26 10:30:15
 Last Verified:  2025-11-26 14:22:33
@@ -969,7 +969,7 @@ $ exoctl portal remove OldProject
 ⚠️  Remove portal 'OldProject'?
 This will:
   - Delete symlink: ~/ExoFrame/Portals/OldProject
-  - Archive context card: ~/ExoFrame/Knowledge/Portals/_archived/OldProject_20251126.md
+  - Archive context card: ~/ExoFrameMemory/Portals/_archived/OldProject_20251126.md
   - Update configuration
 Continue? (y/N): y
 
@@ -1204,7 +1204,7 @@ Solution: Increase limit with: echo fs.inotify.max_user_watches=524288 | sudo te
 - Must contain only alphanumeric characters, dashes, and underscores
 - Cannot start with a number
 - Cannot be empty
-- Cannot use reserved names: `System`, `Inbox`, `Knowledge`, `Blueprints`, `Active`, `Archive`
+- Cannot use reserved names: `System`, `Workspace`, `Memory`, `Blueprints`, `Active`, `Archive`
 - Maximum length: 50 characters
 
 #### **Daemon Commands** - Control the ExoFrame daemon
@@ -1290,7 +1290,7 @@ $ exoctl daemon logs --lines 20
 # Follow logs in real-time
 $ exoctl daemon logs --follow
 [2025-11-25 14:30:15] INFO: Daemon started
-[2025-11-25 14:30:16] INFO: Watching /Inbox/Requests
+[2025-11-25 14:30:16] INFO: Watching /Workspace/Requests
 [2025-11-25 14:32:45] INFO: New request detected: implement-auth
 ...
 ```
@@ -1402,7 +1402,7 @@ Implement user authentication for the API...
 
 #### Frontmatter Fields Reference
 
-**Request Files** (`Inbox/Requests/request-*.md`):
+**Request Files** (`Workspace/Requests/request-*.md`):
 
 | Field        | Type     | Required | Example                                  |
 | ------------ | -------- | -------- | ---------------------------------------- |
@@ -1416,7 +1416,7 @@ Implement user authentication for the API...
 | `portal`     | string   |          | `MyProject` (optional project context)   |
 | `tags`       | array    |          | `[feature, api]` (optional tags)         |
 
-**Plan Files** (`Inbox/Plans/*.md`):
+**Plan Files** (`Workspace/Plans/*.md`):
 
 | Field        | Type     | Required | Example                                  |
 | ------------ | -------- | -------- | ---------------------------------------- |
@@ -1426,7 +1426,7 @@ Implement user authentication for the API...
 | `created_at` | datetime | ✓        | `2025-11-28T10:35:00.000Z`               |
 | `agent_id`   | string   | ✓        | `senior_coder`                           |
 
-**Report Files** (`Knowledge/Reports/*.md`):
+**Report Files** (`Memory/Reports/*.md`):
 
 | Field          | Type     | Required | Example                                  |
 | -------------- | -------- | -------- | ---------------------------------------- |
@@ -1491,10 +1491,10 @@ exoctl request "Implement user authentication for the API"
 # Output: ✓ Request created: request-a1b2c3d4.md
 
 # Alternative: Manual file creation (if you need custom frontmatter)
-# echo "Implement user authentication" > ~/ExoFrame/Inbox/Requests/auth.md
+# echo "Implement user authentication" > ~/ExoFrame/Workspace/Requests/auth.md
 
 # 2. Agent will generate a plan automatically
-# Wait a moment... (daemon watches Inbox/Requests)
+# Wait a moment... (daemon watches Workspace/Requests)
 
 # 3. Review the plan
 exoctl plan list
@@ -1503,7 +1503,7 @@ exoctl plan show implement-auth
 # 4. Approve the plan
 exoctl plan approve implement-auth
 
-# Note: Currently, plan approval moves the plan to System/Active/ where it is
+# Note: Currently, plan approval moves the plan to Workspace/Active/ where it is
 # detected and parsed. Agent-driven execution (Steps 5.12.3-5.12.6) is in
 # development. Agents will have direct portal access and create changesets.
 
@@ -1685,7 +1685,7 @@ exoctl daemon status
 exoctl daemon logs
 
 # Verify workspace paths are accessible
-ls -la ~/ExoFrame/Inbox
+ls -la ~/ExoFrame/Workspace
 ls -la ~/ExoFrame/System
 
 # Restart with correct permissions

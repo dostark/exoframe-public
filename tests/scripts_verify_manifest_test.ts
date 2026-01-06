@@ -15,7 +15,7 @@ function normalize(obj: any) {
 
 Deno.test("verify manifest matches generated manifest", async () => {
   const generated = await generateManifestObject();
-  const existingText = await Deno.readTextFile("agents/manifest.json");
+  const existingText = await Deno.readTextFile(".copilot/manifest.json");
   const existing = JSON.parse(existingText);
 
   const a = normalize(generated);

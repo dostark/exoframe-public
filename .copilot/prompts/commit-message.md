@@ -49,7 +49,7 @@ Type: [feat / fix / refactor / test / docs / chore]
 I've completed work on Step 10.5 - Claude agent interaction enhancements. Create a detailed commit message.
 
 Before creating the commit:
-1. git status shows: agents/providers/claude.md, agents/providers/claude-rag.md, agents/cross-reference.md, agents/prompts/, tests/agents/claude_enhancements_test.ts
+1. git status shows: .copilot/providers/claude.md, .copilot/providers/claude-rag.md, .copilot/cross-reference.md, .copilot/prompts/, tests/agents/claude_enhancements_test.ts
 2. git diff shows ~800 lines added across agent docs
 3. Implementation Plan Step 10.5 has 10/10 success criteria met
 
@@ -96,13 +96,13 @@ Testing:
 - Embeddings regenerated (64-dim mock vectors)
 
 Files changed:
-- agents/providers/claude.md (v0.1→v0.2, 16→330+ lines)
-- agents/providers/claude-rag.md (NEW, 360+ lines)
-- agents/cross-reference.md (NEW, 180+ lines)
-- agents/prompts/*.md (NEW, 7 prompt templates)
-- agents/README.md (79→267+ lines)
-- agents/copilot/summary.md (added frontmatter)
-- agents/copilot/exoframe.md (optimized summary)
+- .copilot/providers/claude.md (v0.1→v0.2, 16→330+ lines)
+- .copilot/providers/claude-rag.md (NEW, 360+ lines)
+- .copilot/cross-reference.md (NEW, 180+ lines)
+- .copilot/prompts/*.md (NEW, 7 prompt templates)
+- .copilot/README.md (79→267+ lines)
+- .copilot/copilot/summary.md (added frontmatter)
+- .copilot/copilot/exoframe.md (optimized summary)
 - tests/agents/claude_enhancements_test.ts (NEW, 12 tests)
 - docs/ExoFrame_Implementation_Plan.md (added Step 10.5)
 

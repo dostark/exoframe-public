@@ -1,5 +1,5 @@
 {
-  "path": "agents/providers/google.md",
+  "path": ".copilot/providers/google.md",
   "title": "Google Gemini Provider Adaptation Guide",
   "vecs": [
     {

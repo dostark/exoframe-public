@@ -1,12 +1,12 @@
-2. **Place files** in `agents/embeddings/` (format: `<doc-name>.json`)
+2. **Place files** in `.copilot/embeddings/` (format: `<doc-name>.json`)
 
 3. **Validate and import**:
 ```bash
 deno run --allow-read --allow-write scripts/build_agents_embeddings.ts \
-  --mode precomputed --dir agents/embeddings
+  --mode precomputed --dir .copilot/embeddings
 ```
 
-**Template:** See `agents/embeddings/example_precomputed_template.json`
+**Template:** See `.copilot/embeddings/example_precomputed_template.json`
 
 ## Example: Multi-Step Task with RAG
 

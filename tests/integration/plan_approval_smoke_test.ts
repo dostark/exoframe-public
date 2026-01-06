@@ -32,7 +32,7 @@ Deno.test("Smoke: Plan approval concurrency", async () => {
 
     assert(active1 && active2, "Both plans should be approved and return active paths");
 
-    // Confirm approved plan files exist in System/Active and include an approved status
+    // Confirm approved plan files exist in Workspace/Active and include an approved status
     const activeContent1 = await Deno.readTextFile(active1);
     const activeContent2 = await Deno.readTextFile(active2);
 

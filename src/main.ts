@@ -61,9 +61,9 @@ if (import.meta.main) {
     });
 
     // Ensure required directories exist
-    const requestsPath = join(config.system.root, config.paths.inbox, "Requests");
-    const plansPath = join(config.system.root, config.paths.inbox, "Plans");
-    const activePath = join(config.system.root, "System", "Active");
+    const requestsPath = join(config.system.root, config.paths.workspace, "Requests");
+    const plansPath = join(config.system.root, config.paths.workspace, "Plans");
+    const activePath = join(config.system.root, config.paths.workspace, "Active");
     await ensureDir(requestsPath);
     await ensureDir(plansPath);
     await ensureDir(activePath);
@@ -74,21 +74,22 @@ if (import.meta.main) {
       llmProvider,
       dbService,
       {
-        inboxPath: join(config.system.root, config.paths.inbox),
+        workspacePath: join(config.system.root, config.paths.workspace),
+        requestsDir: join(config.system.root, config.paths.workspace, "Requests"),
         blueprintsPath: join(config.system.root, config.paths.blueprints, "Agents"),
         includeReasoning: true,
       },
     );
 
     logger.info("request_processor.initialized", "RequestProcessor", {
-      inbox: requestsPath,
+      requestsDir: requestsPath,
       blueprints: join(config.system.root, config.paths.blueprints, "Agents"),
     });
 
     // Create child logger for watcher events
     const watcherLogger = logger.child({ actor: "system" });
 
-    // Start file watcher for new requests (Inbox/Requests)
+    // Start file watcher for new requests (Workspace/Requests)
     const requestWatcher = new FileWatcher(config, async (event) => {
       watcherLogger.info("file.detected", event.path, {
         size: event.content.length,
@@ -113,7 +114,7 @@ if (import.meta.main) {
       }
     });
 
-    // Start file watcher for approved plans (System/Active)
+    // Start file watcher for approved plans (Workspace/Active)
     // Detection for Step 5.12: Plan Execution Flow
     const planWatcher = new FileWatcher(
       config,

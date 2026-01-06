@@ -1,5 +1,5 @@
 Before creating the commit:
-1. git status shows: agents/providers/claude.md, agents/providers/claude-rag.md, agents/cross-reference.md, agents/prompts/, tests/agents/claude_enhancements_test.ts
+1. git status shows: .copilot/providers/claude.md, .copilot/providers/claude-rag.md, .copilot/cross-reference.md, .copilot/prompts/, tests/agents/claude_enhancements_test.ts
 2. git diff shows ~800 lines added across agent docs
 3. Implementation Plan Step 10.5 has 10/10 success criteria met
 

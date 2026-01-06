@@ -5,12 +5,15 @@
 import { assertEquals, assertExists } from "jsr:@std/assert@^1.0.0";
 import { exists } from "@std/fs";
 import { join } from "@std/path";
+import { getDefaultPaths } from "../../src/config/paths.ts";
 import { parse as parseYaml } from "@std/yaml";
 import { BlueprintFrontmatterSchema } from "../../src/schemas/blueprint.ts";
 
+const paths = getDefaultPaths(".");
+
 Deno.test("Agent Examples - Files Exist", async () => {
-  const examplesDir = "./Blueprints/Agents/examples";
-  const templatesDir = "./Blueprints/Agents/templates";
+  const examplesDir = join(paths.blueprints, "Agents", "examples");
+  const templatesDir = join(paths.blueprints, "Agents", "templates");
 
   // Check example files
   const exampleFiles = [
@@ -40,7 +43,7 @@ Deno.test("Agent Examples - Files Exist", async () => {
 });
 
 Deno.test("Agent Examples - Validate Blueprints", async () => {
-  const examplesDir = "./Blueprints/Agents/examples";
+  const examplesDir = join(paths.blueprints, "Agents", "examples");
   const exampleFiles = [
     "code-reviewer.md",
     "feature-developer.md",

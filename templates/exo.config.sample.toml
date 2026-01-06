@@ -1,11 +1,16 @@
 [system]
 version = "1.0.0"
 log_level = "info"
+root = "./"
 
 [paths]
 memory = "./Memory"
 blueprints = "./Blueprints"
 system = "./System"
+workspace = "./Workspace"
+
+[agents]
+default = "default-agent"
 
 [database]
 # Activity log batching configuration for performance
@@ -13,6 +18,7 @@ system = "./System"
 batch_flush_ms = 100
 # Maximum batch size: flush immediately when this many logs accumulated
 batch_max_size = 100
+path = "./.exo/journal.db"
 
 [watcher]
 # Time to wait (in milliseconds) after the last file event before processing

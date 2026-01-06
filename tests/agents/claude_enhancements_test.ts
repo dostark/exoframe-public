@@ -7,10 +7,10 @@ import { parse } from "https://deno.land/std@0.203.0/yaml/mod.ts";
 Deno.test("Claude enhancements: verify all required files exist", async () => {
   // Verify all enhanced files were created
   const files = [
-    "agents/providers/claude.md",
-    "agents/providers/claude-rag.md",
-    "agents/cross-reference.md",
-    "agents/README.md",
+    ".copilot/providers/claude.md",
+    ".copilot/providers/claude-rag.md",
+    ".copilot/cross-reference.md",
+    ".copilot/README.md",
   ];
 
   for (const file of files) {
@@ -20,7 +20,7 @@ Deno.test("Claude enhancements: verify all required files exist", async () => {
 });
 
 Deno.test("Claude enhancements: verify all sections exist in claude.md", async () => {
-  const claudeMd = await Deno.readTextFile("agents/providers/claude.md");
+  const claudeMd = await Deno.readTextFile(".copilot/providers/claude.md");
 
   // Verify required sections
   assert(claudeMd.includes("## Task-Specific System Prompts"), "Should have Task-Specific System Prompts section");
@@ -44,7 +44,7 @@ Deno.test("Claude enhancements: verify all sections exist in claude.md", async (
 });
 
 Deno.test("Claude enhancements: verify all sections exist in claude-rag.md", async () => {
-  const ragMd = await Deno.readTextFile("agents/providers/claude-rag.md");
+  const ragMd = await Deno.readTextFile(".copilot/providers/claude-rag.md");
 
   // Verify required sections
   assert(ragMd.includes("## RAG Workflow"), "Should have RAG Workflow section");
@@ -67,7 +67,7 @@ Deno.test("Claude enhancements: verify all sections exist in claude-rag.md", asy
 });
 
 Deno.test("Claude enhancements: verify cross-reference.md structure", async () => {
-  const crossRefMd = await Deno.readTextFile("agents/cross-reference.md");
+  const crossRefMd = await Deno.readTextFile(".copilot/cross-reference.md");
 
   // Verify required sections
   assert(crossRefMd.includes("## Task → Agent Doc Quick Reference"), "Should have task mapping table");
@@ -89,7 +89,7 @@ Deno.test("Claude enhancements: verify cross-reference.md structure", async () =
 });
 
 Deno.test("Claude enhancements: verify README.md has Quick Start Guide", async () => {
-  const readmeMd = await Deno.readTextFile("agents/README.md");
+  const readmeMd = await Deno.readTextFile(".copilot/README.md");
 
   // Verify Quick Start Guide section exists
   assert(readmeMd.includes("How to Add a New Agent Doc"), "Should have 'How to Add a New Agent Doc' section");
@@ -114,9 +114,9 @@ Deno.test("Claude enhancements: verify README.md has Quick Start Guide", async (
 
 Deno.test("Claude enhancements: verify frontmatter schema compliance", async () => {
   const files = [
-    "agents/providers/claude.md",
-    "agents/providers/claude-rag.md",
-    "agents/cross-reference.md",
+    ".copilot/providers/claude.md",
+    ".copilot/providers/claude-rag.md",
+    ".copilot/cross-reference.md",
   ];
 
   for (const filePath of files) {
@@ -140,7 +140,7 @@ Deno.test("Claude enhancements: verify frontmatter schema compliance", async () 
 });
 
 Deno.test("Claude enhancements: verify version updates", async () => {
-  const claudeMd = await Deno.readTextFile("agents/providers/claude.md");
+  const claudeMd = await Deno.readTextFile(".copilot/providers/claude.md");
   const fmMatch = claudeMd.match(/^---\n([\s\S]*?)\n---/);
   assertExists(fmMatch);
 
@@ -152,7 +152,7 @@ Deno.test("Claude enhancements: verify version updates", async () => {
 });
 
 Deno.test("Claude enhancements: verify manifest includes new docs", async () => {
-  const manifestText = await Deno.readTextFile("agents/manifest.json");
+  const manifestText = await Deno.readTextFile(".copilot/manifest.json");
   const manifest = JSON.parse(manifestText);
 
   // Verify manifest structure
@@ -161,16 +161,16 @@ Deno.test("Claude enhancements: verify manifest includes new docs", async () => 
 
   // Verify new docs are in manifest
   const paths = manifest.docs.map((d: { path: string }) => d.path);
-  assert(paths.includes("agents/providers/claude-rag.md"), "Manifest should include claude-rag.md");
-  assert(paths.includes("agents/cross-reference.md"), "Manifest should include cross-reference.md");
+  assert(paths.includes(".copilot/providers/claude-rag.md"), "Manifest should include claude-rag.md");
+  assert(paths.includes(".copilot/cross-reference.md"), "Manifest should include cross-reference.md");
 
   // Verify updated docs have chunks
-  const claudeRagDoc = manifest.docs.find((d: { path: string }) => d.path === "agents/providers/claude-rag.md");
+  const claudeRagDoc = manifest.docs.find((d: { path: string }) => d.path === ".copilot/providers/claude-rag.md");
   assertExists(claudeRagDoc, "claude-rag.md should be in manifest");
   assert(Array.isArray(claudeRagDoc.chunks), "claude-rag.md should have chunks array");
   assert(claudeRagDoc.chunks.length > 0, "claude-rag.md should have at least 1 chunk");
 
-  const crossRefDoc = manifest.docs.find((d: { path: string }) => d.path === "agents/cross-reference.md");
+  const crossRefDoc = manifest.docs.find((d: { path: string }) => d.path === ".copilot/cross-reference.md");
   assertExists(crossRefDoc, "cross-reference.md should be in manifest");
   assert(Array.isArray(crossRefDoc.chunks), "cross-reference.md should have chunks array");
   assert(crossRefDoc.chunks.length > 0, "cross-reference.md should have at least 1 chunk");
@@ -179,8 +179,8 @@ Deno.test("Claude enhancements: verify manifest includes new docs", async () => 
 Deno.test("Claude enhancements: verify embeddings were generated", async () => {
   // Verify embedding files exist for new docs
   const embeddingFiles = [
-    "agents/embeddings/claude-rag.md.json",
-    "agents/embeddings/cross-reference.md.json",
+    ".copilot/embeddings/claude-rag.md.json",
+    ".copilot/embeddings/cross-reference.md.json",
   ];
 
   for (const file of embeddingFiles) {
@@ -206,18 +206,18 @@ Deno.test("Claude enhancements: verify embeddings were generated", async () => {
 Deno.test("Claude enhancements: verify chunks were generated", async () => {
   // Verify chunk files exist for new docs
   const chunkPatterns = [
-    "agents/chunks/claude-rag.md.chunk",
-    "agents/chunks/cross-reference.md.chunk",
+    ".copilot/chunks/claude-rag.md.chunk",
+    ".copilot/chunks/cross-reference.md.chunk",
   ];
 
   for (const pattern of chunkPatterns) {
     // Find at least one chunk file matching the pattern
     let found = false;
-    for await (const entry of Deno.readDir("agents/chunks")) {
-      if (entry.name.startsWith(pattern.replace("agents/chunks/", ""))) {
+    for await (const entry of Deno.readDir(".copilot/chunks")) {
+      if (entry.name.startsWith(pattern.replace(".copilot/chunks/", ""))) {
         found = true;
         // Verify chunk file is not empty
-        const content = await Deno.readTextFile(`agents/chunks/${entry.name}`);
+        const content = await Deno.readTextFile(`.copilot/chunks/${entry.name}`);
         assert(content.length > 0, `Chunk file ${entry.name} should not be empty`);
       }
     }
@@ -257,9 +257,9 @@ Deno.test("Claude enhancements: verify context injection works", async () => {
 Deno.test("Claude enhancements: verify no sensitive data in docs", async () => {
   // Verify that docs don't contain actual secrets (validation should have caught this)
   const files = [
-    "agents/providers/claude.md",
-    "agents/providers/claude-rag.md",
-    "agents/cross-reference.md",
+    ".copilot/providers/claude.md",
+    ".copilot/providers/claude-rag.md",
+    ".copilot/cross-reference.md",
   ];
 
   const secretPatterns = [

@@ -34,7 +34,7 @@ export class FlowCommands {
     this.flowLoader = new FlowLoader(join(context.config.system.root, context.config.paths.blueprints, "Flows"));
     this.flowValidator = new FlowValidatorImpl(
       this.flowLoader,
-      join(context.config.system.root, context.config.paths.system, "Blueprints"),
+      join(context.config.system.root, context.config.paths.blueprints, "Flows"),
     );
     this.eventLogger = new EventLogger({
       db: context.db,

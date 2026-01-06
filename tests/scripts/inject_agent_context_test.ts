@@ -2,9 +2,9 @@ import { assert, assertEquals } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
 import { inject } from "../../scripts/inject_agent_context.ts";
 
-// Helper to create temporary markdown files under agents/providers
+// Helper to create temporary markdown files under .copilot/providers
 async function writeAgentMarkdown(filename: string, content: string) {
-  const path = join("agents", "providers", filename);
+  const path = join(".copilot", "providers", filename);
   await Deno.writeTextFile(path, content);
   return path;
 }

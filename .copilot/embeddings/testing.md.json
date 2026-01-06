@@ -1,5 +1,5 @@
 {
-  "path": "agents/tests/testing.md",
+  "path": ".copilot/tests/testing.md",
   "title": "ExoFrame Test Development Guidelines",
   "vecs": [
     {

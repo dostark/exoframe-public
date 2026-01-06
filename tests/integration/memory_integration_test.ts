@@ -18,6 +18,7 @@ import { MemoryEmbeddingService } from "../../src/services/memory_embedding.ts";
 import { MemoryCommands } from "../../src/cli/memory_commands.ts";
 import { initTestDbService } from "../helpers/db.ts";
 import type { ExecutionMemory, Learning, ProjectMemory } from "../../src/schemas/memory_bank.ts";
+import { getMemoryGlobalDir } from "../helpers/paths_helper.ts";
 
 // ===== Full Workflow Tests =====
 
@@ -252,7 +253,7 @@ Deno.test("Integration: search workflow - tag + keyword + embedding combined", a
       },
     ];
 
-    const globalDir = join(config.system.root, "Memory", "Global");
+    const globalDir = getMemoryGlobalDir(config.system.root);
     await Deno.mkdir(globalDir, { recursive: true });
     await Deno.writeTextFile(
       join(globalDir, "learnings.json"),

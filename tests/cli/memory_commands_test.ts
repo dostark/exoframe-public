@@ -25,6 +25,7 @@ import { MemoryCommands } from "../../src/cli/memory_commands.ts";
 import { MemoryBankService } from "../../src/services/memory_bank.ts";
 import { initTestDbService } from "../helpers/db.ts";
 import { createMockConfig } from "../helpers/config.ts";
+import { getMemoryExecutionDir, getMemoryIndexDir, getMemoryProjectsDir } from "../helpers/paths_helper.ts";
 
 /**
  * Creates a complete memory test environment
@@ -35,9 +36,9 @@ async function initMemoryTest() {
   const { db, cleanup: dbCleanup } = await initTestDbService();
 
   // Create required directories
-  await Deno.mkdir(join(tempRoot, "Memory", "Projects"), { recursive: true });
-  await Deno.mkdir(join(tempRoot, "Memory", "Execution"), { recursive: true });
-  await Deno.mkdir(join(tempRoot, "Memory", "Index"), { recursive: true });
+  await Deno.mkdir(join(getMemoryProjectsDir(tempRoot)), { recursive: true });
+  await Deno.mkdir(join(getMemoryExecutionDir(tempRoot)), { recursive: true });
+  await Deno.mkdir(join(getMemoryIndexDir(tempRoot)), { recursive: true });
 
   const config = createMockConfig(tempRoot);
   const commands = new MemoryCommands({ config, db });

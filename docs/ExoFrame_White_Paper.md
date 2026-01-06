@@ -13,10 +13,10 @@
 
 - **Activity Journal:** The SQLite database logging all events
 - **Portal:** A symlinked directory providing agent access to external projects
-- **Request:** A markdown file in `/Inbox/Requests` containing user intent
-- **Plan:** An agent-generated proposal in `/Inbox/Plans`
-- **Active Task:** An approved request in `/System/Active` being executed
-- **Report:** An agent-generated summary in `/Knowledge/Reports` after completion
+- **Request:** A markdown file in `/Workspace/Requests` containing user intent
+- **Plan:** An agent-generated proposal in `/Workspace/Plans`
+- **Active Task:** An approved request in `Workspace/Active` being executed
+- **Report:** An agent-generated summary in `Memory/Reports` after completion
 - **Trace ID:** UUID linking request → plan → execution → report
 - **Lease:** Exclusive lock on a file (stored in `leases` table)
 - **Actor:** Entity performing action (agent name, "system", or "user")
@@ -53,7 +53,7 @@ Modern AI-enabled IDEs (Cursor, Copilot, Windsurf) excel at **interactive, real-
 
 **The Core Architecture:**
 
-- **Daemon-based:** Watches `/Inbox/Requests` for new tasks
+- **Daemon-based:** Watches `/Workspace/Requests` for new tasks
 - **File-driven:** "Files as API" — drop markdown, get results
 - **Secure:** Deno's permission system sandboxes all agent operations
 - **Traceable:** SQLite Activity Journal records everything
@@ -173,13 +173,13 @@ ExoFrame "mounts", i.e. creates portals to existing folders (Git repos) via **Sy
   documents or system keys.
 - **OS Notes:** Windows users must enable Developer Mode or run elevated to create symlinks; otherwise ExoFrame
   automatically creates NTFS junctions and logs the deviation. macOS prompts for Full Disk Access on first run;
-  instructions are embedded in `/Knowledge/README.md`.
+  instructions are embedded in `Memory/README.md`.
 
 ### Layer 2: The Engine (The Orchestrator)
 
 A state machine that watches input channels and dispatches tasks.
 
-- **Input Channel:** The `/Inbox` folder serves as the event bus.
+- **Input Channel:** The `/Workspace` folder serves as the event bus.
 - **Runtime Adapter:** Abstracts OS operations to ensure compatibility across Linux, Mac, and Windows.
 
 ### Layer 3: The "Flight Recorder" (Activity Journal)
@@ -336,10 +336,10 @@ This would complement ExoFrame's file-based API, offering both human-friendly CL
   - **Cold Start:** `deno bench cold_start_bench.ts`
   - **Watcher Latency:** `deno bench watcher_bench.ts` with 10 MB incremental writes
   - **Plan Throughput:** Scenario A dry run with Mock LLM
-  - **CI:** GitHub Actions pipeline runs these on every commit; results exported to `Knowledge/Reports/benchmarks.md`.
+  - **CI:** GitHub Actions pipeline runs these on every commit; results exported to `Memory/Reports/benchmarks.md`.
 
 **Planned Reporting:** Once automation is live, benchmark summaries will be exported to
-`Knowledge/Reports/benchmarks.md` with per-commit trends.
+`Memory/Reports/benchmarks.md` with per-commit trends.
 
 ---
 

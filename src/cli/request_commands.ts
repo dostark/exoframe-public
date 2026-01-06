@@ -78,14 +78,14 @@ const VALID_PRIORITIES: RequestPriority[] = ["low", "normal", "high", "critical"
  * All operations are logged to activity_log with actor='human'.
  */
 export class RequestCommands extends BaseCommand {
-  private inboxRequestsDir: string;
+  private workspaceRequestsDir: string;
 
   constructor(
     context: CommandContext,
     workspaceRoot: string,
   ) {
     super(context);
-    this.inboxRequestsDir = join(workspaceRoot, "Inbox", "Requests");
+    this.workspaceRequestsDir = join(workspaceRoot, "Workspace", "Requests");
   }
 
   /**
@@ -120,7 +120,7 @@ export class RequestCommands extends BaseCommand {
     const trace_id = crypto.randomUUID();
     const shortId = trace_id.slice(0, 8);
     const filename = `request-${shortId}.md`;
-    const path = join(this.inboxRequestsDir, filename);
+    const path = join(this.workspaceRequestsDir, filename);
 
     // Get user identity
     const created_by = await this.getUserIdentity();
@@ -150,7 +150,7 @@ export class RequestCommands extends BaseCommand {
     const content = `${frontmatter}\n\n# Request\n\n${trimmedDescription}\n`;
 
     // Ensure directory exists
-    await ensureDir(this.inboxRequestsDir);
+    await ensureDir(this.workspaceRequestsDir);
 
     // Write file
     await Deno.writeTextFile(path, content);
@@ -222,17 +222,17 @@ export class RequestCommands extends BaseCommand {
     const requests: RequestEntry[] = [];
 
     // Check if directory exists
-    if (!await exists(this.inboxRequestsDir)) {
+    if (!await exists(this.workspaceRequestsDir)) {
       return [];
     }
 
     // Scan directory
-    for await (const entry of Deno.readDir(this.inboxRequestsDir)) {
+    for await (const entry of Deno.readDir(this.workspaceRequestsDir)) {
       if (!entry.isFile || !entry.name.endsWith(".md")) {
         continue;
       }
 
-      const filePath = join(this.inboxRequestsDir, entry.name);
+      const filePath = join(this.workspaceRequestsDir, entry.name);
       const content = await Deno.readTextFile(filePath);
       const frontmatter = this.extractFrontmatter(content);
 
@@ -273,7 +273,7 @@ export class RequestCommands extends BaseCommand {
    */
   async show(idOrFilename: string): Promise<RequestShowResult> {
     // Check if directory exists
-    if (!await exists(this.inboxRequestsDir)) {
+    if (!await exists(this.workspaceRequestsDir)) {
       throw new Error(`Request not found: ${idOrFilename}`);
     }
 
@@ -281,12 +281,12 @@ export class RequestCommands extends BaseCommand {
     let matchingFile: string | null = null;
     let matchingFrontmatter: Record<string, string> | null = null;
 
-    for await (const entry of Deno.readDir(this.inboxRequestsDir)) {
+    for await (const entry of Deno.readDir(this.workspaceRequestsDir)) {
       if (!entry.isFile || !entry.name.endsWith(".md")) {
         continue;
       }
 
-      const filePath = join(this.inboxRequestsDir, entry.name);
+      const filePath = join(this.workspaceRequestsDir, entry.name);
       const content = await Deno.readTextFile(filePath);
       const frontmatter = this.extractFrontmatter(content);
 

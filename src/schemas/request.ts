@@ -4,7 +4,7 @@ import { z } from "zod";
  * Schema for ExoFrame request frontmatter
  *
  * Validates the YAML frontmatter structure in request markdown files
- * located in /Inbox/Requests
+ * located in Workspace/Requests
  *
  * Uses --- delimiters for YAML (Dataview compatible)
  */

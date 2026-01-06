@@ -21,6 +21,7 @@ import {
 } from "../../src/services/memory_embedding.ts";
 import { initTestDbService } from "../helpers/db.ts";
 import type { Learning } from "../../src/schemas/memory_bank.ts";
+import { getMemoryIndexDir } from "../helpers/paths_helper.ts";
 
 // ===== Test Fixtures =====
 
@@ -167,9 +168,7 @@ Deno.test("MemoryEmbeddingService: embedLearning creates embedding file", async 
 
     // Check that embedding file was created
     const embeddingPath = join(
-      config.system.root,
-      "Memory",
-      "Index",
+      getMemoryIndexDir(config.system.root),
       "embeddings",
       `${testLearning.id}.json`,
     );
@@ -198,9 +197,7 @@ Deno.test("MemoryEmbeddingService: embedLearning updates manifest", async () => 
 
     // Check that manifest was updated
     const manifestPath = join(
-      config.system.root,
-      "Memory",
-      "Index",
+      getMemoryIndexDir(config.system.root),
       "embeddings",
       "manifest.json",
     );
@@ -311,9 +308,7 @@ Deno.test("MemoryEmbeddingService: embedLearning handles re-embedding same learn
 
     // Should not create duplicates in manifest
     const manifestPath = join(
-      config.system.root,
-      "Memory",
-      "Index",
+      getMemoryIndexDir(config.system.root),
       "embeddings",
       "manifest.json",
     );

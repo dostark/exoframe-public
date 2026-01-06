@@ -9,6 +9,7 @@ import { initTestDbService } from "./db.ts";
 import { createTestConfigService } from "./config.ts";
 import type { ConfigService } from "../../src/config/service.ts";
 import type { DatabaseService } from "../../src/services/db.ts";
+import { getPortalsDir } from "./paths_helper.ts";
 
 /**
  * Helper class for config-based portal tests
@@ -37,7 +38,7 @@ export class PortalConfigTestHelper {
     // Create portal symlink directory (Portals/) for mounted projects
     // and portal context store (Memory/Portals/) for portal context cards (Markdown)
     await Deno.mkdir(join(tempRoot, "Portals"), { recursive: true });
-    await Deno.mkdir(join(tempRoot, "Memory", "Portals"), { recursive: true });
+    await Deno.mkdir(getPortalsDir(tempRoot), { recursive: true });
 
     const commands = new PortalCommands({ config, db, configService });
 

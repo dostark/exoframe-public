@@ -12,6 +12,7 @@ import { EventLogger } from "../../src/services/event_logger.ts";
 import { ChangesetRegistry } from "../../src/services/changeset_registry.ts";
 import { parse as parseYaml } from "@std/yaml";
 import { initTestDbService } from "../helpers/db.ts";
+import { getWorkspaceActiveDir } from "../helpers/paths_helper.ts";
 
 // Test helper to cleanup
 async function cleanup(tempDir: string) {
@@ -85,14 +86,13 @@ Deno.test("Integration Test 15.1: Happy Path - Sandboxed Mode", async () => {
   const _portalPath = await createTestPortal(testDir);
 
   try {
-    // Setup: Create System/Active directory
-    const activePath = join(testDir, "System", "Active");
+    const activePath = getWorkspaceActiveDir(testDir);
     await ensureDir(activePath);
 
     const traceId = crypto.randomUUID();
     const requestId = `request-${traceId.slice(0, 8)}`;
 
-    // Step 1: Create approved plan in System/Active/
+    // Step 1: Create approved plan in Workspace/Active/
     const planContent = `---
 trace_id: ${traceId}
 request_id: ${requestId}
@@ -183,7 +183,7 @@ Deno.test("Integration Test 15.2: Happy Path - Hybrid Mode", async () => {
   const portalPath = await createTestPortal(testDir);
 
   try {
-    const activePath = join(testDir, "System", "Active");
+    const activePath = getWorkspaceActiveDir(testDir);
     await ensureDir(activePath);
 
     const traceId = crypto.randomUUID();
@@ -259,7 +259,7 @@ Deno.test("Integration Test 15.3: Plan Detection - Invalid YAML", async () => {
   const testDir = await Deno.makeTempDir({ prefix: "test-exo-" });
 
   try {
-    const activePath = join(testDir, "System", "Active");
+    const activePath = getWorkspaceActiveDir(testDir);
     await ensureDir(activePath);
 
     // Create plan with invalid YAML
@@ -478,7 +478,7 @@ Deno.test("Integration Test 15.7: Plan Parsing Errors", async () => {
   const testDir = await Deno.makeTempDir({ prefix: "test-exo-" });
 
   try {
-    const activePath = join(testDir, "System", "Active");
+    const activePath = getWorkspaceActiveDir(testDir);
     await ensureDir(activePath);
     const eventLogger = new EventLogger({ db: dbService });
 
@@ -533,7 +533,7 @@ agent: test-agent
 portal: TestPortal
 ---
 
-## Step 1: 
+## Step 1:
 
 This step has no title
 `;
@@ -725,7 +725,7 @@ Deno.test("Integration Test 15.11: Multi-Step Plan Execution", async () => {
   const testDir = await Deno.makeTempDir({ prefix: "test-exo-" });
 
   try {
-    const activePath = join(testDir, "System", "Active");
+    const activePath = getWorkspaceActiveDir(testDir);
     await ensureDir(activePath);
 
     const traceId = crypto.randomUUID();

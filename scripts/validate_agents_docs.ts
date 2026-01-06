@@ -1,10 +1,10 @@
-// Simple validation script for agents/ docs
+// Simple validation script for .copilot/ docs
 // Usage: deno run --allow-read scripts/validate_agents_docs.ts
 
 import { parse } from "https://deno.land/std@0.203.0/yaml/mod.ts";
 import { walk } from "https://deno.land/std@0.203.0/fs/mod.ts";
 
-const AGENTS_DIR = "agents";
+const AGENTS_DIR = ".copilot";
 const REQUIRED_KEYS = ["agent", "scope", "title", "short_summary", "version"];
 
 function extractFrontmatter(md: string): string | null {
@@ -56,7 +56,7 @@ async function main() {
       }
     }
   } catch (e) {
-    console.error("Error scanning agents/ directory:", e);
+    console.error("Error scanning .copilot/ directory:", e);
     Deno.exit(2);
   }
 

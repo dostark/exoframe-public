@@ -249,7 +249,7 @@ log_level = "invalid_level"
 [paths]
 memory = "./Memory"
 blueprints = "./Blueprints"
-system = "./System"
+runtime = "./Runtime"
     `.trim(),
     );
 
@@ -291,7 +291,7 @@ log_level = "info"
 [paths]
 memory = "./Memory"
 blueprints = "./Blueprints"
-system = "./System"
+runtime = "./Runtime"
 
 [agents]
 timeout_sec = -5
@@ -364,7 +364,7 @@ log_level = "info"  # inline comment
 [paths]
 memory = "./Memory"
 blueprints = "./Blueprints"
-system = "./System"
+runtime = "./Runtime"
     `.trim(),
     );
 
@@ -397,7 +397,7 @@ unknown_field = "should be ignored"
 [paths]
 memory = "./Memory"
 blueprints = "./Blueprints"
-system = "./System"
+runtime = "./Runtime"
 
 [unknown_section]
 foo = "bar"
@@ -433,7 +433,7 @@ log_level = "info"
 [paths]
 memory = "./记忆"
 blueprints = "./蓝图"
-system = "./系統"
+runtime = "./系統"
     `.trim(),
     );
 
@@ -443,7 +443,7 @@ system = "./系統"
 
       assertEquals(config.paths.memory, "./记忆");
       assertEquals(config.paths.blueprints, "./蓝图");
-      assertEquals(config.paths.system, "./系統");
+      assertEquals(config.paths.runtime, "./系統");
     } finally {
       try {
         Deno.removeSync(tempPath);
@@ -460,7 +460,7 @@ log_level = "info"
 [paths]
 memory = "./Memory"
 blueprints = "./Blueprints"
-system = "./System"`;
+runtime = "./Runtime"`;
 
     const tempPath1 = join(Deno.cwd(), "test-checksum-1.toml");
     const tempPath2 = join(Deno.cwd(), "test-checksum-2.toml");
@@ -498,7 +498,7 @@ log_level = "info"
 [paths]
 memory = "./Memory"
 blueprints = "./Blueprints"
-system = "./System"`,
+runtime = "./Runtime"`,
       );
 
       Deno.writeTextFileSync(
@@ -509,7 +509,7 @@ log_level = "debug"
 [paths]
 memory = "./Memory"
 blueprints = "./Blueprints"
-system = "./System"`,
+runtime = "./Runtime"`,
       );
 
       const service1 = new ConfigService("test-checksum-diff-1.toml");
@@ -599,7 +599,7 @@ log_level = "info"
 [paths]
 memory = "./Memory"
 blueprints = "./Blueprints"
-system = "./System"`,
+runtime = "./Runtime"`,
     );
 
     try {
@@ -643,7 +643,7 @@ log_level = "info"
 [paths]
 memory = "$MALICIOUS_PATH"
 blueprints = "./Blueprints"
-system = "./System"`,
+runtime = "./Runtime"`,
     );
 
     const service = new ConfigService("test-path-injection.toml");

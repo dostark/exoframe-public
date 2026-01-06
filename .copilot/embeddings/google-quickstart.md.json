@@ -1,5 +1,5 @@
 {
-  "path": "agents/prompts/google-quickstart.md",
+  "path": ".copilot/prompts/google-quickstart.md",
   "title": "Gemini Quickstart Prompt",
   "vecs": [
     {

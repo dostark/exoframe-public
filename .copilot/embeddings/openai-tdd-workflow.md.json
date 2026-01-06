@@ -1,5 +1,5 @@
 {
-  "path": "agents/prompts/openai-tdd-workflow.md",
+  "path": ".copilot/prompts/openai-tdd-workflow.md",
   "title": "OpenAI TDD Workflow (tests first)",
   "vecs": [
     {

@@ -261,35 +261,35 @@ Deno.test("PathResolver: resolves all valid aliases", async () => {
   const tempDir = await Deno.makeTempDir({ prefix: "resolver-test-aliases-" });
   try {
     // Create all directories
-    const inboxDir = join(tempDir, "Inbox");
+    const workspaceDir = join(tempDir, "Workspace");
     const memoryDir = join(tempDir, "Memory");
-    const systemDir = join(tempDir, "System");
+    const runtimeDir = join(tempDir, ".exo");
     const blueprintsDir = join(tempDir, "Blueprints");
 
-    await Deno.mkdir(inboxDir);
+    await Deno.mkdir(workspaceDir);
     await Deno.mkdir(memoryDir);
-    await Deno.mkdir(systemDir);
+    await Deno.mkdir(runtimeDir);
     await Deno.mkdir(blueprintsDir);
 
     // Create test files
-    await Deno.writeTextFile(join(inboxDir, "inbox.md"), "inbox");
+    await Deno.writeTextFile(join(workspaceDir, "inbox.md"), "inbox");
     await Deno.writeTextFile(join(memoryDir, "memory.md"), "memory");
     await Deno.writeTextFile(join(memoryDir, "knowledge.md"), "knowledge");
-    await Deno.writeTextFile(join(systemDir, "system.md"), "system");
+    await Deno.writeTextFile(join(runtimeDir, "journal.db"), "database");
     await Deno.writeTextFile(join(blueprintsDir, "blueprint.md"), "blueprint");
 
     const config = createMockConfig(tempDir);
     const resolver = new PathResolver(config);
 
     // Test all aliases
-    const inboxResolved = await resolver.resolve("@Inbox/inbox.md");
+    const workspaceResolved = await resolver.resolve("@Workspace/inbox.md");
     const knowledgeResolved = await resolver.resolve("@Memory/knowledge.md");
-    const systemResolved = await resolver.resolve("@System/system.md");
+    const runtimeResolved = await resolver.resolve("@Runtime/journal.db");
     const blueprintsResolved = await resolver.resolve("@Blueprints/blueprint.md");
 
-    assertEquals(inboxResolved, await Deno.realPath(join(inboxDir, "inbox.md")));
+    assertEquals(workspaceResolved, await Deno.realPath(join(workspaceDir, "inbox.md")));
     assertEquals(knowledgeResolved, await Deno.realPath(join(memoryDir, "knowledge.md")));
-    assertEquals(systemResolved, await Deno.realPath(join(systemDir, "system.md")));
+    assertEquals(runtimeResolved, await Deno.realPath(join(runtimeDir, "journal.db")));
     assertEquals(blueprintsResolved, await Deno.realPath(join(blueprintsDir, "blueprint.md")));
   } finally {
     await Deno.remove(tempDir, { recursive: true });

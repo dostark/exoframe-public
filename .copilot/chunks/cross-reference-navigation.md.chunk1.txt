@@ -1,7 +1,7 @@
-First, consult agents/cross-reference.md for the workflow:
+First, consult .copilot/cross-reference.md for the workflow:
 1. Task type: "Add new feature"
-2. Primary Docs: agents/source/exoframe.md + agents/tests/testing.md
-3. Secondary Docs: agents/docs/documentation.md
+2. Primary Docs: .copilot/source/exoframe.md + .copilot/tests/testing.md
+3. Secondary Docs: .copilot/docs/documentation.md
 4. Workflow example: "I want to add a new feature"
 
 Then proceed with:

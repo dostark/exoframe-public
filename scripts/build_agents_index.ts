@@ -4,7 +4,7 @@
 import { parse } from "https://deno.land/std@0.203.0/yaml/mod.ts";
 import { walk } from "https://deno.land/std@0.203.0/fs/mod.ts";
 
-const AGENTS_DIR = "agents";
+const AGENTS_DIR = ".copilot";
 const OUT_MANIFEST = `${AGENTS_DIR}/manifest.json`;
 const CHUNKS_DIR = `${AGENTS_DIR}/chunks`;
 

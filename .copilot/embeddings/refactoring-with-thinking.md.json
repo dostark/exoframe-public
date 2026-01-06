@@ -1,5 +1,5 @@
 {
-  "path": "agents/prompts/refactoring-with-thinking.md",
+  "path": ".copilot/prompts/refactoring-with-thinking.md",
   "title": "Refactoring with Thinking Protocol Prompt",
   "vecs": [
     {

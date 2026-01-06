@@ -97,12 +97,33 @@ export const ACTIVITY_JOURNAL_TABLE_SQL = `
 `;
 
 /**
+ * SQL for notifications table (from migration 003)
+ */
+export const NOTIFICATIONS_TABLE_SQL = `
+  CREATE TABLE IF NOT EXISTS notifications (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    message TEXT NOT NULL,
+    proposal_id TEXT,
+    trace_id TEXT,
+    created_at TEXT NOT NULL,
+    dismissed_at TEXT,
+    metadata TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
+  CREATE INDEX IF NOT EXISTS idx_notifications_dismissed ON notifications(dismissed_at);
+  CREATE INDEX IF NOT EXISTS idx_notifications_proposal ON notifications(proposal_id);
+`;
+
+/**
  * Initialize full database schema for integration tests
  */
 export function initFullSchema(db: DatabaseService): void {
   db.instance.exec(ACTIVITY_TABLE_SQL);
   db.instance.exec(ACTIVITY_JOURNAL_TABLE_SQL);
   db.instance.exec(CHANGESETS_TABLE_SQL);
+  db.instance.exec(NOTIFICATIONS_TABLE_SQL);
 }
 
 /**
@@ -114,13 +135,14 @@ export async function initTestDbService(): Promise<
 > {
   const tempDir = await Deno.makeTempDir({ prefix: "exo-test-" });
 
-  // Create System directory
-  await Deno.mkdir(`${tempDir}/System`, { recursive: true });
-
   const config = createMockConfig(tempDir);
+
+  // Create runtime directory (.exo) for journal.db
+  await Deno.mkdir(`${tempDir}/${config.paths.runtime}`, { recursive: true });
+
   const db = new DatabaseService(config);
 
-  // Initialize all tables (activity, activity_journal, changesets)
+  // Initialize all tables (activity, activity_journal, changesets, notifications)
   initFullSchema(db);
 
   return {

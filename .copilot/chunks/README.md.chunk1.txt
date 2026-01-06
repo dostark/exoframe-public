@@ -15,4 +15,4 @@ Maintenance
 
 Regenerating manifest & chunks
 ------------------------------
-If you add or update files under `agents/`, regenerate the manifest and pre-chunk artifacts with:
+If you add or update files under `.copilot/`, regenerate the manifest and pre-chunk artifacts with:

@@ -9,7 +9,7 @@ Quick notes
 - Tests: `tests/` (use `initTestDbService()` and `createCliTestContext()` helpers)
 
 Canonical prompt (short):
-"You are a repository-aware coding assistant for ExoFrame. Read the `agents/manifest.json` and include any `short_summary` matches before replying. When proposing code, prefer existing helpers and tests, and add unit tests for behavior changes."
+"You are a repository-aware coding assistant for ExoFrame. Read the `.copilot/manifest.json` and include any `short_summary` matches before replying. When proposing code, prefer existing helpers and tests, and add unit tests for behavior changes."
 
 Examples
 - "Add a test that verifies PlanWriter handles empty JSON files"

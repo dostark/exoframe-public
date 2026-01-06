@@ -19,6 +19,13 @@ import { type MemoryUpdateProposal, MemoryUpdateProposalSchema } from "../../src
 import { MemoryExtractorService } from "../../src/services/memory_extractor.ts";
 import { MemoryBankService } from "../../src/services/memory_bank.ts";
 import type { ExecutionMemory, ProjectMemory } from "../../src/schemas/memory_bank.ts";
+import {
+  getMemoryExecutionDir,
+  getMemoryGlobalDir,
+  getMemoryIndexDir,
+  getMemoryPendingDir,
+  getMemoryProjectsDir,
+} from "../helpers/paths_helper.ts";
 
 // ===== MemoryUpdateProposalSchema Tests =====
 
@@ -170,11 +177,11 @@ async function initExtractorTest() {
   const { db, config, cleanup: dbCleanup } = await initTestDbService();
 
   // Create required directories
-  await Deno.mkdir(join(config.system.root, "Memory", "Projects"), { recursive: true });
-  await Deno.mkdir(join(config.system.root, "Memory", "Execution"), { recursive: true });
-  await Deno.mkdir(join(config.system.root, "Memory", "Pending"), { recursive: true });
-  await Deno.mkdir(join(config.system.root, "Memory", "Index"), { recursive: true });
-  await Deno.mkdir(join(config.system.root, "Memory", "Global"), { recursive: true });
+  await Deno.mkdir(getMemoryProjectsDir(config.system.root), { recursive: true });
+  await Deno.mkdir(getMemoryExecutionDir(config.system.root), { recursive: true });
+  await Deno.mkdir(getMemoryPendingDir(config.system.root), { recursive: true });
+  await Deno.mkdir(getMemoryIndexDir(config.system.root), { recursive: true });
+  await Deno.mkdir(getMemoryGlobalDir(config.system.root), { recursive: true });
 
   const memoryBank = new MemoryBankService(config, db);
   const extractor = new MemoryExtractorService(config, db, memoryBank);
@@ -368,7 +375,7 @@ Deno.test("MemoryExtractorService: createProposal writes to Pending directory", 
     assertExists(proposalId);
 
     // Check file exists in Pending
-    const pendingDir = join(config.system.root, "Memory", "Pending");
+    const pendingDir = getMemoryPendingDir(config.system.root);
     const files = [];
     for await (const entry of Deno.readDir(pendingDir)) {
       files.push(entry.name);
@@ -392,7 +399,7 @@ Deno.test("MemoryExtractorService: createProposal generates valid proposal file"
     const proposalId = await extractor.createProposal(learnings[0], execution, "senior-coder");
 
     // Read and validate proposal file
-    const pendingDir = join(config.system.root, "Memory", "Pending");
+    const pendingDir = getMemoryPendingDir(config.system.root);
     const proposalPath = join(pendingDir, `${proposalId}.json`);
     assertEquals(await exists(proposalPath), true);
 
@@ -532,7 +539,7 @@ Deno.test("MemoryExtractorService: approvePending removes from Pending", async (
     await extractor.approvePending(proposalId);
 
     // Check proposal file was removed
-    const pendingPath = join(config.system.root, "Memory", "Pending", `${proposalId}.json`);
+    const pendingPath = join(getMemoryPendingDir(config.system.root), `${proposalId}.json`);
     assertEquals(await exists(pendingPath), false);
   } finally {
     await cleanup();
@@ -588,7 +595,7 @@ Deno.test("MemoryExtractorService: rejectPending archives proposal", async () =>
     await extractor.rejectPending(proposalId, "Not relevant");
 
     // Check proposal file was removed from Pending
-    const pendingPath = join(config.system.root, "Memory", "Pending", `${proposalId}.json`);
+    const pendingPath = join(getMemoryPendingDir(config.system.root), `${proposalId}.json`);
     assertEquals(await exists(pendingPath), false);
   } finally {
     await cleanup();

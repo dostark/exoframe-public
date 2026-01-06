@@ -1,27 +1,67 @@
+# ============================================
+# ExoFrame .gitignore (Phase 19)
+# ============================================
+
+# --------------------------------------------
+# Build & Cache
+# --------------------------------------------
 /.cache
 dist/
+*.log
+
+# --------------------------------------------
+# Test Artifacts
+# --------------------------------------------
 coverage*/
 .coverage/
 jscpd-report/
-
-# Allow a checked-in agent-facing coverage snapshot (kept small and human-readable)
-!agents/coverage/
-!agents/coverage/coverage-summary.md
 report/
+test-*.toml
+cov_profile/
 
-# runtime / user data (do not commit runtime DBs or user content)
+# Allow agent-facing coverage snapshot (new location)
+!.copilot/coverage/
+!.copilot/coverage/coverage-summary.md
+
+# --------------------------------------------
+# Runtime State (.exo/)
+# --------------------------------------------
+.exo/*.db
+.exo/*.db-shm
+.exo/*.db-wal
+.exo/daemon.pid
+.exo/daemon.log
+.exo/cache/
+.exo/activity_export.md
+.exo/migration-backup/
+
+# --------------------------------------------
+# Workspace (User Content)
+# --------------------------------------------
+Workspace/Requests/
+Workspace/Rejected/
+Workspace/Plans/
+Workspace/Active/
+Workspace/Archive/
+
+# --------------------------------------------
+# Integration (External Projects)
+# --------------------------------------------
+Portals/
+
+# --------------------------------------------
+# DEPRECATED: Old paths (remove in v2.0.0)
+# --------------------------------------------
+# These patterns maintained for transition compatibility
+# TODO: Remove after migration period
 /System/*.db*
-/System/activity_export.md
 /System/daemon.pid
 /System/*.log
+/System/activity_export.md
 /Inbox/
-/Portals/
-*.log
 
-# Test artifacts
-test-*.toml
-
-# Build artifacts and profiles
+# --------------------------------------------
+# Build Artifacts
+# --------------------------------------------
 exoframe
 /.ci-bin/
-cov_profile/

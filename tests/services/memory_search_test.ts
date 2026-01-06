@@ -16,6 +16,7 @@ import { join } from "@std/path";
 import { MemoryBankService } from "../../src/services/memory_bank.ts";
 import { initTestDbService } from "../helpers/db.ts";
 import type { Learning, ProjectMemory } from "../../src/schemas/memory_bank.ts";
+import { getMemoryGlobalDir } from "../helpers/paths_helper.ts";
 
 // ===== Test Setup Helpers =====
 
@@ -117,7 +118,7 @@ async function setupTestLearnings(
   ];
 
   // Write learnings to global memory
-  const globalDir = join(configRoot, "Memory", "Global");
+  const globalDir = getMemoryGlobalDir(configRoot);
   await Deno.mkdir(globalDir, { recursive: true });
   await Deno.writeTextFile(
     join(globalDir, "learnings.json"),

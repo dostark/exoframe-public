@@ -9,7 +9,6 @@
  */
 
 import { assertEquals } from "jsr:@std/assert@^1.0.0";
-import { join } from "@std/path";
 import { initTestDbService } from "../helpers/db.ts";
 import { NotificationService } from "../../src/services/notification.ts";
 import type { MemoryUpdateProposal } from "../../src/schemas/memory_bank.ts";
@@ -19,12 +18,6 @@ import type { MemoryUpdateProposal } from "../../src/schemas/memory_bank.ts";
  */
 async function initNotificationTest() {
   const { db, config, cleanup: dbCleanup } = await initTestDbService();
-
-  // Create required directories
-  await Deno.mkdir(join(config.system.root, "System", "Notifications"), {
-    recursive: true,
-  });
-
   const notification = new NotificationService(config, db);
 
   const cleanup = async () => {
@@ -172,11 +165,6 @@ Deno.test("NotificationService: notifyApproval handles db errors gracefully", as
         throw new Error("Database error");
       },
     };
-
-    await Deno.mkdir(join(config.system.root, "System", "Notifications"), {
-      recursive: true,
-    });
-
     const notification = new NotificationService(config, mockDb as any);
 
     // Should not throw even when DB fails
@@ -198,11 +186,6 @@ Deno.test("NotificationService: notifyRejection handles db errors gracefully", a
         throw new Error("Database connection lost");
       },
     };
-
-    await Deno.mkdir(join(config.system.root, "System", "Notifications"), {
-      recursive: true,
-    });
-
     const notification = new NotificationService(config, mockDb as any);
 
     // Should not throw even when DB fails

@@ -699,7 +699,7 @@ We employ three distinct workflows to balance developer velocity with deployment
 The pipeline enforces the following gates strictly:
 
 - **Security**: `test:security` suite must pass 100%.
-- **Documentation Drift**: `check:docs` ensures `agents/manifest.json` stays in sync with source code.
+- **Documentation Drift**: `check:docs` ensures `.copilot/manifest.json` stays in sync with source code.
 - **Coverage Limits**: The pipeline fails if coverage drops below the defined thresholds (60% Lines / 50% Functions).
 - **Build Integrity**: Binaries are validated for size (>10MB) and basic execution.
 

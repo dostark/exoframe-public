@@ -27,7 +27,7 @@ import type { PortalPermissions } from "../../src/schemas/portal_permissions.ts"
 let testDir: string;
 let blueprintsDir: string;
 let portalDir: string;
-let systemDir: string;
+let runtimeDir: string;
 let testConfig: Config;
 let dbService: Awaited<ReturnType<typeof initTestDbService>>;
 
@@ -38,12 +38,12 @@ async function setup() {
   testDir = dbService.tempDir;
   blueprintsDir = join(testDir, "Blueprints", "Agents");
   portalDir = join(testDir, "TestPortal");
-  systemDir = join(testDir, "System");
+  runtimeDir = join(testDir, ".exo");
 
   // Setup test environment
   await Deno.mkdir(blueprintsDir, { recursive: true });
   await Deno.mkdir(portalDir, { recursive: true });
-  await Deno.mkdir(systemDir, { recursive: true });
+  await Deno.mkdir(runtimeDir, { recursive: true });
 
   // Initialize git in portal
   const initGit = new Deno.Command("git", {
@@ -85,9 +85,9 @@ async function setup() {
       log_level: "info" as const,
     },
     paths: {
-      inbox: join(testDir, "Inbox"),
+      workspace: join(testDir, "Workspace"),
       memory: join(testDir, "Memory"),
-      system: join(testDir, "System"),
+      runtime: join(testDir, ".exo"),
       blueprints: join(testDir, "Blueprints"),
     },
     watcher: {
@@ -1332,7 +1332,7 @@ You are a test agent using Ollama provider.`;
 
       // Mock Ollama API response
       const originalFetch = globalThis.fetch;
-      globalThis.fetch = (input: string | URL | Request, _init?: RequestInit) => {
+      globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
         const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
 
         if (url.includes("/api/generate")) {
@@ -1358,8 +1358,8 @@ You are a test agent using Ollama provider.`;
           );
         }
 
-        return originalFetch(input as RequestInfo, _init);
-      };
+        return originalFetch(input, init);
+      }) as typeof globalThis.fetch;
 
       try {
         const ollamaProvider = new OllamaProvider({
@@ -1452,9 +1452,9 @@ Test agent for error handling.`;
 
       // Mock Ollama API to return connection error
       const originalFetch = globalThis.fetch;
-      globalThis.fetch = (_input: string | URL | Request, _init?: RequestInit) => {
+      globalThis.fetch = ((_input: RequestInfo | URL, _init?: RequestInit): Promise<Response> => {
         return Promise.reject(new TypeError("fetch failed"));
-      };
+      }) as typeof globalThis.fetch;
 
       try {
         const ollamaProvider = new OllamaProvider({

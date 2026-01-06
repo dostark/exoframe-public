@@ -17,6 +17,7 @@ import { MissionReporter, type ReportConfig, type TraceData } from "../src/servi
 import { MemoryBankService } from "../src/services/memory_bank.ts";
 import { createMockConfig } from "./helpers/config.ts";
 import { initTestDbService } from "./helpers/db.ts";
+import { getMemoryExecutionDir } from "./helpers/paths_helper.ts";
 
 // ============================================================================
 // Helper Functions
@@ -83,12 +84,12 @@ Deno.test("MissionReporter: generates execution memory record after successful e
 
   try {
     // Create required directories for Memory Banks
-    await Deno.mkdir(join(tempDir, "Memory", "Execution"), { recursive: true });
+    await Deno.mkdir(getMemoryExecutionDir(tempDir), { recursive: true });
     await setupTestGitRepo(tempDir);
 
     const config = createMockConfig(tempDir);
     const reportConfig: ReportConfig = {
-      reportsDirectory: join(tempDir, "Memory", "Execution"),
+      reportsDirectory: getMemoryExecutionDir(tempDir),
     };
 
     const memoryBank = new MemoryBankService(config, db);
@@ -103,7 +104,7 @@ Deno.test("MissionReporter: generates execution memory record after successful e
     assertEquals(result.traceId, traceData.traceId);
 
     // Verify execution memory directory exists
-    const executionDir = join(tempDir, "Memory", "Execution", traceData.traceId);
+    const executionDir = join(getMemoryExecutionDir(tempDir), traceData.traceId);
     const dirStat = await Deno.stat(executionDir);
     assert(dirStat.isDirectory);
 
@@ -125,12 +126,12 @@ Deno.test("MissionReporter: creates structured execution memory with lessons lea
   const { db, tempDir, cleanup } = await initTestDbService();
 
   try {
-    await Deno.mkdir(join(tempDir, "Memory", "Execution"), { recursive: true });
+    await Deno.mkdir(getMemoryExecutionDir(tempDir), { recursive: true });
     await setupTestGitRepo(tempDir);
 
     const config = createMockConfig(tempDir);
     const reportConfig: ReportConfig = {
-      reportsDirectory: join(tempDir, "Memory", "Execution"),
+      reportsDirectory: getMemoryExecutionDir(tempDir),
     };
 
     const memoryBank = new MemoryBankService(config, db);
@@ -166,12 +167,12 @@ Deno.test("MissionReporter: handles failed execution status", async () => {
   const { db, tempDir, cleanup } = await initTestDbService();
 
   try {
-    await Deno.mkdir(join(tempDir, "Memory", "Execution"), { recursive: true });
+    await Deno.mkdir(getMemoryExecutionDir(tempDir), { recursive: true });
     await setupTestGitRepo(tempDir);
 
     const config = createMockConfig(tempDir);
     const reportConfig: ReportConfig = {
-      reportsDirectory: join(tempDir, "Memory", "Execution"),
+      reportsDirectory: getMemoryExecutionDir(tempDir),
     };
 
     const memoryBank = new MemoryBankService(config, db);
@@ -200,12 +201,12 @@ Deno.test("MissionReporter: extracts portal from context files", async () => {
   const { db, tempDir, cleanup } = await initTestDbService();
 
   try {
-    await Deno.mkdir(join(tempDir, "Memory", "Execution"), { recursive: true });
+    await Deno.mkdir(getMemoryExecutionDir(tempDir), { recursive: true });
     await setupTestGitRepo(tempDir);
 
     const config = createMockConfig(tempDir);
     const reportConfig: ReportConfig = {
-      reportsDirectory: join(tempDir, "Memory", "Execution"),
+      reportsDirectory: getMemoryExecutionDir(tempDir),
     };
 
     const memoryBank = new MemoryBankService(config, db);
@@ -235,12 +236,12 @@ Deno.test("MissionReporter: works without database service", async () => {
   const tempDir = await Deno.makeTempDir();
 
   try {
-    await Deno.mkdir(join(tempDir, "Memory", "Execution"), { recursive: true });
+    await Deno.mkdir(getMemoryExecutionDir(tempDir), { recursive: true });
     await setupTestGitRepo(tempDir);
 
     const config = createMockConfig(tempDir);
     const reportConfig: ReportConfig = {
-      reportsDirectory: join(tempDir, "Memory", "Execution"),
+      reportsDirectory: getMemoryExecutionDir(tempDir),
     };
 
     // Create memoryBank without db (should fall back to console logging)
