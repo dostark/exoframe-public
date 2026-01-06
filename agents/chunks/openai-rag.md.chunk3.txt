@@ -1,8 +1,0 @@
-- Example prompt: "Use inspect_embeddings then inject_agent_context for query: 'refactor plan executor parsing'. Keep response under 900 tokens. Output: file-by-file diff plan + test list. Cite agent doc paths used."
-- Example prompt: "Inject context for 'add unit tests for PathResolver'. Propose 3 failing tests with explicit assertions and helper usage. Then provide minimal code diff to pass them."
-- Example prompt: "Context seems stale: instruct me to rebuild manifest/chunks and embeddings, then re-run injection and continue."
-
-Examples (by level)
-
-- Junior (simple, 2–3 chunks):
-	"Inspect embeddings for 'write a unit test'. Inject 3 chunks. Then answer in the format Files → Plan → Diffs → Verification. Keep it short and cite the doc paths used."

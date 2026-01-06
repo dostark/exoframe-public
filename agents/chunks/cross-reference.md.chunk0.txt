@@ -1,3 +1,0 @@
-# Agent Documentation Cross-Reference Map
-
-## Task → Agent Doc Quick Reference

@@ -1,5 +1,0 @@
-Self-improvement loop
-- If you discover an instruction gap mid-task (missing examples, missing commands, missing invariants), patch `agents/` as part of the work:
-	- Process: `agents/process/self-improvement.md`
-	- Template: `agents/prompts/self-improvement-loop.md`
-- Keep the patch minimal and task-scoped; rebuild/validate `agents/` artifacts before continuing.
