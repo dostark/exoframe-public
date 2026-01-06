@@ -605,6 +605,10 @@ async function migrateNotificationsToDatabase(config: Config, db: DatabaseServic
 
 **Proposed New Folder Tree:**
 
+> **Status:** ✅ Completed
+> **Completion Date:** 2026-01-06
+> **Details:** Target folder hierarchy drafted, rationale documented, structure ready for migration planning.
+
 ```
 ExoFrame/
 ├── .exo/                    # Runtime state (gitignored except structure)
