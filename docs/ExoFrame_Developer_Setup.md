@@ -298,12 +298,12 @@ We provide scripts and tests to build optional precomputed embeddings used for r
 - Script: `scripts/build_agents_embeddings.ts` supports three modes:
   - `--mode mock` (default): deterministic mock embeddings (SHA-256 derived) — no external API or cost
   - `--mode openai`: use OpenAI Embeddings API (requires `OPENAI_API_KEY`)
-  - `--mode precomputed --dir <path>`: copy validated precomputed embedding files from `<path>` into `agents/embeddings/`
+  - `--mode precomputed --dir <path>`: copy validated precomputed embedding files from `<path>` into `.copilot/embeddings/`
 
 Each embedding file should be JSON with the minimal schema:
 
 ```json
-{ "path": "agents/docs/documentation.md", "title": "Documentation quickstart", "vecs": [{ "text": "chunk text...", "vector": [0.1, 0.2, ...] } ] }
+{ "path": ".copilot/docs/documentation.md", "title": "Documentation quickstart", "vecs": [{ "text": "chunk text...", "vector": [0.1, 0.2, ...] } ] }
 ```
 
 Run the embedding build script (mock):
@@ -331,12 +331,12 @@ The tests validate manifest generation, file copying, and basic shape of the emb
 
 ### 5. Agent Context & Documentation
 
-ExoFrame includes a dedicated `agents/` directory containing machine-friendly documentation, provider adaptation notes (OpenAI, Claude, Google), and canonical prompt templates. This directory is designed to be consumed by both VS Code Copilot (dev-time) and the ExoFrame runtime system.
+ExoFrame includes a dedicated `.copilot/` directory containing machine-friendly documentation, provider adaptation notes (OpenAI, Claude, Google), and canonical prompt templates. This directory is designed to be consumed by both VS Code Copilot (dev-time) and the ExoFrame runtime system.
 
 **Usage with VS Code / Copilot:**
 When asking Copilot to perform repository tasks, it is highly recommended to instruct it to consult `.copilot/manifest.json`. The recommended canonical prompt is:
 
-> "You are a dev-time agent. Before performing repository-specific changes, consult `.copilot/manifest.json` and include matching `short_summary` items for relevant docs in `agents/`."
+> "You are a dev-time agent. Before performing repository-specific changes, consult `.copilot/manifest.json` and include matching `short_summary` items for relevant docs in `.copilot/`."
 
 **Key components:**
 
@@ -345,7 +345,7 @@ When asking Copilot to perform repository tasks, it is highly recommended to ins
 - `.copilot/`: Quick-start context for IDE agents.
 
 **Maintenance:**
-If you add or update documentation in `agents/`, you must regenerate the manifest and chunks to keep the index fresh:
+If you add or update documentation in `.copilot/`, you must regenerate the manifest and chunks to keep the index fresh:
 
 ```bash
 # Regenerate manifest and chunks

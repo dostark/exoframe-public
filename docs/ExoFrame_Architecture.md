@@ -890,7 +890,7 @@ graph TB
 
 The Memory Banks system provides persistent knowledge storage for project context, execution history, and cross-project learnings.
 
-> **Enhanced Architecture:** See [agents/planning/phase-12.5-memory-bank-enhanced.md](../agents/planning/phase-12.5-memory-bank-enhanced.md) for the full v2 architecture with Global Memory, Agent Memory Updates, and Simple RAG.
+> **Enhanced Architecture:** See [.copilot/planning/phase-12.5-memory-bank-enhanced.md](../.copilot/planning/phase-12.5-memory-bank-enhanced.md) for the full v2 architecture with Global Memory, Agent Memory Updates, and Simple RAG.
 
 ### Directory Structure
 
@@ -1540,19 +1540,19 @@ step:
 
 ExoFrame includes repository tooling under `scripts/` to keep development workflows deterministic.
 
-### agents/ Knowledge Base Index & Embeddings
+### .copilot/ Knowledge Base Index & Embeddings
 
-ExoFrame includes a developer-facing knowledge base under `agents/` used to keep AI assistants consistent and repository-aware.
+ExoFrame includes a developer-facing knowledge base under `.copilot/` used to keep AI assistants consistent and repository-aware.
 
 Artifacts:
 
-- `agents/manifest.json`: index of agent docs with metadata and chunk references
-- `agents/chunks/*`: chunked doc text used for retrieval
-- `agents/embeddings/*`: embedding vectors (often mocked in CI) used for semantic search
+- `.copilot/manifest.json`: index of agent docs with metadata and chunk references
+- `.copilot/chunks/*`: chunked doc text used for retrieval
+- `.copilot/embeddings/*`: embedding vectors (often mocked in CI) used for semantic search
 
 Build/validation scripts:
 
-- `scripts/build_agents_index.ts`: rebuilds `agents/manifest.json` and chunks
+- `scripts/build_agents_index.ts`: rebuilds `.copilot/manifest.json` and chunks
 - `scripts/build_agents_embeddings.ts`: regenerates embeddings (`--mode mock` for deterministic CI)
 - `scripts/verify_manifest_fresh.ts`: checks manifest/chunks are up to date
 - `scripts/validate_agents_docs.ts`: validates agent-doc frontmatter/schema

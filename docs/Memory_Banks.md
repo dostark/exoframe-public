@@ -590,7 +590,7 @@ Memory Banks will be integrated into the TUI dashboard in a future phase:
 
 ## Related Documentation
 
-- **Implementation:** [Phase 12 Planning](../agents/planning/phase-12-obsidian-retirement.md)
+- **Implementation:** [Phase 12 Planning](../.copilot/planning/phase-12-obsidian-retirement.md)
 - **Schemas:** [src/schemas/memory_bank.ts](../src/schemas/memory_bank.ts)
 - **Migration:** [scripts/migrate_to_memory_banks.ts](../scripts/migrate_to_memory_banks.ts) (Phase 12.5)
 - **Services:**
