@@ -10,20 +10,33 @@ This directory is a runtime workspace created from the ExoFrame repository.
    # Edit exo.config.toml to customize paths and settings
    ```
 
-2. **Start the daemon:**
-   ```bash
-   exoctl daemon start
-   ```
+````markdown
+# ExoFrame — Deployed Workspace
 
-3. **Verify it's running:**
-   ```bash
-   exoctl daemon status
-   ```
+This directory represents a deployed runtime workspace created from the ExoFrame repository. It contains the runtime layout that agents operate against.
 
-4. **Create your first request:**
-   ```bash
-   exoctl request "Add a hello world function"
-   ```
+## Quick Start
+
+1. Copy the sample config and edit as needed:
+```bash
+cp exo.config.sample.toml exo.config.toml
+# edit exo.config.toml to customize paths and settings
+```
+
+2. Start the daemon
+```bash
+exoctl daemon start
+```
+
+3. Verify status
+```bash
+exoctl daemon status
+```
+
+4. Create your first request
+```bash
+exoctl request "Add a hello world function"
+```
 
 ## Daemon Management
 
@@ -34,25 +47,21 @@ exoctl daemon status   # Check if running
 exoctl daemon restart  # Restart daemon
 ```
 
-## Documentation
-
-- Technical Specification: See project repository
-- User Guide: See project repository
-- Manual Test Scenarios: See project repository
-
 ## Directory Structure
 
-- `Blueprints/` - Agent definitions
-- `Workspace/` - Request and plan queue
-- `Memory/` - Memory Banks for execution history and project context
-- `.exo/` - Database and active tasks
-- `Portals/` - Symlinks to external projects
+- `Blueprints/` — Agent definitions and templates
+- `Workspace/` — Requests, Plans, and Changesets
+- `Memory/` — Persistent memory banks (copied during deploy)
+- `.exo/` — Runtime state: DB, logs, active tasks (replaces former `System/`)
+- `Portals/` — Symlinks to external project repositories
 
 ## Getting Help
 
 ```bash
-exoctl --help              # General help
-exoctl request --help      # Request commands
-exoctl plan --help         # Plan commands
-exoctl blueprint --help    # Blueprint commands
-exoctl portal --help       # Portal commands
+exoctl --help
+exoctl request --help
+exoctl plan --help
+exoctl blueprint --help
+exoctl portal --help
+```
+````

@@ -1,29 +1,109 @@
+# ---------------------------------------------------------------------------
+# ExoFrame sample configuration
+# Generated from runtime schemas in src/config/schema.ts and src/config/ai_config.ts
+# Copy this to exo.config.toml and update values as appropriate for your environment
+# ---------------------------------------------------------------------------
+
 [system]
+# Human-readable config version (optional)
 version = "1.0.0"
+# Log level: debug | info | warn | error
 log_level = "info"
+# Root directory for deployed workspaces (can be absolute or relative)
 root = "./"
 
 [paths]
-memory = "./Memory"
-blueprints = "./Blueprints"
-system = "./System"
-workspace = "./Workspace"
-
-[agents]
-default = "default-agent"
+# Top-level workspace directory name under the deployed root
+workspace = "Workspace"
+# Runtime directory for DB, logs, pid files (formerly System/)
+runtime = ".exo"
+# Memory banks directory (copied to deployed workspaces)
+memory = "Memory"
+# Portals directory (symlinks to external project repos)
+portals = "Portals"
+# Blueprints directory for agent definitions/templates
+blueprints = "Blueprints"
 
 [database]
-# Activity log batching configuration for performance
-# Flush interval: time to wait before writing batch (milliseconds)
+# Activity Journal batching configuration
+# Flush interval in milliseconds for batched writes
 batch_flush_ms = 100
-# Maximum batch size: flush immediately when this many logs accumulated
+# Maximum batch size before immediate flush
 batch_max_size = 100
+# Optional explicit path for the Activity Journal DB (overrides runtime path)
+# If unspecified, code resolves to <root>/<paths.runtime>/journal.db
 path = "./.exo/journal.db"
 
 [watcher]
-# Time to wait (in milliseconds) after the last file event before processing
-# Increase this if using network drives or cloud storage (e.g., 500-1000ms)
+# Debounce time in ms after file events before processing
 debounce_ms = 200
-# Enable stability verification (file size check after debounce)
-# Can be disabled for local-only setups to reduce latency
+# Enable stability_check to verify file size/stability after debounce
 stability_check = true
+
+[agents]
+# Default model preset name from [models]
+default_model = "default"
+# Per-agent timeout in seconds
+timeout_sec = 60
+
+# Example portals entries — add one [[portals]] block per portal
+[[portals]]
+alias = "my-repo"
+target_path = "/home/me/projects/my-repo"
+
+# ---------------------------------------------------------------------------
+# AI / LLM provider configuration
+# Supported providers: mock | ollama | anthropic | openai | google
+# ---------------------------------------------------------------------------
+[ai]
+provider = "mock"
+# Provider-specific model name (optional)
+model = "mock-model"
+# Base URL for custom provider endpoints (optional)
+base_url = ""
+# Request timeout (ms)
+timeout_ms = 30000
+# Max output tokens (provider-specific)
+max_tokens = 2048
+# Sampling temperature (0.0 - 2.0)
+temperature = 0.2
+
+[ai.mock]
+# Mock strategy: recorded | scripted | pattern | failing | slow
+strategy = "recorded"
+# Directory for recorded fixtures used by the mock provider
+fixtures_dir = "./tests/fixtures/ai"
+
+# ---------------------------------------------------------------------------
+# Named model presets (map label -> provider + model)
+# Use these labels in `agents.default_model` or CLI to pick presets.
+# ---------------------------------------------------------------------------
+[models.default]
+provider = "mock"
+model = "mock-model"
+
+[models.fast]
+provider = "mock"
+model = "mock-fast"
+
+[models.local]
+provider = "ollama"
+model = "llama3.2"
+
+# ---------------------------------------------------------------------------
+# MCP (Model Context Protocol) server configuration
+# ---------------------------------------------------------------------------
+[mcp]
+enabled = true
+transport = "stdio" # allowed: stdio, sse
+server_name = "exoframe"
+version = "1.0.0"
+
+# ---------------------------------------------------------------------------
+# Notes
+# - Copy this file to the repository root as `exo.config.toml` or pass a path
+#   to the CLI with `--config` when starting the daemon.
+# - The `paths.runtime` directory is where runtime artifacts live (DB, logs).
+# - Portals should point at real git repositories to enable blueprint/changeset
+#   operations across projects.
+# ---------------------------------------------------------------------------
