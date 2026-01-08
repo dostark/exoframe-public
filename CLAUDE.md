@@ -99,7 +99,7 @@ The `.copilot/` folder contains **machine-readable guidance** for AI assistants:
 - Keep side effects out of constructors
 
 ### File System as Database
-- `.exo/Active`, `Workspace/Requests`, `Workspace/Plans` are the "database"
+- `Workspace/Active`, `Workspace/Requests`, `Workspace/Plans` are the "database"
 - Use atomic file operations (write + rename)
 - All side-effects MUST log to Activity Journal via `EventLogger`
 

@@ -104,9 +104,6 @@ exoctl --help
 ls -la ~/ExoFrame/
 # Expected: Blueprints/ Workspace/ Memory/ Portals/ .exo/
 
-ls -la ~/ExoFrame/System/
-# Expected: Active/ Archive/ Templates/ journal.db
-
 # Check config file exists
 cat ~/ExoFrame/exo.config.toml
 
@@ -118,7 +115,7 @@ exoctl --help
 
 - [ ] All directories created (Blueprints, Workspace, Memory, Portals, .exo)
 - [ ] Config file exists and is valid TOML
-- [ ] Database initialized (`System/journal.db`)
+- [ ] Database initialized (`.exo/journal.db`)
 - [ ] `exoctl` CLI accessible
 - [ ] No error messages during setup
 
@@ -173,10 +170,10 @@ exoctl daemon status
 pgrep -f "exoframe" || ps aux | grep exoframe
 
 # Check database was created
-ls -la ~/ExoFrame/System/journal.db
+ls -la ~/ExoFrame/.exo/journal.db
 
 # Check log output
-tail -20 ~/ExoFrame/System/daemon.log
+tail -20 ~/ExoFrame/.exo/daemon.log
 ```
 
 ### Cleanup
@@ -396,7 +393,7 @@ grep "Custom Test Agent" ~/ExoFrame/Blueprints/Agents/custom-test.md
 # Expected: Custom prompt content present
 
 # Check Activity Journal logged blueprint operations
-sqlite3 ~/ExoFrame/System/journal.db "SELECT action_type, target FROM activity WHERE action_type LIKE 'blueprint.%' ORDER BY timestamp DESC LIMIT 10;"
+sqlite3 ~/ExoFrame/.exo/journal.db "SELECT action_type, target FROM activity WHERE action_type LIKE 'blueprint.%' ORDER BY timestamp DESC LIMIT 10;"
 # Expected: blueprint.created, blueprint.edited, blueprint.removed entries
 
 # Verify blueprints were removed
@@ -796,7 +793,7 @@ exoctl plan reject <plan-id> --reason "Needs different approach"
 
 # Step 4: Verify plan archived
 exoctl plan list --status rejected
-ls -la ~/ExoFrame/System/Archive/
+ls -la ~/ExoFrame/Workspace/Archive/
 ```
 
 ### Expected Results
@@ -809,13 +806,13 @@ ls -la ~/ExoFrame/System/Archive/
 **Step 4:**
 
 - Plan appears in rejected list
-- Plan file in `System/Archive/`
+- Plan file in `Workspace/Archive/`
 
 ### Verification
 
 ```bash
 # Read archived plan
-cat ~/ExoFrame/System/Archive/*_plan.md 2>/dev/null || \
+cat ~/ExoFrame/Workspace/Archive/*_plan.md 2>/dev/null || \
 cat ~/ExoFrame/Workspace/Plans/*_rejected.md 2>/dev/null
 
 # YAML frontmatter should contain:
@@ -828,7 +825,7 @@ cat ~/ExoFrame/Workspace/Plans/*_rejected.md 2>/dev/null
 ### Pass Criteria
 
 - [ ] Plan status changed to `rejected`
-- [ ] Plan moved to `System/Archive/`
+- [ ] Plan moved to `Workspace/Archive/`
 - [ ] Rejection reason recorded
 
 ---
@@ -1281,7 +1278,7 @@ exoctl daemon status
 # Should show: Status: Running ✓
 
 # Check database integrity
-sqlite3 ~/ExoFrame/System/journal.db "PRAGMA integrity_check;"
+sqlite3 ~/ExoFrame/.exo/journal.db "PRAGMA integrity_check;"
 # Should show: ok
 
 # Verify requests still tracked
@@ -1463,10 +1460,10 @@ rm ~/ExoFrame/Workspace/Requests/invalid-test.md
 exoctl daemon stop 2>/dev/null || true
 
 # Step 2: Backup current database
-cp ~/ExoFrame/System/journal.db ~/ExoFrame/System/journal.db.backup
+cp ~/ExoFrame/.exo/journal.db ~/ExoFrame/.exo/journal.db.backup
 
 # Step 3: Corrupt/delete database
-rm ~/ExoFrame/System/journal.db
+rm ~/ExoFrame/.exo/journal.db
 
 # Step 4: Start daemon
 cd ~/ExoFrame
@@ -1493,17 +1490,17 @@ exoctl daemon status
 
 ```bash
 # Check if database recreated
-ls -la ~/ExoFrame/System/journal.db
+ls -la ~/ExoFrame/.exo/journal.db
 
 # Check log for recovery messages
-grep -i "database\|recovery\|init" ~/ExoFrame/System/daemon.log
+grep -i "database\|recovery\|init" ~/ExoFrame/.exo/daemon.log
 ```
 
 ### Cleanup
 
 ```bash
 # Restore backup if needed
-cp ~/ExoFrame/System/journal.db.backup ~/ExoFrame/System/journal.db
+cp ~/ExoFrame/.exo/journal.db.backup ~/ExoFrame/.exo/journal.db
 ```
 
 ### Pass Criteria
@@ -1829,7 +1826,7 @@ exoctl dashboard
 # Check that all views load without errors
 # Verify view titles and content are displayed correctly
 # Confirm Activity Journal shows dashboard launch event
-sqlite3 ~/ExoFrame/System/journal.db "SELECT action_type, target FROM activity WHERE action_type LIKE '%dashboard%' ORDER BY timestamp DESC LIMIT 5;"
+sqlite3 ~/ExoFrame/.exo/journal.db "SELECT action_type, target FROM activity WHERE action_type LIKE '%dashboard%' ORDER BY timestamp DESC LIMIT 5;"
 ```
 
 ### Pass Criteria
@@ -1901,7 +1898,7 @@ ls -la ~/ExoFrame/logs_*.txt
 cat ~/ExoFrame/logs_*.txt | head -10
 
 # Verify filter state in Activity Journal
-sqlite3 ~/ExoFrame/System/journal.db "SELECT * FROM activity WHERE action_type LIKE '%filter%' ORDER BY timestamp DESC LIMIT 5;"
+sqlite3 ~/ExoFrame/.exo/journal.db "SELECT * FROM activity WHERE action_type LIKE '%filter%' ORDER BY timestamp DESC LIMIT 5;"
 ```
 
 ### Pass Criteria
@@ -1964,7 +1961,7 @@ exoctl dashboard
 
 ```bash
 # Check Activity Journal for approval/rejection events
-sqlite3 ~/ExoFrame/System/journal.db "SELECT action_type, target, payload FROM activity WHERE action_type LIKE '%plan%' ORDER BY timestamp DESC LIMIT 5;"
+sqlite3 ~/ExoFrame/.exo/journal.db "SELECT action_type, target, payload FROM activity WHERE action_type LIKE '%plan%' ORDER BY timestamp DESC LIMIT 5;"
 
 # Verify plans moved to correct directories
 ls ~/ExoFrame/Workspace/Plans/  # Should not contain approved/rejected plans
@@ -2024,7 +2021,7 @@ exoctl dashboard
 
 ```bash
 # Verify portal actions in Activity Journal
-sqlite3 ~/ExoFrame/System/journal.db "SELECT * FROM activity WHERE action_type LIKE '%portal%' ORDER BY timestamp DESC LIMIT 5;"
+sqlite3 ~/ExoFrame/.exo/journal.db "SELECT * FROM activity WHERE action_type LIKE '%portal%' ORDER BY timestamp DESC LIMIT 5;"
 ```
 
 ### Pass Criteria
@@ -2070,7 +2067,7 @@ exoctl dashboard
 
 ```bash
 # Verify daemon actions in Activity Journal
-sqlite3 ~/ExoFrame/System/journal.db "SELECT * FROM activity WHERE action_type LIKE '%daemon%' ORDER BY timestamp DESC LIMIT 5;"
+sqlite3 ~/ExoFrame/.exo/journal.db "SELECT * FROM activity WHERE action_type LIKE '%daemon%' ORDER BY timestamp DESC LIMIT 5;"
 ```
 
 ### Pass Criteria
@@ -2121,7 +2118,7 @@ exoctl dashboard
 
 ```bash
 # Verify request actions in Activity Journal
-sqlite3 ~/ExoFrame/System/journal.db "SELECT * FROM activity WHERE action_type LIKE '%request%' ORDER BY timestamp DESC LIMIT 5;"
+sqlite3 ~/ExoFrame/.exo/journal.db "SELECT * FROM activity WHERE action_type LIKE '%request%' ORDER BY timestamp DESC LIMIT 5;"
 ```
 
 ### Pass Criteria

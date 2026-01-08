@@ -59,7 +59,7 @@ Constructor-based DI: pass `config`, `db`, and `provider` into services. Keep si
 
 ### System Constraints & Patterns
 - **Runtime Persistence**: The .exo/Active, Workspace/Requests, and Workspace/Plans folders are the "Database". Code must respect file-system atomicity (use `writeTextFile` with atomic renaming where possible).
-- **Activity Journal**: All side-effects (file writes, executions, errors) MUST be logged to the Activity Journal (`System/journal.db`) via `EventLogger`.
+- **Activity Journal**: All side-effects (file writes, executions, errors) MUST be logged to the Activity Journal (`.exo/journal.db`) via `EventLogger`.
 - **Security Modes**:
     - **Sandboxed**: No network, no file access (default).
     - **Hybrid**: Read-only access to specific "Portal" paths.
@@ -67,7 +67,7 @@ Constructor-based DI: pass `config`, `db`, and `provider` into services. Keep si
 - **MCP Enforcement**: In Hybrid mode, agents can read files directly but MUST use MCP tools for writes (to ensure auditability).
 
 ### Business Logic Rules
-- **Plan Approval**: `exoctl plan approve` must never fail due to existing files. It should archive the previous state to `System/Archive/` before writing the new plan.
+- **Plan Approval**: `exoctl plan approve` must never fail due to existing files. It should archive the previous state to `Workspace/Archive/` before writing the new plan.
 - **Data Formats**: Use **YAML Frontmatter** for all markdown metadata. Do NOT use TOML or JSON for frontmatter.
 
 ---

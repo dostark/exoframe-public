@@ -75,11 +75,11 @@ class DatabaseService {
   private flushTimer: number | null = null;
   private readonly FLUSH_INTERVAL_MS = 100;
   private readonly MAX_BATCH_SIZE = 100;
-  
+
   logActivity(...) {
     // Queue entry (non-blocking)
     this.logQueue.push(entry);
-    
+
     // Flush if batch full, otherwise schedule
     if (this.logQueue.length >= MAX_BATCH_SIZE) {
       this.flush();
@@ -87,7 +87,7 @@ class DatabaseService {
       this.flushTimer = setTimeout(() => this.flush(), FLUSH_INTERVAL_MS);
     }
   }
-  
+
   private flush() {
     // Write batch asynchronously in queueMicrotask()
     queueMicrotask(() => {
@@ -231,7 +231,7 @@ ORDER BY timestamp DESC;
 **Calculate agent success rate:**
 
 ```sql
-SELECT 
+SELECT
   agent_id,
   COUNT(*) FILTER (WHERE action_type NOT LIKE '%.failed') * 100.0 / COUNT(*) as success_rate
 FROM activity
@@ -242,7 +242,7 @@ GROUP BY agent_id;
 **Trace complete workflow (request → plan → execution):**
 
 ```sql
-SELECT 
+SELECT
   timestamp,
   action_type,
   actor,
@@ -261,7 +261,7 @@ If you have an existing ExoFrame database, run:
 
 ```bash
 # Backup current database
-cp System/journal.db System/journal.db.backup
+cp .exo/journal.db .exo/journal.db.backup
 
 # Re-run migration (will add new column)
 deno task migrate

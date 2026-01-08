@@ -274,16 +274,15 @@ folders are treated as fatal errors during daemon startup so that watchers do no
 ├── deno.json                   <-- Project Config (Import Maps, Tasks)
 ├── lock.json                   <-- Dependency Integrity Hash
 ├── exo.config.toml             <-- System Physics (Paths, Models)
-├── /System
+├── /.exo
 │   ├── journal.db              <-- SQLite: Activity Log & Locks
-│   ├── /Active                 <-- Runtime State
-│   └── /Archive                <-- Completed task artifacts
 ├── /Blueprints                 <-- "Source Code" of the Swarm
 │   ├── /Agents                 <-- TOML definitions
 │   └── /Flows                  <-- TS logic
 ├── /Workspace                      <-- The Input Layer
 │   ├── /Requests               <-- User drops ideas here
 │   ├── /Plans                  <-- Agents submit proposals
+│   ├── /Active                 <-- Runtime State
 │   └── /Archive                <-- Processed requests/plans
 ├── /Memory                     <-- Memory Banks (execution history & project context)
 │   ├── /Context                <-- Curated reference docs
@@ -292,7 +291,7 @@ folders are treated as fatal errors during daemon startup so that watchers do no
 ├── /Memory/README.md           <-- Memory Banks usage guide
 ├── /Portals                    <-- VIRTUAL OVERLAY (Symlinks)
 │   └── <Alias> -> /home/user/Dev/Project_X
-Note: the tree above describes the *deployed workspace* layout used at runtime. The *development repository* (the Git checkout developers work in) contains the same folders plus development-only artifacts such as `tests/`, `.github/`, `docs/`, and the full `src/` codebase. Do not treat your deployed workspace as a development checkout — deploy workspaces are intended for runtime and user data (Memory, System/journal.db) and are created from the development repo via the provided deploy script.
+Note: the tree above describes the *deployed workspace* layout used at runtime. The *development repository* (the Git checkout developers work in) contains the same folders plus development-only artifacts such as `tests/`, `.github/`, `docs/`, and the full `src/` codebase. Do not treat your deployed workspace as a development checkout — deploy workspaces are intended for runtime and user data (Memory, .exo/journal.db) and are created from the development repo via the provided deploy script.
 ```
 
 ---

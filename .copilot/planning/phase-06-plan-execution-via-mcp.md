@@ -710,7 +710,7 @@ interface ChangesetRegistry {
 3. **Update Plan Status:**
    - Update plan status to `executed`
    - Log `plan.executed` to Activity Journal
-   - Optional: move plan to `System/Archive/`
+   - Optional: move plan to `Workspace/Archive/`
 
 4. **Enable CLI Commands:**
    - `exoctl changeset list` shows agent-created changesets

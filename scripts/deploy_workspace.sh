@@ -111,7 +111,7 @@ exoctl daemon restart  # Restart daemon
 - `Blueprints/` - Agent definitions
 - `Workspace/` - Request and plan queue
 - `Memory/` - Memory Banks for execution history and project context
-- `System/` - Database and active tasks
+- `.exo/` - Database and active tasks
 - `Portals/` - Symlinks to external projects
 
 ## Getting Help

@@ -67,7 +67,7 @@ graph TB
     end
 
     subgraph Storage["💾 Storage"]
-        DB[(SQLite DB<br/>.exo/System/journal.db)]
+        DB[(SQLite DB<br/>.exo/journal.db)]
         FS[/File System<br/>~/ExoFrame/]
         Workspace[Workspace/<br/>Requests & Plans/]
         Blueprint[Blueprints/<br/>Agents & Flows/]

@@ -393,7 +393,6 @@ exoctl migrate-memory
 # Output:
 # ✓ Migrated 42 mission reports → Memory/Execution/
 # ✓ Migrated 5 portal cards → Memory/Projects/
-# ✓ Archived Knowledge/ → Knowledge.backup-1704283200/
 # ✓ Generated memory indices
 ```
 

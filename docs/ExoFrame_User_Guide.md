@@ -244,7 +244,7 @@ deno task start
 
 - **Workspace/**: Drop requests here.
 - **Memory/**: Memory Banks for execution history and project knowledge.
-- **System/**: Database and logs (do not touch manually).
+- **.exo/**: Database and logs (do not touch manually).
 - **Portals/**: Symlinks to your projects.
 
 ### 3.2 Memory Banks
@@ -1350,7 +1350,7 @@ Query activity history:
 
 ```bash
 # View activity database directly
-sqlite3 ~/ExoFrame/System/journal.db \
+sqlite3 ~/ExoFrame/.exo/journal.db \
   "SELECT * FROM activity WHERE actor='human' ORDER BY timestamp DESC LIMIT 10;"
 ```
 
@@ -1661,13 +1661,13 @@ exoctl git branches
 exoctl daemon stop
 
 # Check integrity
-sqlite3 ~/ExoFrame/System/journal.db "PRAGMA integrity_check;"
+sqlite3 ~/ExoFrame/.exo/journal.db "PRAGMA integrity_check;"
 
 # If corrupted, restore from backup
-cp ~/backups/journal.db ~/ExoFrame/System/journal.db
+cp ~/backups/journal.db ~/ExoFrame/.exo/journal.db
 
 # If no backup, rebuild empty database
-rm ~/ExoFrame/System/journal.db
+rm ~/ExoFrame/.exo/journal.db
 deno task setup --db-only
 
 # Restart daemon

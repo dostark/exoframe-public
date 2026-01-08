@@ -377,7 +377,7 @@ Recommended workflow:
 - Developers edit code and push to the development repo (`/path/to/exoframe-repo`).
 - From the development repo you produce a _deployed workspace_ using `./scripts/deploy_workspace.sh /target/path` (see
   `docs/ExoFrame_Repository_Build.md` for details).
-- The deployed workspace is intended for running the daemon, storing `System/journal.db`, and housing user content
+- The deployed workspace is intended for running the daemon, storing `.exo/journal.db`, and housing user content
   (`Memory`). It should not be used as a primary development checkout (no tests, no CI config required there).
 
 Planned automation (Phase 1 deliverable):
