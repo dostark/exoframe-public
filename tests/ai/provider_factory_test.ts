@@ -49,15 +49,18 @@ function createTestConfig(aiConfig?: Partial<AiConfig>): Config {
     },
     database: {
       batch_flush_ms: 100,
-      batch_max_size: 100,
+      batch_max_size: 50,
+      sqlite: {
+        journal_mode: "WAL",
+        foreign_keys: true,
+        busy_timeout_ms: 5000,
+      },
     },
-    watcher: {
-      debounce_ms: 200,
-      stability_check: true,
-    },
+    watcher: { debounce_ms: 200, stability_check: true },
     agents: {
       default_model: "default",
       timeout_sec: 60,
+      max_iterations: 10,
     },
     portals: [],
     mcp: {
@@ -66,11 +69,29 @@ function createTestConfig(aiConfig?: Partial<AiConfig>): Config {
       server_name: "exoframe",
       version: "1.0.0",
     },
+    // ConfigSchema includes defaults for the following sections; provide
+    // entries so TypeScript sees a complete `Config` literal.
+    ai_endpoints: {},
+    ai_retry: {
+      max_attempts: 3,
+      backoff_base_ms: 1000,
+      timeout_per_request_ms: 30000,
+    },
+    ai_anthropic: {
+      api_version: "2023-06-01",
+      default_model: "claude-opus-4.5",
+      max_tokens_default: 4096,
+    },
+    mcp_defaults: { agent_id: "system" },
+    git: {
+      branch_prefix_pattern: "^(feat|fix|docs|chore|refactor|test)/",
+      allowed_prefixes: ["feat", "fix", "docs", "chore", "refactor", "test"],
+    },
     ai: parsedAi,
     models: {
-      default: AiConfigSchema.parse({ provider: "openai", model: "gpt-5.2-pro" }),
-      fast: AiConfigSchema.parse({ provider: "openai", model: "gpt-5.2-pro-mini" }),
-      local: AiConfigSchema.parse({ provider: "ollama", model: "llama3.2" }),
+      default: { provider: "openai", model: "gpt-5.2-pro", timeout_ms: 30000 },
+      fast: { provider: "openai", model: "gpt-5.2-pro-mini", timeout_ms: 15000 },
+      local: { provider: "ollama", model: "llama3.2", timeout_ms: 60000 },
     },
   };
 }
@@ -539,8 +560,8 @@ Deno.test("ProviderFactory: createByName creates correct named provider", () => 
   const config = createTestConfig();
   // Override models for testing
   config.models = {
-    default: AiConfigSchema.parse({ provider: "mock", model: "default-mock" }),
-    fast: AiConfigSchema.parse({ provider: "mock", model: "fast-mock" }),
+    default: { provider: "mock", model: "default-mock", timeout_ms: 30000 },
+    fast: { provider: "mock", model: "fast-mock", timeout_ms: 15000 },
   };
 
   const fastProvider = ProviderFactory.createByName(config, "fast");
@@ -553,7 +574,7 @@ Deno.test("ProviderFactory: createByName creates correct named provider", () => 
 Deno.test("ProviderFactory: createByName falls back to default for unknown name", () => {
   const config = createTestConfig();
   config.models = {
-    default: AiConfigSchema.parse({ provider: "mock", model: "default-mock" }),
+    default: { provider: "mock", model: "default-mock", timeout_ms: 30000 },
   };
 
   const unknownProvider = ProviderFactory.createByName(config, "unknown");
@@ -563,7 +584,7 @@ Deno.test("ProviderFactory: createByName falls back to default for unknown name"
 Deno.test("ProviderFactory: getProviderInfoByName returns named provider details", () => {
   const config = createTestConfig();
   config.models = {
-    fast: AiConfigSchema.parse({ provider: "mock", model: "fast-mock" }),
+    fast: { provider: "mock", model: "fast-mock", timeout_ms: 15000 },
   };
 
   const info = ProviderFactory.getProviderInfoByName(config, "fast");

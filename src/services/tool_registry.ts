@@ -2,6 +2,7 @@
  * Tool Registry - Step 4.1 of Implementation Plan
  * Maps LLM function calls to safe Deno operations with security validation
  */
+import { ConfigSchema } from "../config/schema.ts";
 
 import { join } from "@std/path";
 import { expandGlob } from "@std/fs";
@@ -90,29 +91,20 @@ export class ToolRegistry {
   private tools: Map<string, Tool>;
 
   constructor(options?: ToolRegistryConfig) {
-    this.config = options?.config || {
+    // Use ConfigSchema to parse and apply all defaults automatically
+    this.config = options?.config || ConfigSchema.parse({
       system: { root: Deno.cwd(), log_level: "info" },
-      paths: {
-        workspace: "Workspace",
-        portals: "Portals",
-        memory: "Memory",
-        runtime: ".exo",
-        blueprints: "Blueprints",
-      },
-      database: { batch_flush_ms: 100, batch_max_size: 100 },
-      watcher: { debounce_ms: 200, stability_check: true },
-      agents: { default_model: "default", timeout_sec: 60 },
-      models: {
-        default: { provider: "mock", model: "gpt-5.2-pro", timeout_ms: 30000 },
-        fast: { provider: "mock", model: "gpt-5.2-pro-mini", timeout_ms: 30000 },
-        local: { provider: "ollama", model: "llama3.2", timeout_ms: 30000 },
-      },
+      paths: {}, // Will use schema defaults
+      database: {}, // Will use schema defaults
+      watcher: {}, // Will use schema defaults
+      agents: {}, // Will use schema defaults including max_iterations
+      models: {}, // Will use schema defaults
       portals: [],
-      mcp: { enabled: true, transport: "stdio", server_name: "exoframe", version: "1.0.0" },
-    };
+      mcp: {}, // Will use schema defaults
+    });
     this.db = options?.db;
-    this.traceId = options?.traceId;
-    this.agentId = options?.agentId;
+    this.traceId = options?.traceId ?? "tool-registry";
+    this.agentId = options?.agentId ?? "system";
 
     this.pathResolver = new PathResolver(this.config);
     this.tools = new Map();

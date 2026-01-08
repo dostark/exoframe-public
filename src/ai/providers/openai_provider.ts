@@ -1,10 +1,26 @@
 import { IModelProvider, ModelOptions } from "../providers.ts";
 import { EventLogger } from "../../services/event_logger.ts";
 import { withRetry } from "./common.ts";
-import { extractOpenAIContent, performProviderCall, tokenMapperOpenAI } from "../provider_common_utils.ts";
+import { performProviderCall, tokenMapperOpenAI } from "../provider_common_utils.ts";
+import type { Config } from "../../config/schema.ts";
+import * as DEFAULTS from "../../config/constants.ts";
 
 /**
- * OpenAIProvider implements IModelProvider for OpenAI's chat models.
+ * Options for OpenAIProvider
+ */
+export interface OpenAIProviderOptions {
+  apiKey: string;
+  model?: string;
+  id?: string;
+  logger?: EventLogger;
+  retryDelayMs?: number;
+  maxRetries?: number;
+  baseUrl?: string;
+  config?: Config;
+}
+
+/**
+ * OpenAIProvider implements IModelProvider for OpenAI's GPT models.
  */
 export class OpenAIProvider implements IModelProvider {
   public readonly id: string;
@@ -13,30 +29,37 @@ export class OpenAIProvider implements IModelProvider {
   private readonly baseUrl: string;
   private readonly logger?: EventLogger;
   private readonly retryDelayMs: number;
+  private readonly maxRetries: number;
 
   /**
    * @param options.apiKey OpenAI API key
-   * @param options.model Model name (default: gpt-5.2-pro)
-   * @param options.baseUrl API endpoint (default: OpenAI v1 completions)
+   * @param options.model Model name (default: gpt-4)
    * @param options.id Optional provider id
    * @param options.logger Optional event logger
-   * @param options.retryDelayMs Optional retry delay in ms
+   * @param options.retryDelayMs Optional retry delay in ms (reads from config)
+   * @param options.maxRetries Optional max retries (reads from config)
+   * @param options.baseUrl Optional base URL (reads from config)
+   * @param options.config Optional config object for endpoints and retry settings
    */
-  constructor(options: {
-    apiKey: string;
-    model?: string;
-    baseUrl?: string;
-    id?: string;
-    logger?: EventLogger;
-    retryDelayMs?: number;
-  }) {
+  constructor(options: OpenAIProviderOptions) {
     this.apiKey = options.apiKey;
-    this.model = options.model ?? "gpt-5.2-pro";
-    this.baseUrl = options.baseUrl ?? "https://api.openai.com/v1/chat/completions";
-    this.id = options.id ?? `openai-${this.model}`;
+    this.model = options.model || "gpt-5.2-pro";
+    this.id = options.id || `openai-${this.model}`;
     this.logger = options.logger;
-    // Use longer default backoff to help avoid 429s during manual runs
-    this.retryDelayMs = options.retryDelayMs ?? 2000;
+
+    // Read base URL from config or use default
+    this.baseUrl = options.baseUrl ||
+      options.config?.ai_endpoints?.openai ||
+      DEFAULTS.DEFAULT_OPENAI_ENDPOINT;
+
+    // Read retry settings from config or use defaults
+    this.retryDelayMs = options.retryDelayMs ||
+      options.config?.ai_retry?.openai?.backoff_base_ms ||
+      DEFAULTS.DEFAULT_OPENAI_RETRY_BACKOFF_MS;
+
+    this.maxRetries = options.maxRetries ||
+      options.config?.ai_retry?.openai?.max_attempts ||
+      DEFAULTS.DEFAULT_OPENAI_RETRY_MAX_ATTEMPTS;
   }
 
   /**
@@ -45,7 +68,7 @@ export class OpenAIProvider implements IModelProvider {
   async generate(prompt: string, options?: ModelOptions): Promise<string> {
     return await withRetry(
       () => this.attemptGenerate(prompt, options),
-      { maxRetries: 5, baseDelayMs: this.retryDelayMs },
+      { maxRetries: this.maxRetries, baseDelayMs: this.retryDelayMs },
     );
   }
 
@@ -69,14 +92,13 @@ export class OpenAIProvider implements IModelProvider {
       }),
     }, {
       id: this.id,
-      maxAttempts: 5,
+      maxAttempts: this.maxRetries,
       backoffBaseMs: this.retryDelayMs,
       timeoutMs: undefined,
       logger: this.logger,
       tokenMapper: tokenMapperOpenAI(this.model),
-      extractor: extractOpenAIContent,
+      extractor: (d: any) => d.choices?.[0]?.message?.content ?? "",
     });
-
     return data;
   }
 }

@@ -2,38 +2,64 @@ import { IModelProvider, ModelOptions } from "../providers.ts";
 import { EventLogger } from "../../services/event_logger.ts";
 import { withRetry } from "./common.ts";
 import { extractGoogleContent, performProviderCall, tokenMapperGoogle } from "../provider_common_utils.ts";
+import type { Config } from "../../config/schema.ts";
+import * as DEFAULTS from "../../config/constants.ts";
 
 /**
- * GoogleProvider implements IModelProvider for Gemini and other Google models.
+ * Options for GoogleProvider
+ */
+export interface GoogleProviderOptions {
+  apiKey: string;
+  model?: string;
+  id?: string;
+  logger?: EventLogger;
+  retryDelayMs?: number;
+  maxRetries?: number;
+  baseUrl?: string;
+  config?: Config;
+}
+
+/**
+ * GoogleProvider implements IModelProvider for Google's Gemini models.
  */
 export class GoogleProvider implements IModelProvider {
   public readonly id: string;
   private readonly apiKey: string;
   private readonly model: string;
-  private readonly baseUrl = "https://generativelanguage.googleapis.com/v1beta/models";
+  private readonly baseUrl: string;
   private readonly logger?: EventLogger;
   private readonly retryDelayMs: number;
+  private readonly maxRetries: number;
 
   /**
    * @param options.apiKey Google API key
-   * @param options.model Model name (default: gemini-3-pro)
+   * @param options.model Model name (default: gemini-pro)
    * @param options.id Optional provider id
    * @param options.logger Optional event logger
-   * @param options.retryDelayMs Optional retry delay in ms
+   * @param options.retryDelayMs Optional retry delay in ms (reads from config)
+   * @param options.maxRetries Optional max retries (reads from config)
+   * @param options.baseUrl Optional base URL (reads from config)
+   * @param options.config Optional config object for endpoints and retry settings
    */
-  constructor(options: {
-    apiKey: string;
-    model?: string;
-    id?: string;
-    logger?: EventLogger;
-    retryDelayMs?: number;
-  }) {
+  constructor(options: GoogleProviderOptions) {
     this.apiKey = options.apiKey;
-    this.model = options.model ?? "gemini-3-pro";
-    this.id = options.id ?? `google-${this.model}`;
+    this.model = options.model || "gemini-3-pro";
+    this.id = options.id || `google-${this.model}`;
     this.logger = options.logger;
-    // Longer backoff by default to avoid hitting short-term rate limits during manual runs
-    this.retryDelayMs = options.retryDelayMs ?? 2000;
+
+    // Read base URL from config or use default
+    this.baseUrl = options.baseUrl ||
+      options.config?.ai_endpoints?.google ||
+      DEFAULTS.DEFAULT_GOOGLE_ENDPOINT;
+
+    // Read retry settings from config or use defaults (same as OpenAI for Google)
+    this.retryDelayMs = options.retryDelayMs ||
+      options.config?.ai_retry?.max_attempts ||
+      DEFAULTS.DEFAULT_AI_RETRY_BACKOFF_BASE_MS;
+
+    this.maxRetries = options.maxRetries ||
+      options.config?.ai_retry?.max_attempts ||
+      DEFAULTS.DEFAULT_AI_RETRY_MAX_ATTEMPTS;
   }
 
   /**
@@ -42,7 +68,7 @@ export class GoogleProvider implements IModelProvider {
   async generate(prompt: string, options?: ModelOptions): Promise<string> {
     return await withRetry(
       () => this.attemptGenerate(prompt, options),
-      { maxRetries: 5, baseDelayMs: this.retryDelayMs },
+      { maxRetries: this.maxRetries, baseDelayMs: this.retryDelayMs },
     );
   }
 
@@ -50,12 +76,17 @@ export class GoogleProvider implements IModelProvider {
    * Internal: attempt a single completion call.
    */
   private async attemptGenerate(prompt: string, options?: ModelOptions): Promise<string> {
-    const url = `${this.baseUrl}/${this.model}:generateContent?key=${this.apiKey}`;
-    const data = await performProviderCall(url, {
+    const endpoint = `${this.baseUrl}/${this.model}:generateContent?key=${this.apiKey}`;
+
+    const data = await performProviderCall(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: [{
+          parts: [{ text: prompt }],
+        }],
         generationConfig: {
           maxOutputTokens: options?.max_tokens,
           temperature: options?.temperature,
@@ -65,14 +96,13 @@ export class GoogleProvider implements IModelProvider {
       }),
     }, {
       id: this.id,
-      maxAttempts: 5,
+      maxAttempts: this.maxRetries,
       backoffBaseMs: this.retryDelayMs,
       timeoutMs: undefined,
       logger: this.logger,
       tokenMapper: tokenMapperGoogle(this.model),
       extractor: extractGoogleContent,
     });
-
     return data;
   }
 }

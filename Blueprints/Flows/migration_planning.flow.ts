@@ -1,4 +1,4 @@
-import { defineFlow } from "../../src/flows/define_flow.ts";
+import { defineFlow } from "./define_flow.ts";
 
 /**
  * Migration Planning Flow

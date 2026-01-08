@@ -1,4 +1,6 @@
 import { IModelProvider, ModelOptions } from "../providers.ts";
+import type { Config } from "../../config/schema.ts";
+import * as DEFAULTS from "../../config/constants.ts";
 
 /**
  * Options for LlamaProvider.
@@ -7,6 +9,9 @@ export interface LlamaProviderOptions {
   model: string;
   endpoint?: string;
   id?: string;
+  config?: Config;
+  maxAttempts?: number;
+  backoffBaseMs?: number;
 }
 
 /**
@@ -16,19 +21,38 @@ export class LlamaProvider implements IModelProvider {
   readonly id: string;
   readonly model: string;
   readonly endpoint: string;
+  private readonly maxAttempts: number;
+  private readonly backoffBaseMs: number;
 
   /**
    * @param options.model Model name (must start with codellama: or llamaX:)
-   * @param options.endpoint Ollama API endpoint (default: http://localhost:11434/api/generate)
+   * @param options.endpoint Ollama API endpoint (reads from config or defaults)
    * @param options.id Optional provider id
+   * @param options.config Optional config for endpoint and retry settings
    */
   constructor(options: LlamaProviderOptions) {
     if (!/^codellama:|^llama[0-9.]*:/.test(options.model)) {
       throw new Error("Unsupported model");
     }
     this.model = options.model;
-    this.endpoint = options.endpoint || "http://localhost:11434/api/generate";
+
+    // Read endpoint from config or use default
+    this.endpoint = options.endpoint ||
+      options.config?.ai_endpoints?.ollama ||
+      DEFAULTS.DEFAULT_OLLAMA_ENDPOINT;
+
     this.id = options.id || `llama-${this.model}`;
+
+    // Read retry settings from config or environment or use defaults
+    this.maxAttempts = options.maxAttempts ||
+      options.config?.ai_retry?.ollama?.max_attempts ||
+      Number(Deno.env.get("EXO_OLLAMA_RETRY_MAX")) ||
+      DEFAULTS.DEFAULT_OLLAMA_RETRY_MAX_ATTEMPTS;
+
+    this.backoffBaseMs = options.backoffBaseMs ||
+      options.config?.ai_retry?.ollama?.backoff_base_ms ||
+      Number(Deno.env.get("EXO_OLLAMA_RETRY_BACKOFF_MS")) ||
+      DEFAULTS.DEFAULT_OLLAMA_RETRY_BACKOFF_MS;
   }
 
   /**

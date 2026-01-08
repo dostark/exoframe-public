@@ -60,7 +60,7 @@ export const AiConfigSchema = z.object({
   provider: ProviderTypeSchema.default("mock"),
 
   /** Model name (provider-specific) */
-  model: z.string().optional(),
+  model: z.string().default("mock-model"),
 
   /** API endpoint URL (for ollama, custom endpoints) */
   base_url: z.string().url().optional(),
@@ -88,6 +88,7 @@ export type AiConfig = z.infer<typeof AiConfigSchema>;
  */
 export const DEFAULT_AI_CONFIG: AiConfig = {
   provider: "mock",
+  model: "mock-model",
   timeout_ms: 30000,
 };
 
@@ -101,3 +102,29 @@ export const DEFAULT_MODELS: Record<ProviderType, string> = {
   openai: "gpt-5.2-pro",
   google: "gemini-3-pro",
 };
+/**
+ * Default API endpoints for each provider
+ */
+export const DEFAULT_ENDPOINTS: Record<ProviderType, string> = {
+  mock: "",
+  ollama: "http://localhost:11434/api/generate",
+  anthropic: "https://api.anthropic.com/v1/messages",
+  openai: "https://api.openai.com/v1/chat/completions",
+  google: "https://generativelanguage.googleapis.com/v1/models",
+};
+
+/**
+ * Default retry configuration per provider
+ */
+export const DEFAULT_RETRY_CONFIG: Record<ProviderType, { maxAttempts: number; backoffBaseMs: number }> = {
+  mock: { maxAttempts: 1, backoffBaseMs: 0 },
+  ollama: { maxAttempts: 3, backoffBaseMs: 1000 },
+  anthropic: { maxAttempts: 5, backoffBaseMs: 2000 },
+  openai: { maxAttempts: 3, backoffBaseMs: 1000 },
+  google: { maxAttempts: 3, backoffBaseMs: 1000 },
+};
+
+/**
+ * Anthropic API version header default
+ */
+export const ANTHROPIC_API_VERSION = "2023-06-01";

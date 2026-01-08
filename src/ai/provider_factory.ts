@@ -6,7 +6,7 @@
  * 2. Config file [ai] section (medium priority)
  * 3. Defaults (lowest priority) - MockLLMProvider for safety
  */
-
+import * as DEFAULTS from "../config/constants.ts";
 import { IModelProvider, OllamaProvider } from "./providers.ts";
 import { MockLLMProvider, MockStrategy } from "./providers/mock_llm_provider.ts";
 import { Config } from "../config/schema.ts";
@@ -162,53 +162,57 @@ export class ProviderFactory {
     };
   }
 
-  // ============================================================================
-  // Private Methods
-  // ============================================================================
-
-  /**
-   * Resolve provider options from environment and config
-   */
   /**
    * Resolve provider options from environment and config.
+   * Accepts a model-level config (may have optional fields) and merges
+   * env vars, modelConfig, and global config to produce a fully populated
+   * ResolvedProviderOptions (guarantees timeoutMs).
    */
-  private static resolveOptions(config: Config, overrideAiConfig?: AiConfig): ResolvedProviderOptions {
-    // Read environment variables (use safe getter to avoid NotCapable in restricted environments)
+  private static resolveOptions(
+    config: Config,
+    modelConfig?: Record<string, any> | Partial<AiConfig>,
+  ): ResolvedProviderOptions {
     const envProvider = this.safeEnvGet("EXO_LLM_PROVIDER");
     const envModel = this.safeEnvGet("EXO_LLM_MODEL");
     const envBaseUrl = this.safeEnvGet("EXO_LLM_BASE_URL");
     const envTimeout = this.safeEnvGet("EXO_LLM_TIMEOUT_MS");
 
-    // Get config values (with defaults)
-    const aiConfig: AiConfig = overrideAiConfig ?? config.ai ?? { provider: "mock", timeout_ms: 30000 };
+    // Base ai config from global config or sensible defaults
+    const baseAi: AiConfig = (config.ai as AiConfig) ?? {
+      provider: "mock",
+      timeout_ms: DEFAULTS.DEFAULT_AI_TIMEOUT_MS,
+    };
 
-    // Resolve provider type
+    // Merge model-level config (may be from config.models[name]) on top of baseAi
+    const merged: Partial<AiConfig> = {
+      ...baseAi,
+      ...(modelConfig ?? {}),
+    };
+
+    // Resolve provider type (env > modelConfig > global)
     let providerType: ProviderType = "mock";
     if (envProvider) {
-      // Validate env provider
       const normalized = envProvider.toLowerCase().trim();
       if (["mock", "ollama", "anthropic", "openai", "google"].includes(normalized)) {
         providerType = normalized as ProviderType;
       } else {
-        console.warn(
-          `Unknown provider '${envProvider}' from EXO_LLM_PROVIDER, falling back to mock`,
-        );
+        console.warn(`Unknown provider '${envProvider}' from EXO_LLM_PROVIDER, falling back to mock`);
         providerType = "mock";
       }
-    } else if (aiConfig.provider) {
-      providerType = aiConfig.provider;
+    } else if (merged.provider) {
+      providerType = merged.provider as ProviderType;
     }
 
-    // Resolve model
-    const model = envModel ?? aiConfig.model ?? DEFAULT_MODELS[providerType];
+    // Resolve model (env > merged.model > default per provider)
+    const model = envModel ?? (merged.model ?? DEFAULT_MODELS[providerType]);
 
-    // Resolve other options
-    const baseUrl = envBaseUrl ?? aiConfig.base_url;
-    const timeoutMs = envTimeout ? parseInt(envTimeout, 10) : (aiConfig.timeout_ms ?? 30000);
+    // Resolve base url and timeout (env > merged > defaults)
+    const baseUrl = envBaseUrl ?? merged.base_url;
+    const timeoutMs = envTimeout ? parseInt(envTimeout, 10) : (merged.timeout_ms ?? DEFAULTS.DEFAULT_AI_TIMEOUT_MS);
 
-    // Mock-specific options
-    const mockStrategy = aiConfig.mock?.strategy ?? "recorded";
-    const mockFixturesDir = aiConfig.mock?.fixtures_dir;
+    // Mock-specific
+    const mockStrategy = merged.mock?.strategy ?? baseAi?.mock?.strategy ?? "recorded";
+    const mockFixturesDir = merged.mock?.fixtures_dir ?? baseAi?.mock?.fixtures_dir;
 
     return {
       provider: providerType,
@@ -219,6 +223,10 @@ export class ProviderFactory {
       mockFixturesDir,
     };
   }
+
+  // ============================================================================
+  // Private Methods
+  // ============================================================================
 
   /**
    * Resolve provider options by name

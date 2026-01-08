@@ -1,8 +1,22 @@
-# ---------------------------------------------------------------------------
-# ExoFrame sample configuration
-# Generated from runtime schemas in src/config/schema.ts and src/config/ai_config.ts
-# Copy this to exo.config.toml and update values as appropriate for your environment
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# ExoFrame Configuration File
+# ===========================================================================
+#
+# All timing values (timeouts, delays, intervals) are in milliseconds (ms)
+# unless otherwise specified.
+#
+# Configurable Magic Numbers Reference:
+# - Database batch_flush_ms: 100 (how often to flush journal writes)
+# - Database batch_max_size: 100 (max records before forced flush)
+# - Database busy_timeout_ms: 5000 (SQLite lock wait time)
+# - Watcher debounce_ms: 200 (file change stabilization delay)
+# - Agent timeout_sec: 60 (max time for agent task completion)
+# - Agent max_iterations: 10 (max flow execution loops)
+# - AI timeout_ms: 30000 (per-model API request timeout)
+# - AI retry max_attempts: 3 (number of retry attempts)
+# - AI retry backoff_base_ms: 1000 (exponential backoff base delay)
+#
+# ===========================================================================
 
 [system]
 # Human-readable config version (optional)
@@ -34,6 +48,12 @@ batch_max_size = 100
 # If unspecified, code resolves to <root>/<paths.runtime>/journal.db
 path = "./.exo/journal.db"
 
+[database.sqlite]
+# SQLite-specific performance tuning
+journal_mode = "WAL"       # Write-Ahead Logging for concurrency
+foreign_keys = true        # Enforce foreign key constraints
+busy_timeout_ms = 5000     # Wait time when DB is locked
+
 [watcher]
 # Debounce time in ms after file events before processing
 debounce_ms = 200
@@ -43,8 +63,10 @@ stability_check = true
 [agents]
 # Default model preset name from [models]
 default_model = "default"
-# Per-agent timeout in seconds
+# Per-agent timeout in seconds (max time for agent to complete task)
 timeout_sec = 60
+# Max iterations for agent flow execution
+max_iterations = 10
 
 # Example portals entries — add one [[portals]] block per portal
 [[portals]]
@@ -74,6 +96,61 @@ strategy = "recorded"
 # Directory for recorded fixtures used by the mock provider
 fixtures_dir = "./tests/fixtures/ai"
 
+[ai.endpoints]
+# Override default provider API endpoints (optional)
+# Useful for self-hosted instances, proxies, or custom deployments
+ollama = "http://localhost:11434/api/generate"
+anthropic = "https://api.anthropic.com/v1/messages"
+openai = "https://api.openai.com/v1/chat/completions"
+google = "https://generativelanguage.googleapis.com/v1/models"
+
+[ai.retry]
+# HTTP retry configuration for LLM API calls (all providers)
+max_attempts = 3           # Maximum retry attempts for transient failures
+backoff_base_ms = 1000     # Base delay between retries (exponential backoff)
+timeout_per_request_ms = 30000  # Timeout for individual HTTP requests
+
+[ai.retry.ollama]
+max_attempts = 3
+backoff_base_ms = 1000
+
+[ai.retry.anthropic]
+max_attempts = 5
+backoff_base_ms = 2000
+
+[ai.retry.openai]
+max_attempts = 3
+backoff_base_ms = 1000
+
+[ai.anthropic]
+# Anthropic Claude-specific configuration
+api_version = "2023-06-01"
+default_model = "claude-opus-4.5"
+max_tokens_default = 4096
+
+# ---------------------------------------------------------------------------
+# Model-specific defaults
+# Override timeout and other settings per model configuration
+# ---------------------------------------------------------------------------
+
+[models.default]
+provider = "mock"
+model = "mock-model"
+timeout_ms = 30000         # Request timeout for this model preset
+max_tokens = 2048
+temperature = 0.2
+
+[models.fast]
+provider = "mock"
+model = "mock-fast"
+timeout_ms = 15000         # Faster timeout for quick responses
+
+[models.local]
+provider = "ollama"
+model = "llama3.2"
+timeout_ms = 60000         # Longer timeout for local models
+base_url = "http://localhost:11434/api/generate"
+
 # ---------------------------------------------------------------------------
 # Named model presets (map label -> provider + model)
 # Use these labels in `agents.default_model` or CLI to pick presets.
@@ -98,6 +175,15 @@ enabled = true
 transport = "stdio" # allowed: stdio, sse
 server_name = "exoframe"
 version = "1.0.0"
+
+[mcp.defaults]
+# Default agent ID for MCP tool operations when not explicitly specified
+agent_id = "system"
+
+[git]
+# Git operations constraints for MCP tools
+branch_prefix_pattern = "^(feat|fix|docs|chore|refactor|test)/"
+allowed_prefixes = ["feat", "fix", "docs", "chore", "refactor", "test"]
 
 # ---------------------------------------------------------------------------
 # Notes
