@@ -658,13 +658,13 @@ If no plans are generated after 30 seconds:
 
 ```bash
 # Check daemon logs for errors
-tail -50 ~/ExoFrame/System/daemon.log
+tail -50 ~/ExoFrame/.exo/daemon.log
 
 # Look for processing errors
-grep -i "request.*processing\|plan.*generated\|error" ~/ExoFrame/System/daemon.log | tail -10
+grep -i "request.*processing\|plan.*generated\|error" ~/ExoFrame/.exo/daemon.log | tail -10
 
 # Check if request processor is running
-grep -i "watcher\|detected" ~/ExoFrame/System/daemon.log | tail -20
+grep -i "watcher\|detected" ~/ExoFrame/.exo/daemon.log | tail -20
 
 # Verify request file is valid YAML
 cat ~/ExoFrame/Workspace/Requests/request-*.md
@@ -1353,11 +1353,11 @@ exoctl plan show <plan-id>
 # Plan should be more detailed than mock responses
 
 # Check daemon logs for token usage
-grep -i "token\|api" ~/ExoFrame/System/daemon.log
+grep -i "token\|api" ~/ExoFrame/.exo/daemon.log
 # Should show non-zero token counts
 
 # Check API calls logged
-grep -i "anthropic\|openai" ~/ExoFrame/System/daemon.log
+grep -i "anthropic\|openai" ~/ExoFrame/.exo/daemon.log
 ```
 
 ### Cleanup
@@ -1407,7 +1407,7 @@ sleep 5
 
 # Step 3: Check for error handling
 exoctl request list
-tail -20 ~/ExoFrame/System/daemon.log
+tail -20 ~/ExoFrame/.exo/daemon.log
 ```
 
 ### Expected Results
@@ -1422,7 +1422,7 @@ tail -20 ~/ExoFrame/System/daemon.log
 
 ```bash
 # Check error log
-grep -i "validation error\|parse error\|invalid" ~/ExoFrame/System/daemon.log
+grep -i "validation error\|parse error\|invalid" ~/ExoFrame/.exo/daemon.log
 
 # Verify daemon still healthy
 exoctl daemon status
@@ -1563,7 +1563,7 @@ exoctl request list | sort | uniq -d
 # Should output nothing (no duplicates)
 
 # Check logs for errors
-grep -i "error\|conflict\|race" ~/ExoFrame/System/daemon.log
+grep -i "error\|conflict\|race" ~/ExoFrame/.exo/daemon.log
 ```
 
 ### Pass Criteria
@@ -1615,7 +1615,7 @@ done
 sleep 5
 
 # Step 4: Check detection
-tail -50 ~/ExoFrame/System/daemon.log | grep -c "file\|detected\|changed"
+tail -50 ~/ExoFrame/.exo/daemon.log | grep -c "file\|detected\|changed"
 ```
 
 ### Expected Results
@@ -1629,7 +1629,7 @@ tail -50 ~/ExoFrame/System/daemon.log | grep -c "file\|detected\|changed"
 
 ```bash
 # Check daemon logs for file detection
-tail -50 ~/ExoFrame/System/daemon.log | grep -c "file\|detected\|changed"
+tail -50 ~/ExoFrame/.exo/daemon.log | grep -c "file\|detected\|changed"
 # Should show entries for file changes
 ```
 
@@ -1667,7 +1667,7 @@ exoctl daemon start
 sleep 3
 
 # Step 2: Check startup logs for provider
-grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
+grep -i "LLM Provider" ~/ExoFrame/.exo/daemon.log
 
 # Step 3: Stop daemon
 exoctl daemon stop
@@ -1676,14 +1676,14 @@ exoctl daemon stop
 cd ~/ExoFrame
 EXO_LLM_PROVIDER=ollama exoctl daemon start
 sleep 3
-grep -i "LLM Provider\|provider" ~/ExoFrame/System/daemon.log | tail -5
+grep -i "LLM Provider\|provider" ~/ExoFrame/.exo/daemon.log | tail -5
 exoctl daemon stop
 
 # Step 5: Test Ollama with custom model
 cd ~/ExoFrame
 EXO_LLM_PROVIDER=ollama EXO_LLM_MODEL=codellama exoctl daemon start
 sleep 3
-grep -i "LLM Provider\|provider" ~/ExoFrame/System/daemon.log | tail -5
+grep -i "LLM Provider\|provider" ~/ExoFrame/.exo/daemon.log | tail -5
 exoctl daemon stop
 
 # Step 6: Test missing API key error (Anthropic)
@@ -1703,14 +1703,14 @@ EOF
 
 exoctl daemon start
 sleep 3
-grep -i "LLM Provider" ~/ExoFrame/System/daemon.log
+grep -i "LLM Provider" ~/ExoFrame/.exo/daemon.log
 exoctl daemon stop
 
 # Step 8: Test environment overrides config
 cd ~/ExoFrame
 EXO_LLM_PROVIDER=mock exoctl daemon start
 sleep 3
-grep -i "LLM Provider\|provider" ~/ExoFrame/System/daemon.log | tail -5
+grep -i "LLM Provider\|provider" ~/ExoFrame/.exo/daemon.log | tail -5
 exoctl daemon stop
 ```
 
@@ -1750,7 +1750,7 @@ exoctl daemon stop
 
 ```bash
 # Check daemon log for provider initialization
-grep -E "LLM Provider|provider.*mock|provider.*ollama" ~/ExoFrame/System/daemon.log
+grep -E "LLM Provider|provider.*mock|provider.*ollama" ~/ExoFrame/.exo/daemon.log
 
 # Verify provider ID format
 # Expected patterns:

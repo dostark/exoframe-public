@@ -30,8 +30,8 @@ cat > .gitignore <<'EOF'
 /dist
 /.vscode
 # runtime/user data
-/System/*.db
-/System/*.sqlite
+/.exo/*.db
+/.exo/*.sqlite
 /Knowledge/
 /Inbox/
 /Portals/
@@ -213,7 +213,7 @@ sqlite3 System/journal.db ".tables"
 sqlite3 System/journal.db ".schema"
 
 # Count activity rows
-sqlite3 System/journal.db "SELECT COUNT(*) FROM activity;"
+sqlite3 .exo/journal.db "SELECT COUNT(*) FROM activity;"
 ```
 
 For full configuration, see:

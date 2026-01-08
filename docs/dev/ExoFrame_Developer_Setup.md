@@ -186,7 +186,7 @@ Notes specific to WSL2:
 
 - Verify Deno version: `deno --version` (should match project `deno.json` expectations)
 - Verify git config: `git config --list` (ensure `user.name` and `user.email` set)
-- Verify DB exists: `ls -la System/*.db` or run `sqlite3 System/exo.db 'SELECT count(*) FROM activity;'`
+- Verify DB exists: `ls -la .exo/*.db` or run `sqlite3 .exo/exo.db 'SELECT count(*) FROM activity;'`
 - Run smoke test: `deno test --allow-read --allow-write` and confirm core tests pass.
 - Create a test portal and verify watcher triggers:
 

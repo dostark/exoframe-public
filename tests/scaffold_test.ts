@@ -51,7 +51,7 @@ Deno.test("scaffold.sh creates required directory structure", async () => {
 
     // Verify all required directories exist
     const requiredDirs = [
-      "System",
+      ".exo",
       "Blueprints/Agents",
       "Blueprints/Flows",
       "Workspace/Requests",
@@ -83,7 +83,7 @@ Deno.test("scaffold.sh creates .gitkeep files", async () => {
 
     // Verify .gitkeep files exist
     const gitkeepPaths = [
-      "System/.gitkeep",
+      ".exo/.gitkeep",
       "Blueprints/Agents/.gitkeep",
       "Blueprints/Flows/.gitkeep",
       "Workspace/Requests/.gitkeep",
@@ -201,7 +201,7 @@ Deno.test("scaffold.sh is idempotent", async () => {
 
     // Verify structure is still correct
     const requiredDirs = [
-      "System",
+      ".exo",
       "Blueprints/Agents",
       "Workspace/Requests",
       "Memory/Reports",
@@ -256,8 +256,8 @@ Deno.test("scaffold.sh uses current directory if no target provided", async () =
 
     // Verify structure was created in current directory
     assert(
-      await exists(join(tmp, "System")),
-      "System directory should be created in current directory",
+      await exists(join(tmp, ".exo")),
+      ".exo directory should be created in current directory",
     );
   } finally {
     await Deno.remove(tmp, { recursive: true }).catch(() => {});

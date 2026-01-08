@@ -187,7 +187,7 @@ ExoFrame uses a **hybrid format strategy** optimized for different use cases:
 | **Reports**          | Markdown + JSON metadata    | `.md`, `.json` | `Memory/Execution/`   | Mission completion reports                 |
 | **Memory Banks**     | Markdown + JSON             | `.md`, `.json` | `Memory/`             | Execution history and project context      |
 | **Project Memory**   | Markdown                    | `.md`          | `Memory/Projects/`    | Auto-generated project context             |
-| **Activity Journal** | SQLite                      | `.db`          | `System/exo.db`       | Audit log & file locks                     |
+| **Activity Journal** | SQLite                      | `.db`          | `.exo/exo.db`         | Audit log & file locks                     |
 | **Migrations**       | SQL                         | `.sql`         | `migrations/`         | Database schema changes                    |
 
 ### YAML Frontmatter Format (Requests, Plans, Reports)

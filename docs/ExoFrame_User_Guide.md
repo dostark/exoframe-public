@@ -1686,7 +1686,7 @@ exoctl daemon logs
 
 # Verify workspace paths are accessible
 ls -la ~/ExoFrame/Workspace
-ls -la ~/ExoFrame/System
+ls -la ~/ExoFrame/.exo
 
 # Restart with correct permissions
 exoctl daemon restart

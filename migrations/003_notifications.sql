@@ -1,7 +1,4 @@
--- Migration 003: Notifications Table
--- Consolidates System/Notifications/memory.json into SQLite for better performance and consistency
-
--- up
+-- Consolidates .exo/Notifications/memory.json into SQLite for better performance and consistency
 CREATE TABLE IF NOT EXISTS notifications (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL,

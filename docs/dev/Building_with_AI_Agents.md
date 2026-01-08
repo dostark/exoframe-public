@@ -2959,7 +2959,7 @@ The "Export Pattern." Create a script that periodically (or on-demand) exports t
 // scripts/export_activity.ts
 const logs = await db.getRecentActivity(100);
 const markdown = formatAsDataviewTable(logs);
-await Deno.writeTextFile("System/activity_export.md", markdown);
+await Deno.writeTextFile(".exo/activity_export.md", markdown);
 ```
 
 **The Lesson**: You don't always need a custom Web UI. If your users already use a tool, export your data into their format. It's faster to build and provides a better user experience. (Note: ExoFrame v1.1+ uses a real-time TUI dashboard instead of this export approach.)

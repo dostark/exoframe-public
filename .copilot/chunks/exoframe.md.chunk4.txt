@@ -1,6 +1,6 @@
 ### System Constraints & Patterns
 - **Runtime Persistence**: The .exo/Active, Workspace/Requests, and Workspace/Plans folders are the "Database". Code must respect file-system atomicity (use `writeTextFile` with atomic renaming where possible).
-- **Activity Journal**: All side-effects (file writes, executions, errors) MUST be logged to the Activity Journal (`System/journal.db`) via `EventLogger`.
+- **Activity Journal**: All side-effects (file writes, executions, errors) MUST be logged to the Activity Journal (`.exo/journal.db`) via `EventLogger`.
 - **Security Modes**:
     - **Sandboxed**: No network, no file access (default).
     - **Hybrid**: Read-only access to specific "Portal" paths.
