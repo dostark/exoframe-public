@@ -17,7 +17,6 @@ mkdir -p "$TARGET/System" \
   "$TARGET/Workspace/Plans" \
   "$TARGET/Memory/Projects" \
   "$TARGET/Memory/Execution" \
-  "$TARGET/Memory/Tasks" \
   "$TARGET/Memory/Index" \
   "$TARGET/Memory/Reports" \
   "$TARGET/Portals" \
@@ -29,6 +28,7 @@ touch "$TARGET/Blueprints/Flows/.gitkeep" || true
 touch "$TARGET/Workspace/Requests/.gitkeep" || true
 touch "$TARGET/Workspace/Plans/.gitkeep" || true
 touch "$TARGET/Memory/.gitkeep" || true
+touch "$TARGET/Memory/Index/.gitkeep" || true
 touch "$TARGET/Memory/Reports/.gitkeep" || true
 touch "$TARGET/Portals/.gitkeep" || true
 

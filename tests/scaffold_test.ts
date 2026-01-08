@@ -58,7 +58,7 @@ Deno.test("scaffold.sh creates required directory structure", async () => {
       "Workspace/Plans",
       "Memory/Projects",
       "Memory/Execution",
-      "Memory/Tasks",
+      "Memory/Index",
       "Portals",
       "scripts",
     ];
@@ -89,6 +89,7 @@ Deno.test("scaffold.sh creates .gitkeep files", async () => {
       "Workspace/Requests/.gitkeep",
       "Workspace/Plans/.gitkeep",
       "Memory/.gitkeep",
+      "Memory/Index/.gitkeep",
       "Portals/.gitkeep",
     ];
 

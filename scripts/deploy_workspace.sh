@@ -43,6 +43,27 @@ fi
 rsync -a --exclude='node_modules' --exclude='.git' --exclude='*.log' \
   "$REPO_ROOT/deno.json" "$REPO_ROOT/import_map.json" "$REPO_ROOT/exo.config.sample.toml" "$DEST/" || true
 
+# Copy entire Memory/ folder (preserve subfolders and files)
+if [ -d "$REPO_ROOT/Memory" ]; then
+  echo "Copying Memory/ (all content) to deployed workspace..."
+  mkdir -p "$DEST/Memory"
+  rsync -a --delete --exclude='.git' "$REPO_ROOT/Memory/" "$DEST/Memory/" || true
+fi
+
+# Copy all Blueprints/ content (including subfolders), but do not copy templates/ from repo root
+if [ -d "$REPO_ROOT/Blueprints" ]; then
+  echo "Copying Blueprints/ to deployed workspace..."
+  mkdir -p "$DEST/Blueprints"
+  rsync -a --delete --exclude='.git' "$REPO_ROOT/Blueprints/" "$DEST/Blueprints/" || true
+fi
+
+# Copy top-level files from docs/ (only files directly under docs/, do not copy subfolders)
+if [ -d "$REPO_ROOT/docs" ]; then
+  echo "Copying top-level docs/ files to deployed workspace (excluding subfolders)..."
+  mkdir -p "$DEST/docs"
+  find "$REPO_ROOT/docs" -maxdepth 1 -type f -exec cp -p {} "$DEST/docs/" \; || true
+fi
+
 # Copy runtime scripts (setup + deploy + scaffold + migrate)
 mkdir -p "$DEST/scripts"
 cp -f "$REPO_ROOT/scripts/setup_db.ts" "$DEST/scripts/" 2>/dev/null || true
@@ -61,69 +82,6 @@ if [ -d "$REPO_ROOT/src" ]; then
   mkdir -p "$DEST/src"
   cp -r "$REPO_ROOT/src/"* "$DEST/src/" 2>/dev/null || true
 fi
-
-# Create a small README for deployed workspace (users)
-cat > "$DEST/README.md" <<'EOF'
-# ExoFrame - Deployed Workspace
-
-This directory is a runtime workspace created from the ExoFrame repository.
-
-## Quick Start
-
-1. **Configure ExoFrame:**
-   ```bash
-   cp exo.config.sample.toml exo.config.toml
-   # Edit exo.config.toml to customize paths and settings
-   ```
-
-2. **Start the daemon:**
-   ```bash
-   exoctl daemon start
-   ```
-
-3. **Verify it's running:**
-   ```bash
-   exoctl daemon status
-   ```
-
-4. **Create your first request:**
-   ```bash
-   exoctl request "Add a hello world function"
-   ```
-
-## Daemon Management
-
-```bash
-exoctl daemon start    # Start in background
-exoctl daemon stop     # Stop gracefully
-exoctl daemon status   # Check if running
-exoctl daemon restart  # Restart daemon
-```
-
-## Documentation
-
-- Technical Specification: See project repository
-- User Guide: See project repository
-- Manual Test Scenarios: See project repository
-
-## Directory Structure
-
-- `Blueprints/` - Agent definitions
-- `Workspace/` - Request and plan queue
-- `Memory/` - Memory Banks for execution history and project context
-- `.exo/` - Database and active tasks
-- `Portals/` - Symlinks to external projects
-
-## Getting Help
-
-```bash
-exoctl --help              # General help
-exoctl request --help      # Request commands
-exoctl plan --help         # Plan commands
-exoctl blueprint --help    # Blueprint commands
-exoctl portal --help       # Portal commands
-```
-EOF
 
 # Run cache+setup in the deployed workspace (best-effort) unless --no-run
 if [ "$NORUN" -eq 0 ]; then
