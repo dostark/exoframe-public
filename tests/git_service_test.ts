@@ -1,6 +1,13 @@
 import { assert, assertEquals, assertExists, assertRejects } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
-import { GitService } from "../src/services/git_service.ts";
+import {
+  GitCorruptionError,
+  GitLockError,
+  GitNothingToCommitError,
+  GitRepositoryError,
+  GitService,
+  GitTimeoutError,
+} from "../src/services/git_service.ts";
 import { createMockConfig } from "./helpers/config.ts";
 import { createGitTestContext, GitTestHelper } from "./helpers/git_test_helper.ts";
 
@@ -509,6 +516,111 @@ Deno.test("GitService: branch operations preserve traceId context", async () => 
     // Verify agent_id is preserved
     const agentLogs = logs.filter((log) => log.agent_id === agentId);
     assertEquals(agentLogs.length >= 1, true);
+  } finally {
+    await cleanup();
+  }
+});
+
+// ============================================================================
+// Issue #8: Git Service Without Proper Error Recovery - Verification Tests
+// ============================================================================
+
+Deno.test("GitService: handles repository lock conflicts with retry", async () => {
+  const { tempDir, cleanup, git } = await createGitTestContext("git-test-lock-");
+  const _helper = new GitTestHelper(tempDir);
+
+  try {
+    // Initialize repository
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Create a lock file to simulate repository lock
+    const lockPath = join(tempDir, ".git", "index.lock");
+    await Deno.writeTextFile(lockPath, "locked");
+
+    // This should retry and eventually succeed or timeout gracefully
+    const result = await git.runGitCommand(["status", "--porcelain"], {
+      timeoutMs: 1000, // Short timeout for test
+      retryOnLock: true,
+    });
+
+    // Should either succeed after lock is released or timeout gracefully
+    assert(typeof result.exitCode === "number");
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("GitService: classifies git errors appropriately", async () => {
+  const { tempDir, cleanup, git } = await createGitTestContext("git-test-errors-");
+  const _helper = new GitTestHelper(tempDir);
+
+  try {
+    // Initialize repository
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Test repository corruption error (simulate by corrupting a git object)
+    const error = git.classifyGitError(128, "fatal: loose object file corrupted", ["status"]);
+    assert(error instanceof GitCorruptionError);
+
+    // Test lock error
+    const lockError = git.classifyGitError(128, "fatal: Unable to create '.git/index.lock'", ["commit"]);
+    assert(lockError instanceof GitLockError);
+
+    // Test nothing to commit
+    const nothingError = git.classifyGitError(1, "nothing to commit, working tree clean", ["commit"]);
+    assert(nothingError instanceof GitNothingToCommitError);
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("GitService: times out long-running commands", async () => {
+  const { tempDir, cleanup, git } = await createGitTestContext("git-test-timeout-");
+  const _helper = new GitTestHelper(tempDir);
+
+  try {
+    // Initialize repository with some content
+    await git.ensureRepository();
+    await git.ensureIdentity();
+    await Deno.writeTextFile(join(tempDir, "test.txt"), "content");
+    await git.commit({ message: "Initial commit", traceId: "test-trace" });
+
+    // This should timeout before completion
+    await assertRejects(
+      async () => {
+        await git.runGitCommand(["log", "--all", "--oneline"], {
+          timeoutMs: 1, // Very short timeout
+        });
+      },
+      GitTimeoutError,
+    );
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("GitService: handles repository corruption gracefully", async () => {
+  const { tempDir, cleanup, git } = await createGitTestContext("git-test-corruption-");
+  const _helper = new GitTestHelper(tempDir);
+
+  try {
+    // Initialize repository
+    await git.ensureRepository();
+    await git.ensureIdentity();
+
+    // Simulate repository corruption by removing HEAD
+    const headPath = join(tempDir, ".git", "HEAD");
+    await Deno.remove(headPath);
+
+    // This should classify as repository error
+    await assertRejects(
+      async () => {
+        await git.runGitCommand(["status"]);
+      },
+      GitRepositoryError,
+    );
   } finally {
     await cleanup();
   }

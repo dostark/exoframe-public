@@ -82,6 +82,13 @@ export const DEFAULT_GIT_CHECKOUT_TIMEOUT_MS = 10000;
 export const DEFAULT_GIT_CLEAN_TIMEOUT_MS = 5000;
 export const DEFAULT_GIT_LOG_TIMEOUT_MS = 5000;
 export const DEFAULT_GIT_DIFF_TIMEOUT_MS = 10000;
+export const DEFAULT_GIT_COMMAND_TIMEOUT_MS = 30000;
+export const DEFAULT_GIT_MAX_RETRIES = 3;
+export const DEFAULT_GIT_RETRY_BACKOFF_BASE_MS = 100;
+export const DEFAULT_GIT_BRANCH_NAME_COLLISION_MAX_RETRIES = 5;
+export const DEFAULT_GIT_TRACE_ID_SHORT_LENGTH = 8;
+export const DEFAULT_GIT_BRANCH_SUFFIX_LENGTH = 6;
+export const DEFAULT_GIT_EXIT_CODE_FATAL = 128;
 
 // ============================================================================
 // API Endpoint Defaults

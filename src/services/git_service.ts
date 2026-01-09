@@ -5,6 +5,15 @@
 
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "./db.ts";
+import {
+  DEFAULT_GIT_BRANCH_NAME_COLLISION_MAX_RETRIES,
+  DEFAULT_GIT_BRANCH_SUFFIX_LENGTH,
+  DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+  DEFAULT_GIT_EXIT_CODE_FATAL,
+  DEFAULT_GIT_MAX_RETRIES,
+  DEFAULT_GIT_RETRY_BACKOFF_BASE_MS,
+  DEFAULT_GIT_TRACE_ID_SHORT_LENGTH,
+} from "../config/constants.ts";
 
 // ============================================================================
 // Types
@@ -26,6 +35,58 @@ export interface CommitOptions {
   message: string;
   description?: string;
   traceId: string;
+}
+
+export interface GitCommandOptions {
+  throwOnError?: boolean;
+  timeoutMs?: number;
+  retryOnLock?: boolean;
+}
+
+// ============================================================================
+// Git Error Classes
+// ============================================================================
+
+export class GitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GitError";
+  }
+}
+
+export class GitTimeoutError extends GitError {
+  constructor(message: string) {
+    super(message);
+    this.name = "GitTimeoutError";
+  }
+}
+
+export class GitLockError extends GitError {
+  constructor(message: string) {
+    super(message);
+    this.name = "GitLockError";
+  }
+}
+
+export class GitRepositoryError extends GitError {
+  constructor(message: string) {
+    super(message);
+    this.name = "GitRepositoryError";
+  }
+}
+
+export class GitCorruptionError extends GitError {
+  constructor(message: string) {
+    super(message);
+    this.name = "GitCorruptionError";
+  }
+}
+
+export class GitNothingToCommitError extends GitError {
+  constructor(message: string) {
+    super(message);
+    this.name = "GitNothingToCommitError";
+  }
 }
 
 // ============================================================================
@@ -125,8 +186,8 @@ export class GitService {
 
     try {
       // Check if local identity exists
-      const nameResult = await this.runGitCommand(["config", "--local", "user.name"], false);
-      const emailResult = await this.runGitCommand(["config", "--local", "user.email"], false);
+      const nameResult = await this.runGitCommand(["config", "--local", "user.name"], { throwOnError: false });
+      const emailResult = await this.runGitCommand(["config", "--local", "user.email"], { throwOnError: false });
 
       if (nameResult.output.trim() && emailResult.output.trim()) {
         // Identity already configured
@@ -167,20 +228,20 @@ export class GitService {
       // Ensure identity is configured before creating branch
       await this.ensureIdentity();
 
-      // Extract first 8 chars of traceId for branch name
-      const shortTrace = options.traceId.substring(0, 8);
+      // Extract first N chars of traceId for branch name
+      const shortTrace = options.traceId.substring(0, DEFAULT_GIT_TRACE_ID_SHORT_LENGTH);
       const baseName = `feat/${options.requestId}-${shortTrace}`;
       let branchName = baseName;
 
       // Retry loop for branch creation
-      const maxRetries = 5;
+      const maxRetries = DEFAULT_GIT_BRANCH_NAME_COLLISION_MAX_RETRIES;
       let lastError: Error | null = null;
 
       for (let i = 0; i < maxRetries; i++) {
         try {
           if (i === 0) {
             // First try: check if base name exists
-            const listResult = await this.runGitCommand(["branch", "--list", branchName], false);
+            const listResult = await this.runGitCommand(["branch", "--list", branchName], { throwOnError: false });
             if (listResult.output.trim()) {
               // Branch exists, try with timestamp first
               const timestamp = Date.now().toString(36);
@@ -188,7 +249,7 @@ export class GitService {
             }
           } else {
             // For retries, append random suffix
-            const suffix = Math.random().toString(36).substring(2, 8);
+            const suffix = Math.random().toString(36).substring(2, DEFAULT_GIT_BRANCH_SUFFIX_LENGTH + 2);
             branchName = `${baseName}-${suffix}`;
           }
 
@@ -312,34 +373,142 @@ export class GitService {
   }
 
   /**
-   * Run a git command
+   * Run a git command with timeout protection and error recovery
    */
-  private async runGitCommand(
+  public async runGitCommand(
     args: string[],
-    throwOnError = true,
+    options: GitCommandOptions = {},
   ): Promise<{ output: string; exitCode: number }> {
-    const cmd = new Deno.Command("git", {
-      args,
-      cwd: this.repoPath,
-      stdout: "piped",
-      stderr: "piped",
-    });
+    const {
+      throwOnError = true,
+      timeoutMs = DEFAULT_GIT_COMMAND_TIMEOUT_MS,
+      retryOnLock = true,
+    } = options;
 
-    const { code, stdout, stderr } = await cmd.output();
+    const startTime = Date.now();
+    let attempt = 0;
+    const maxRetries = retryOnLock ? DEFAULT_GIT_MAX_RETRIES : 0;
 
-    const output = new TextDecoder().decode(stdout);
-    const errorOutput = new TextDecoder().decode(stderr);
+    while (attempt <= maxRetries) {
+      let timeoutId: number | undefined;
+      try {
+        const controller = new AbortController();
+        timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    if (code !== 0 && throwOnError) {
-      throw new Error(
-        `Git command failed: git ${args.join(" ")}\nExit code: ${code}\nError: ${errorOutput}`,
-      );
+        const cmd = new Deno.Command("git", {
+          args,
+          cwd: this.repoPath,
+          stdout: "piped",
+          stderr: "piped",
+          signal: controller.signal,
+        });
+
+        const result = await cmd.output();
+        clearTimeout(timeoutId);
+
+        const output = new TextDecoder().decode(result.stdout);
+        const errorOutput = new TextDecoder().decode(result.stderr);
+
+        // Handle specific git error conditions
+        if (result.code !== 0) {
+          const gitError = this.classifyGitError(result.code, errorOutput, args);
+
+          if (throwOnError) {
+            throw gitError;
+          }
+        }
+
+        // Log successful command
+        this.logActivity("git.command.success", {
+          command: `git ${args.join(" ")}`,
+          exit_code: result.code,
+          duration_ms: Date.now() - startTime,
+          attempt: attempt + 1,
+        });
+
+        return {
+          output: output || errorOutput,
+          exitCode: result.code,
+        };
+      } catch (error) {
+        if (timeoutId) clearTimeout(timeoutId);
+
+        // Handle timeout
+        if (error instanceof Error && error.name === "AbortError") {
+          const timeoutError = new GitTimeoutError(
+            `Git command timed out after ${timeoutMs}ms: git ${args.join(" ")}`,
+          );
+
+          if (throwOnError) {
+            throw timeoutError;
+          }
+
+          this.logActivity("git.command.timeout", {
+            command: `git ${args.join(" ")}`,
+            timeout_ms: timeoutMs,
+            attempt: attempt + 1,
+          });
+
+          return { output: "", exitCode: -1 };
+        }
+
+        // Handle lock conflicts with retry
+        if (retryOnLock && attempt < maxRetries && this.isLockError(error)) {
+          attempt++;
+          const delay = Math.pow(2, attempt) * DEFAULT_GIT_RETRY_BACKOFF_BASE_MS; // Exponential backoff
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+
+        if (throwOnError) {
+          throw error;
+        }
+
+        return { output: "", exitCode: -1 };
+      }
     }
 
-    return {
-      output: output || errorOutput,
-      exitCode: code,
-    };
+    throw new GitError(`Git command failed after ${maxRetries + 1} attempts: git ${args.join(" ")}`);
+  }
+
+  /**
+   * Classify git errors into specific error types
+   */
+  public classifyGitError(exitCode: number, stderr: string, args: string[]): GitError {
+    const command = args.join(" ");
+
+    // Repository state errors
+    if (stderr.includes("not a git repository")) {
+      return new GitRepositoryError(`Not a git repository: ${this.repoPath}`);
+    }
+
+    if (stderr.includes("index.lock") || stderr.includes("lock")) {
+      return new GitLockError(`Repository locked: ${stderr.trim()}`);
+    }
+
+    if (stderr.includes("corrupt") || stderr.includes("loose object")) {
+      return new GitCorruptionError(`Repository corruption detected: ${stderr.trim()}`);
+    }
+
+    // Common command errors
+    if (command.startsWith("status") && exitCode === DEFAULT_GIT_EXIT_CODE_FATAL) {
+      return new GitRepositoryError(`Invalid repository state: ${stderr.trim()}`);
+    }
+
+    if (command.startsWith("commit") && stderr.includes("nothing to commit")) {
+      return new GitNothingToCommitError("Nothing to commit");
+    }
+
+    // Generic git error
+    return new GitError(`Git command failed (${exitCode}): ${stderr.trim()}`);
+  }
+
+  /**
+   * Check if error is related to repository locking
+   */
+  private isLockError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    return error.message.includes("lock") || error.message.includes("Lock");
   }
 
   /**

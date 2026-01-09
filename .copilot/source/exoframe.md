@@ -66,8 +66,38 @@ Constructor-based DI: pass `config`, `db`, and `provider` into services. Keep si
     - **Note**: Always use `PathResolver` to validate paths before access.
 - **MCP Enforcement**: In Hybrid mode, agents can read files directly but MUST use MCP tools for writes (to ensure auditability).
 
-### Business Logic Rules
-- **Plan Approval**: `exoctl plan approve` must never fail due to existing files. It should archive the previous state to `Workspace/Archive/` before writing the new plan.
-- **Data Formats**: Use **YAML Frontmatter** for all markdown metadata. Do NOT use TOML or JSON for frontmatter.
+### Configuration Constants & Magic Numbers
+
+**ALL magic numbers MUST be configurable constants** centralized in `src/config/constants.ts`. Never use hardcoded numeric literals in business logic.
+
+**Requirements:**
+- ✅ Extract ALL numeric literals > 1 into named constants
+- ✅ Group related constants by module/feature in `constants.ts`
+- ✅ Use descriptive names with `DEFAULT_` prefix
+- ✅ Import and use constants instead of literals
+- ✅ Update constants file when adding new configurable values
+
+**Examples:**
+```typescript
+// ❌ BAD: Magic numbers in code
+const timeout = 30000;
+const maxRetries = 3;
+const delay = Math.pow(2, attempt) * 100;
+
+// ✅ GOOD: Configurable constants
+import { DEFAULT_GIT_COMMAND_TIMEOUT_MS, DEFAULT_GIT_MAX_RETRIES, DEFAULT_GIT_RETRY_BACKOFF_BASE_MS } from "../config/constants.ts";
+
+const timeout = DEFAULT_GIT_COMMAND_TIMEOUT_MS;
+const maxRetries = DEFAULT_GIT_MAX_RETRIES;
+const delay = Math.pow(2, attempt) * DEFAULT_GIT_RETRY_BACKOFF_BASE_MS;
+```
+
+**Constants File Structure:**
+- Group constants by module/feature with clear section headers
+- Include JSDoc comments explaining purpose and units
+- Use consistent naming patterns
+- Keep related constants together
 
 ---
+
+```
