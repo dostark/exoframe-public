@@ -87,7 +87,7 @@ Deno.test("read_file: rejects non-existent portal", async () => {
     });
 
     const response = await ctx.server.handleRequest(request);
-    assertMCPError(response, -32602, "Portal");
+    assertMCPError(response, -32602, "Resource not found");
   } finally {
     await ctx.cleanup();
   }
@@ -121,7 +121,7 @@ Deno.test("read_file: prevents path traversal attack", async () => {
     });
 
     const response = await ctx.server.handleRequest(request);
-    assertMCPError(response, -32602, "Path traversal");
+    assertMCPError(response, -32602, "Access denied: Invalid path");
   } finally {
     await ctx.cleanup();
   }
@@ -247,7 +247,7 @@ Deno.test("write_file: rejects non-existent portal", async () => {
     });
 
     const response = await ctx.server.handleRequest(request);
-    assertMCPError(response, -32602, "Portal");
+    assertMCPError(response, -32602, "Resource not found");
   } finally {
     await ctx.cleanup();
   }
@@ -263,7 +263,7 @@ Deno.test("write_file: prevents path traversal", async () => {
     });
 
     const response = await ctx.server.handleRequest(request);
-    assertMCPError(response, -32602, "Path traversal");
+    assertMCPError(response, -32602, "Access denied: Invalid path");
   } finally {
     await ctx.cleanup();
   }
@@ -373,7 +373,7 @@ Deno.test("list_directory: rejects non-existent portal", async () => {
     });
 
     const response = await ctx.server.handleRequest(request);
-    assertMCPError(response, -32602, "Portal");
+    assertMCPError(response, -32602, "Resource not found");
   } finally {
     await ctx.cleanup();
   }
@@ -388,7 +388,7 @@ Deno.test("list_directory: prevents path traversal", async () => {
     });
 
     const response = await ctx.server.handleRequest(request);
-    assertMCPError(response, -32602, "Path traversal");
+    assertMCPError(response, -32602, "Access denied: Invalid path");
   } finally {
     await ctx.cleanup();
   }

@@ -63,7 +63,7 @@ Deno.test("git_create_branch: rejects non-existent portal", async () => {
     });
 
     const response = await ctx.server.handleRequest(request);
-    assertMCPError(response, -32602, "Portal");
+    assertMCPError(response, -32602, "Resource not found");
   } finally {
     await ctx.cleanup();
   }
