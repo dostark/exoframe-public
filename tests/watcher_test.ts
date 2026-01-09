@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
-import { FileReadyEvent, FileWatcher } from "../src/services/watcher.ts";
+import { FileWatcher } from "../src/services/watcher.ts";
 import { createMockConfig } from "./helpers/config.ts";
 import { initTestDbService } from "./helpers/db.ts";
 import { createWatcherTestContext } from "./helpers/watcher_test_helper.ts";
@@ -790,7 +790,7 @@ Deno.test("File Stability - Exponential backoff timing", async () => {
       };
 
       // Start changing the file continuously
-      const changePromise = changeFile();
+      const _changePromise = changeFile();
 
       // Try to read it stably - should timeout after ~1.85 seconds (sum of backoff delays)
       const watcher = new FileWatcher(createMockConfig(tempDir), () => {});
@@ -887,7 +887,7 @@ Deno.test("File Watcher - Race Condition Prevention", async () => {
     let maxConcurrent = 0;
 
     // Create watcher with slow processing to test concurrency
-    const watcher = helper.createWatcher(async (event) => {
+    const watcher = helper.createWatcher(async (_event) => {
       processingCount++;
       concurrentProcessing++;
       maxConcurrent = Math.max(maxConcurrent, concurrentProcessing);
@@ -980,7 +980,7 @@ Deno.test("File Watcher - Processing Set Cleanup", async () => {
     await helper.createWorkspaceStructure();
 
     // Create watcher
-    const watcher = helper.createWatcher(async (event) => {
+    const watcher = helper.createWatcher(async (_event) => {
       // Simulate processing
       await delay(50);
     }, { debounceMs: 50, stabilityCheck: false });
