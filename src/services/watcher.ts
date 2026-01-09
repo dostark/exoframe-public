@@ -2,6 +2,8 @@ import { join } from "@std/path";
 import type { Config } from "../config/schema.ts";
 import type { DatabaseService } from "./db.ts";
 import { EventLogger } from "./event_logger.ts";
+import { DEFAULT_WATCHER_STABILITY_BACKOFF_MS, DEFAULT_WATCHER_STABILITY_MAX_ATTEMPTS } from "../config/constants.ts";
+import { delay } from "../utils/async_utils.ts";
 
 /**
  * Event emitted when a stable file is detected
@@ -23,6 +25,7 @@ export class FileWatcher {
   private debounceMs: number;
   private stabilityCheck: boolean;
   private debounceTimers: Map<string, number> = new Map();
+  private processingFiles: Set<string> = new Set();
   private onFileReady: (event: FileReadyEvent) => void | Promise<void>;
   private abortController: AbortController | null = null;
   private fsWatcher: Deno.FsWatcher | null = null;
@@ -127,6 +130,9 @@ export class FileWatcher {
     }
     this.debounceTimers.clear();
 
+    // Clear processing files set
+    this.processingFiles.clear();
+
     // Log watcher stopped
     this.logger.log({
       action: "watcher.stopped",
@@ -149,10 +155,31 @@ export class FileWatcher {
     // Set new timer
     const timerId = setTimeout(() => {
       this.debounceTimers.delete(path);
-      this.processFile(path);
+      this.processFileQueued(path); // Use queued processing to prevent race conditions
     }, this.debounceMs);
 
     this.debounceTimers.set(path, timerId);
+  }
+
+  /**
+   * Stage 1.5: Queued file processing to prevent race conditions
+   */
+  private async processFileQueued(path: string) {
+    // Prevent concurrent processing of the same file
+    if (this.processingFiles.has(path)) {
+      this.logger.debug("watcher.file_already_processing", path, {
+        skipped: true,
+      });
+      return;
+    }
+
+    this.processingFiles.add(path);
+
+    try {
+      await this.processFile(path);
+    } finally {
+      this.processingFiles.delete(path);
+    }
   }
 
   /**
@@ -190,8 +217,8 @@ export class FileWatcher {
    * Read file with stability verification (exponential backoff)
    */
   private async readFileWhenStable(path: string): Promise<string> {
-    const maxAttempts = 5;
-    const backoffMs = [50, 100, 200, 500, 1000];
+    const maxAttempts = DEFAULT_WATCHER_STABILITY_MAX_ATTEMPTS;
+    const backoffMs = DEFAULT_WATCHER_STABILITY_BACKOFF_MS;
 
     // Stage 1: Wait for file size to stabilize (metadata only, no content reading)
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -200,7 +227,7 @@ export class FileWatcher {
         const stat1 = await Deno.stat(path);
 
         // Wait for stability
-        await new Promise((resolve) => setTimeout(resolve, backoffMs[attempt]));
+        await delay(backoffMs[attempt]);
 
         // Check if size changed
         const stat2 = await Deno.stat(path);

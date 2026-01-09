@@ -17,6 +17,9 @@ export const DEFAULT_DATABASE_FOREIGN_KEYS = true;
 // ============================================================================
 export const DEFAULT_WATCHER_DEBOUNCE_MS = 200;
 export const DEFAULT_WATCHER_STABILITY_CHECK = true;
+export const DEFAULT_WATCHER_STABILITY_MAX_ATTEMPTS = 5;
+export const DEFAULT_WATCHER_STABILITY_BACKOFF_MS = [50, 100, 200, 500, 1000];
+export const DEFAULT_WATCHER_STABILITY_MIN_FILE_SIZE = 1;
 
 // ============================================================================
 // Agent Defaults

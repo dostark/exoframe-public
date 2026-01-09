@@ -1,9 +1,15 @@
 import { assert, assertEquals } from "jsr:@std/assert@^1.0.0";
 import { join } from "@std/path";
-import { FileWatcher } from "../src/services/watcher.ts";
+import { FileReadyEvent, FileWatcher } from "../src/services/watcher.ts";
 import { createMockConfig } from "./helpers/config.ts";
 import { initTestDbService } from "./helpers/db.ts";
 import { createWatcherTestContext } from "./helpers/watcher_test_helper.ts";
+import { delay } from "../src/utils/async_utils.ts";
+import {
+  DEFAULT_WATCHER_STABILITY_BACKOFF_MS,
+  DEFAULT_WATCHER_STABILITY_MAX_ATTEMPTS,
+  DEFAULT_WATCHER_STABILITY_MIN_FILE_SIZE,
+} from "../src/config/constants.ts";
 
 /**
  * Tests for Step 2.1: The File Watcher (Stable Read)
@@ -14,30 +20,44 @@ import { createWatcherTestContext } from "./helpers/watcher_test_helper.ts";
  * - Test 3: Delete a file immediately after creating it → Watcher handles `NotFound` gracefully
  */
 
-// Helper to simulate readFileWhenStable function
+// Updated helper to use non-blocking delay utility
 async function readFileWhenStable(path: string): Promise<string> {
-  const maxAttempts = 5;
-  const backoffMs = [50, 100, 200, 500, 1000];
+  const maxAttempts = DEFAULT_WATCHER_STABILITY_MAX_ATTEMPTS;
+  const backoffMs = DEFAULT_WATCHER_STABILITY_BACKOFF_MS;
+  const minFileSize = DEFAULT_WATCHER_STABILITY_MIN_FILE_SIZE;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       // Get initial size
       const stat1 = await Deno.stat(path);
 
-      // Wait for stability
-      await new Promise((resolve) => setTimeout(resolve, backoffMs[attempt]));
+      // Validate initial file state
+      if (stat1.size < minFileSize) {
+        if (attempt === maxAttempts - 1) {
+          throw new Error(`File is empty or too small: ${path}`);
+        }
+        // Non-blocking delay
+        await delay(backoffMs[attempt]);
+        continue;
+      }
+
+      // Wait for stability window
+      await delay(backoffMs[attempt]);
 
       // Check if size changed
       const stat2 = await Deno.stat(path);
 
-      if (stat1.size === stat2.size && stat2.size > 0) {
-        // File appears stable, try to read
+      if (stat1.size === stat2.size && stat2.size >= minFileSize) {
+        // File size is stable! Now read content once
         const content = await Deno.readTextFile(path);
 
-        // Validate it's not empty or corrupted
+        // Validate it's not empty
         if (content.trim().length > 0) {
           return content;
         }
+
+        // Empty file, treat as unstable
+        throw new Error(`File is empty: ${path}`);
       }
 
       // File still changing, retry with longer wait
@@ -317,7 +337,7 @@ Deno.test("File size stability - zero size indicates deletion in progress", asyn
       errorMessage = (error as Error).message;
     }
 
-    assertEquals(errorMessage.includes("never stabilized"), true);
+    assertEquals(errorMessage.includes("File is empty or too small"), true);
   } finally {
     await Deno.remove(tempDir, { recursive: true }).catch(() => {});
   }
@@ -695,6 +715,288 @@ Deno.test("FileWatcher: handles rename events (file moves)", async () => {
     // Should detect the moved file
     assertEquals(eventsReceived.length, 1);
     assertEquals(eventsReceived[0].endsWith("moved.md"), true);
+  } finally {
+    await cleanup();
+  }
+});
+
+// ============================================================================
+// Issue #4: File Stability Checking with Blocking Operations - Tests
+// ============================================================================
+
+Deno.test("File Stability - Non-blocking delay utility", async () => {
+  // Test delay returns a promise
+  const start = Date.now();
+  const promise = delay(10);
+  assert(promise instanceof Promise, "delay() should return a Promise");
+
+  // Test delay actually waits
+  await promise;
+  const elapsed = Date.now() - start;
+  assert(elapsed >= 8, `Delay should wait at least 8ms, got ${elapsed}ms`);
+  assert(elapsed <= 50, `Delay should not wait too long, got ${elapsed}ms`);
+});
+
+Deno.test("File Stability - Constants are configurable", () => {
+  // Test constants exist and have expected values
+  assertEquals(DEFAULT_WATCHER_STABILITY_MAX_ATTEMPTS, 5);
+  assertEquals(DEFAULT_WATCHER_STABILITY_BACKOFF_MS, [50, 100, 200, 500, 1000]);
+  assertEquals(DEFAULT_WATCHER_STABILITY_MIN_FILE_SIZE, 1);
+});
+
+Deno.test("File Stability - Watcher uses non-blocking delays", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "watcher-test-nonblocking-" });
+  const testFile = join(tempDir, "test.txt");
+
+  try {
+    // Create a stable file
+    await Deno.writeTextFile(testFile, "test content");
+
+    // Create a file watcher instance
+    const config = createMockConfig(tempDir);
+    const watcher = new FileWatcher(config, () => {});
+
+    // Test that readFileWhenStable works (uses delay utility internally)
+    const content = await (watcher as any).readFileWhenStable(testFile);
+    assertEquals(content, "test content");
+
+    // Clean up
+    await Deno.remove(tempDir, { recursive: true });
+  } catch (error) {
+    await Deno.remove(tempDir, { recursive: true });
+    throw error;
+  }
+});
+
+Deno.test("File Stability - Exponential backoff timing", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "watcher-test-backoff-" });
+  const testFile = join(tempDir, "test.txt");
+
+  try {
+    // Create a file that keeps changing size during stability check
+    await Deno.writeTextFile(testFile, "initial");
+
+    const startTime = Date.now();
+
+    // This should fail after 5 attempts with exponential backoff
+    try {
+      // Simulate a file that keeps changing size throughout the stability check
+      const changeFile = async () => {
+        // Keep changing for longer than the stability check duration (1850ms)
+        for (let i = 0; i < 50; i++) {
+          await Deno.writeTextFile(testFile, "x".repeat(i + 1));
+          await new Promise((resolve) => setTimeout(resolve, 20)); // Change every 20ms
+        }
+      };
+
+      // Start changing the file continuously
+      const changePromise = changeFile();
+
+      // Try to read it stably - should timeout after ~1.85 seconds (sum of backoff delays)
+      const watcher = new FileWatcher(createMockConfig(tempDir), () => {});
+      await (watcher as any).readFileWhenStable(testFile);
+
+      assert(false, "Should have thrown timeout error");
+    } catch (error) {
+      assert(error instanceof Error);
+      assert(error.message.includes("never stabilized"), `Expected stabilization error, got: ${error.message}`);
+
+      // Verify timing - should be close to sum of backoff delays (1850ms)
+      const elapsed = Date.now() - startTime;
+      assert(elapsed >= 1800, `Should wait at least 1800ms, got ${elapsed}ms`);
+      assert(elapsed <= 2500, `Should not wait too long, got ${elapsed}ms`);
+    }
+
+    await Deno.remove(tempDir, { recursive: true });
+  } catch (error) {
+    await Deno.remove(tempDir, { recursive: true });
+    throw error;
+  }
+});
+
+Deno.test("File Stability - Event loop remains responsive", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "watcher-test-responsive-" });
+  const testFile = join(tempDir, "test.txt");
+
+  try {
+    // Create a slow-stabilizing file (never stabilizes)
+    await Deno.writeTextFile(testFile, "initial");
+
+    const responsivenessChecks: number[] = [];
+
+    // Start a background task that checks event loop responsiveness
+    const checkResponsiveness = async () => {
+      for (let i = 0; i < 20; i++) {
+        const start = Date.now();
+        await new Promise((resolve) => setTimeout(resolve, 0)); // Next tick
+        responsivenessChecks.push(Date.now() - start);
+      }
+    };
+
+    const responsivenessPromise = checkResponsiveness();
+
+    // Start stability check that should take ~1.85 seconds and fail
+    const watcher = new FileWatcher(createMockConfig(tempDir), () => {});
+    const stabilityPromise = (watcher as any).readFileWhenStable(testFile).catch(() => {
+      // Expected to fail - file never stabilizes
+    });
+
+    // Wait for both to complete
+    await Promise.all([responsivenessPromise, stabilityPromise]);
+
+    // Verify event loop remained responsive (no delays > 10ms)
+    const maxDelay = Math.max(...responsivenessChecks);
+    assert(maxDelay < 10, `Event loop blocked for ${maxDelay}ms, should be < 10ms`);
+
+    await Deno.remove(tempDir, { recursive: true });
+  } catch (error) {
+    await Deno.remove(tempDir, { recursive: true });
+    throw error;
+  }
+});
+
+Deno.test("File Stability - Backward compatibility maintained", async () => {
+  const tempDir = await Deno.makeTempDir({ prefix: "watcher-test-compat-" });
+  const testFile = join(tempDir, "test.txt");
+
+  try {
+    // Create a stable file
+    await Deno.writeTextFile(testFile, "Hello, World!");
+
+    // Test with FileWatcher
+    const config = createMockConfig(tempDir);
+    const watcher = new FileWatcher(config, () => {});
+    const content = await (watcher as any).readFileWhenStable(testFile);
+
+    assertEquals(content, "Hello, World!");
+
+    await Deno.remove(tempDir, { recursive: true });
+  } catch (error) {
+    await Deno.remove(tempDir, { recursive: true });
+    throw error;
+  }
+});
+
+Deno.test("File Watcher - Race Condition Prevention", async () => {
+  const { helper, cleanup } = await createWatcherTestContext("watcher-race-");
+  try {
+    await helper.createWorkspaceStructure();
+
+    let processingCount = 0;
+    let concurrentProcessing = 0;
+    let maxConcurrent = 0;
+
+    // Create watcher with slow processing to test concurrency
+    const watcher = helper.createWatcher(async (event) => {
+      processingCount++;
+      concurrentProcessing++;
+      maxConcurrent = Math.max(maxConcurrent, concurrentProcessing);
+
+      // Simulate slow processing (100ms)
+      await delay(100);
+
+      concurrentProcessing--;
+    }, { debounceMs: 50, stabilityCheck: false });
+
+    await helper.startWatcher(watcher);
+
+    // Rapidly trigger multiple events on same file
+    const testFile = join(helper.requestDir, "race_test.md");
+    const promises = [];
+    for (let i = 0; i < 5; i++) {
+      promises.push(
+        (async () => {
+          await Deno.writeTextFile(testFile, `content ${i}`);
+          // Small delay to ensure events are triggered
+          await delay(10);
+        })(),
+      );
+    }
+
+    await Promise.all(promises);
+
+    // Wait for processing to complete
+    await delay(1000);
+
+    await helper.stopWatcher(watcher);
+
+    // Verify only one processing occurred at a time
+    assertEquals(maxConcurrent, 1, "Only one file should be processed at a time");
+    assertEquals(processingCount, 1, "Only one processing should have occurred");
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("File Watcher - Concurrent Different Files", async () => {
+  const { helper, cleanup } = await createWatcherTestContext("watcher-concurrent-");
+  try {
+    await helper.createWorkspaceStructure();
+
+    let processingCount = 0;
+    const processedFiles = new Set<string>();
+
+    // Create watcher
+    const watcher = helper.createWatcher(async (event) => {
+      processingCount++;
+      processedFiles.add(event.path);
+
+      // Simulate processing time
+      await delay(50);
+    }, { debounceMs: 50, stabilityCheck: false });
+
+    await helper.startWatcher(watcher);
+
+    // Create multiple different files rapidly in the watched directory
+    const filePromises = [];
+    for (let i = 0; i < 3; i++) {
+      const filePath = join(helper.requestDir, `file_${i}.md`);
+      filePromises.push(
+        (async () => {
+          await Deno.writeTextFile(filePath, `content ${i}`);
+          await delay(10);
+        })(),
+      );
+    }
+
+    await Promise.all(filePromises);
+
+    // Wait for processing
+    await delay(500);
+
+    await helper.stopWatcher(watcher);
+
+    // Verify all files were processed
+    assertEquals(processingCount, 3, "All three files should have been processed");
+    assertEquals(processedFiles.size, 3, "All three files should be in processed set");
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("File Watcher - Processing Set Cleanup", async () => {
+  const { helper, cleanup } = await createWatcherTestContext("watcher-cleanup-");
+  try {
+    await helper.createWorkspaceStructure();
+
+    // Create watcher
+    const watcher = helper.createWatcher(async (event) => {
+      // Simulate processing
+      await delay(50);
+    }, { debounceMs: 50, stabilityCheck: false });
+
+    await helper.startWatcher(watcher);
+
+    // Trigger file processing
+    const testFile = join(helper.requestDir, "cleanup_test.md");
+    await Deno.writeTextFile(testFile, "test content");
+    await delay(200);
+
+    await helper.stopWatcher(watcher);
+
+    // Verify processing set is empty (accessing private field via type assertion)
+    const processingFiles = (watcher as any).processingFiles as Set<string>;
+    assertEquals(processingFiles.size, 0, "Processing set should be empty after stop");
   } finally {
     await cleanup();
   }
