@@ -1,0 +1,14 @@
+const timeout = DEFAULT_GIT_COMMAND_TIMEOUT_MS;
+const maxRetries = DEFAULT_GIT_MAX_RETRIES;
+const delay = Math.pow(2, attempt) * DEFAULT_GIT_RETRY_BACKOFF_BASE_MS;
+```
+
+**Constants File Structure:**
+- Group constants by module/feature with clear section headers
+- Include JSDoc comments explaining purpose and units
+- Use consistent naming patterns
+- Keep related constants together
+
+---
+
+```

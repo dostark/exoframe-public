@@ -1,5 +1,18 @@
-### Business Logic Rules
-- **Plan Approval**: `exoctl plan approve` must never fail due to existing files. It should archive the previous state to `Workspace/Archive/` before writing the new plan.
-- **Data Formats**: Use **YAML Frontmatter** for all markdown metadata. Do NOT use TOML or JSON for frontmatter.
+**ALL magic numbers MUST be configurable constants** centralized in `src/config/constants.ts`. Never use hardcoded numeric literals in business logic.
 
----
+**Requirements:**
+- ✅ Extract ALL numeric literals > 1 into named constants
+- ✅ Group related constants by module/feature in `constants.ts`
+- ✅ Use descriptive names with `DEFAULT_` prefix
+- ✅ Import and use constants instead of literals
+- ✅ Update constants file when adding new configurable values
+
+**Examples:**
+```typescript
+// ❌ BAD: Magic numbers in code
+const timeout = 30000;
+const maxRetries = 3;
+const delay = Math.pow(2, attempt) * 100;
+
+// ✅ GOOD: Configurable constants
+import { DEFAULT_GIT_COMMAND_TIMEOUT_MS, DEFAULT_GIT_MAX_RETRIES, DEFAULT_GIT_RETRY_BACKOFF_BASE_MS } from "../config/constants.ts";

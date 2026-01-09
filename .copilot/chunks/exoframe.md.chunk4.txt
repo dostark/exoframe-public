@@ -6,3 +6,5 @@
     - **Hybrid**: Read-only access to specific "Portal" paths.
     - **Note**: Always use `PathResolver` to validate paths before access.
 - **MCP Enforcement**: In Hybrid mode, agents can read files directly but MUST use MCP tools for writes (to ensure auditability).
+
+### Configuration Constants & Magic Numbers
