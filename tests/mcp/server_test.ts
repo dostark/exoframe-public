@@ -153,3 +153,124 @@ Deno.test("MCP Server: rejects unknown method", async () => {
     await ctx.cleanup();
   }
 });
+Deno.test("MCP Server: classifyError handles Zod validation errors", async () => {
+  const ctx = await initMCPTestWithoutPortal();
+  try {
+    // Create a mock Zod error
+    const zodError = {
+      constructor: { name: "ZodError" },
+      errors: [
+        { path: ["portal"], message: "Required" },
+        { path: ["path"], message: "Invalid format" },
+      ],
+    };
+
+    // Access private method via type assertion
+    const server = ctx.server as any;
+    const result = server.classifyError(zodError);
+
+    assertEquals(result.type, "validation_error");
+    assertEquals(result.code, -32602);
+    assertEquals(result.message, "Invalid tool arguments");
+    assertExists(result.data);
+    assertEquals(result.data.validation_errors.length, 2);
+  } finally {
+    await ctx.cleanup();
+  }
+});
+
+Deno.test("MCP Server: classifyError handles path traversal errors", async () => {
+  const ctx = await initMCPTestWithoutPortal();
+  try {
+    const error = new Error("Path traversal detected: ../secret.txt resolves to /etc/passwd, outside allowed roots");
+
+    const server = ctx.server as any;
+    const result = server.classifyError(error);
+
+    assertEquals(result.type, "security_error");
+    assertEquals(result.code, -32602);
+    assertEquals(result.message, "Access denied: Invalid path");
+  } finally {
+    await ctx.cleanup();
+  }
+});
+
+Deno.test("MCP Server: classifyError handles not found errors", async () => {
+  const ctx = await initMCPTestWithoutPortal();
+  try {
+    const error = new Error("File not found: nonexistent.txt");
+
+    const server = ctx.server as any;
+    const result = server.classifyError(error);
+
+    assertEquals(result.type, "not_found_error");
+    assertEquals(result.code, -32602);
+    assertEquals(result.message, "Resource not found");
+  } finally {
+    await ctx.cleanup();
+  }
+});
+
+Deno.test("MCP Server: classifyError handles permission errors", async () => {
+  const ctx = await initMCPTestWithoutPortal();
+  try {
+    const error = new Error("Permission denied: EACCES");
+
+    const server = ctx.server as any;
+    const result = server.classifyError(error);
+
+    assertEquals(result.type, "permission_error");
+    assertEquals(result.code, -32603);
+    assertEquals(result.message, "Permission denied");
+  } finally {
+    await ctx.cleanup();
+  }
+});
+
+Deno.test("MCP Server: classifyError handles timeout errors", async () => {
+  const ctx = await initMCPTestWithoutPortal();
+  try {
+    const error = new Error("Operation timed out after 30 seconds");
+
+    const server = ctx.server as any;
+    const result = server.classifyError(error);
+
+    assertEquals(result.type, "timeout_error");
+    assertEquals(result.code, -32603);
+    assertEquals(result.message, "Operation timed out");
+  } finally {
+    await ctx.cleanup();
+  }
+});
+
+Deno.test("MCP Server: classifyError handles generic errors", async () => {
+  const ctx = await initMCPTestWithoutPortal();
+  try {
+    const error = new Error("Some unexpected error occurred");
+
+    const server = ctx.server as any;
+    const result = server.classifyError(error);
+
+    assertEquals(result.type, "internal_error");
+    assertEquals(result.code, -32603);
+    assertEquals(result.message, "Some unexpected error occurred");
+  } finally {
+    await ctx.cleanup();
+  }
+});
+
+Deno.test("MCP Server: classifyError handles non-Error objects", async () => {
+  const ctx = await initMCPTestWithoutPortal();
+  try {
+    const error = "String error message";
+
+    const server = ctx.server as any;
+    const result = server.classifyError(error);
+
+    assertEquals(result.type, "internal_error");
+    assertEquals(result.code, -32603);
+    assertEquals(result.message, "Internal server error");
+  } finally {
+    await ctx.cleanup();
+  }
+});

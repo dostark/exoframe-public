@@ -986,6 +986,17 @@ private classifyError(error: unknown): {
     message: error instanceof Error ? error.message : "Internal server error",
   };
 }
+
+#### Success Criteria
+
+- **Classified Errors:** `classifyError` maps validation, security, not_found, permission, timeout, and generic errors to distinct types and JSON-RPC codes.
+- **Consistent JSON-RPC Responses:** `handleToolsCall` always returns error objects containing `code`, `message`, and optional sanitized `data` for validation errors.
+- **No Sensitive Leakage:** Error messages do not expose stack traces, internal paths, or secrets.
+- **Logging & Audit:** Failures are logged via `db.logActivity` with `tool_name`, `error_type`, `error_code`, and sanitized `error_message`.
+- **Tests:** Unit tests cover `classifyError` branches and `handleToolsCall` behavior (Zod validation, path/security errors, permissions, timeouts); integration tests verify logging and response shapes.
+- **Monitoring/Alerts:** Security-related errors (path traversal, permission denied, timeouts) emit security events for monitoring/alerting.
+- **Backward Compatibility:** Existing clients continue to receive valid JSON-RPC error codes; no breaking changes to API contract.
+- **Coverage:** Test coverage added for `src/mcp/server.ts` and `classifyError` with thresholds enforced.
 ```
 
 ---

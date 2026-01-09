@@ -303,6 +303,14 @@ export class MCPServer {
     // Validate tool exists
     const tool = this.tools.get(params.name);
     if (!tool) {
+      // Log missing tool attempt
+      this.db.logActivity(
+        "mcp.server",
+        "mcp.tool.not_found",
+        params.name,
+        { tool_name: params.name },
+      );
+
       return {
         jsonrpc: "2.0",
         id: request.id,
@@ -317,44 +325,106 @@ export class MCPServer {
       // Execute tool
       const result = await tool.execute(params.arguments);
 
+      // Log successful tool execution (sanitized)
+      try {
+        this.db.logActivity(
+          "mcp.server",
+          "mcp.tool.executed",
+          params.name,
+          {
+            tool_name: params.name,
+            success: true,
+            has_result: !!result,
+          },
+        );
+      } catch {
+        // Logging must not break tool execution
+      }
+
       return {
         jsonrpc: "2.0",
         id: request.id,
         result,
       };
     } catch (error) {
-      // Handle tool execution errors
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      // Classify and sanitize errors for JSON-RPC
+      const classification = this.classifyError(error);
 
-      // Determine error code based on error type
-      let errorCode = -32603; // Internal error (default)
-
-      // Validation errors (Zod or parameter validation)
-      if (
-        errorMessage.includes("validation") || errorMessage.includes("Required") ||
-        errorMessage.includes("expected") ||
-        (error && typeof error === "object" && "constructor" in error && error.constructor?.name === "ZodError")
-      ) {
-        errorCode = -32602; // Invalid params
-      }
-      // Portal/file not found errors
-      if (errorMessage.includes("not found") || errorMessage.includes("Portal")) {
-        errorCode = -32602; // Invalid params
-      }
-      // Path traversal attempts
-      if (errorMessage.includes("Path traversal")) {
-        errorCode = -32602; // Invalid params
+      // Log error with context (do not include sensitive details)
+      try {
+        this.db.logActivity(
+          "mcp.server",
+          "mcp.tool.failed",
+          params.name,
+          {
+            tool_name: params.name,
+            error_type: classification.type,
+            error_code: classification.code,
+            error_message: classification.message,
+            // client params intentionally omitted or sanitized
+          },
+        );
+      } catch {
+        // Swallow logging errors to avoid cascading failures
       }
 
       return {
         jsonrpc: "2.0",
         id: request.id,
         error: {
-          code: errorCode,
-          message: errorMessage,
+          code: classification.code,
+          message: classification.message,
+          data: classification.data,
         },
       };
     }
+  }
+
+  private classifyError(error: unknown): { type: string; code: number; message: string; data?: unknown } {
+    // Zod validation errors
+    if (
+      error && typeof error === "object" && "constructor" in error && (error as any).constructor?.name === "ZodError"
+    ) {
+      const zodError = error as any;
+      return {
+        type: "validation_error",
+        code: -32602, // Invalid params
+        message: "Invalid tool arguments",
+        data: {
+          validation_errors: Array.isArray(zodError.errors)
+            ? zodError.errors.map((e: any) => ({ path: e.path?.join?.(".") ?? "", message: e.message }))
+            : undefined,
+        },
+      };
+    }
+
+    // If it's an Error instance, inspect the message for classification
+    if (error instanceof Error) {
+      const msg = error.message || "";
+
+      if (msg.includes("Path traversal") || msg.includes("outside allowed roots")) {
+        return { type: "security_error", code: -32602, message: "Access denied: Invalid path" };
+      }
+
+      if (msg.includes("not found") || msg.includes("ENOENT") || msg.includes("Portal")) {
+        return { type: "not_found_error", code: -32602, message: "Resource not found" };
+      }
+
+      if (msg.includes("permission") || msg.includes("EACCES") || msg.includes("Permission denied")) {
+        return { type: "permission_error", code: -32603, message: "Permission denied" };
+      }
+
+      if (msg.includes("timeout") || msg.includes("aborted") || msg.includes("timed out")) {
+        return { type: "timeout_error", code: -32603, message: "Operation timed out" };
+      }
+    }
+
+    // Fallback
+    return {
+      type: "internal_error",
+      code: -32603,
+      message: error instanceof Error ? error.message : "Internal server error",
+    };
   }
 
   /**
