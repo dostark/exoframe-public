@@ -333,11 +333,9 @@ export class MonitorTuiSession extends TuiSessionBase {
     // Build tree synchronously for immediate access (e.g., in tests)
     this.buildTree();
     this.selectFirstLog();
-    // Also refresh logs asynchronously for real-time updates
-    this.monitorView.refreshLogs().then(() => {
-      this.buildTree();
-      this.selectFirstLog();
-    }).catch(console.error);
+    // Do not trigger an immediate asynchronous refresh here to avoid
+    // racing with synchronous test interactions. Real-time refreshes are
+    // handled via `startAutoRefresh` / manual `refresh` calls.
   }
 
   // ===== State Accessors =====

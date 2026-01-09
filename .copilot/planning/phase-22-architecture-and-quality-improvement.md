@@ -760,74 +760,7 @@ for (let i = 0; i < wave.length; i++) {
 
 **File**: `src/flows/flow_runner.ts` (Lines 200-250 - REPLACE)
 
-```typescript
-// Execute steps with proper error isolation
-const wavePromises = wave.map((stepId) =>
-  this.executeStepSafe(flowRunId, stepId, flow, request, stepResults)
-);
-const waveResults = await Promise.allSettled(wavePromises);
-
-// Process results with error boundaries
-let waveFailed = false;
-let waveSuccessCount = 0;
-let waveFailureCount = 0;
-const waveErrors: Array<{stepId: string, error: unknown}> = [];
-
-for (let i = 0; i < wave.length; i++) {
-  const stepId = wave[i];
-  const promiseResult = waveResults[i];
-
-  try {
-    if (promiseResult.status === "fulfilled") {
-      const result = promiseResult.value;
-      stepResults.set(stepId, result);
-
-      if (result.success) {
-        waveSuccessCount++;
-      } else {
-        waveFailureCount++;
-        if (failFast) {
-          waveFailed = true;
-        }
-      }
-    } else {
-      // Handle execution errors with isolation
-      const error = promiseResult.reason;
-      waveErrors.push({ stepId, error });
-
-      const errorStepResult: StepResult = {
-        stepId,
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-        duration: 0,
-        startedAt: new Date(),
-        completedAt: new Date(),
-      };
-
-      stepResults.set(stepId, errorStepResult);
-      waveFailureCount++;
-
-      if (failFast) {
-        waveFailed = true;
-      }
-    }
-  } catch (processingError) {
-    // Prevent processing errors from corrupting the flow
-    this.eventLogger.error("flow.step.processing_error", {
-      flowRunId,
-      stepId,
-      error: processingError instanceof Error ? processingError.message : String(processingError),
-      traceId: request.traceId,
-      requestId: request.requestId,
-    });
-
-    waveFailureCount++;
-    if (failFast) {
-      waveFailed = true;
-    }
-  }
-}
-
+```
 // Log wave errors if any occurred
 if (waveErrors.length > 0) {
   this.eventLogger.warn("flow.wave.errors", {
@@ -843,6 +776,16 @@ if (waveErrors.length > 0) {
   });
 }
 ```
+
+#### Success Criteria
+
+- **Isolated Failures:** Individual step failures are recorded as failed `StepResult` entries without mutating or removing other steps' results.
+- **Error Boundaries:** Processing errors within result aggregation do not throw or corrupt `stepResults`; they are logged and converted to safe failure entries.
+- **Fail-Fast Semantics:** When `failFast` is enabled, the wave honors the flag (stops further steps) and returns a clear failure state; when disabled, unaffected steps continue to run.
+- **Comprehensive Logging:** All step and wave errors are logged via `eventLogger` with `flowRunId`, `stepId`, `waveNumber`, and sanitized error messages.
+- **Automated Tests:** Unit tests cover step success, step failure, processing exceptions, and `failFast` behavior; tests pass consistently in CI.
+- **No Data Corruption:** `stepResults` preserves timestamps, durations, and successful results for other steps after failures.
+- **Performance Regression:** Added isolation introduces minimal overhead (target <5% latency increase for typical waves) and is validated by benchmarks.
 
 ---
 

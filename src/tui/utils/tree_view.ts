@@ -189,9 +189,16 @@ export function toggleNode<T>(nodes: TreeNode<T>[], id: string): TreeNode<T>[] {
  */
 export function expandAll<T>(nodes: TreeNode<T>[]): TreeNode<T>[] {
   return nodes.map((node) => ({
-    ...node,
-    expanded: node.children.length > 0 ? true : node.expanded,
+    id: node.id,
+    label: node.label,
+    type: node.type,
+    expanded: node.children.length > 0 ? true : false,
     children: node.children.length > 0 ? expandAll(node.children) : [],
+    data: node.data,
+    badge: node.badge,
+    icon: node.icon,
+    selected: node.selected,
+    disabled: node.disabled,
   }));
 }
 
@@ -200,9 +207,16 @@ export function expandAll<T>(nodes: TreeNode<T>[]): TreeNode<T>[] {
  */
 export function collapseAll<T>(nodes: TreeNode<T>[]): TreeNode<T>[] {
   return nodes.map((node) => ({
-    ...node,
+    id: node.id,
+    label: node.label,
+    type: node.type,
     expanded: false,
     children: node.children.length > 0 ? collapseAll(node.children) : [],
+    data: node.data,
+    badge: node.badge,
+    icon: node.icon,
+    selected: node.selected,
+    disabled: node.disabled,
   }));
 }
 

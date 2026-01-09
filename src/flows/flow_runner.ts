@@ -196,40 +196,65 @@ export class FlowRunner {
           requestId: request.requestId,
         });
 
-        // Execute steps in this wave in parallel (with semaphore limit)
-        const wavePromises = wave.map((stepId) => this.executeStep(flowRunId, stepId, flow, request, stepResults));
+        // Execute steps in this wave in parallel using a safe executor
+        const wavePromises = wave.map((stepId) => this.executeStepSafe(flowRunId, stepId, flow, request, stepResults));
         const waveResults = await Promise.allSettled(wavePromises);
 
-        // Process results
+        // Process results with strong error boundaries
         let waveFailed = false;
         let waveSuccessCount = 0;
         let waveFailureCount = 0;
+        const waveErrors: Array<{ stepId: string; error: unknown }> = [];
 
         for (let i = 0; i < wave.length; i++) {
           const stepId = wave[i];
           const promiseResult = waveResults[i];
 
-          if (promiseResult.status === "fulfilled") {
-            stepResults.set(stepId, promiseResult.value);
-            if (promiseResult.value.success) {
-              waveSuccessCount++;
+          try {
+            if (promiseResult.status === "fulfilled") {
+              const result = promiseResult.value;
+              // Always set result into stepResults to preserve existing data
+              stepResults.set(stepId, result);
+
+              if (result.success) {
+                waveSuccessCount++;
+              } else {
+                waveFailureCount++;
+                if (failFast) {
+                  waveFailed = true;
+                }
+              }
             } else {
+              // Execution threw; record safe failure
+              const error = promiseResult.reason;
+              waveErrors.push({ stepId, error });
+
+              const errorStepResult: StepResult = {
+                stepId,
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+                duration: 0,
+                startedAt: new Date(),
+                completedAt: new Date(),
+              };
+
+              stepResults.set(stepId, errorStepResult);
               waveFailureCount++;
+
               if (failFast) {
                 waveFailed = true;
               }
             }
-          } else {
-            // Step execution threw an error
-            const errorStepResult: StepResult = {
+          } catch (processingError) {
+            // Protect aggregation code from throwing and corrupting results
+            this.eventLogger.log("flow.step.processing_error", {
+              flowRunId,
               stepId,
-              success: false,
-              error: promiseResult.reason?.message || "Unknown error",
-              duration: 0,
-              startedAt: new Date(),
-              completedAt: new Date(),
-            };
-            stepResults.set(stepId, errorStepResult);
+              error: processingError instanceof Error ? processingError.message : String(processingError),
+              traceId: request.traceId,
+              requestId: request.requestId,
+            });
+
             waveFailureCount++;
             if (failFast) {
               waveFailed = true;
@@ -249,6 +274,21 @@ export class FlowRunner {
           requestId: request.requestId,
         });
 
+        // Log any wave-level errors
+        if (waveErrors.length > 0) {
+          this.eventLogger.log("flow.wave.errors", {
+            flowRunId,
+            waveNumber,
+            errorCount: waveErrors.length,
+            errors: waveErrors.map(({ stepId, error }) => ({
+              stepId,
+              error: error instanceof Error ? error.message : String(error),
+            })),
+            traceId: request.traceId,
+            requestId: request.requestId,
+          });
+        }
+
         // If failFast is enabled and any step in this wave failed, stop execution
         if (waveFailed && failFast) {
           const failedStepIndex = wave.findIndex((_stepId, i) => {
@@ -260,7 +300,7 @@ export class FlowRunner {
           const failedResult = waveResults[failedStepIndex];
           const errorMessage = failedResult.status === "fulfilled"
             ? failedResult.value.error || "Unknown error"
-            : failedResult.reason?.message || "Unknown error";
+            : (failedResult as any).reason?.message || String((failedResult as any).reason || "Unknown error");
           throw new FlowExecutionError(`Step ${failedStepId} failed: ${errorMessage}`, flowRunId);
         }
       }
@@ -321,8 +361,7 @@ export class FlowRunner {
       const completedAt = new Date();
       const duration = completedAt.getTime() - startedAt.getTime();
 
-      // Determine partial results
-      const stepResults = new Map<string, StepResult>(); // This would need to be captured from the try block
+      // Determine partial results from the current stepResults map
       const successfulSteps = Array.from(stepResults.values()).filter((r) => r.success).length;
       const failedSteps = stepResults.size - successfulSteps;
 
@@ -694,6 +733,45 @@ export class FlowRunner {
             return `## ${stepId}\n\n${content}`;
           })
           .join("\n\n");
+    }
+  }
+
+  /**
+   * Safe wrapper around `executeStep` to ensure unexpected throws
+   * are converted into a `StepResult` and do not propagate.
+   */
+  private async executeStepSafe(
+    flowRunId: string,
+    stepId: string,
+    flow: Flow,
+    request: { userPrompt: string; traceId?: string; requestId?: string },
+    stepResults: Map<string, StepResult>,
+  ): Promise<StepResult> {
+    try {
+      return await this.executeStep(flowRunId, stepId, flow, request, stepResults);
+    } catch (error) {
+      // Log unexpected error and return a safe failure StepResult
+      try {
+        this.eventLogger.log("flow.step.unexpected_error", {
+          flowRunId,
+          stepId,
+          error: error instanceof Error ? error.message : String(error),
+          errorType: error instanceof Error ? error.constructor.name : "Unknown",
+          traceId: request.traceId,
+          requestId: request.requestId,
+        });
+      } catch {
+        // Swallow logging errors to avoid cascading failures
+      }
+
+      return {
+        stepId,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        duration: 0,
+        startedAt: new Date(),
+        completedAt: new Date(),
+      };
     }
   }
 }
