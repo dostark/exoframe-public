@@ -1,0 +1,23 @@
+if (result.code === 0) {
+      // Tracked file - restore - NO TIMEOUT
+      const checkoutProcess = new Deno.Command("git", {
+        args: ["checkout", "HEAD", "--", file],
+        cwd: portalPath,
+        // ❌ MISSING: timeout, signal
+      });
+      await checkoutProcess.output(); // ❌ CAN BLOCK FOREVER
+    } else {
+      // Untracked file - delete - NO TIMEOUT
+      const cleanProcess = new Deno.Command("git", {
+        args: ["clean", "-f", file],
+        cwd: portalPath,
+        // ❌ MISSING: timeout, signal
+      });
+      await checkoutProcess.output(); // ❌ CAN BLOCK FOREVER
+    }
+  }
+  // ❌ No success/failure reporting or error aggregation
+}
+```
+
+#### Impact Analysis

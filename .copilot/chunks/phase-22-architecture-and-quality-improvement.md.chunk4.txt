@@ -1,0 +1,13 @@
+**Priority**: P0 🔴 **CRITICAL**
+**File**: `src/services/agent_executor.ts`
+**Lines**: 250-400 (auditGitChanges, revertUnauthorizedChanges methods)
+**Estimated Effort**: 8 hours
+**Impact Score**: 10/10 (Availability, Performance, Reliability)
+
+#### Problem Statement
+
+Git subprocess operations execute without timeout protection, potentially blocking indefinitely. A single corrupted repository can halt the entire ExoFrame instance, requiring manual intervention and creating a critical availability risk.
+
+#### Current Vulnerable Code
+
+**File**: `src/services/agent_executor.ts` (Lines 273-297)

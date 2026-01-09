@@ -1,0 +1,16 @@
+```typescript
+async revertUnauthorizedChanges(
+  portalPath: string,
+  unauthorizedFiles: string[],
+): Promise<void> {
+  if (unauthorizedFiles.length === 0) return;
+
+// ❌ SEQUENTIAL PROCESSING - O(n) time for n files
+  for (const file of unauthorizedFiles) {
+    // Check if tracked - NO TIMEOUT
+    const statusProcess = new Deno.Command("git", {
+      args: ["ls-files", "--error-unmatch", file],
+      cwd: portalPath,
+      // ❌ MISSING: timeout, signal
+    });
+    const result = await statusProcess.output(); // ❌ CAN BLOCK FOREVER

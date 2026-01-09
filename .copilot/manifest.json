@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-08T21:59:02.863Z",
+  "generated_at": "2026-01-09T12:48:16.916Z",
   "docs": [
     {
       "path": ".copilot/docs/documentation.md",
@@ -379,6 +379,32 @@
         ".copilot/chunks/exoframe.md.chunk3.txt",
         ".copilot/chunks/exoframe.md.chunk4.txt",
         ".copilot/chunks/exoframe.md.chunk5.txt"
+      ]
+    },
+    {
+      "path": ".copilot/planning/phase-22-architecture-and-quality-improvement.md",
+      "agent": "copilot",
+      "scope": "architecture",
+      "title": "Extended Code Review - Additional Architecture & Quality Issues (v2)",
+      "short_summary": "",
+      "version": 2,
+      "topics": [
+        "code-quality",
+        "architecture",
+        "performance",
+        "security",
+        "reliability",
+        "technical-debt"
+      ],
+      "chunks": [
+        ".copilot/chunks/phase-22-architecture-and-quality-improvement.md.chunk0.txt",
+        ".copilot/chunks/phase-22-architecture-and-quality-improvement.md.chunk1.txt",
+        ".copilot/chunks/phase-22-architecture-and-quality-improvement.md.chunk2.txt",
+        ".copilot/chunks/phase-22-architecture-and-quality-improvement.md.chunk3.txt",
+        ".copilot/chunks/phase-22-architecture-and-quality-improvement.md.chunk4.txt",
+        ".copilot/chunks/phase-22-architecture-and-quality-improvement.md.chunk5.txt",
+        ".copilot/chunks/phase-22-architecture-and-quality-improvement.md.chunk6.txt",
+        ".copilot/chunks/phase-22-architecture-and-quality-improvement.md.chunk7.txt"
       ]
     },
     {

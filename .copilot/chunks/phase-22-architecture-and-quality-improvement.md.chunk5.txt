@@ -1,0 +1,24 @@
+```typescript
+async auditGitChanges(
+  portalPath: string,
+  authorizedFiles: string[],
+): Promise<string[]> {
+  // Get git status - NO TIMEOUT PROTECTION
+  const statusProcess = new Deno.Command("git", {
+    args: ["status", "--porcelain"],
+    cwd: portalPath,
+    stdout: "piped",
+    stderr: "piped",
+    // ❌ MISSING: signal, timeout configuration
+  });
+
+const output = await statusProcess.output(); // ❌ CAN BLOCK FOREVER
+  const statusText = new TextDecoder().decode(output.stdout);
+
+// ❌ No exit code validation
+  // ❌ stderr completely ignored
+  // ... rest of parsing logic
+}
+```
+
+**File**: `src/services/agent_executor.ts` (Lines 304-342)
