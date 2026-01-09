@@ -186,257 +186,26 @@ async revertUnauthorizedChanges(
 
 Create a new utility module for safe subprocess execution:
 
-**File**: `src/utils/subprocess.ts` (NEW)
-
-```typescript
-/**
- * Safe subprocess execution with timeout and error handling
- */
-export interface SubprocessOptions {
-  timeoutMs?: number;
-  abortSignal?: AbortSignal;
-  cwd?: string;
-  env?: Record<string, string>;
-}
-
-export class SafeSubprocess {
-  static async run(
-    command: string,
-    args: string[],
-    options: SubprocessOptions = {}
-  ): Promise<{ code: number; stdout: string; stderr: string }> {
-    const {
-      timeoutMs = 30000, // 30 second default timeout
-      abortSignal,
-      cwd,
-      env,
-    } = options;
-
-    // Create abort controller for timeout
-    const timeoutController = new AbortController();
-    const timeoutId = setTimeout(() => {
-      timeoutController.abort();
-    }, timeoutMs);
-
-    // Combine abort signals
-    const combinedSignal = abortSignal
-      ? AbortSignal.any([abortSignal, timeoutController.signal])
-      : timeoutController.signal;
-
-    try {
-      const cmd = new Deno.Command(command, {
-        args,
-        cwd,
-        env,
-        stdout: "piped",
-        stderr: "piped",
-        signal: combinedSignal,
-      });
-
-      const result = await cmd.output();
-
-      clearTimeout(timeoutId);
-
-      const stdout = new TextDecoder().decode(result.stdout);
-      const stderr = new TextDecoder().decode(result.stderr);
-
-      return { code: result.code, stdout, stderr };
-
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof Deno.errors.PermissionDenied) {
-        throw new SubprocessError(`Permission denied: ${command}`, error);
-      }
-      if (error instanceof Deno.errors.NotFound) {
-        throw new SubprocessError(`Command not found: ${command}`, error);
-      }
-      if (combinedSignal.aborted) {
-        throw new SubprocessTimeoutError(`Command timed out after ${timeoutMs}ms: ${command} ${args.join(' ')}`);
-      }
-
-      throw new SubprocessError(`Subprocess failed: ${command}`, error);
-    }
-  }
-}
-
-export class SubprocessError extends Error {
-  constructor(message: string, public cause?: Error) {
-    super(message);
-    this.name = 'SubprocessError';
-  }
-}
-
-export class SubprocessTimeoutError extends SubprocessError {
-  constructor(message: string) {
-    super(message);
-    this.name = 'SubprocessTimeoutError';
-  }
-}
-```
-
 **Step 2: Refactor Git Operations with Safe Execution**
-
-**File**: `src/services/agent_executor.ts` (Lines 273-297 - REPLACE)
-
-```typescript
-async auditGitChanges(
-  portalPath: string,
-  authorizedFiles: string[],
-): Promise<string[]> {
-  const { SafeSubprocess, SubprocessTimeoutError } = await import("../utils/subprocess.ts");
-
-  try {
-    // Get git status with timeout protection
-    const result = await SafeSubprocess.run("git", ["status", "--porcelain"], {
-      cwd: portalPath,
-      timeoutMs: 10000, // 10 second timeout for status
-    });
-
-    if (result.code !== 0) {
-      throw new Error(`Git status failed: ${result.stderr}`);
-    }
-
-    const statusText = result.stdout.trim();
-    if (!statusText) {
-      return []; // No changes
-    }
-
-    const unauthorizedChanges: string[] = [];
-    const authorizedSet = new Set(authorizedFiles); // O(1) lookups
-
-    // More robust parsing
-    for (const line of statusText.split('\n')) {
-      if (!line.trim()) continue;
-
-      // Handle filenames with spaces (basic protection)
-      const filename = line.slice(3).trim();
-
-      // O(1) lookup instead of O(n)
-      if (!authorizedSet.has(filename)) {
-        unauthorizedChanges.push(filename);
-      }
-    }
-
-    return unauthorizedChanges;
-
-  } catch (error) {
-    if (error instanceof SubprocessTimeoutError) {
-      this.logger.error("git.audit.timeout", portalPath, {
-        error: error.message,
-        timeout_ms: 10000,
-      });
-      throw new AgentExecutionError(`Git audit timed out for portal: ${portalPath}`);
-    }
-
-    this.logger.error("git.audit.failed", portalPath, {
-      error: error instanceof Error ? error.message : String(error),
-      stderr: error instanceof Error && 'stderr' in error ? error.stderr : undefined,
-    });
-    throw new AgentExecutionError(`Git audit failed for portal: ${portalPath}`, error);
-  }
-}
-```
-
-**File**: `src/services/agent_executor.ts` (Lines 304-342 - REPLACE)
-
-```typescript
-async revertUnauthorizedChanges(
-  portalPath: string,
-  unauthorizedFiles: string[],
-): Promise<void> {
-  const { SafeSubprocess, SubprocessTimeoutError } = await import("../utils/subprocess.ts");
-
-  if (unauthorizedFiles.length === 0) return;
-
-  const results = {
-    successful: [] as string[],
-    failed: [] as Array<{file: string, error: string}>,
-  };
-
-  // Process files concurrently with concurrency limit
-  const concurrencyLimit = 5; // Configurable
-  const chunks = this.chunkArray(unauthorizedFiles, concurrencyLimit);
-
-  for (const chunk of chunks) {
-    const promises = chunk.map(async (file) => {
-      try {
-        // Check if tracked with timeout
-        const lsResult = await SafeSubprocess.run("git", ["ls-files", "--error-unmatch", file], {
-          cwd: portalPath,
-          timeoutMs: 5000,
-        });
-
-        if (lsResult.code === 0) {
-          // Tracked file - restore with timeout
-          await SafeSubprocess.run("git", ["checkout", "HEAD", "--", file], {
-            cwd: portalPath,
-            timeoutMs: 10000,
-          });
-        } else {
-          // Untracked file - delete with timeout
-          await SafeSubprocess.run("git", ["clean", "-f", file], {
-            cwd: portalPath,
-            timeoutMs: 5000,
-          });
-        }
-
-        results.successful.push(file);
-
-      } catch (error) {
-        results.failed.push({
-          file,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    });
-
-    // Wait for chunk to complete
-    await Promise.allSettled(promises);
-  }
-
-  // Log results
-  this.logger.info("git.revert.completed", portalPath, {
-    total_files: unauthorizedFiles.length,
-    successful: results.successful.length,
-    failed: results.failed.length,
-    failures: results.failed,
-  });
-
-  // Throw if any critical failures
-  if (results.failed.length > 0 && results.successful.length === 0) {
-    throw new AgentExecutionError(`All git revert operations failed for portal: ${portalPath}`);
-  }
-}
-
-// Utility method for chunking arrays
-private chunkArray<T>(array: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size));
-  }
-  return chunks;
-}
-```
 
 #### Implementation Plan
 
 **Phase 1: Infrastructure (2 hours)**
-- [ ] Create `src/utils/subprocess.ts` with SafeSubprocess class
-- [ ] Add comprehensive error types and logging
-- [ ] Write unit tests for subprocess utility
+- [x] Create `src/utils/subprocess.ts` with SafeSubprocess class
+- [x] Add comprehensive error types and logging
+- [x] Write unit tests for subprocess utility
 
 **Phase 2: AgentExecutor Refactor (4 hours)**
-- [ ] Replace `auditGitChanges()` with timeout-protected version
-- [ ] Replace `revertUnauthorizedChanges()` with concurrent batching
-- [ ] Add proper error handling and logging
-- [ ] Update method signatures if needed
+- [x] Replace `auditGitChanges()` with timeout-protected version
+- [x] Replace `revertUnauthorizedChanges()` with concurrent batching
+- [x] Add proper error handling and logging
+- [x] Update method signatures if needed
 
 **Phase 3: Integration Testing (2 hours)**
-- [ ] Test timeout behavior with slow git commands
-- [ ] Test concurrent file processing limits
-- [ ] Test error aggregation and reporting
-- [ ] Verify logging works correctly
+- [x] Test timeout behavior with slow git commands
+- [x] Test concurrent file processing limits
+- [x] Test error aggregation and reporting
+- [x] Verify logging works correctly
 
 #### Verification Commands
 
@@ -480,6 +249,7 @@ deno run -A src/services/agent_executor.ts
 ### Issue #2: Path Resolution Security Vulnerabilities
 
 **Priority**: P0 🔴 **CRITICAL**
+**Status**: ✅ **RESOLVED** (Implemented PathSecurity utility with secure path validation)
 **File**: `src/services/tool_registry.ts`
 **Lines**: 360-390 (resolvePath method)
 **Estimated Effort**: 6 hours
@@ -750,21 +520,21 @@ private async resolvePath(path: string): Promise<string> {
 #### Implementation Plan
 
 **Phase 1: Security Infrastructure (3 hours)**
-- [ ] Create `src/utils/path_security.ts` with comprehensive path validation
-- [ ] Add path traversal detection and prevention
-- [ ] Implement secure root validation logic
-- [ ] Write comprehensive unit tests for security scenarios
+- [x] Create `src/utils/path_security.ts` with comprehensive path validation
+- [x] Add path traversal detection and prevention
+- [x] Implement secure root validation logic
+- [x] Write comprehensive unit tests for security scenarios
 
 **Phase 2: Tool Registry Integration (2 hours)**
-- [ ] Replace vulnerable `resolvePath()` method
-- [ ] Add security event logging
-- [ ] Update error handling to prevent information leakage
-- [ ] Test with various path traversal attack vectors
+- [x] Replace vulnerable `resolvePath()` method
+- [x] Add security event logging
+- [x] Update error handling to prevent information leakage
+- [x] Test with various path traversal attack vectors
 
 **Phase 3: Security Testing (1 hour)**
-- [ ] Test path traversal attempts: `../../../etc/passwd`
-- [ ] Test symlink attacks and absolute path bypasses
-- [ ] Test non-existent file creation within allowed roots
+- [x] Test path traversal attempts: `../../../etc/passwd`
+- [x] Test symlink attacks and absolute path bypasses
+- [x] Test non-existent file creation within allowed roots
 - [ ] Verify security event logging works
 
 #### Verification Commands

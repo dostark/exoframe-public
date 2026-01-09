@@ -358,53 +358,87 @@ export class ToolRegistry {
    * - Otherwise, validate it's within allowed roots
    */
   private async resolvePath(path: string): Promise<string> {
-    // Use PathResolver for alias paths
-    if (path.startsWith("@")) {
-      return await this.pathResolver.resolve(path);
-    }
+    const { PathSecurity, PathTraversalError, PathAccessError } = await import("../utils/path_security.ts");
 
-    // For absolute or relative paths, validate they're within allowed roots
-    const absolutePath = path.startsWith("/") ? path : join(this.config.system.root, path);
-
-    // Check if path is within allowed roots
-    const allowedRoots = [
-      join(this.config.system.root, this.config.paths.workspace),
-      join(this.config.system.root, this.config.paths.memory),
-      join(this.config.system.root, this.config.paths.blueprints),
-      this.config.system.root, // Allow workspace root itself
-    ];
-
-    // Try to get real path, but if file doesn't exist yet (for writes), use absolute path
-    let realPath: string;
     try {
-      realPath = await Deno.realPath(absolutePath);
-    } catch {
-      // File doesn't exist yet, validate parent directory
-      const parentDir = join(absolutePath, "..");
-      try {
-        realPath = await Deno.realPath(parentDir);
-        realPath = join(realPath, absolutePath.split("/").pop() || "");
-      } catch {
-        // Parent doesn't exist either, just use absolute path for validation
-        realPath = absolutePath;
+      // Use PathResolver for alias paths
+      if (path.startsWith("@")) {
+        return await this.pathResolver.resolve(path);
       }
-    }
 
-    const isAllowed = allowedRoots.some((root) => {
-      try {
-        const realRoot = Deno.realPathSync(root);
-        return realPath.startsWith(realRoot);
-      } catch {
-        // Root doesn't exist yet, compare absolute paths
-        return realPath.startsWith(root);
+      // Define allowed roots
+      const allowedRoots = [
+        join(this.config.system.root, this.config.paths.workspace),
+        join(this.config.system.root, this.config.paths.memory),
+        join(this.config.system.root, this.config.paths.blueprints),
+        this.config.system.root,
+      ];
+
+      // Securely resolve path within allowed roots
+      const resolvedPath = await PathSecurity.resolveWithinRoots(
+        path,
+        allowedRoots,
+        this.config.system.root,
+      );
+
+      return resolvedPath;
+    } catch (error) {
+      if (error instanceof PathTraversalError) {
+        // Log security event
+        this.db?.logActivity(
+          "tool_registry",
+          "security.path_traversal_attempted",
+          path,
+          {
+            attempted_path: path,
+            error: error.message,
+            trace_id: this.traceId,
+            agent_id: this.agentId,
+          },
+          this.traceId,
+          this.agentId,
+        );
+
+        throw new Error(`Access denied: Path traversal detected`);
       }
-    });
 
-    if (!isAllowed) {
-      throw new Error(`Path ${path} resolves to ${realPath}, outside allowed roots`);
+      if (error instanceof PathAccessError) {
+        // Log access violation
+        this.db?.logActivity(
+          "tool_registry",
+          "security.path_access_denied",
+          path,
+          {
+            attempted_path: path,
+            resolved_path: error.message.includes("->") ? error.message.split("->")[1]?.trim() : undefined,
+            error: error.message,
+            trace_id: this.traceId,
+            agent_id: this.agentId,
+          },
+          this.traceId,
+          this.agentId,
+        );
+
+        throw new Error(`Access denied: Path outside allowed directories`);
+      }
+
+      // Log generic path resolution errors
+      this.db?.logActivity(
+        "tool_registry",
+        "path.resolution_error",
+        path,
+        {
+          input_path: path,
+          error: error instanceof Error ? error.message : String(error),
+          trace_id: this.traceId,
+          agent_id: this.agentId,
+        },
+        this.traceId,
+        this.agentId,
+      );
+
+      throw error;
     }
-
-    return absolutePath;
   }
 
   /**
