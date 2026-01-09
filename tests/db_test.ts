@@ -24,7 +24,7 @@ Deno.test("DatabaseService: initializes with configuration", async () => {
     assertExists(db.instance);
     assertEquals(db.instance.constructor.name, "Database");
 
-    db.close();
+    await db.close();
   } finally {
     await cleanup();
   }
@@ -45,7 +45,7 @@ Deno.test("DatabaseService: logs single activity", async () => {
     assertEquals(activities[0].target, "target");
     assertEquals(JSON.parse(activities[0].payload).foo, "bar");
 
-    db.close();
+    await db.close();
   } finally {
     await cleanup();
   }
@@ -68,7 +68,7 @@ Deno.test("DatabaseService: batches multiple activities", async () => {
     assertEquals(activities[0].target, "target-0");
     assertEquals(activities[4].target, "target-4");
 
-    db.close();
+    await db.close();
   } finally {
     await cleanup();
   }
@@ -92,7 +92,7 @@ Deno.test("DatabaseService: flushes when max batch size reached", async () => {
     const activities = db.getActivitiesByTrace(traceId);
     assertEquals(activities.length, 100);
 
-    db.close();
+    await db.close();
   } finally {
     await cleanup();
   }
@@ -104,7 +104,7 @@ Deno.test("DatabaseService: handles waitForFlush with empty queue", async () => 
     // Should return immediately
     await db.waitForFlush();
 
-    db.close();
+    await db.close();
   } finally {
     await cleanup();
   }
@@ -126,7 +126,7 @@ Deno.test("DatabaseService: prevents logging when closing", async () => {
     };
 
     // Close and try to log
-    db.close();
+    await db.close();
     db.logActivity("user", "test.after", "target", { test: 2 }, traceId);
 
     console.warn = originalWarn;
@@ -151,7 +151,7 @@ Deno.test("DatabaseService: flushes pending logs on close", async () => {
     db.logActivity("user", "test.action2", "target", { test: 2 }, traceId);
 
     // Don't wait for flush, close immediately
-    db.close();
+    await db.close();
 
     // Create new connection to verify data was flushed
     const config2 = createMockConfig(tempDir);
@@ -162,7 +162,7 @@ Deno.test("DatabaseService: flushes pending logs on close", async () => {
     const activities = db2.getActivitiesByTrace(traceId);
     assertEquals(activities.length, 2);
 
-    db2.close();
+    await db2.close();
   } finally {
     // Note: cleanup() closes db, but db is already closed above, so just remove temp dir
     try {
@@ -193,7 +193,7 @@ Deno.test("DatabaseService: getActivitiesByActionType returns filtered results",
     assertEquals(typeOne[0].action_type, "type.one");
     assertEquals(typeTwo[0].action_type, "type.two");
 
-    db.close();
+    await db.close();
   } finally {
     await cleanup();
   }
@@ -212,7 +212,7 @@ Deno.test("DatabaseService: getRecentActivity returns limited results", async ()
     await db.waitForFlush();
 
     // Get recent with limit
-    const recent = db.getRecentActivity(5);
+    const recent = await db.getRecentActivity(5);
     assertEquals(recent.length, 5);
 
     // All should have the same trace_id
@@ -236,7 +236,7 @@ Deno.test("DatabaseService: getRecentActivity flushes pending logs", async () =>
     db.logActivity("user", "test.action", "target", { test: 2 }, traceId);
 
     // getRecentActivity should flush pending logs
-    const recent = db.getRecentActivity(10);
+    const recent = await db.getRecentActivity(10);
     assertEquals(recent.length, 2);
 
     db.close();
@@ -259,7 +259,7 @@ Deno.test("DatabaseService: handles null agent_id", async () => {
     assertEquals(activities.length, 1);
     assertEquals(activities[0].agent_id, null);
 
-    db.close();
+    await db.close();
   } finally {
     await cleanup();
   }
@@ -279,7 +279,7 @@ Deno.test("DatabaseService: handles null target", async () => {
     assertEquals(activities.length, 1);
     assertEquals(activities[0].target, null);
 
-    db.close();
+    await db.close();
   } finally {
     await cleanup();
   }
@@ -309,14 +309,14 @@ Deno.test("DatabaseService: handles complex payload objects", async () => {
     const activities = db.getActivitiesByTrace(traceId);
     assertEquals(activities.length, 1);
 
-    const payload = JSON.parse(activities[0].payload);
-    assertEquals(payload.nested.object.with, "values");
-    assertEquals(payload.array, [1, 2, 3]);
-    assertEquals(payload.boolean, true);
-    assertEquals(payload.number, 42);
-    assertEquals(payload.nullValue, null);
+    const payload = activities[0].payload;
+    assertEquals(JSON.parse(payload).nested.object.with, "values");
+    assertEquals(JSON.parse(payload).array, [1, 2, 3]);
+    assertEquals(JSON.parse(payload).boolean, true);
+    assertEquals(JSON.parse(payload).number, 42);
+    assertEquals(JSON.parse(payload).nullValue, null);
 
-    db.close();
+    await db.close();
   } finally {
     await cleanup();
   }
@@ -341,7 +341,7 @@ Deno.test("DatabaseService: generates unique activity IDs", async () => {
     const uniqueIds = new Set(ids);
     assertEquals(uniqueIds.size, 5);
 
-    db.close();
+    await db.close();
   } finally {
     await cleanup();
   }
@@ -355,7 +355,7 @@ Deno.test("DatabaseService: auto-generates trace_id if not provided", async () =
 
     await db.waitForFlush();
 
-    const recent = db.getRecentActivity(1);
+    const recent = await db.getRecentActivity(1);
     assertEquals(recent.length, 1);
     assertExists(recent[0].trace_id);
     assertEquals(recent[0].trace_id.length, 36); // UUID format
@@ -374,7 +374,7 @@ Deno.test("DatabaseService: persists data across connections", async () => {
     // First connection - write data
     db1.logActivity("user", "test.action", "target", { test: 1 }, traceId);
     await db1.waitForFlush();
-    db1.close();
+    await db1.close();
 
     // Second connection - read data
     const config = createMockConfig(tempDir);
@@ -385,7 +385,7 @@ Deno.test("DatabaseService: persists data across connections", async () => {
     const activities = db2.getActivitiesByTrace(traceId);
     assertEquals(activities.length, 1);
     assertEquals(activities[0].action_type, "test.action");
-    db2.close();
+    await db2.close();
   } finally {
     // Note: cleanup() closes db, but db1 is already closed above, so just remove temp dir
     try {
@@ -417,7 +417,7 @@ Deno.test("DatabaseService: handles rapid concurrent logging", async () => {
     const activities = db.getActivitiesByTrace(traceId);
     assertEquals(activities.length, 50);
 
-    db.close();
+    await db.close();
   } finally {
     await cleanup();
   }

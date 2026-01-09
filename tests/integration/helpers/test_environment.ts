@@ -420,7 +420,7 @@ This plan will accomplish the requested task.
    */
   getActivityLog(traceId: string): Array<{
     action_type: string;
-    actor: string;
+    actor: string | null;
     target: string | null;
     payload: string;
     timestamp: string;

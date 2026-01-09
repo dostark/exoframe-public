@@ -216,7 +216,7 @@ export function createMockDatabaseService(initialLogs: Array<Record<string, any>
       this.logs = logs;
     }
     getRecentActivity(limit: number = 100) {
-      return this.logs.slice(-limit).reverse();
+      return Promise.resolve(this.logs.slice(-limit).reverse());
     }
     addLog(log: any) {
       this.logs.push(log);
@@ -228,6 +228,11 @@ export function createMockDatabaseService(initialLogs: Array<Record<string, any>
 export function createMonitorViewWithLogs(arr: Array<Record<string, any>> = []) {
   const db = createMockDatabaseService(arr);
   const monitorView = new MonitorView(db as unknown as any);
+  // For testing, synchronously set the logs since constructor doesn't await
+  monitorView["logs"] = arr.map((log): any => ({
+    ...log,
+    payload: typeof log.payload === "string" ? JSON.parse(log.payload) : log.payload,
+  }));
   return { db, monitorView };
 }
 

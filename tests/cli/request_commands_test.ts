@@ -135,7 +135,7 @@ describe("RequestCommands", () => {
       await db.waitForFlush();
 
       // Query activity journal
-      const activities = db.getRecentActivity(10);
+      const activities = await db.getRecentActivity(10);
       const createActivity = activities.find((a) =>
         a.action_type === "request.created" &&
         a.trace_id === result.trace_id
@@ -144,7 +144,8 @@ describe("RequestCommands", () => {
       assertExists(createActivity, "Activity should be logged");
       // Actor is now user identity (email or username) instead of "human"
       assertExists(createActivity?.actor);
-      assertExists(createActivity?.payload?.description_length);
+      const createPayload = JSON.parse(createActivity?.payload || "{}");
+      assertExists(createPayload?.description_length);
     });
 
     it("should include created_by from user identity", async () => {
@@ -579,18 +580,19 @@ Minimal content for show
 
       await db.waitForFlush();
 
-      const activities = db.getRecentActivity(10);
+      const activities = await db.getRecentActivity(10);
       const activity = activities.find((a) => a.trace_id === result.trace_id);
 
       assertExists(activity);
       assertEquals(activity.action_type, "request.created");
       assertExists(activity.actor);
       assertExists(activity.payload);
-      assertEquals(activity.payload.priority, "high");
-      assertEquals(activity.payload.agent, "special_agent");
-      assertEquals(activity.payload.portal, "TestPortal");
-      assertEquals(activity.payload.source, "cli");
-      assertEquals(typeof activity.payload.description_length, "number");
+      const payload = JSON.parse(activity.payload);
+      assertEquals(payload.priority, "high");
+      assertEquals(payload.agent, "special_agent");
+      assertEquals(payload.portal, "TestPortal");
+      assertEquals(payload.source, "cli");
+      assertEquals(typeof payload.description_length, "number");
     });
 
     it("should set portal to null in activity when not provided", async () => {
@@ -598,11 +600,12 @@ Minimal content for show
 
       await db.waitForFlush();
 
-      const activities = db.getRecentActivity(10);
+      const activities = await db.getRecentActivity(10);
       const activity = activities.find((a) => a.trace_id === result.trace_id);
 
       assertExists(activity);
-      assertEquals(activity.payload.portal, null);
+      const payload = JSON.parse(activity.payload);
+      assertEquals(payload.portal, null);
     });
   });
 

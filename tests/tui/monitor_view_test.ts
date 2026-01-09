@@ -69,13 +69,13 @@ Deno.test("MonitorView - renderLogs outputs ANSI and handles empty", () => {
 
 // Mock DatabaseService for testing - use `createMockDatabaseService` in `tests/tui/helpers.ts` instead
 
-Deno.test("MonitorView - should display real-time log streaming", () => {
+Deno.test("MonitorView - should display real-time log streaming", async () => {
   const { db: _db, monitorView } = createMonitorViewWithLogs([
     sampleLogEntry({ agent_id: "researcher" }),
   ]);
 
   // Test that it can retrieve logs
-  const logs = monitorView.getLogs();
+  const logs = await monitorView.getLogs();
   assertEquals(logs.length, 1);
   assertEquals(logs[0].actor, "agent");
   assertEquals(logs[0].action_type, "request_created");
@@ -131,26 +131,28 @@ Deno.test("MonitorView - does not fetch when paused", () => {
       return this.inner.addLog(log);
     }
   }
-  const db = new CountingDb([
-    {
-      id: "1",
-      trace_id: "trace-1",
-      actor: "agent",
-      agent_id: "dev",
-      action_type: "plan.approved",
-      target: "Workspace/Plans/test.md",
-      payload: {},
-      timestamp: "2025-12-21T10:00:00Z",
-    },
-  ]);
-  const monitorView = new MonitorView(db as unknown as DatabaseService);
-  calls.length = 0;
-  monitorView.pause();
-  monitorView.getLogs(); // should not trigger fetch while paused
-  assertEquals(calls.length, 0);
-  monitorView.resume();
-  monitorView.getLogs();
-  assertEquals(calls.length, 2);
+  Deno.test("MonitorView - should pause and resume log streaming", async () => {
+    const db = new CountingDb([
+      {
+        id: "1",
+        trace_id: "trace-1",
+        actor: "agent",
+        agent_id: "dev",
+        action_type: "plan.approved",
+        target: "Workspace/Plans/test.md",
+        payload: {},
+        timestamp: "2025-12-21T10:00:00Z",
+      },
+    ]);
+    const monitorView = new MonitorView(db as unknown as DatabaseService);
+    calls.length = 0;
+    monitorView.pause();
+    await monitorView.getLogs(); // should not trigger fetch while paused
+    assertEquals(calls.length, 0);
+    monitorView.resume();
+    await monitorView.getLogs();
+    assertEquals(calls.length, 2);
+  });
 });
 
 Deno.test("MonitorView - maps Activity Journal action names to colors", () => {
@@ -184,7 +186,7 @@ Deno.test("MonitorView - should export logs to file", () => {
   assert(exportData.includes("request_created"));
 });
 
-Deno.test("MonitorView - should handle large log volumes without crashing", () => {
+Deno.test("MonitorView - should handle large log volumes without crashing", async () => {
   const largeLogs = Array.from({ length: 1000 }, (_, i) => ({
     id: `${i + 1}`,
     trace_id: `trace-${i + 1}`,
@@ -199,7 +201,7 @@ Deno.test("MonitorView - should handle large log volumes without crashing", () =
   const { db: _db, monitorView } = createMonitorViewWithLogs(largeLogs);
 
   // Should handle large volumes
-  const logs = monitorView.getLogs();
+  const logs = await monitorView.getLogs();
   assertEquals(logs.length, 1000);
 
   // Filtering should still work
@@ -209,10 +211,10 @@ Deno.test("MonitorView - should handle large log volumes without crashing", () =
   assert(filteredLogs.every((log: LogEntry) => log.agent_id === "researcher"));
 });
 
-Deno.test("MonitorView - should handle empty logs gracefully", () => {
+Deno.test("MonitorView - should handle empty logs gracefully", async () => {
   const { db: _db, monitorView } = createMonitorViewWithLogs([]);
 
-  const logs = monitorView.getLogs();
+  const logs = await monitorView.getLogs();
   assertEquals(logs.length, 0);
 
   const filteredLogs = monitorView.getFilteredLogs();

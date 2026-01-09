@@ -31,6 +31,7 @@ import {
 import { type HelpSection, renderHelpScreen } from "./utils/help_renderer.ts";
 import { ConfirmDialog, InputDialog } from "./utils/dialog_base.ts";
 import type { KeyBinding } from "./utils/keyboard.ts";
+import type { ActivityRecord } from "../services/db.ts";
 
 // ===== Service Interfaces =====
 
@@ -38,7 +39,7 @@ import type { KeyBinding } from "./utils/keyboard.ts";
  * Service interface for log access.
  */
 export interface LogService {
-  getRecentActivity(limit: number): LogEntry[];
+  getRecentActivity(limit: number): Promise<ActivityRecord[]>;
 }
 
 export interface LogFilter {
@@ -51,7 +52,7 @@ export interface LogFilter {
 export interface LogEntry {
   id: string;
   trace_id: string;
-  actor: string;
+  actor: string | null;
   agent_id: string | null;
   action_type: string;
   target: string | null;
@@ -162,15 +163,19 @@ export class MonitorView {
   }
 
   /** Refresh logs from the service. */
-  refreshLogs(): void {
+  async refreshLogs(): Promise<void> {
     if (!this.isPaused) {
-      this.logs = this.logService.getRecentActivity(1000);
+      const activities = await this.logService.getRecentActivity(1000);
+      this.logs = activities.map((log): LogEntry => ({
+        ...log,
+        payload: typeof log.payload === "string" ? JSON.parse(log.payload) : log.payload,
+      }));
     }
   }
 
   /** Get all current logs. */
-  getLogs(): LogEntry[] {
-    this.refreshLogs();
+  async getLogs(): Promise<LogEntry[]> {
+    await this.refreshLogs();
     return [...this.logs];
   }
 
@@ -181,7 +186,7 @@ export class MonitorView {
 
   /** Get filtered logs based on current filter. */
   getFilteredLogs(): LogEntry[] {
-    let filtered = this.getLogs();
+    let filtered = this.logs;
     if (this.filter.agent) {
       filtered = filtered.filter((log) => log.agent_id === this.filter.agent);
     }
@@ -221,7 +226,9 @@ export class MonitorView {
   exportLogs(): string {
     const logs = this.getFilteredLogs();
     return logs.map((log) => {
-      return `${log.timestamp} [${log.actor}] ${log.action_type}: ${log.target || ""} ${JSON.stringify(log.payload)}`;
+      return `${log.timestamp} [${log.actor || "unknown"}] ${log.action_type}: ${log.target || ""} ${
+        JSON.stringify(log.payload)
+      }`;
     }).join("\n");
   }
 
@@ -239,7 +246,7 @@ export class MonitorView {
     const logs = this.getFilteredLogs();
     return logs.map((log) => {
       const color = this.getLogColor(log.action_type);
-      return `\x1b[${this.getAnsiColorCode(color)}m${log.timestamp} [${log.actor}] ${log.action_type}: ${
+      return `\x1b[${this.getAnsiColorCode(color)}m${log.timestamp} [${log.actor || "unknown"}] ${log.action_type}: ${
         log.target || ""
       }\x1b[0m`;
     }).join("\n");
@@ -284,8 +291,11 @@ export class MinimalLogServiceMock implements LogService {
     this.logs = logs;
   }
 
-  getRecentActivity(_limit: number): LogEntry[] {
-    return [...this.logs];
+  getRecentActivity(_limit: number): Promise<ActivityRecord[]> {
+    return Promise.resolve([...this.logs.map((log) => ({
+      ...log,
+      payload: JSON.stringify(log.payload),
+    }))]);
   }
 
   setLogs(logs: LogEntry[]): void {
@@ -320,8 +330,14 @@ export class MonitorTuiSession extends TuiSessionBase {
       groupBy: "none",
       autoRefresh: false,
     };
+    // Build tree synchronously for immediate access (e.g., in tests)
     this.buildTree();
     this.selectFirstLog();
+    // Also refresh logs asynchronously for real-time updates
+    this.monitorView.refreshLogs().then(() => {
+      this.buildTree();
+      this.selectFirstLog();
+    }).catch(console.error);
   }
 
   // ===== State Accessors =====
@@ -574,7 +590,7 @@ export class MonitorTuiSession extends TuiSessionBase {
     lines.push(`ID: ${log.id}`);
     lines.push(`Trace ID: ${log.trace_id}`);
     lines.push(`Timestamp: ${log.timestamp}`);
-    lines.push(`Actor: ${log.actor}`);
+    lines.push(`Actor: ${log.actor || "unknown"}`);
     lines.push(`Agent: ${log.agent_id || "(none)"}`);
     lines.push(`Action: ${log.action_type}`);
     lines.push(`Target: ${log.target || "(none)"}`);

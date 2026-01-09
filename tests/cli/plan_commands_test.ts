@@ -99,12 +99,13 @@ created_at: "2025-11-25T10:00:00Z"
       assertEquals(updatedContent.includes("approved_at:"), true, "Should have approved_at field");
 
       // Verify activity logged
-      const activities = db.getRecentActivity(10);
+      const activities = await db.getRecentActivity(10);
       const approval = activities.find((a) => a.action_type === "plan.approved" && a.target === planId);
       assertExists(approval, "Approval should be logged");
       assertExists(approval?.actor);
       assertEquals(approval?.agent_id, null);
-      assertEquals(approval?.payload?.via, "cli");
+      const approvalPayload = JSON.parse(approval?.payload || "{}");
+      assertEquals(approvalPayload?.via, "cli");
       assertEquals(approval?.trace_id, "trace-123");
     });
 
@@ -205,13 +206,14 @@ status: review
       assertEquals(rejectedContent.includes(`rejection_reason: ${reason}`), true);
 
       // Verify activity logged
-      const activities = db.getRecentActivity(10);
+      const activities = await db.getRecentActivity(10);
       const rejection = activities.find((a) => a.action_type === "plan.rejected" && a.target === planId);
       assertExists(rejection, "Rejection should be logged");
       // Actor is now user identity (email or username) instead of "human"
       assertExists(rejection?.actor);
-      assertEquals(rejection?.payload?.reason, reason);
-      assertEquals(rejection?.payload?.via, "cli");
+      const rejectionPayload = JSON.parse(rejection?.payload || "{}");
+      assertEquals(rejectionPayload?.reason, reason);
+      assertEquals(rejectionPayload?.via, "cli");
     });
 
     it("should reject rejection if reason is empty", async () => {
@@ -263,10 +265,11 @@ Some actions here
       assertEquals(updatedContent.includes(`⚠️ ${comment}`), true);
 
       // Verify activity logged
-      const activities = db.getRecentActivity(10);
+      const activities = await db.getRecentActivity(10);
       const revision = activities.find((a) => a.action_type === "plan.revision_requested" && a.target === planId);
       assertExists(revision, "Revision request should be logged");
-      assertEquals(revision?.payload?.comment_count, 1);
+      const revisionPayload = JSON.parse(revision?.payload || "{}");
+      assertEquals(revisionPayload?.comment_count, 1);
     });
 
     it("should request revision with multiple comments", async () => {
@@ -295,9 +298,10 @@ status: review
       }
 
       // Verify activity logged with correct count
-      const activities = db.getRecentActivity(10);
+      const activities = await db.getRecentActivity(10);
       const revision = activities.find((a) => a.action_type === "plan.revision_requested");
-      assertEquals(revision?.payload?.comment_count, 3);
+      const revisionPayload = JSON.parse(revision?.payload || "{}");
+      assertEquals(revisionPayload?.comment_count, 3);
     });
 
     it("should reject revision if no comments provided", async () => {
@@ -508,7 +512,7 @@ status: review
 
       await planCommands.approve(planId);
 
-      const activities = db.getRecentActivity(10);
+      const activities = await db.getRecentActivity(10);
       const approval = activities.find((a) => a.action_type === "plan.approved");
       assertExists(approval?.actor, "Actor should be captured");
       assertEquals(typeof approval?.actor, "string");

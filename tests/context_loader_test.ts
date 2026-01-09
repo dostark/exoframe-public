@@ -1064,7 +1064,7 @@ describe("Activity Logging with Database", () => {
       await new Promise((resolve) => setTimeout(resolve, 150));
 
       // Should not have logged anything (no traceId)
-      const allLogs = db.getRecentActivity(100);
+      const allLogs = await db.getRecentActivity(100);
       const contextLogs = allLogs.filter((l: any) => l.action_type === "context.loaded");
       assertEquals(contextLogs.length, 0, "Should not log without traceId");
     } finally {

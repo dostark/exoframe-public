@@ -83,7 +83,7 @@ export class MockPlanService {
 export class MockLogService {
   /** Returns an empty list of recent activity logs. */
   getRecentActivity() {
-    return [];
+    return Promise.resolve([]);
   }
 }
 

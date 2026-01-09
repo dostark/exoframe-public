@@ -17,7 +17,7 @@ interface LogEntry {
 export interface ActivityRecord {
   id: string;
   trace_id: string;
-  actor: string;
+  actor: string | null;
   agent_id: string | null;
   action_type: string;
   target: string | null;
@@ -122,51 +122,79 @@ export class DatabaseService {
   /**
    * Execute a function within a transaction with retry logic
    */
-  private retryTransaction(fn: () => void, maxRetries = 5, baseDelay = 100): void {
-    let lastError: Error | null = null;
+  /**
+   * Execute database operations with retry logic for transient failures
+   * @private
+   */
+  private async retryTransaction<T>(
+    callback: () => T,
+    options: RetryOptions = {},
+  ): Promise<T> {
+    const {
+      maxRetries = 3,
+      baseDelay = 100,
+      maxDelay = 5000,
+      backoffFactor = 2,
+      jitter = true,
+    } = options;
 
-    for (let i = 0; i < maxRetries; i++) {
+    let attempt = 0;
+
+    while (attempt <= maxRetries) {
       try {
+        // Execute the callback synchronously within a transaction
         this.db.exec("BEGIN IMMEDIATE TRANSACTION");
-        fn();
+        const result = callback();
         this.db.exec("COMMIT");
-        return;
+        return result;
       } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-
-        // Rollback if transaction failed
+        // Rollback on error
         try {
           this.db.exec("ROLLBACK");
         } catch {
-          // Ignore rollback errors (transaction might not have started)
+          // Ignore rollback errors
         }
 
-        // Check if error is database locked
-        if (lastError.message.includes("database is locked")) {
-          // Exponential backoff with jitter
-          const delay = baseDelay * Math.pow(2, i) + Math.random() * 50;
+        const lastError = error instanceof Error ? error : new Error(String(error));
+        attempt++;
 
-          // Synchronous sleep since sqlite driver is synchronous
-          const start = Date.now();
-          while (Date.now() - start < delay) {
-            // Busy wait
-          }
-          continue;
+        // Check if this is a retryable error (database locked)
+        const isRetryable = lastError.message.includes("database is locked") ||
+          lastError.message.includes("database table is locked");
+
+        if (!isRetryable || attempt > maxRetries) {
+          throw lastError;
         }
 
-        throw lastError;
+        // Calculate delay with exponential backoff
+        let delay = baseDelay * Math.pow(backoffFactor, attempt - 1);
+
+        // Add jitter to prevent thundering herd
+        if (jitter) {
+          delay = delay * (0.5 + Math.random() * 0.5); // ±50% jitter
+        }
+
+        // Cap maximum delay
+        delay = Math.min(delay, maxDelay);
+
+        // Non-blocking delay
+        await new Promise((resolve) => setTimeout(resolve, delay));
+
+        // Log retry attempt (if logger available)
+        console.debug(`Database retry attempt ${attempt}/${maxRetries} after ${delay}ms delay: ${lastError.message}`);
       }
     }
-    throw lastError;
+
+    throw new Error("Unreachable code");
   }
 
   /**
    * Execute batch insert with transaction handling
    * @private
    */
-  private executeBatchInsert(batch: LogEntry[], context: string): void {
+  private async executeBatchInsert(batch: LogEntry[], context: string): Promise<void> {
     try {
-      this.retryTransaction(() => {
+      await this.retryTransaction(() => {
         for (const entry of batch) {
           this.db.exec(
             `INSERT INTO activity (id, trace_id, actor, agent_id, action_type, target, payload, timestamp)
@@ -203,18 +231,18 @@ export class DatabaseService {
     const batch = this.logQueue.splice(0);
 
     // Write asynchronously without blocking
-    queueMicrotask(() => {
-      this.executeBatchInsert(batch, "flush");
+    queueMicrotask(async () => {
+      await this.executeBatchInsert(batch, "flush");
     });
   }
 
   /**
    * Close the database connection and flush pending logs
    */
-  close() {
+  async close(): Promise<void> {
     this.isClosing = true;
 
-    // Flush any remaining logs synchronously before closing
+    // Flush any remaining logs before closing
     if (this.flushTimer !== null) {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
@@ -222,7 +250,7 @@ export class DatabaseService {
 
     if (this.logQueue.length > 0) {
       const batch = this.logQueue.splice(0);
-      this.executeBatchInsert(batch, "close");
+      await this.executeBatchInsert(batch, "close");
     }
 
     this.db.close();
@@ -259,17 +287,8 @@ export class DatabaseService {
   /**
    * Query recent activities (for testing/debugging)
    */
-  getRecentActivity(limit: number = 100): Array<{
-    id: string;
-    trace_id: string;
-    actor: string;
-    agent_id: string | null;
-    action_type: string;
-    target: string | null;
-    payload: Record<string, unknown>;
-    timestamp: string;
-  }> {
-    // Flush pending logs synchronously for testing
+  async getRecentActivity(limit: number = 100): Promise<ActivityRecord[]> {
+    // Flush pending logs before querying
     if (this.flushTimer !== null) {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
@@ -277,7 +296,7 @@ export class DatabaseService {
 
     if (this.logQueue.length > 0) {
       const batch = this.logQueue.splice(0);
-      this.executeBatchInsert(batch, "getRecentActivity");
+      await this.executeBatchInsert(batch, "getRecentActivity");
     }
 
     const stmt = this.db.prepare(
@@ -287,21 +306,14 @@ export class DatabaseService {
        LIMIT ?`,
     );
 
-    const rows = stmt.all(limit) as Array<{
-      id: string;
-      trace_id: string;
-      actor: string;
-      agent_id: string | null;
-      action_type: string;
-      target: string | null;
-      payload: string;
-      timestamp: string;
-    }>;
-
-    // Parse payload JSON
-    return rows.map((row) => ({
-      ...row,
-      payload: JSON.parse(row.payload),
-    }));
+    return stmt.all(limit) as unknown as ActivityRecord[];
   }
+}
+
+interface RetryOptions {
+  maxRetries?: number;
+  baseDelay?: number;
+  maxDelay?: number;
+  backoffFactor?: number;
+  jitter?: boolean;
 }

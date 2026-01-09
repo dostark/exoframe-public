@@ -19,9 +19,9 @@ Deno.test("MockPlanService: returns pending plans", async () => {
   if (!Array.isArray(plans)) throw new Error("Plans not array");
 });
 
-Deno.test("MockLogService: returns recent activity", () => {
+Deno.test("MockLogService: returns recent activity", async () => {
   const service = new MockLogService();
-  const logs = service.getRecentActivity();
+  const logs = await service.getRecentActivity();
   if (!Array.isArray(logs)) throw new Error("Logs not array");
 });
 
@@ -66,9 +66,9 @@ Deno.test("MockPlanService: all methods", async () => {
   if (await service.reject() !== true) throw new Error("reject failed");
 });
 
-Deno.test("MockLogService: all methods", () => {
+Deno.test("MockLogService: all methods", async () => {
   const service = new MockLogService();
-  if (!Array.isArray(service.getRecentActivity())) throw new Error("getRecentActivity failed");
+  if (!Array.isArray(await service.getRecentActivity())) throw new Error("getRecentActivity failed");
 });
 
 Deno.test("MockDaemonService: all methods", async () => {

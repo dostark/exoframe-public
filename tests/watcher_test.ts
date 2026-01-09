@@ -513,7 +513,7 @@ Deno.test("FileWatcher: logs activity with database", async () => {
     await db.waitForFlush();
 
     // Check if activities were logged
-    const activities = db.getRecentActivity(100);
+    const activities = await db.getRecentActivity(100);
     const watcherActivities = activities.filter((a: { action_type: string }) => a.action_type.startsWith("watcher."));
 
     // Should have logged at least: started, file_ready, stopped (minimum 3)
