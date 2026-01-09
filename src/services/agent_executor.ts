@@ -14,12 +14,35 @@ import type { PathResolver } from "./path_resolver.ts";
 import type { PortalPermissionsService } from "./portal_permissions.ts";
 import type { IModelProvider } from "../ai/providers.ts";
 import {
+  DEFAULT_GIT_CHECKOUT_TIMEOUT_MS,
+  DEFAULT_GIT_CLEAN_TIMEOUT_MS,
+  DEFAULT_GIT_DIFF_TIMEOUT_MS,
+  DEFAULT_GIT_LOG_TIMEOUT_MS,
+  DEFAULT_GIT_LS_FILES_TIMEOUT_MS,
+  DEFAULT_GIT_REVERT_CONCURRENCY_LIMIT,
+  DEFAULT_GIT_STATUS_TIMEOUT_MS,
+} from "../config/constants.ts";
+import {
   type AgentExecutionOptions,
   type ChangesetResult,
   ChangesetResultSchema,
   type ExecutionContext,
   type SecurityMode,
 } from "../schemas/agent_executor.ts";
+
+/**
+ * Agent execution error class
+ */
+export class AgentExecutionError extends Error {
+  constructor(
+    message: string,
+    public type: string = "agent_error",
+    public override cause?: Error,
+  ) {
+    super(message);
+    this.name = "AgentExecutionError";
+  }
+}
 
 /**
  * Agent blueprint loaded from file
@@ -304,30 +327,56 @@ Ensure your response contains ONLY valid JSON, no additional text.`;
     portalPath: string,
     authorizedFiles: string[],
   ): Promise<string[]> {
-    // Get git status
-    const statusProcess = new Deno.Command("git", {
-      args: ["status", "--porcelain"],
-      cwd: portalPath,
-    });
+    const { SafeSubprocess, SubprocessTimeoutError } = await import("../utils/subprocess.ts");
 
-    const output = await statusProcess.output();
-    const statusText = new TextDecoder().decode(output.stdout);
+    try {
+      // Get git status with timeout protection
+      const result = await SafeSubprocess.run("git", ["status", "--porcelain"], {
+        cwd: portalPath,
+        timeoutMs: DEFAULT_GIT_STATUS_TIMEOUT_MS, // 10 second timeout for status
+      });
 
-    const unauthorizedChanges: string[] = [];
-
-    for (const line of statusText.split("\n")) {
-      if (!line.trim()) continue;
-
-      // Extract filename (skip status code)
-      const filename = line.slice(3).trim();
-
-      // Check if file was authorized via MCP tools
-      if (!authorizedFiles.includes(filename)) {
-        unauthorizedChanges.push(filename);
+      if (result.code !== 0) {
+        throw new Error(`Git status failed: ${result.stderr}`);
       }
-    }
 
-    return unauthorizedChanges;
+      const statusText = result.stdout;
+      if (!statusText) {
+        return []; // No changes
+      }
+
+      const unauthorizedChanges: string[] = [];
+      const authorizedSet = new Set(authorizedFiles); // O(1) lookups
+
+      // More robust parsing
+      for (const line of statusText.split("\n")) {
+        if (!line.trim()) continue;
+
+        // Handle filenames with spaces (basic protection)
+        const filename = line.slice(3).trim();
+
+        // O(1) lookup instead of O(n)
+        if (!authorizedSet.has(filename)) {
+          unauthorizedChanges.push(filename);
+        }
+      }
+
+      return unauthorizedChanges;
+    } catch (error) {
+      if (error instanceof SubprocessTimeoutError) {
+        this.logger.error("git.audit.timeout", portalPath, {
+          error: error.message,
+          timeout_ms: DEFAULT_GIT_STATUS_TIMEOUT_MS,
+        });
+        throw new AgentExecutionError(`Git audit timed out for portal: ${portalPath}`);
+      }
+
+      this.logger.error("git.audit.failed", portalPath, {
+        error: error instanceof Error ? error.message : String(error),
+        stderr: error instanceof Error && "stderr" in error ? (error as any).stderr : undefined,
+      });
+      throw new AgentExecutionError(`Git audit failed for portal: ${portalPath}`, "git_error", error as Error);
+    }
   }
 
   /**
@@ -338,63 +387,121 @@ Ensure your response contains ONLY valid JSON, no additional text.`;
     portalPath: string,
     unauthorizedFiles: string[],
   ): Promise<void> {
-    if (unauthorizedFiles.length === 0) {
-      return;
-    }
+    const { SafeSubprocess } = await import("../utils/subprocess.ts");
 
-    for (const file of unauthorizedFiles) {
-      // Check if file is tracked or untracked
-      const statusProcess = new Deno.Command("git", {
-        args: ["ls-files", "--error-unmatch", file],
-        cwd: portalPath,
+    if (unauthorizedFiles.length === 0) return;
+
+    const results = {
+      successful: [] as string[],
+      failed: [] as Array<{ file: string; error: string }>,
+    };
+
+    // Process files concurrently with concurrency limit
+    const concurrencyLimit = DEFAULT_GIT_REVERT_CONCURRENCY_LIMIT; // Configurable
+    const chunks = this.chunkArray(unauthorizedFiles, concurrencyLimit);
+
+    for (const chunk of chunks) {
+      const promises = chunk.map(async (file) => {
+        try {
+          // Check if tracked with timeout
+          const lsResult = await SafeSubprocess.run("git", ["ls-files", "--error-unmatch", file], {
+            cwd: portalPath,
+            timeoutMs: DEFAULT_GIT_LS_FILES_TIMEOUT_MS,
+          });
+
+          if (lsResult.code === 0) {
+            // Tracked file - restore with timeout
+            await SafeSubprocess.run("git", ["checkout", "HEAD", "--", file], {
+              cwd: portalPath,
+              timeoutMs: DEFAULT_GIT_CHECKOUT_TIMEOUT_MS,
+            });
+            results.successful.push(file);
+          } else {
+            // Untracked file - delete with timeout
+            await SafeSubprocess.run("git", ["clean", "-f", file], {
+              cwd: portalPath,
+              timeoutMs: DEFAULT_GIT_CLEAN_TIMEOUT_MS,
+            });
+            results.successful.push(file);
+          }
+        } catch (error) {
+          results.failed.push({
+            file,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       });
 
-      const result = await statusProcess.output();
-
-      if (result.code === 0) {
-        // File is tracked - restore from HEAD
-        const checkoutProcess = new Deno.Command("git", {
-          args: ["checkout", "HEAD", "--", file],
-          cwd: portalPath,
-        });
-        await checkoutProcess.output();
-      } else {
-        // File is untracked - delete it
-        const cleanProcess = new Deno.Command("git", {
-          args: ["clean", "-f", file],
-          cwd: portalPath,
-        });
-        await cleanProcess.output();
-      }
+      // Wait for chunk to complete
+      await Promise.allSettled(promises);
     }
+
+    // Log results
+    this.logger.info("git.revert.completed", portalPath, {
+      total_files: unauthorizedFiles.length,
+      successful: results.successful.length,
+      failed: results.failed.length,
+      failed_files: results.failed.map((f) => f.file),
+    });
+
+    // Throw error if any files failed to revert
+    if (results.failed.length > 0) {
+      const errorMsg = `Failed to revert ${results.failed.length} unauthorized files: ${
+        results.failed.map((f) => f.file).join(", ")
+      }`;
+      this.logger.error("git.revert.partial_failure", portalPath, {
+        failed_count: results.failed.length,
+        failed_files: results.failed,
+      });
+      throw new AgentExecutionError(errorMsg);
+    }
+  }
+
+  /**
+   * Helper method to chunk array into smaller arrays
+   */
+  private chunkArray<T>(array: T[], chunkSize: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < array.length; i += chunkSize) {
+      chunks.push(array.slice(i, i + chunkSize));
+    }
+    return chunks;
   }
 
   /**
    * Get latest commit SHA from git log
    */
   async getLatestCommitSha(portalPath: string): Promise<string> {
-    const logProcess = new Deno.Command("git", {
-      args: ["log", "-1", "--format=%H"],
+    const { SafeSubprocess } = await import("../utils/subprocess.ts");
+
+    const result = await SafeSubprocess.run("git", ["log", "-1", "--format=%H"], {
       cwd: portalPath,
+      timeoutMs: DEFAULT_GIT_LOG_TIMEOUT_MS,
     });
 
-    const output = await logProcess.output();
-    return new TextDecoder().decode(output.stdout).trim();
+    if (result.code !== 0) {
+      throw new AgentExecutionError(`Failed to get latest commit SHA: ${result.stderr}`);
+    }
+
+    return result.stdout.trim();
   }
 
   /**
    * Get changed files from git diff
    */
   async getChangedFiles(portalPath: string): Promise<string[]> {
-    const diffProcess = new Deno.Command("git", {
-      args: ["diff", "--name-only"],
+    const { SafeSubprocess } = await import("../utils/subprocess.ts");
+
+    const result = await SafeSubprocess.run("git", ["diff", "--name-only"], {
       cwd: portalPath,
+      timeoutMs: DEFAULT_GIT_DIFF_TIMEOUT_MS,
     });
 
-    const output = await diffProcess.output();
-    const diffText = new TextDecoder().decode(output.stdout);
+    if (result.code !== 0) {
+      throw new AgentExecutionError(`Failed to get changed files: ${result.stderr}`);
+    }
 
-    return diffText
+    return result.stdout
       .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0);

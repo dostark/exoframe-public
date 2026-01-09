@@ -69,6 +69,18 @@ export const DEFAULT_GIT_BRANCH_PREFIX_PATTERN = "^(feat|fix|docs|chore|refactor
 export const DEFAULT_GIT_ALLOWED_PREFIXES = ["feat", "fix", "docs", "chore", "refactor", "test"];
 
 // ============================================================================
+// Subprocess/Git Operation Defaults
+// ============================================================================
+export const DEFAULT_SUBPROCESS_TIMEOUT_MS = 30000;
+export const DEFAULT_GIT_STATUS_TIMEOUT_MS = 10000;
+export const DEFAULT_GIT_REVERT_CONCURRENCY_LIMIT = 5;
+export const DEFAULT_GIT_LS_FILES_TIMEOUT_MS = 5000;
+export const DEFAULT_GIT_CHECKOUT_TIMEOUT_MS = 10000;
+export const DEFAULT_GIT_CLEAN_TIMEOUT_MS = 5000;
+export const DEFAULT_GIT_LOG_TIMEOUT_MS = 5000;
+export const DEFAULT_GIT_DIFF_TIMEOUT_MS = 10000;
+
+// ============================================================================
 // API Endpoint Defaults
 // ============================================================================
 export const DEFAULT_OLLAMA_ENDPOINT = "http://localhost:11434/api/generate";
